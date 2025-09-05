@@ -1,0 +1,255 @@
+{% extends "base.html" %}
+{% set roles = roles or [] %}
+
+{% block extra_head %}
+<style>
+  /* Styles spécifiques DRH/DAF (complément du thème LIA) */
+  .kpi { text-align:center; border:1px solid var(--gray-200); border-radius:12px; background:#fff; transition:transform .2s, box-shadow .2s; }
+  .kpi:hover { transform:translateY(-3px); box-shadow:0 6px 16px rgba(0,0,0,.08); }
+  .kpi .val { font-size:2rem; font-weight:800; color:var(--gray-900); }
+  .kpi .lab { font-size:.85rem; color:var(--gray-600); letter-spacing:.05em; text-transform:uppercase; }
+
+  .table thead th { font-size:.8rem; text-transform:uppercase; letter-spacing:.04em; color:var(--gray-600); }
+  .subtle { color: var(--gray-600); font-size: .9rem; }
+
+  .chip { display:inline-block; padding:.25rem .6rem; border-radius:999px; font-size:.75rem; border:1px solid var(--gray-300); background:#fff; }
+  .chip.ok { border-color: var(--success-color); color: var(--success-color); }
+  .chip.warn { border-color: var(--warning-color); color: var(--warning-color); }
+  .chip.err { border-color: var(--error-color); color: var(--error-color); }
+
+  .tab-btn { border:1px solid var(--gray-300); background:#fff; padding:.45rem .75rem; border-radius:8px; font-size:.9rem; }
+  .tab-btn.active { border-color: var(--primary-color); box-shadow:0 0 0 3px rgba(255,211,0,.2); }
+
+  .mini { font-size:.8rem; color:var(--gray-600); }
+</style>
+{% endblock %}
+
+{% block contenu %}
+<div class="container-fluid">
+
+  <!-- En-tête -->
+  <div class="d-flex justify-content-between align-items-start mb-4">
+    <div>
+      <h1 class="h4 mb-1">Tableau de bord — DRH / DAF</h1>
+      <p class="text-muted mb-0">Pilotage des ressources humaines, de la paie, des budgets et des coûts par programme.</p>
+    </div>
+    <div class="d-flex gap-2">
+      <a href="/utilisateurs/ui/nouveau" class="btn btn-primaire">+ Embaucher / Créer un compte</a>
+      <a href="/finances/ui/facture/nouvelle" class="btn btn-outline-dark">+ Nouvelle facture</a>
+      <a href="/finances/ui/export" class="btn btn-outline-dark">Exporter (CSV/XLSX)</a>
+    </div>
+  </div>
+
+  <!-- KPI RH & Finance -->
+  <div class="row g-3 mb-4">
+    <div class="col-md-3"><div class="card kpi shadow-sm"><div class="card-body">
+      <div class="val">{{ kpi.effectif_total }}</div><div class="lab">Effectif total</div>
+      <div class="mini subtle">{{ kpi.effectif_internes }} internes • {{ kpi.effectif_externes }} externes</div>
+    </div></div></div>
+    <div class="col-md-3"><div class="card kpi shadow-sm"><div class="card-body">
+      <div class="val">{{ kpi.masse_salariale_mois }} €</div><div class="lab">Masse salariale (mois)</div>
+      <div class="mini subtle">Δ {{ kpi.delta_masse_salariale or '+0%' }}</div>
+    </div></div></div>
+    <div class="col-md-3"><div class="card kpi shadow-sm"><div class="card-body">
+      <div class="val">{{ kpi.budget_formation_utilise }}%</div><div class="lab">Budget formation</div>
+      <div class="mini subtle">{{ kpi.budget_formation_engage }}% engagé</div>
+    </div></div></div>
+    <div class="col-md-3"><div class="card kpi shadow-sm"><div class="card-body">
+      <div class="val">{{ kpi.taux_turnover }}%</div><div class="lab">Turnover (12m)</div>
+      <div class="mini subtle">{{ kpi.recrutements_en_cours }} recrutements en cours</div>
+    </div></div></div>
+  </div>
+
+  <!-- Onglets : RH | Finance -->
+  <div class="d-flex gap-2 mb-3">
+    <button class="tab-btn active" data-tab="rh">Ressources Humaines</button>
+    <button class="tab-btn" data-tab="fin">Finance</button>
+    <button class="tab-btn" data-tab="programmes">Coûts par programme</button>
+  </div>
+
+  <!-- Section RH -->
+  <section id="tab-rh">
+    <div class="row g-3">
+      <!-- A. Recrutements -->
+      <div class="col-xl-6">
+        <div class="card shadow-sm h-100">
+          <div class="card-body">
+            <h2 class="h6 mb-3">Recrutements en cours</h2>
+            <div class="table-responsive">
+              <table class="table align-middle">
+                <thead><tr><th>Poste</th><th>Type</th><th>Programme</th><th>Statut</th><th></th></tr></thead>
+                <tbody>
+                  {% for r in recrutements %}
+                    <tr>
+                      <td>{{ r.poste }}</td>
+                      <td>{{ r.type_contrat }}</td>
+                      <td>{{ r.programme_nom or '—' }}</td>
+                      <td>
+                        <span class="chip {{ 'ok' if r.statut=='validé' else 'warn' if r.statut=='en_cours' else 'err' }}">
+                          {{ r.statut|capitalize }}
+                        </span>
+                      </td>
+                      <td class="text-end"><a class="btn btn-sm btn-outline-dark" href="/rh/ui/recrutements/{{ r.id }}">Ouvrir</a></td>
+                    </tr>
+                  {% else %}
+                    <tr><td colspan="5" class="text-center text-muted py-3">Aucun recrutement</td></tr>
+                  {% endfor %}
+                </tbody>
+              </table>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- B. Contrats & échéances -->
+      <div class="col-xl-6">
+        <div class="card shadow-sm h-100">
+          <div class="card-body">
+            <h2 class="h6 mb-3">Contrats & échéances</h2>
+            <div class="table-responsive">
+              <table class="table align-middle">
+                <thead><tr><th>Collaborateur</th><th>Type</th><th>Fin de contrat</th><th>Documents</th><th></th></tr></thead>
+                <tbody>
+                  {% for c in contrats %}
+                    <tr>
+                      <td>{{ c.nom }}</td>
+                      <td>{{ c.type_contrat }}</td>
+                      <td>{{ c.fin_contrat or '—' }}</td>
+                      <td>
+                        {% if c.docs_complets %}<span class="chip ok">Complet</span>{% else %}<span class="chip warn">Manquants</span>{% endif %}
+                      </td>
+                      <td class="text-end"><a class="btn btn-sm btn-outline-dark" href="/documents/ui/collaborateur/{{ c.id }}">Dossiers</a></td>
+                    </tr>
+                  {% else %}
+                    <tr><td colspan="5" class="text-center text-muted py-3">Aucun contrat</td></tr>
+                  {% endfor %}
+                </tbody>
+              </table>
+            </div>
+            <div class="mini subtle">Rappel automatique par email pour les contrats à < 30 jours.</div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- Section Finance -->
+  <section id="tab-fin" style="display:none;">
+    <div class="row g-3">
+      <!-- C. Factures fournisseurs -->
+      <div class="col-xl-7">
+        <div class="card shadow-sm h-100">
+          <div class="card-body">
+            <h2 class="h6 mb-3">Factures fournisseurs</h2>
+            <div class="table-responsive">
+              <table class="table align-middle">
+                <thead><tr><th>#</th><th>Fournisseur</th><th>Montant</th><th>Programme</th><th>Échéance</th><th>Statut</th><th></th></tr></thead>
+                <tbody>
+                  {% for f in factures %}
+                    <tr>
+                      <td>{{ f.numero }}</td>
+                      <td>{{ f.fournisseur }}</td>
+                      <td>{{ f.montant }} €</td>
+                      <td>{{ f.programme_nom or '—' }}</td>
+                      <td>{{ f.echeance }}</td>
+                      <td>
+                        <span class="chip {{ 'ok' if f.statut=='payée' else 'warn' if f.statut=='validée' else 'err' }}">
+                          {{ f.statut|capitalize }}
+                        </span>
+                      </td>
+                      <td class="text-end">
+                        {% if f.statut == 'en_attente' %}
+                          <a class="btn btn-sm btn-outline-dark" href="/finances/ui/facture/{{ f.id }}/valider">Valider</a>
+                        {% elif f.statut == 'validée' %}
+                          <a class="btn btn-sm btn-outline-dark" href="/finances/ui/facture/{{ f.id }}/payer">Payer</a>
+                        {% else %}
+                          <a class="btn btn-sm btn-outline-dark" href="/finances/ui/facture/{{ f.id }}">Voir</a>
+                        {% endif %}
+                      </td>
+                    </tr>
+                  {% else %}
+                    <tr><td colspan="7" class="text-center text-muted py-3">Aucune facture</td></tr>
+                  {% endfor %}
+                </tbody>
+              </table>
+            </div>
+            <div class="mini subtle">Règles : validation DRH/DAF → paiement → lettrage.</div>
+          </div>
+        </div>
+      </div>
+
+      <!-- D. Paie & charges -->
+      <div class="col-xl-5">
+        <div class="card shadow-sm h-100">
+          <div class="card-body">
+            <h2 class="h6 mb-3">Paie & charges sociales (mois en cours)</h2>
+            <ul class="list-group list-group-flush mb-3">
+              <li class="list-group-item d-flex justify-content-between"><span>Masse salariale brute</span><strong>{{ paie.brut }} €</strong></li>
+              <li class="list-group-item d-flex justify-content-between"><span>Charges patronales</span><strong>{{ paie.charges }} €</strong></li>
+              <li class="list-group-item d-flex justify-content-between"><span>Net à payer</span><strong>{{ paie.net }} €</strong></li>
+            </ul>
+            <div class="d-flex flex-wrap gap-2">
+              <a class="btn btn-outline-dark btn-sm" href="/finances/ui/paie/generer">Générer paie</a>
+              <a class="btn btn-outline-dark btn-sm" href="/finances/ui/paie/export">Exporter journal</a>
+            </div>
+          </div>
+        </div>
+      </div>
+
+    </div>
+  </section>
+
+  <!-- Section Coûts par programme -->
+  <section id="tab-programmes" style="display:none;">
+    <div class="card shadow-sm">
+      <div class="card-body">
+        <h2 class="h6 mb-3">Synthèse coûts & budget par programme</h2>
+        <div class="table-responsive">
+          <table class="table align-middle">
+            <thead><tr><th>Programme</th><th>Budget</th><th>Dépensé</th><th>Engagé</th><th>Reste à engager</th><th>État</th><th></th></tr></thead>
+            <tbody>
+              {% for p in couts_programmes %}
+                <tr>
+                  <td>{{ p.nom }}</td>
+                  <td>{{ p.budget }} €</td>
+                  <td>{{ p.depense }} €</td>
+                  <td>{{ p.engage }} €</td>
+                  <td>{{ p.reste }} €</td>
+                  <td>
+                    {% set ratio = (p.depense + p.engage) / (p.budget or 1) %}
+                    <span class="chip {{ 'ok' if ratio < .7 else 'warn' if ratio < 1 else 'err' }}">
+                      {{ (ratio*100)|round(0) }}%
+                    </span>
+                  </td>
+                  <td class="text-end"><a class="btn btn-sm btn-outline-dark" href="/finances/ui/programme/{{ p.id }}">Détails</a></td>
+                </tr>
+              {% else %}
+                <tr><td colspan="7" class="text-center text-muted py-3">Aucun programme</td></tr>
+              {% endfor %}
+            </tbody>
+          </table>
+        </div>
+        <div class="mini subtle">Conseil : garder un ratio engagé+déboursé < 85% avant la dernière phase de formation.</div>
+      </div>
+    </div>
+  </section>
+
+</div>
+
+<script>
+  // Tabs (client)
+  const tabs = {
+    rh: document.getElementById('tab-rh'),
+    fin: document.getElementById('tab-fin'),
+    programmes: document.getElementById('tab-programmes'),
+  };
+  document.querySelectorAll('.tab-btn').forEach(btn=>{
+    btn.addEventListener('click', ()=>{
+      document.querySelectorAll('.tab-btn').forEach(b=>b.classList.remove('active'));
+      btn.classList.add('active');
+      const key = btn.getAttribute('data-tab');
+      Object.keys(tabs).forEach(k=> tabs[k].style.display = (k===key ? 'block' : 'none'));
+    });
+  });
+</script>
+{% endblock %}

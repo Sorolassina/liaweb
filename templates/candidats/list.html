@@ -1,0 +1,349 @@
+{% extends "base.html" %}
+
+{% block title %}Candidats - {{ app_name }}{% endblock %}
+
+{% block content %}
+<div class="container-fluid py-4">
+    <!-- En-tête -->
+    <div class="row mb-4">
+        <div class="col-12">
+            <div class="d-flex justify-content-between align-items-center">
+                <div>
+                    <h1 class="h3 mb-0">
+                        <i class="fas fa-users me-2 text-primary"></i>
+                        Gestion des candidats
+                    </h1>
+                    <p class="text-muted mb-0">Liste de tous les candidats inscrits</p>
+                </div>
+                <div>
+                    <a href="{{ url_for('candidat_create') }}" class="btn btn-primary">
+                        <i class="fas fa-plus me-2"></i>Nouveau candidat
+                    </a>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Filtres -->
+    <div class="row mb-4">
+        <div class="col-12">
+            <div class="card shadow">
+                <div class="card-header py-3">
+                    <h6 class="m-0 font-weight-bold text-primary">
+                        <i class="fas fa-filter me-2"></i>
+                        Filtres de recherche
+                    </h6>
+                </div>
+                <div class="card-body">
+                    <form method="GET" class="row g-3">
+                        <div class="col-md-3">
+                            <label for="programme" class="form-label">Programme</label>
+                            <select class="form-select" id="programme" name="programme_id">
+                                <option value="">Tous les programmes</option>
+                                {% for programme in programmes %}
+                                <option value="{{ programme.id }}" {% if filters.programme_id == programme.id %}selected{% endif %}>
+                                    {{ programme.nom }}
+                                </option>
+                                {% endfor %}
+                            </select>
+                        </div>
+                        
+                        <div class="col-md-3">
+                            <label for="statut" class="form-label">Statut</label>
+                            <select class="form-select" id="statut" name="statut">
+                                <option value="">Tous les statuts</option>
+                                <option value="SOUMIS" {% if filters.statut == 'SOUMIS' %}selected{% endif %}>Soumis</option>
+                                <option value="EN_EXAMEN" {% if filters.statut == 'EN_EXAMEN' %}selected{% endif %}>En examen</option>
+                                <option value="VALIDE" {% if filters.statut == 'VALIDE' %}selected{% endif %}>Validé</option>
+                                <option value="REJETE" {% if filters.statut == 'REJETE' %}selected{% endif %}>Rejeté</option>
+                            </select>
+                        </div>
+                        
+                        <div class="col-md-3">
+                            <label for="territoire" class="form-label">Territoire</label>
+                            <input type="text" class="form-control" id="territoire" name="territoire" 
+                                   value="{{ filters.territoire|default('') }}" placeholder="Entrez un territoire">
+                        </div>
+                        
+                        <div class="col-md-3">
+                            <label for="recherche" class="form-label">Recherche</label>
+                            <input type="text" class="form-control" id="recherche" name="recherche" 
+                                   value="{{ filters.recherche|default('') }}" placeholder="Nom, prénom, email...">
+                        </div>
+                        
+                        <div class="col-12">
+                            <div class="d-flex gap-2">
+                                <button type="submit" class="btn btn-primary">
+                                    <i class="fas fa-search me-2"></i>Rechercher
+                                </button>
+                                <a href="{{ url_for('candidats_list') }}" class="btn btn-outline-secondary">
+                                    <i class="fas fa-times me-2"></i>Réinitialiser
+                                </a>
+                            </div>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Liste des candidats -->
+    <div class="row">
+        <div class="col-12">
+            <div class="card shadow">
+                <div class="card-header py-3 d-flex justify-content-between align-items-center">
+                    <h6 class="m-0 font-weight-bold text-primary">
+                        <i class="fas fa-list me-2"></i>
+                        Candidats ({{ pagination.total }})
+                    </h6>
+                    <div class="d-flex gap-2">
+                        <button class="btn btn-sm btn-outline-primary" onclick="exportCandidats()">
+                            <i class="fas fa-download me-1"></i>Exporter
+                        </button>
+                        <button class="btn btn-sm btn-outline-success" onclick="printList()">
+                            <i class="fas fa-print me-1"></i>Imprimer
+                        </button>
+                    </div>
+                </div>
+                <div class="card-body">
+                    {% if candidats %}
+                    <div class="table-responsive">
+                        <table class="table table-hover" id="candidatsTable">
+                            <thead class="table-light">
+                                <tr>
+                                    <th>
+                                        <input type="checkbox" class="form-check-input" id="selectAll">
+                                    </th>
+                                    <th>Nom complet</th>
+                                    <th>Email</th>
+                                    <th>Programme</th>
+                                    <th>Statut</th>
+                                    <th>Territoire</th>
+                                    <th>Date inscription</th>
+                                    <th>Actions</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% for candidat in candidats %}
+                                <tr>
+                                    <td>
+                                        <input type="checkbox" class="form-check-input candidat-checkbox" 
+                                               value="{{ candidat.id }}">
+                                    </td>
+                                    <td>
+                                        <div class="d-flex align-items-center">
+                                            <div class="avatar-sm me-3">
+                                                <div class="avatar-title bg-primary rounded-circle">
+                                                    {{ candidat.nom[0] }}{{ candidat.prenom[0] }}
+                                                </div>
+                                            </div>
+                                            <div>
+                                                <strong>{{ candidat.nom }} {{ candidat.prenom }}</strong>
+                                                {% if candidat.handicap %}
+                                                <br><small class="text-warning">
+                                                    <i class="fas fa-wheelchair me-1"></i>Handicap
+                                                </small>
+                                                {% endif %}
+                                            </div>
+                                        </div>
+                                    </td>
+                                    <td>
+                                        <a href="mailto:{{ candidat.email }}" class="text-decoration-none">
+                                            {{ candidat.email }}
+                                        </a>
+                                    </td>
+                                    <td>
+                                        <span class="badge bg-info">{{ candidat.programme.nom }}</span>
+                                    </td>
+                                    <td>
+                                        <span class="badge bg-{{ candidat.statut|statut_color }}">
+                                            {{ candidat.statut|title }}
+                                        </span>
+                                    </td>
+                                    <td>{{ candidat.territoire|default('Non renseigné', true) }}</td>
+                                    <td>
+                                        <small class="text-muted">
+                                            {{ candidat.cree_le|format_date }}
+                                        </small>
+                                    </td>
+                                    <td>
+                                        <div class="btn-group" role="group">
+                                            <a href="{{ url_for('candidat_detail', candidat_id=candidat.id) }}" 
+                                               class="btn btn-sm btn-outline-primary" title="Voir">
+                                                <i class="fas fa-eye"></i>
+                                            </a>
+                                            <a href="{{ url_for('candidat_edit', candidat_id=candidat.id) }}" 
+                                               class="btn btn-sm btn-outline-warning" title="Modifier">
+                                                <i class="fas fa-edit"></i>
+                                            </a>
+                                            <button type="button" class="btn btn-sm btn-outline-danger" 
+                                                    onclick="deleteCandidat({{ candidat.id }})" title="Supprimer">
+                                                <i class="fas fa-trash"></i>
+                                            </button>
+                                        </div>
+                                    </td>
+                                </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+
+                    <!-- Pagination -->
+                    {% if pagination.pages > 1 %}
+                    <nav aria-label="Pagination des candidats">
+                        <ul class="pagination justify-content-center">
+                            <li class="page-item {% if pagination.page == 1 %}disabled{% endif %}">
+                                <a class="page-link" href="{{ url_for('candidats_list', page=pagination.page-1, **filters) }}">
+                                    <i class="fas fa-chevron-left"></i>
+                                </a>
+                            </li>
+                            
+                            {% for page_num in range(1, pagination.pages + 1) %}
+                            <li class="page-item {% if page_num == pagination.page %}active{% endif %}">
+                                <a class="page-link" href="{{ url_for('candidats_list', page=page_num, **filters) }}">
+                                    {{ page_num }}
+                                </a>
+                            </li>
+                            {% endfor %}
+                            
+                            <li class="page-item {% if pagination.page == pagination.pages %}disabled{% endif %}">
+                                <a class="page-link" href="{{ url_for('candidats_list', page=pagination.page+1, **filters) }}">
+                                    <i class="fas fa-chevron-right"></i>
+                                </a>
+                            </li>
+                        </ul>
+                    </nav>
+                    {% endif %}
+                    {% else %}
+                    <div class="text-center py-5">
+                        <i class="fas fa-users fa-3x text-muted mb-3"></i>
+                        <h5 class="text-muted">Aucun candidat trouvé</h5>
+                        <p class="text-muted">Aucun candidat ne correspond aux critères de recherche.</p>
+                        <a href="{{ url_for('candidat_create') }}" class="btn btn-primary">
+                            <i class="fas fa-plus me-2"></i>Ajouter un candidat
+                        </a>
+                    </div>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Modal de confirmation de suppression -->
+<div class="modal fade" id="deleteModal" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">
+                    <i class="fas fa-exclamation-triangle text-danger me-2"></i>
+                    Confirmer la suppression
+                </h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <p>Êtes-vous sûr de vouloir supprimer ce candidat ?</p>
+                <p class="text-muted">Cette action est irréversible.</p>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Annuler</button>
+                <button type="button" class="btn btn-danger" id="confirmDelete">
+                    <i class="fas fa-trash me-2"></i>Supprimer
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+let candidatToDelete = null;
+
+// Sélection multiple
+document.getElementById('selectAll').addEventListener('change', function() {
+    const checkboxes = document.querySelectorAll('.candidat-checkbox');
+    checkboxes.forEach(checkbox => {
+        checkbox.checked = this.checked;
+    });
+});
+
+// Suppression d'un candidat
+function deleteCandidat(candidatId) {
+    candidatToDelete = candidatId;
+    const modal = new bootstrap.Modal(document.getElementById('deleteModal'));
+    modal.show();
+}
+
+document.getElementById('confirmDelete').addEventListener('click', function() {
+    if (candidatToDelete) {
+        fetch(`/api/candidats/${candidatToDelete}`, {
+            method: 'DELETE',
+            headers: {
+                'Content-Type': 'application/json',
+            }
+        })
+        .then(response => {
+            if (response.ok) {
+                location.reload();
+            } else {
+                alert('Erreur lors de la suppression');
+            }
+        })
+        .catch(error => {
+            console.error('Erreur:', error);
+            alert('Erreur lors de la suppression');
+        });
+    }
+});
+
+// Export des candidats
+function exportCandidats() {
+    const selectedCandidats = Array.from(document.querySelectorAll('.candidat-checkbox:checked'))
+        .map(checkbox => checkbox.value);
+    
+    if (selectedCandidats.length === 0) {
+        alert('Veuillez sélectionner au moins un candidat');
+        return;
+    }
+    
+    // Ici vous pouvez implémenter l'export (CSV, Excel, etc.)
+    console.log('Export des candidats:', selectedCandidats);
+}
+
+// Impression de la liste
+function printList() {
+    window.print();
+}
+
+// Auto-refresh de la liste
+setInterval(function() {
+    // Optionnel : rafraîchir la liste périodiquement
+}, 60000); // Toutes les minutes
+</script>
+
+<style>
+@media print {
+    .btn, .pagination, .card-header {
+        display: none !important;
+    }
+    
+    .card {
+        border: none !important;
+        box-shadow: none !important;
+    }
+}
+
+.avatar-sm {
+    width: 2rem;
+    height: 2rem;
+}
+
+.avatar-title {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 0.75rem;
+    font-weight: bold;
+    color: white;
+}
+</style>
+{% endblock %}

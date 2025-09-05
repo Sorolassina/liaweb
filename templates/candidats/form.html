@@ -1,0 +1,410 @@
+{% extends "base.html" %}
+
+{% block title %}{{ 'Modifier' if candidat else 'Nouveau' }} candidat - {{ app_name }}{% endblock %}
+
+{% block content %}
+<div class="container-fluid py-4">
+    <!-- En-tête -->
+    <div class="row mb-4">
+        <div class="col-12">
+            <div class="d-flex justify-content-between align-items-center">
+                <div>
+                    <h1 class="h3 mb-0">
+                        <i class="fas fa-{% if candidat %}edit{% else %}user-plus{% endif %} me-2 text-primary"></i>
+                        {{ 'Modifier' if candidat else 'Nouveau' }} candidat
+                    </h1>
+                    <p class="text-muted mb-0">
+                        {% if candidat %}
+                        Modification des informations de {{ candidat.nom }} {{ candidat.prenom }}
+                        {% else %}
+                        Création d'un nouveau candidat
+                        {% endif %}
+                    </p>
+                </div>
+                <div>
+                    <a href="{{ url_for('candidats_list') }}" class="btn btn-outline-secondary">
+                        <i class="fas fa-arrow-left me-2"></i>Retour à la liste
+                    </a>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Formulaire -->
+    <div class="row">
+        <div class="col-12">
+            <div class="card shadow">
+                <div class="card-header py-3">
+                    <h6 class="m-0 font-weight-bold text-primary">
+                        <i class="fas fa-user me-2"></i>
+                        Informations du candidat
+                    </h6>
+                </div>
+                <div class="card-body">
+                    <form method="POST" id="candidatForm">
+                        <!-- Informations personnelles -->
+                        <div class="row mb-4">
+                            <div class="col-12">
+                                <h5 class="text-primary mb-3">
+                                    <i class="fas fa-user-circle me-2"></i>
+                                    Informations personnelles
+                                </h5>
+                            </div>
+                            
+                            <div class="col-md-6 mb-3">
+                                <label for="nom" class="form-label">Nom *</label>
+                                <input type="text" class="form-control" id="nom" name="nom" 
+                                       value="{{ candidat.nom|default('') }}" required>
+                            </div>
+                            
+                            <div class="col-md-6 mb-3">
+                                <label for="prenom" class="form-label">Prénom *</label>
+                                <input type="text" class="form-control" id="prenom" name="prenom" 
+                                       value="{{ candidat.prenom|default('') }}" required>
+                            </div>
+                            
+                            <div class="col-md-6 mb-3">
+                                <label for="email" class="form-label">Email *</label>
+                                <input type="email" class="form-control" id="email" name="email" 
+                                       value="{{ candidat.email|default('') }}" required>
+                            </div>
+                            
+                            <div class="col-md-6 mb-3">
+                                <label for="telephone" class="form-label">Téléphone</label>
+                                <input type="tel" class="form-control" id="telephone" name="telephone" 
+                                       value="{{ candidat.telephone|default('') }}">
+                            </div>
+                            
+                            <div class="col-md-6 mb-3">
+                                <label for="date_naissance" class="form-label">Date de naissance</label>
+                                <input type="date" class="form-control" id="date_naissance" name="date_naissance" 
+                                       value="{{ candidat.date_naissance|default('') }}">
+                            </div>
+                            
+                            <div class="col-md-6 mb-3">
+                                <label for="genre" class="form-label">Genre</label>
+                                <select class="form-select" id="genre" name="genre">
+                                    <option value="">Sélectionner...</option>
+                                    <option value="M" {% if candidat.genre == 'M' %}selected{% endif %}>Masculin</option>
+                                    <option value="F" {% if candidat.genre == 'F' %}selected{% endif %}>Féminin</option>
+                                    <option value="A" {% if candidat.genre == 'A' %}selected{% endif %}>Autre</option>
+                                </select>
+                            </div>
+                            
+                            <div class="col-12 mb-3">
+                                <label for="adresse" class="form-label">Adresse</label>
+                                <textarea class="form-control" id="adresse" name="adresse" rows="3">{{ candidat.adresse|default('') }}</textarea>
+                            </div>
+                            
+                            <div class="col-md-4 mb-3">
+                                <label for="code_postal" class="form-label">Code postal</label>
+                                <input type="text" class="form-control" id="code_postal" name="code_postal" 
+                                       value="{{ candidat.code_postal|default('') }}">
+                            </div>
+                            
+                            <div class="col-md-4 mb-3">
+                                <label for="ville" class="form-label">Ville</label>
+                                <input type="text" class="form-control" id="ville" name="ville" 
+                                       value="{{ candidat.ville|default('') }}">
+                            </div>
+                            
+                            <div class="col-md-4 mb-3">
+                                <label for="territoire" class="form-label">Territoire</label>
+                                <input type="text" class="form-control" id="territoire" name="territoire" 
+                                       value="{{ candidat.territoire|default('') }}">
+                            </div>
+                        </div>
+
+                        <!-- Informations professionnelles -->
+                        <div class="row mb-4">
+                            <div class="col-12">
+                                <h5 class="text-primary mb-3">
+                                    <i class="fas fa-briefcase me-2"></i>
+                                    Informations professionnelles
+                                </h5>
+                            </div>
+                            
+                            <div class="col-md-6 mb-3">
+                                <label for="programme_id" class="form-label">Programme *</label>
+                                <select class="form-select" id="programme_id" name="programme_id" required>
+                                    <option value="">Sélectionner un programme...</option>
+                                    {% for programme in programmes %}
+                                    <option value="{{ programme.id }}" 
+                                            {% if candidat.programme_id == programme.id %}selected{% endif %}>
+                                        {{ programme.nom }} ({{ programme.code }})
+                                    </option>
+                                    {% endfor %}
+                                </select>
+                            </div>
+                            
+                            <div class="col-md-6 mb-3">
+                                <label for="statut" class="form-label">Statut</label>
+                                <select class="form-select" id="statut" name="statut">
+                                    <option value="SOUMIS" {% if candidat.statut == 'SOUMIS' %}selected{% endif %}>Soumis</option>
+                                    <option value="EN_EXAMEN" {% if candidat.statut == 'EN_EXAMEN' %}selected{% endif %}>En examen</option>
+                                    <option value="VALIDE" {% if candidat.statut == 'VALIDE' %}selected{% endif %}>Validé</option>
+                                    <option value="REJETE" {% if candidat.statut == 'REJETE' %}selected{% endif %}>Rejeté</option>
+                                </select>
+                            </div>
+                            
+                            <div class="col-md-6 mb-3">
+                                <label for="conseiller_id" class="form-label">Conseiller</label>
+                                <select class="form-select" id="conseiller_id" name="conseiller_id">
+                                    <option value="">Sélectionner un conseiller...</option>
+                                    {% for conseiller in conseillers %}
+                                    <option value="{{ conseiller.id }}" 
+                                            {% if candidat.conseiller_id == conseiller.id %}selected{% endif %}>
+                                        {{ conseiller.nom_complet }}
+                                    </option>
+                                    {% endfor %}
+                                </select>
+                            </div>
+                            
+                            <div class="col-md-6 mb-3">
+                                <label for="referent_id" class="form-label">Référent</label>
+                                <select class="form-select" id="referent_id" name="referent_id">
+                                    <option value="">Sélectionner un référent...</option>
+                                    {% for referent in referents %}
+                                    <option value="{{ referent.id }}" 
+                                            {% if candidat.referent_id == referent.id %}selected{% endif %}>
+                                        {{ referent.nom_complet }}
+                                    </option>
+                                    {% endfor %}
+                                </select>
+                            </div>
+                        </div>
+
+                        <!-- Gestion du handicap -->
+                        <div class="row mb-4">
+                            <div class="col-12">
+                                <h5 class="text-primary mb-3">
+                                    <i class="fas fa-wheelchair me-2"></i>
+                                    Gestion du handicap
+                                </h5>
+                            </div>
+                            
+                            <div class="col-md-6 mb-3">
+                                <div class="form-check">
+                                    <input class="form-check-input" type="checkbox" id="handicap" name="handicap" 
+                                           {% if candidat.handicap %}checked{% endif %}>
+                                    <label class="form-check-label" for="handicap">
+                                        Le candidat est en situation de handicap
+                                    </label>
+                                </div>
+                            </div>
+                            
+                            <div class="col-md-6 mb-3">
+                                <label for="type_handicap" class="form-label">Type de handicap</label>
+                                <select class="form-select" id="type_handicap" name="type_handicap">
+                                    <option value="">Sélectionner...</option>
+                                    <option value="MOTEUR" {% if candidat.type_handicap == 'MOTEUR' %}selected{% endif %}>Moteur</option>
+                                    <option value="VISUEL" {% if candidat.type_handicap == 'VISUEL' %}selected{% endif %}>Visuel</option>
+                                    <option value="AUDITIF" {% if candidat.type_handicap == 'AUDITIF' %}selected{% endif %}>Auditif</option>
+                                    <option value="COGNITIF" {% if candidat.type_handicap == 'COGNITIF' %}selected{% endif %}>Cognitif</option>
+                                    <option value="PSYCHIQUE" {% if candidat.type_handicap == 'PSYCHIQUE' %}selected{% endif %}>Psychique</option>
+                                    <option value="AUTRE" {% if candidat.type_handicap == 'AUTRE' %}selected{% endif %}>Autre</option>
+                                </select>
+                            </div>
+                            
+                            <div class="col-12 mb-3">
+                                <label for="besoins_particuliers" class="form-label">Besoins particuliers</label>
+                                <textarea class="form-control" id="besoins_particuliers" name="besoins_particuliers" 
+                                          rows="3">{{ candidat.besoins_particuliers|default('') }}</textarea>
+                            </div>
+                        </div>
+
+                        <!-- Informations supplémentaires -->
+                        <div class="row mb-4">
+                            <div class="col-12">
+                                <h5 class="text-primary mb-3">
+                                    <i class="fas fa-info-circle me-2"></i>
+                                    Informations supplémentaires
+                                </h5>
+                            </div>
+                            
+                            <div class="col-12 mb-3">
+                                <label for="commentaires" class="form-label">Commentaires</label>
+                                <textarea class="form-control" id="commentaires" name="commentaires" 
+                                          rows="4">{{ candidat.commentaires|default('') }}</textarea>
+                            </div>
+                        </div>
+
+                        <!-- Boutons d'action -->
+                        <div class="row">
+                            <div class="col-12">
+                                <div class="d-flex justify-content-between">
+                                    <a href="{{ url_for('candidats_list') }}" class="btn btn-secondary">
+                                        <i class="fas fa-times me-2"></i>Annuler
+                                    </a>
+                                    <div>
+                                        <button type="button" class="btn btn-outline-primary me-2" onclick="previewCandidat()">
+                                            <i class="fas fa-eye me-2"></i>Aperçu
+                                        </button>
+                                        <button type="submit" class="btn btn-primary">
+                                            <i class="fas fa-save me-2"></i>
+                                            {{ 'Modifier' if candidat else 'Créer' }} le candidat
+                                        </button>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Modal d'aperçu -->
+<div class="modal fade" id="previewModal" tabindex="-1">
+    <div class="modal-dialog modal-lg">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">
+                    <i class="fas fa-eye me-2"></i>
+                    Aperçu du candidat
+                </h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body" id="previewContent">
+                <!-- Le contenu sera généré par JavaScript -->
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Fermer</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+// Validation du formulaire
+document.getElementById('candidatForm').addEventListener('submit', function(e) {
+    e.preventDefault();
+    
+    // Validation côté client
+    const nom = document.getElementById('nom').value.trim();
+    const prenom = document.getElementById('prenom').value.trim();
+    const email = document.getElementById('email').value.trim();
+    const programme_id = document.getElementById('programme_id').value;
+    
+    if (!nom || !prenom || !email || !programme_id) {
+        alert('Veuillez remplir tous les champs obligatoires');
+        return;
+    }
+    
+    // Validation email
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    if (!emailRegex.test(email)) {
+        alert('Veuillez entrer une adresse email valide');
+        return;
+    }
+    
+    // Soumission du formulaire
+    this.submit();
+});
+
+// Aperçu du candidat
+function previewCandidat() {
+    const formData = new FormData(document.getElementById('candidatForm'));
+    const data = Object.fromEntries(formData.entries());
+    
+    let preview = `
+        <div class="row">
+            <div class="col-md-6">
+                <h6>Informations personnelles</h6>
+                <p><strong>Nom :</strong> ${data.nom} ${data.prenom}</p>
+                <p><strong>Email :</strong> ${data.email}</p>
+                <p><strong>Téléphone :</strong> ${data.telephone || 'Non renseigné'}</p>
+                <p><strong>Date de naissance :</strong> ${data.date_naissance || 'Non renseignée'}</p>
+                <p><strong>Genre :</strong> ${getGenreLabel(data.genre)}</p>
+            </div>
+            <div class="col-md-6">
+                <h6>Informations professionnelles</h6>
+                <p><strong>Programme :</strong> ${getProgrammeLabel(data.programme_id)}</p>
+                <p><strong>Statut :</strong> ${getStatutLabel(data.statut)}</p>
+                <p><strong>Conseiller :</strong> ${getConseillerLabel(data.conseiller_id)}</p>
+                <p><strong>Référent :</strong> ${getReferentLabel(data.referent_id)}</p>
+            </div>
+        </div>
+        <div class="row mt-3">
+            <div class="col-12">
+                <h6>Adresse</h6>
+                <p>${data.adresse || 'Non renseignée'}</p>
+                <p>${data.code_postal} ${data.ville} - ${data.territoire}</p>
+            </div>
+        </div>
+        ${data.handicap ? `
+        <div class="row mt-3">
+            <div class="col-12">
+                <h6>Handicap</h6>
+                <p><strong>Type :</strong> ${getHandicapLabel(data.type_handicap)}</p>
+                <p><strong>Besoins particuliers :</strong> ${data.besoins_particuliers || 'Aucun'}</p>
+            </div>
+        </div>
+        ` : ''}
+    `;
+    
+    document.getElementById('previewContent').innerHTML = preview;
+    const modal = new bootstrap.Modal(document.getElementById('previewModal'));
+    modal.show();
+}
+
+// Fonctions utilitaires pour les labels
+function getGenreLabel(genre) {
+    const labels = { 'M': 'Masculin', 'F': 'Féminin', 'A': 'Autre' };
+    return labels[genre] || 'Non renseigné';
+}
+
+function getProgrammeLabel(programmeId) {
+    const select = document.getElementById('programme_id');
+    const option = select.querySelector(`option[value="${programmeId}"]`);
+    return option ? option.textContent : 'Non sélectionné';
+}
+
+function getStatutLabel(statut) {
+    const labels = { 
+        'SOUMIS': 'Soumis', 
+        'EN_EXAMEN': 'En examen', 
+        'VALIDE': 'Validé', 
+        'REJETE': 'Rejeté' 
+    };
+    return labels[statut] || 'Non défini';
+}
+
+function getConseillerLabel(conseillerId) {
+    const select = document.getElementById('conseiller_id');
+    const option = select.querySelector(`option[value="${conseillerId}"]`);
+    return option ? option.textContent : 'Non assigné';
+}
+
+function getReferentLabel(referentId) {
+    const select = document.getElementById('referent_id');
+    const option = select.querySelector(`option[value="${referentId}"]`);
+    return option ? option.textContent : 'Non assigné';
+}
+
+function getHandicapLabel(type) {
+    const labels = { 
+        'MOTEUR': 'Moteur', 
+        'VISUEL': 'Visuel', 
+        'AUDITIF': 'Auditif', 
+        'COGNITIF': 'Cognitif', 
+        'PSYCHIQUE': 'Psychique', 
+        'AUTRE': 'Autre' 
+    };
+    return labels[type] || 'Non spécifié';
+}
+
+// Auto-sauvegarde (optionnel)
+let autoSaveTimer;
+document.querySelectorAll('input, select, textarea').forEach(element => {
+    element.addEventListener('input', function() {
+        clearTimeout(autoSaveTimer);
+        autoSaveTimer = setTimeout(() => {
+            // Ici vous pouvez implémenter l'auto-sauvegarde
+            console.log('Auto-sauvegarde...');
+        }, 3000);
+    });
+});
+</script>
+{% endblock %}

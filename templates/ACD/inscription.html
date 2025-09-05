@@ -1,0 +1,405 @@
+{% extends "base.html" %}
+{% set roles = roles or [] %}
+{% block head_extra %}
+<style>
+  .board {
+    display: grid;
+    grid-template-columns: 340px 1fr;
+    gap: 18px;
+  }
+  @media (max-width: 992px){
+    .board { grid-template-columns: 1fr; }
+  }
+  .card-neumo{
+    background: var(--white-color);
+    border-radius: 16px;
+    box-shadow: var(--shadow);
+    border: 1px solid color-mix(in srgb, var(--secondary-color) 10%, transparent);
+  }
+  .pane-left {
+    display: flex; flex-direction: column; gap: 12px;
+    height: calc(100vh - 160px); /* entre header et footer */
+    overflow: auto; padding: 10px;
+  }
+  .pane-right {
+    display: flex; flex-direction: column; gap: 16px;
+    min-height: calc(100vh - 160px);
+    overflow: auto; padding-bottom: 8px;
+  }
+  .search-box { padding: 10px; }
+  .pre-card{
+    padding: 10px; border-radius: 12px; display:flex; gap:10px; align-items:center;
+    border: 1px solid #eef1f5; cursor:pointer; transition: .15s;
+  }
+  .pre-card:hover{ background: #fafbfc; }
+  .pre-card.active{ background: color-mix(in srgb, var(--primary-light) 25%, white); border-color: var(--primary-color); }
+  .avatar{
+    width:40px; height:40px; border-radius:10px; background:#f1f2f6 center/cover no-repeat;
+    box-shadow: var(--shadow-sm);
+  }
+  .tag { font-size:.75rem; padding:.2rem .5rem; border-radius:999px; background:#f0f3f7; color:#445; }
+  .kpi-row{ display:grid; grid-template-columns: repeat(4, 1fr); gap: 12px; }
+  @media (max-width:992px){ .kpi-row{ grid-template-columns: 1fr 1fr; } }
+  .kpi-tile{
+    padding:14px; border-radius:14px; text-align:center; border:1px solid #eef1f5;
+  }
+  .kpi-tile .value{ font-weight:900; font-size:1.6rem; color: var(--primary-dark); }
+  .kpi-tile .label{ font-size:.8rem; color:#6b7280; text-transform:uppercase; letter-spacing:.3px; }
+
+  /* Tabs pour le panneau de droite */
+  .tab-head{
+    display:flex; gap:8px; flex-wrap: wrap; padding:10px;
+  }
+  .tab-btn{
+    border:0; background:#fff; padding:8px 12px; border-radius:10px;
+    box-shadow: var(--shadow-sm); color:#333; font-weight:600; cursor:pointer;
+  }
+  .tab-btn.active{ background: var(--primary-color); color: var(--secondary-color); }
+  .tab-pane{ display:none; }
+  .tab-pane.active{ display:block; }
+
+  .step{
+    padding:12px; border-radius:12px; border:1px solid #eef1f5; display:flex; justify-content:space-between; align-items:center; gap:10px;
+  }
+  .step .name{ font-weight:700; }
+  .step .status-badge{
+    padding:.25rem .6rem; border-radius:999px; font-size:.75rem; background:#eef2ff; color:#3730a3;
+  }
+  .btn { border-radius:10px; }
+  .btn-outline{ border:1px solid #e5e7eb; background:#fff; }
+  .btn-primary{ background: var(--primary-color); border: none; color: var(--secondary-color); }
+
+  .elig-row{ display:grid; grid-template-columns: 1fr 1fr; gap:12px; }
+  @media (max-width:768px){ .elig-row{ grid-template-columns: 1fr; } }
+  .elig-card{ padding:12px; border-radius:12px; border:1px solid #eef1f5; }
+  .ok{ color:#10b981; }
+  .ko{ color:#ef4444; }
+  .warn{ color:#f59e0b; }
+
+  .form-inline-grid{ display:grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+  @media (max-width:768px){ .form-inline-grid{ grid-template-columns:1fr; } }
+  .form-label{ font-weight: 600; font-size:.9rem; }
+  .form-control, .form-select { border-radius: 10px; }
+
+  .jury-box{ display:grid; gap:12px; }
+  
+  /* Bandeau KPI fixe */
+  .kpi-bandeau-fixe {
+    position: fixed;
+    top: 60px; /* Hauteur du header */
+    left: var(--sidebar-width);
+    right: 0;
+    z-index: 1000;
+    background: var(--white-color);
+    border-bottom: 1px solid #eef1f5;
+    box-shadow: var(--shadow-sm);
+    transition: left 0.3s ease;
+  }
+  
+  /* Quand le sidebar est réduit */
+  .sidebar-collapsed .kpi-bandeau-fixe {
+    left: var(--sidebar-width-collapsed);
+  }
+  
+  /* Ajuster le contenu principal pour éviter le chevauchement */
+  .content-with-fixed-kpi {
+    margin-top: 160px; /* Hauteur du header + bandeau KPI + marge */
+  }
+  
+  /* Responsive pour le bandeau fixe */
+  @media (max-width: 768px) {
+    .kpi-bandeau-fixe {
+      left: 0; /* Sur mobile, pas de sidebar */
+    }
+    .content-with-fixed-kpi {
+      margin-top: 180px; /* Plus d'espace sur mobile */
+    }
+  }
+</style>
+{% endblock %}
+
+{% block content %}
+<!-- ========== Bandeau KPI fixe tout en haut ========== -->
+<div class="kpi-bandeau-fixe">
+  <div class="card-neumo p-3">
+    <div class="kpi-row">
+      <div class="kpi-tile">
+        <div class="value">{{ kpi.total_pre }}</div>
+        <div class="label">Préinscrits</div>
+      </div>
+      <div class="kpi-tile">
+        <div class="value">{{ kpi.total_insc }}</div>
+        <div class="label">Inscriptions</div>
+      </div>
+      <div class="kpi-tile">
+        <div class="value">{{ kpi.taux_conv }}%</div>
+        <div class="label">Conv. Pré → Inscription</div>
+      </div>
+      <div class="kpi-tile">
+        <div class="value">{{ kpi.objectif_qpv_atteint }}%</div>
+        <div class="label">Objectif QPV</div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div class="content-with-fixed-kpi">
+  <div class="board">
+  <!-- ========== Liste gauche ========== -->
+  <div class="card-neumo">
+    <div class="search-box">
+      <form method="get" action="/ACD/inscriptions" class="d-flex gap-2">
+        <input type="hidden" name="programme" value="{{ current_programme or 'ACD' }}">
+        <input name="q" class="form-control" value="{{ q or '' }}" placeholder="Rechercher un préinscrit (nom, email)"/>
+        <button class="btn btn-outline"><i class="fa fa-search"></i></button>
+      </form>
+    </div>
+    <div class="p-2">
+      {% for row in pre_rows %}
+      {% set p, c, e, elig = row %}
+              <a class="text-decoration-none d-block mb-2" href="/ACD/inscriptions?programme={{ current_programme }}&pre_id={{ p.id }}">
+        <div class="pre-card {% if selected and selected.id==p.id %}active{% endif %}">
+          <div class="avatar" style="background-image:url('{{ c.avatar_path or '/static/images/utilisateur.png' }}')"></div>
+          <div class="flex-grow-1">
+            <div class="fw-bold">{{ c.prenom }} {{ c.nom }}</div>
+            <div class="small text-muted">{{ c.email }}</div>
+          </div>
+          {% if elig and elig.verdict %}
+            <span class="tag">{{ elig.verdict|upper }}</span>
+          {% else %}
+            <span class="tag">À Évaluer</span>
+          {% endif %}
+        </div>
+      </a>
+      {% else %}
+      <div class="p-3 text-muted">Aucun préinscrit.</div>
+      {% endfor %}
+    </div>
+  </div>
+
+  <!-- ========== Panneau droit ========== -->
+  <div class="pane-right">
+    {% if not selected %}
+      <div class="card-neumo p-4 text-center text-muted">
+        Sélectionnez un préinscrit dans la liste de gauche pour ouvrir le pipeline d'inscription.
+      </div>
+    {% else %}
+
+    <div class="card-neumo">
+      <div class="d-flex align-items-center justify-content-between p-3">
+        <div>
+          <div class="fw-bold fs-5">{{ cand.prenom }} {{ cand.nom }} — {{ programme.code }}</div>
+          <div class="text-muted small">{{ cand.email }} · {{ cand.telephone or '—' }}</div>
+        </div>
+        <div class="d-flex gap-2">
+          {% if not inscription %}
+            <form method="post" action="/inscriptions/create-from-pre">
+              <input type="hidden" name="pre_id" value="{{ selected.id }}">
+              <button class="btn btn-primary"><i class="fa fa-user-plus me-1"></i>Démarrer l'inscription</button>
+            </form>
+          {% else %}
+            <span class="tag">Inscription #{{ inscription.id }}</span>
+          {% endif %}
+        </div>
+      </div>
+
+      <div class="tab-head">
+        <button class="tab-btn active" data-tab="#tab-pipeline">Pipeline</button>
+        <button class="tab-btn" data-tab="#tab-infos">Infos & mise à jour</button>
+        <button class="tab-btn" data-tab="#tab-elig">Éligibilité</button>
+        <button class="tab-btn" data-tab="#tab-jury">Jury</button>
+      </div>
+
+      <div class="p-3">
+        <!-- ========== Pipeline ========== -->
+        <div id="tab-pipeline" class="tab-pane active">
+          {% if not inscription %}
+            <div class="text-muted">Créez l'inscription pour activer le pipeline.</div>
+          {% else %}
+            <div class="d-flex flex-column gap-2">
+              {% for st in pipeline %}
+              <div class="step">
+                <div>
+                  <div class="name">{{ st.etape.libelle }}</div>
+                  <div class="small text-muted">Type : {{ st.etape.type_etape or '—' }} · Ordre {{ st.etape.ordre }}</div>
+                </div>
+                <div class="d-flex align-items-center gap-2">
+                  <span class="status-badge">{{ st.statut.value.replace('_',' ').title() }}</span>
+                  <form method="post" action="/inscriptions/etape/advance">
+                    <input type="hidden" name="avancement_id" value="{{ st.id }}">
+                    <select name="statut" class="form-select form-select-sm">
+                      <option value="A_FAIRE" {% if st.statut.name=='A_FAIRE' %}selected{% endif %}>À faire</option>
+                      <option value="EN_COURS" {% if st.statut.name=='EN_COURS' %}selected{% endif %}>En cours</option>
+                      <option value="TERMINE" {% if st.statut.name=='TERMINE' %}selected{% endif %}>Terminé</option>
+                    </select>
+                    <button class="btn btn-outline btn-sm ms-1">Mettre à jour</button>
+                  </form>
+                </div>
+              </div>
+              {% endfor %}
+            </div>
+          {% endif %}
+        </div>
+
+        <!-- ========== Infos ========== -->
+        <div id="tab-infos" class="tab-pane">
+          <form method="post" action="/inscriptions/update-infos" class="form-inline-grid">
+            <input type="hidden" name="pre_id" value="{{ selected.id }}">
+            <div>
+              <label class="form-label">Téléphone</label>
+              <input class="form-control" name="telephone" value="{{ cand.telephone or '' }}">
+            </div>
+            <div>
+              <label class="form-label">Adresse personnelle</label>
+              <input class="form-control" name="adresse_personnelle" value="{{ cand.adresse_personnelle or '' }}">
+            </div>
+            <div>
+              <label class="form-label">Adresse entreprise</label>
+              <input class="form-control" name="adresse_entreprise" value="{{ ent.adresse or '' }}">
+            </div>
+            <div>
+              <label class="form-label">SIRET</label>
+              <input class="form-control" name="siret" value="{{ ent.siret or '' }}">
+            </div>
+            <div>
+              <label class="form-label">Date création</label>
+              <input type="date" class="form-control" name="date_creation" value="{{ ent.date_creation }}">
+            </div>
+            <div>
+              <label class="form-label">Chiffre d'affaires</label>
+              <input class="form-control" name="chiffre_affaires" value="{{ ent.chiffre_affaires or '' }}">
+            </div>
+            <div class="d-flex align-items-end">
+              <button class="btn btn-primary"><i class="fa fa-save me-1"></i> Enregistrer</button>
+            </div>
+          </form>
+        </div>
+
+        <!-- ========== Éligibilité ========== -->
+        <div id="tab-elig" class="tab-pane">
+          <div class="elig-row">
+            <div class="elig-card">
+              <div class="fw-bold mb-1">Récap</div>
+              <div>CA déclaré : <b>{{ elig and elig.ca_score or '—' }}</b></div>
+              <div>Ancienneté (ans) : <b>{{ elig and (elig.anciennete_annees or '—') }}</b></div>
+              <div>QPV : 
+                {% if elig and elig.qpv_ok %}<span class="ok">OK</span>{% else %}<span class="ko">Non</span>{% endif %}
+              </div>
+              <div class="mt-2">Verdict :
+                {% if elig and elig.verdict == 'ok' %}
+                  <span class="ok fw-bold">Favorable</span>
+                {% elif elig and elig.verdict == 'attention' %}
+                  <span class="warn fw-bold">À vérifier</span>
+                {% elif elig and elig.verdict == 'ko' %}
+                  <span class="ko fw-bold">Défavorable</span>
+                {% else %}
+                  <span class="text-muted">—</span>
+                {% endif %}
+              </div>
+            </div>
+            <div class="elig-card">
+              <div class="fw-bold mb-1">Actions</div>
+              <form method="post" action="/inscriptions/eligibilite/recalc">
+                <input type="hidden" name="pre_id" value="{{ selected.id }}">
+                <button class="btn btn-outline"><i class="fa fa-rotate me-1"></i> Recalculer</button>
+              </form>
+              <div class="small text-muted mt-2">Le recalcul utilise les infos actuelles (adresses, CA, date création) et les seuils du programme.</div>
+            </div>
+          </div>
+        </div>
+
+        <!-- ========== Jury ========== -->
+        <div id="tab-jury" class="tab-pane">
+          {% if not inscription %}
+            <div class="text-muted">Créez l'inscription pour voter en jury.</div>
+          {% else %}
+          <div class="jury-box">
+            <form method="post" action="/inscriptions/jury/decision">
+              <input type="hidden" name="inscription_id" value="{{ inscription.id }}">
+              <div class="form-inline-grid">
+                <div>
+                  <label class="form-label">Session jury</label>
+                  <select class="form-select" name="jury_id">
+                    <option value="">—</option>
+                    {% for j in jurys %}
+                      <option value="{{ j.id }}">{{ j.session_le.strftime('%d/%m/%Y %H:%M') }} — {{ j.lieu or '—' }}</option>
+                    {% endfor %}
+                  </select>
+                </div>
+                <div>
+                  <label class="form-label">Décision</label>
+                  <select class="form-select" name="decision" required>
+                    <option value="ACCEPTE">Accepté</option>
+                    <option value="LISTE_ATTENTE">Liste d'attente</option>
+                    <option value="REFUSE">Refusé</option>
+                  </select>
+                </div>
+                <div style="grid-column: 1 / -1">
+                  <label class="form-label">Commentaires</label>
+                  <textarea class="form-control" name="commentaires" rows="3" placeholder="Notes, conditions..."></textarea>
+                </div>
+              </div>
+              <div class="mt-2">
+                <button class="btn btn-primary"><i class="fa fa-gavel me-1"></i> Enregistrer la décision</button>
+              </div>
+            </form>
+          </div>
+          {% endif %}
+        </div>
+      </div>
+    </div>
+    {% endif %}
+  </div>
+</div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+  // Tabs
+  document.querySelectorAll('.tab-btn').forEach(btn=>{
+    btn.addEventListener('click', ()=>{
+      document.querySelectorAll('.tab-btn').forEach(b=>b.classList.remove('active'));
+      document.querySelectorAll('.tab-pane').forEach(p=>p.classList.remove('active'));
+      btn.classList.add('active');
+      const tgt = document.querySelector(btn.dataset.tab);
+      if (tgt) tgt.classList.add('active');
+    });
+  });
+
+  // Ajuster le bandeau KPI selon l'état du sidebar
+  function adjustKpiBandeau() {
+    const sidebar = document.getElementById('sidebar');
+    const kpiBandeau = document.querySelector('.kpi-bandeau-fixe');
+    
+    if (sidebar && kpiBandeau) {
+      const isCollapsed = sidebar.classList.contains('collapsed');
+      const sidebarWidth = isCollapsed ? 'var(--sidebar-width-collapsed)' : 'var(--sidebar-width)';
+      kpiBandeau.style.left = sidebarWidth;
+    }
+  }
+
+  // Observer les changements du sidebar
+  document.addEventListener('DOMContentLoaded', function() {
+    const sidebar = document.getElementById('sidebar');
+    if (sidebar) {
+      // Observer les changements de classe
+      const observer = new MutationObserver(function(mutations) {
+        mutations.forEach(function(mutation) {
+          if (mutation.type === 'attributes' && mutation.attributeName === 'class') {
+            adjustKpiBandeau();
+          }
+        });
+      });
+      
+      observer.observe(sidebar, {
+        attributes: true,
+        attributeFilter: ['class']
+      });
+      
+      // Ajuster au chargement initial
+      adjustKpiBandeau();
+    }
+  });
+</script>
+{% endblock %}

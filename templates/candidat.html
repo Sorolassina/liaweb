@@ -1,0 +1,56 @@
+{% extends "base.html" %}
+{% block contenu %}
+<div class="container">
+  <div class="mb-4">
+    <h1 class="h4 mb-1">Mon espace candidat</h1>
+    <p class="text-muted mb-0">Suivez votre inscription, vos étapes de formation et vos documents.</p>
+  </div>
+
+  <div class="row g-3 mb-3">
+    <div class="col-md-4">
+      <div class="card shadow-sm"><div class="card-body">
+        <div class="h3 mb-0">{{ kpi.statut }}</div>
+        <div class="text-muted">Statut d’inscription</div>
+      </div></div>
+    </div>
+    <div class="col-md-4">
+      <div class="card shadow-sm"><div class="card-body">
+        <div class="h3 mb-0">{{ kpi.progression }}%</div>
+        <div class="text-muted">Progression du parcours</div>
+      </div></div>
+    </div>
+    <div class="col-md-4">
+      <div class="card shadow-sm"><div class="card-body">
+        <div class="h3 mb-0">{{ kpi.docs }}</div>
+        <div class="text-muted">Pièces jointes</div>
+      </div></div>
+    </div>
+  </div>
+
+  <div class="row g-3">
+    <div class="col-lg-6">
+      <div class="card shadow-sm h-100"><div class="card-body">
+        <h2 class="h6 mb-3">Mes informations</h2>
+        <div class="mb-2"><strong>Nom :</strong> {{ candidat.nom }} {{ candidat.prenom }}</div>
+        <div class="mb-2"><strong>Email :</strong> {{ candidat.email }}</div>
+        <div class="mb-2"><strong>Téléphone :</strong> {{ candidat.telephone or '—' }}</div>
+        <a class="btn btn-outline-dark btn-sm" href="/candidats/ui/{{ candidat.id }}">Mettre à jour</a>
+      </div></div>
+    </div>
+
+    <div class="col-lg-6">
+      <div class="card shadow-sm h-100"><div class="card-body">
+        <h2 class="h6 mb-3">Mes documents</h2>
+        <a class="btn btn-outline-dark btn-sm mb-2" href="/documents/ui/candidat/{{ candidat.id }}">Gérer mes pièces</a>
+        <ul class="list-group list-group-flush">
+          {% for d in documents %}
+            <li class="list-group-item">{{ d.titre or d.type_document }} — {{ d.nom_fichier }}</li>
+          {% else %}
+            <li class="list-group-item text-muted">Aucun document pour l’instant</li>
+          {% endfor %}
+        </ul>
+      </div></div>
+    </div>
+  </div>
+</div>
+{% endblock %}

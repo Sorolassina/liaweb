@@ -1,0 +1,314 @@
+{% extends "base.html" %}
+{% set roles = roles or [] %}
+
+{% block extra_head %}
+<style>
+  /* Styles spécifiques Directeur (complément du thème global) */
+  .kpi { text-align:center; border:1px solid var(--gray-200); border-radius:12px; background:#fff; transition:transform .2s, box-shadow .2s; }
+  .kpi:hover { transform:translateY(-3px); box-shadow:0 6px 16px rgba(0,0,0,.08); }
+  .kpi .val { font-size:2rem; font-weight:800; color:var(--gray-900); }
+  .kpi .lab { font-size:.85rem; color:var(--gray-600); letter-spacing:.05em; text-transform:uppercase; }
+
+  .card h2.h6 { font-weight:600; color:var(--gray-800); }
+  .table thead th { font-size:.8rem; text-transform:uppercase; letter-spacing:.04em; color:var(--gray-600); }
+
+  .health-dot { width:10px; height:10px; border-radius:50%; display:inline-block; margin-right:6px; }
+  .ok { background:var(--success-color); }
+  .warn { background:var(--warning-color); }
+  .err { background:var(--error-color); }
+
+  .badge-role { background:var(--primary-color); color:var(--text-color); border:1px solid var(--gray-300); }
+</style>
+{% endblock %}
+
+{% block contenu %}
+<div class="container-fluid">
+
+  <!-- En-tête -->
+  <div class="d-flex justify-content-between align-items-start mb-4">
+    <div>
+      <h1 class="h4 mb-1">Tableau de bord — Directeur technique</h1>
+      <p class="text-muted mb-0">Pilotage global des programmes, accès et intégrations.</p>
+    </div>
+    <div class="d-flex gap-2">
+      <a href="/programmes/ui" class="btn btn-primaire">+ Créer un programme</a>
+      <a href="/pipeline/ui" class="btn btn-outline-dark">Configurer pipeline</a>
+      <a href="/jury/ui" class="btn btn-outline-dark">Planifier un jury</a>
+    </div>
+  </div>
+
+  <!-- Rôles visibles (si multi-rôles) -->
+  {% if roles %}
+  <div class="mb-3">
+    {% for r in roles %}
+      <span class="badge badge-role me-1">{{ r }}</span>
+    {% endfor %}
+  </div>
+  {% endif %}
+
+  <!-- KPIs -->
+  <div class="row g-3 mb-4">
+    <div class="col-md-3">
+      <div class="card kpi shadow-sm"><div class="card-body">
+        <div class="val">{{ kpi.programmes }}</div>
+        <div class="lab">Programmes actifs</div>
+      </div></div>
+    </div>
+    <div class="col-md-3">
+      <div class="card kpi shadow-sm"><div class="card-body">
+        <div class="val">{{ kpi.utilisateurs }}</div>
+        <div class="lab">Utilisateurs</div>
+      </div></div>
+    </div>
+    <div class="col-md-3">
+      <div class="card kpi shadow-sm"><div class="card-body">
+        <div class="val">{{ kpi.inscriptions_en_attente }}</div>
+        <div class="lab">Inscriptions à statuer</div>
+      </div></div>
+    </div>
+    <div class="col-md-3">
+      <div class="card kpi shadow-sm"><div class="card-body">
+        <div class="val">{{ kpi.jurys_a_venir }}</div>
+        <div class="lab">Jurys à venir</div>
+      </div></div>
+    </div>
+  </div>
+
+  <!-- 3 colonnes : Attributions / Éligibilité / Santé système -->
+  <div class="row g-3 mb-4">
+    <!-- A. Attributions rapides -->
+    <div class="col-xl-4">
+      <div class="card shadow-sm h-100">
+        <div class="card-body">
+          <h2 class="h6 mb-2">Attributions rapides</h2>
+          <p class="text-muted mb-3">Affecter un responsable/programme, un conseiller, un groupe.</p>
+
+          <form method="post" action="/programmes/ui/attribuer" class="row g-2 mb-3">
+            <div class="col-12">
+              <label class="form-label">Programme</label>
+              <select name="programme_id" class="form-select">
+                {% for p in programmes %}<option value="{{ p.id }}">{{ p.nom }}</option>{% endfor %}
+              </select>
+            </div>
+            <div class="col-12">
+              <label class="form-label">Responsable de programme</label>
+              <select name="utilisateur_id" class="form-select">
+                {% for u in responsables %}<option value="{{ u.id }}">{{ u.email }}</option>{% endfor %}
+              </select>
+            </div>
+            <div class="col-12">
+              <button class="btn btn-primaire w-100">Attribuer</button>
+            </div>
+          </form>
+
+          <div class="d-flex flex-wrap gap-2">
+            <a class="btn btn-outline-dark btn-sm" href="/programmes/ui">Gérer programmes</a>
+            <a class="btn btn-outline-dark btn-sm" href="/inscriptions/ui">Gérer inscriptions</a>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- B. Paramètres d’éligibilité globaux (par programme) -->
+    <div class="col-xl-4">
+      <div class="card shadow-sm h-100">
+        <div class="card-body">
+          <h2 class="h6 mb-2">Paramètres d’éligibilité</h2>
+          <p class="text-muted mb-3">CA / QPV / Ancienneté — s’applique par programme.</p>
+
+          <form method="post" action="/programmes/ui/parametres" class="row g-2">
+            <div class="col-12">
+              <label class="form-label">Programme</label>
+              <select name="programme_id" class="form-select">
+                {% for p in programmes %}<option value="{{ p.id }}">{{ p.nom }}</option>{% endfor %}
+              </select>
+            </div>
+            <div class="col-6">
+              <label class="form-label">CA min (€)</label>
+              <input type="number" step="0.01" name="ca_min" class="form-control" placeholder="0">
+            </div>
+            <div class="col-6">
+              <label class="form-label">CA max (€)</label>
+              <input type="number" step="0.01" name="ca_max" class="form-control" placeholder="∞">
+            </div>
+            <div class="col-6">
+              <label class="form-label">Ancienneté min (mois)</label>
+              <input type="number" name="anciennete_min_mois" class="form-control" value="12">
+            </div>
+            <div class="col-6 d-flex align-items-end">
+              <div class="form-check">
+                <input class="form-check-input" type="checkbox" name="qpv_requis" id="qpv">
+                <label class="form-check-label" for="qpv">QPV requis</label>
+              </div>
+            </div>
+            <div class="col-12">
+              <button class="btn btn-outline-dark w-100">Enregistrer</button>
+            </div>
+          </form>
+        </div>
+      </div>
+    </div>
+
+    <!-- C. Santé du système / Intégrations -->
+    <div class="col-xl-4">
+      <div class="card shadow-sm h-100">
+        <div class="card-body">
+          <h2 class="h6 mb-2">Santé du système</h2>
+          <p class="text-muted mb-3">État des services critiques et intégrations.</p>
+
+          <ul class="list-group list-group-flush mb-3">
+            <li class="list-group-item d-flex justify-content-between align-items-center">
+              <span><span class="health-dot ok"></span>Base de données</span>
+              <span class="text-muted">OK</span>
+            </li>
+            <li class="list-group-item d-flex justify-content-between align-items-center">
+              <span><span class="health-dot {{ 'ok' if health.smtp_ok else 'err' }}"></span>SMTP</span>
+              <span class="text-muted">{{ 'OK' if health.smtp_ok else 'Erreur' }}</span>
+            </li>
+            <li class="list-group-item d-flex justify-content-between align-items-center">
+              <span><span class="health-dot {{ 'ok' if health.pappers_ok else 'warn' }}"></span>Pappers API</span>
+              <span class="text-muted">{{ 'OK' if health.pappers_ok else 'Clé manquante / API lente' }}</span>
+            </li>
+            <li class="list-group-item d-flex justify-content-between align-items-center">
+              <span><span class="health-dot ok"></span>Stockage fichiers</span>
+              <span class="text-muted">OK</span>
+            </li>
+          </ul>
+
+          <div class="d-flex flex-wrap gap-2">
+            <a class="btn btn-outline-dark btn-sm" href="/pappers/enrichir/1">Tester Pappers</a>
+            <a class="btn btn-outline-dark btn-sm" href="/documents/ui/candidat/1">Tester upload</a>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Lignes : Inscriptions à statuer / Jurys à venir -->
+  <div class="row g-3 mb-4">
+    <div class="col-lg-7">
+      <div class="card shadow-sm h-100">
+        <div class="card-body">
+          <h2 class="h6 mb-3">Inscriptions en attente de décision</h2>
+          <div class="table-responsive">
+            <table class="table align-middle">
+              <thead><tr><th>ID</th><th>Programme</th><th>Candidat</th><th>Reçue le</th><th></th></tr></thead>
+              <tbody>
+                {% for d in dossiers_en_attente %}
+                <tr>
+                  <td>{{ d.id }}</td>
+                  <td>{{ d.programme_nom }}</td>
+                  <td>{{ d.candidat_nom }}</td>
+                  <td>{{ d.recue_le }}</td>
+                  <td class="text-end">
+                    <a class="btn btn-sm btn-outline-dark" href="/jury/ui/deliberation/{{ d.id }}">Délibérer</a>
+                    <a class="btn btn-sm btn-outline-dark" href="/documents/ui/inscription/{{ d.id }}">Documents</a>
+                  </td>
+                </tr>
+                {% else %}
+                <tr><td colspan="5" class="text-center text-muted py-3">Aucun dossier en attente</td></tr>
+                {% endfor %}
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="col-lg-5">
+      <div class="card shadow-sm h-100">
+        <div class="card-body">
+          <h2 class="h6 mb-3">Jurys à venir</h2>
+          <ul class="list-group list-group-flush">
+            {% for j in jurys_a_venir %}
+              <li class="list-group-item d-flex justify-content-between align-items-center">
+                <div>
+                  <div class="fw-semibold">{{ j.titre or ('Jury #' ~ j.id) }}</div>
+                  <div class="text-muted small">{{ j.session_le }} • {{ j.lieu or '—' }}</div>
+                </div>
+                <a class="btn btn-sm btn-outline-dark" href="/jury/ui">Ouvrir</a>
+              </li>
+            {% else %}
+              <li class="list-group-item text-muted">Aucun jury planifié</li>
+            {% endfor %}
+          </ul>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Activité récente & Invitations -->
+  <div class="row g-3">
+    <div class="col-lg-7">
+      <div class="card shadow-sm h-100">
+        <div class="card-body">
+          <h2 class="h6 mb-3">Activité récente (audit)</h2>
+          <div class="d-flex flex-column gap-2">
+            {% for a in activites %}
+              <div class="d-flex justify-content-between">
+                <span class="text-muted">{{ a.texte }}</span>
+                <span class="text-muted small">{{ a.quand }}</span>
+              </div>
+            {% else %}
+              <div class="text-muted">Rien pour le moment.</div>
+            {% endfor %}
+          </div>
+        </div>
+      </div>
+    </div>
+    <div class="col-lg-5">
+      <div class="card shadow-sm h-100">
+        <div class="card-body">
+          <h2 class="h6 mb-3">Invitations</h2>
+          <form class="row g-2 mb-3" onsubmit="return false;">
+            <div class="col-12">
+              <label class="form-label">Email</label>
+              <input type="email" id="inv-email" class="form-control" placeholder="utilisateur@lia.app">
+            </div>
+            <div class="col-12">
+              <label class="form-label">Rôle</label>
+              <select id="inv-role" class="form-select">
+                <option value="RESPONSABLE_PROGRAMME">Responsable programme</option>
+                <option value="CONSEILLER">Conseiller</option>
+                <option value="COACH_EXTERNE">Coach externe</option>
+                <option value="JURY_EXTERNE">Jury externe</option>
+              </select>
+            </div>
+            <div class="col-12">
+              <button class="btn btn-outline-dark w-100" onclick="invite()">Envoyer invitation</button>
+            </div>
+          </form>
+
+          <ul class="list-group list-group-flush">
+            {% for inv in invitations %}
+              <li class="list-group-item d-flex justify-content-between align-items-center">
+                <div>
+                  <div class="fw-semibold">{{ inv.email }}</div>
+                  <div class="text-muted small">{{ inv.role }} • expire {{ inv.expire }}</div>
+                </div>
+                <div class="d-flex gap-2">
+                  <button class="btn btn-sm btn-outline-dark" onclick="alert('Relance envoyée')">Relancer</button>
+                  <button class="btn btn-sm btn-outline-dark" onclick="this.closest('li').remove()">Annuler</button>
+                </div>
+              </li>
+            {% else %}
+              <li class="list-group-item text-muted">Aucune invitation en cours</li>
+            {% endfor %}
+          </ul>
+        </div>
+      </div>
+    </div>
+  </div>
+
+</div>
+
+<script>
+  function invite(){
+    const e = document.getElementById('inv-email').value;
+    const r = document.getElementById('inv-role').value;
+    if(!e || !e.includes('@')) { alert('Email invalide'); return; }
+    alert(`Invitation envoyée à ${e} (${r})`);
+    document.getElementById('inv-email').value = '';
+  }
+</script>
+{% endblock %}

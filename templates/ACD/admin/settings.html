@@ -1,0 +1,58 @@
+{% extends "ACD/admin/base_admin.html" %}
+{% block admin_content %}
+<div class="card-neumo p-3">
+  <form class="row g-3" method="post" action="/admin/settings/save">
+    <div class="col-md-6">
+      <div class="p-3 border rounded-4">
+        <div class="fw-bold mb-2">Thème</div>
+        <div class="row g-2">
+          <div class="col-md-6">
+            <label class="form-label">Primaire</label>
+            <input type="color" class="form-control form-control-color" name="THEME_PRIMARY" value="{{ cfg.THEME_PRIMARY }}">
+          </div>
+          <div class="col-md-6">
+            <label class="form-label">Secondaire (texte)</label>
+            <input type="color" class="form-control form-control-color" name="THEME_SECONDARY" value="{{ cfg.THEME_SECONDARY }}">
+          </div>
+          <div class="col-md-6">
+            <label class="form-label">Max upload (Mo)</label>
+            <input class="form-control" name="MAX_UPLOAD_SIZE_MB" value="{{ cfg.MAX_UPLOAD_SIZE_MB }}">
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="col-md-6">
+      <div class="p-3 border rounded-4">
+        <div class="fw-bold mb-2">SMTP (lecture)</div>
+        <div class="row g-2">
+          <div class="col-md-6">
+            <label class="form-label">Hôte</label>
+            <input class="form-control" name="SMTP_HOST" value="{{ cfg.SMTP_HOST }}">
+          </div>
+          <div class="col-md-3">
+            <label class="form-label">Port</label>
+            <input class="form-control" name="SMTP_PORT" value="{{ cfg.SMTP_PORT }}">
+          </div>
+          <div class="col-md-6">
+            <label class="form-label">Utilisateur</label>
+            <input class="form-control" name="SMTP_USER" value="{{ cfg.SMTP_USER }}">
+          </div>
+          <div class="col-md-3">
+            <label class="form-label">TLS</label>
+            <select class="form-select" name="SMTP_TLS">
+              <option value="True" {% if cfg.SMTP_TLS in ['True','true','1'] %}selected{% endif %}>True</option>
+              <option value="False" {% if cfg.SMTP_TLS in ['False','false','0'] %}selected{% endif %}>False</option>
+            </select>
+          </div>
+        </div>
+        <div class="small text-muted mt-2">Le mot de passe SMTP reste géré via variables d’environnement.</div>
+      </div>
+    </div>
+
+    <div class="col-12">
+      <button class="btn btn-primary"><i class="fa fa-save me-1"></i> Sauvegarder</button>
+    </div>
+  </form>
+</div>
+{% endblock %}

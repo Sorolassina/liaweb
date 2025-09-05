@@ -1,0 +1,50 @@
+{% extends "base.html" %}
+{% block contenu %}
+<div class="container-fluid">
+  <div class="mb-4">
+    <h1 class="h4 mb-1">Espace Coach</h1>
+    <p class="text-muted mb-0">Séances, groupes, supports et suivi des candidats alloués.</p>
+  </div>
+
+  <div class="row g-3">
+    <div class="col-lg-6">
+      <div class="card shadow-sm h-100">
+        <div class="card-body">
+          <h2 class="h6 mb-3">Séances à venir</h2>
+          <ul class="list-group list-group-flush">
+            {% for s in seances %}
+              <li class="list-group-item d-flex justify-content-between align-items-center">
+                <div>
+                  <div class="fw-semibold">{{ s.titre }}</div>
+                  <div class="text-muted small">{{ s.date }} • {{ s.lieu or s.url }}</div>
+                </div>
+                <a class="btn btn-sm btn-outline-dark" href="#">Détails</a>
+              </li>
+            {% else %}
+              <li class="list-group-item text-muted">Aucune séance</li>
+            {% endfor %}
+          </ul>
+        </div>
+      </div>
+    </div>
+
+    <div class="col-lg-6">
+      <div class="card shadow-sm h-100">
+        <div class="card-body">
+          <h2 class="h6 mb-3">Groupes suivis</h2>
+          <ul class="list-group list-group-flush">
+            {% for g in groupes %}
+              <li class="list-group-item d-flex justify-content-between align-items-center">
+                <span>{{ g.nom }} — {{ g.programme_nom }}</span>
+                <a class="btn btn-sm btn-outline-dark" href="/inscriptions/ui">Voir candidats</a>
+              </li>
+            {% else %}
+              <li class="list-group-item text-muted">Aucun groupe</li>
+            {% endfor %}
+          </ul>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+{% endblock %}

@@ -1,0 +1,281 @@
+{% extends "base.html" %}
+{% block head_extra %}
+<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"/>
+<style>
+  /* Container adaptatif qui tient compte de la sidebar */
+  .container-wide{ 
+    width: 100%; 
+    max-width: calc(100vw - var(--sidebar-width) - 2rem); 
+    margin: 0 auto; 
+    padding: 0 1rem;
+  }
+  
+  /* Responsive pour sidebar réduite */
+  .sidebar.collapsed ~ #content .container-wide {
+    max-width: calc(100vw - var(--sidebar-width-collapsed) - 2rem);
+  }
+  
+  /* Responsive mobile */
+  @media (max-width: 768px) {
+    .container-wide {
+      max-width: calc(100vw - 2rem);
+      padding: 0 0.5rem;
+    }
+  }
+
+  .card-neumo{ 
+    background:var(--white-color); 
+    border-radius:18px; 
+    box-shadow:var(--shadow);
+    border:1px solid color-mix(in srgb, var(--secondary-color) 8%, transparent); 
+    transition: transform .2s ease, box-shadow .2s ease;
+  }
+  .card-neumo:hover{ transform: translateY(-2px); box-shadow: var(--shadow-lg); }
+  
+  .section-title{ 
+    color:var(--secondary-color); 
+    font-weight:900; 
+    margin:0 0 .8rem; 
+    font-size: 1.1rem;
+  }
+  
+  /* Grilles adaptatives */
+  .grid-2{ 
+    display:grid; 
+    grid-template-columns:1.2fr .8fr; 
+    gap:16px; 
+  } 
+  @media (max-width: 1200px){ 
+    .grid-2{ grid-template-columns: 1fr 1fr; } 
+  }
+  @media (max-width: 992px){ 
+    .grid-2{ grid-template-columns:1fr; } 
+  }
+  
+  #map{ 
+    width:100%; 
+    height:380px; 
+    border-radius:18px; 
+    box-shadow:var(--shadow); 
+    border:1px solid color-mix(in srgb, var(--secondary-color) 10%, transparent); 
+  }
+  
+  .toolbar{ 
+    display:flex; 
+    gap:8px; 
+    align-items:center; 
+    flex-wrap:wrap; 
+  }
+  
+  .kpi{ 
+    display:flex; 
+    gap:12px; 
+    flex-wrap: wrap;
+  }
+  
+  .chip{ 
+    border-radius:999px; 
+    padding:.35rem .7rem; 
+    background: color-mix(in srgb, var(--primary-color) 16%, transparent);
+    border:1px solid color-mix(in srgb, var(--primary-color) 35%, transparent); 
+    font-weight:800; 
+    color: var(--secondary-color); 
+    font-size: .85rem;
+  }
+  
+  table thead th{ 
+    font-weight:800; 
+    color: var(--secondary-color); 
+    border-bottom:1px solid #eee; 
+    font-size: .9rem;
+  }
+  td, th{ 
+    vertical-align: middle; 
+    font-size: .85rem;
+  }
+  
+  /* Espacement adaptatif */
+  .mb-2 {
+    margin-bottom: 0.5rem;
+  }
+  
+  .mb-3 {
+    margin-bottom: 1rem;
+  }
+  
+  .p-3 {
+    padding: 1rem;
+  }
+  
+  /* Responsive pour les petits écrans */
+  @media (max-width: 576px) {
+    .section-title {
+      font-size: 1rem;
+    }
+    
+    .toolbar {
+      flex-direction: column;
+      align-items: stretch;
+      gap: 12px;
+    }
+    
+    .toolbar form {
+      flex-direction: column;
+      gap: 8px;
+    }
+    
+    .kpi {
+      justify-content: center;
+    }
+    
+    #map {
+      height: 300px;
+    }
+    
+    .table-responsive {
+      font-size: .8rem;
+    }
+    
+    .chip {
+      font-size: .75rem;
+      padding: .25rem .5rem;
+    }
+  }
+  
+
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="container-wide">
+
+  <div class="d-flex justify-content-between align-items-center mb-2">
+    <h3 class="section-title" style="margin:0">Préinscriptions({{current_programme}})</h3>
+    <div class="toolbar">
+      
+      <form class="d-flex gap-2" method="get">
+        <input type="text" class="form-control form-control-sm" name="q" placeholder="Recherche (nom, email)" value="{{ q }}">
+        <button class="btn btn-sm btn-primary">Filtrer</button>
+      </form>
+      <a href="/ACD/preinscriptions/public_form?programme={{ current_programme }}" class="submenu-item {% if request.url.path == '/ACD/preinscriptions/public_form' %}active{% endif %}">
+        <div class="icon"><i class="fas fa-tachometer-alt"></i></div><div>Formulaire</div>
+      </a>
+      <button class="btn btn-sm btn-outline-secondary" data-bs-toggle="modal" data-bs-target="#sendInviteModal">
+        <i class="fa fa-paper-plane me-1"></i> Envoyer un lien
+      </button>
+      
+    </div>
+  </div>
+
+  <div class="card-neumo p-3 mb-3">
+    <div class="kpi">
+      <span class="chip">Total: {{ kpi.total }}</span>
+      <span class="chip">ACD: {{ kpi.acd }}</span>
+    </div>
+  </div>
+
+  <div class="grid-2 mb-3">
+    <div class="card-neumo p-3">
+      <h5 class="section-title">Carte des préinscrits</h5>
+      <div id="map"></div>
+    </div>
+    <div class="card-neumo p-3">
+      <h5 class="section-title">Répartition par programme</h5>
+      <canvas id="byProgramme" height="220"></canvas>
+    </div>
+  </div>
+
+  <div class="card-neumo p-3">
+    <div class="table-responsive">
+      <table class="table table-sm align-middle">
+        <thead>
+          <tr>
+            <th>Créé le</th><th>Nom</th><th>Email</th><th>Téléphone</th><th>Programme</th><th>Adresse</th><th>Éligibilité</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for p, c, prog, e in rows %}
+          <tr>
+            <td>{{ p.cree_le.strftime("%d/%m/%Y") }}</td>
+            <td>{{ c.prenom }} {{ c.nom }}</td>
+            <td>{{ c.email }}</td>
+            <td>{{ c.telephone or "—" }}</td>
+            <td><span class="chip">{{ prog.code }}</span></td>
+            <td>{{ e.adresse or c.adresse_personnelle or "—" }}</td>
+            <td>
+              {% if p.eligibilite and p.eligibilite.verdict %}
+                {% set v=p.eligibilite.verdict %}
+                <span class="badge bg-{{ 'success' if v=='ok' else ('warning' if v=='attention' else 'danger') }}">{{ v|upper }}</span>
+              {% else %} — {% endif %}
+            </td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+  </div>
+
+</div>
+
+<!-- Modal Envoi Lien -->
+<div class="modal fade" id="sendInviteModal" tabindex="-1" aria-hidden="true">
+  <div class="modal-dialog">
+    <form class="modal-content" method="post" action="/preinscriptions/send-link">
+      <div class="modal-header">
+        <h5 class="modal-title">Envoyer un lien de préinscription</h5>
+        <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+        
+      </div>
+
+      <div class="modal-body d-flex flex-column gap-2">
+        <div class="row g-2">
+          
+          <div class="col-6">
+            <label class="form-label">Email destinataire</label>
+            <input type="email" name="email" class="form-control" required>
+          </div>
+        </div>
+        <div>
+          <label class="form-label">Message (optionnel)</label>
+          <textarea name="message" class="form-control" rows="4" placeholder="Votre message..."></textarea>
+        </div>
+      </div>
+      <div class="modal-footer">
+        <button class="btn btn-primary"><i class="fa fa-paper-plane me-1"></i> Envoyer</button>
+      </div>
+    </form>
+  </div>
+</div>
+
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+<script>
+  const PINS = {{ pins | tojson }};
+  (function(){
+    const map = L.map('map', { scrollWheelZoom:false });
+    L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png',{maxZoom:18,attribution:'&copy; OpenStreetMap'}).addTo(map);
+    const markers = [];
+    PINS.forEach(p => {
+      const m = L.marker([p.lat, p.lng]).addTo(map);
+      m.bindPopup(`<b>${p.prenom} ${p.nom||""}</b><div style="font-size:.9rem;opacity:.8">${p.adresse||""}</div><div>${p.programme}</div>`);
+      markers.push(m);
+    });
+    if (markers.length){ map.fitBounds(L.featureGroup(markers).getBounds().pad(0.2)); } else { map.setView([46.7,2.5],5); }
+  })();
+</script>
+<script>
+  // Petit graphe par programme (counts via DOM)
+  (function(){
+    const ctx = document.getElementById('byProgramme').getContext('2d');
+    // On calcule vite fait depuis rows
+    const counts = {};
+    {% for p,c,prog,e in rows %}
+      counts["{{ prog.code }}"] = (counts["{{ prog.code }}"]||0) + 1;
+    {% endfor %}
+    new Chart(ctx, {
+      type:'bar',
+      data:{ labels:Object.keys(counts), datasets:[{ label:'Préinscrits', data:Object.values(counts), borderWidth:1 }] },
+      options:{ responsive:true, plugins:{legend:{display:false}}, scales:{y:{beginAtZero:true,ticks:{precision:0}}}}
+    });
+  })();
+</script>
+{% endblock %}

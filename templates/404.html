@@ -1,0 +1,211 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Page non trouvée - {{ app_name }}</title>
+    
+    <!-- Favicon -->
+    <link rel="icon" type="image/x-icon" href="/static/favicon.ico">
+    
+    <!-- CSS de base -->
+    <link rel="stylesheet" href="/static/css/base.css">
+    <link rel="stylesheet" href="/static/css/theme.css">
+    
+    <style>
+        /* Reset pour la page 404 */
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: var(--gray-light);
+        }
+
+        :root{
+            --lia-jaune:#ffd300; 
+            --lia-noir:#0b0b0b; 
+            --lia-blanc:#ffffff;
+        }
+        
+        .notfound-wrap{
+            min-height: 100vh;
+            display: flex; 
+            align-items: center; 
+            justify-content: center;
+            padding: 32px 16px; 
+            background: var(--gray-50);
+        }
+        
+        .notfound-card{
+            background: #fff; 
+            border: 1px solid var(--gray-200); 
+            border-radius: 16px;
+            padding: 32px; 
+            max-width: 760px; 
+            width: 100%;
+            box-shadow: 0 6px 18px rgba(0,0,0,.06);
+            text-align: center;
+        }
+        
+        .code{
+            display: inline-block; 
+            font-size: 96px; 
+            font-weight: 900; 
+            line-height: 1;
+            letter-spacing: .03em; 
+            color: var(--lia-noir);
+            text-shadow: 0 2px 0 var(--lia-jaune), 0 4px 0 rgba(0,0,0,.05);
+        }
+        
+        .badge-ghost{
+            display: inline-block; 
+            margin-top: 8px; 
+            padding: 6px 12px;
+            border-radius: 999px; 
+            background: #fff7cc; 
+            color: #6b5500; 
+            font-weight: 600; 
+            font-size: 12px;
+            border: 1px dashed #ffe27a;
+        }
+        
+        .lead{
+            font-size: 18px; 
+            color: var(--gray-700); 
+            margin: 12px 0 6px;
+        }
+        
+        .muted{ 
+            color: var(--gray-500); 
+            font-size: 14px; 
+        }
+        
+        .actions{ 
+            display: flex; 
+            gap: 12px; 
+            justify-content: center; 
+            margin-top: 24px; 
+            flex-wrap: wrap; 
+        }
+        
+        .btn{
+            display: inline-block;
+            padding: 10px 16px;
+            border-radius: 10px;
+            font-weight: 600;
+            text-decoration: none;
+            transition: all 0.3s ease;
+            cursor: pointer;
+            border: none;
+        }
+        
+        .btn-lia{
+            background: var(--lia-jaune); 
+            color: var(--lia-noir);
+        }
+        
+        .btn-lia:hover{
+            background: #e6b800;
+            transform: translateY(-1px);
+        }
+        
+        .btn-outline{
+            background: #fff; 
+            color: var(--lia-noir); 
+            border: 1px solid var(--gray-300);
+        }
+        
+        .btn-outline:hover{
+            background: var(--gray-50);
+            border-color: var(--gray-400);
+        }
+        
+        .search-box{ 
+            margin-top: 20px; 
+            display: flex; 
+            gap: 8px; 
+            justify-content: center; 
+        }
+        
+        .search-box input{
+            width: min(460px, 100%); 
+            padding: 10px 12px; 
+            border: 1px solid var(--gray-300); 
+            border-radius: 10px;
+            font-size: 14px;
+        }
+        
+        .search-box input:focus{
+            outline: none;
+            border-color: var(--primary-color);
+            box-shadow: 0 0 0 3px rgba(255, 205, 0, 0.1);
+        }
+        
+        .hint{
+            margin-top: 20px; 
+            font-size: 13px; 
+            color: var(--gray-500);
+        }
+        
+        .hint a{
+            color: var(--primary-color);
+            text-decoration: none;
+        }
+        
+        .hint a:hover{
+            text-decoration: underline;
+        }
+        
+        /* Responsive */
+        @media (max-width: 640px) {
+            .code {
+                font-size: 72px;
+            }
+            
+            .notfound-card {
+                padding: 24px;
+            }
+            
+            .actions {
+                flex-direction: column;
+                align-items: center;
+            }
+            
+            .search-box {
+                flex-direction: column;
+                align-items: center;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="notfound-wrap">
+        <div class="notfound-card">
+            <div class="code">404</div>
+            <div class="badge-ghost">Page non trouvée</div>
+
+            <p class="lead">Oups… la page "<strong>{{ path }}</strong>" est introuvable.</p>
+            <p class="muted">Elle a peut-être été déplacée, renommée ou n'existe pas.</p>
+
+            <div class="actions">
+                <a href="/" class="btn btn-lia">← Retour à l'accueil</a>
+                <a href="/admin" class="btn btn-outline">Aller à l'administration</a>
+                <a href="/contact" class="btn btn-outline">Contacter le support</a>
+            </div>
+
+            <form class="search-box" method="get" action="/recherche">
+                <input type="text" name="q" placeholder="Rechercher un candidat, un programme, un document…">
+                <button class="btn btn-outline" type="submit">Rechercher</button>
+            </form>
+
+            <div class="hint">
+                Besoin d'aide ? Consultez la <a href="/aide">documentation</a> ou revenez à la <a href="/">page d'accueil</a>.
+            </div>
+        </div>
+    </div>
+</body>
+</html>

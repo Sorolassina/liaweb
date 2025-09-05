@@ -1,0 +1,77 @@
+{% extends "base.html" %}
+{% block contenu %}
+<div class="container-fluid">
+  <div class="d-flex justify-content-between align-items-start mb-4">
+    <div>
+      <h1 class="h4 mb-1">Responsable Programme — {{ programme.nom if programme else 'Programme' }}</h1>
+      <p class="text-muted mb-0">Validez les inscriptions, pilotez le pipeline, suivez la promotion.</p>
+    </div>
+    <div class="d-flex gap-2">
+      <a href="/inscriptions/ui" class="btn btn-primaire">Dossiers d’inscription</a>
+      <a href="/pipeline/ui" class="btn btn-outline-dark">Pipeline du programme</a>
+    </div>
+  </div>
+
+  <!-- KPI -->
+  <div class="row g-3 mb-4">
+    <div class="col-md-3"><div class="card shadow-sm"><div class="card-body"><div class="h3 mb-0">{{ kpi.inscriptions_en_attente }}</div><div class="text-muted">À statuer</div></div></div></div>
+    <div class="col-md-3"><div class="card shadow-sm"><div class="card-body"><div class="h3 mb-0">{{ kpi.validees }}</div><div class="text-muted">Validées</div></div></div></div>
+    <div class="col-md-3"><div class="card shadow-sm"><div class="card-body"><div class="h3 mb-0">{{ kpi.documents_manquants }}</div><div class="text-muted">Docs manquants</div></div></div></div>
+    <div class="col-md-3"><div class="card shadow-sm"><div class="card-body"><div class="h3 mb-0">{{ kpi.progres_pipeline }}%</div><div class="text-muted">Progression moyenne</div></div></div></div>
+  </div>
+
+  <div class="row g-3">
+    <div class="col-lg-7">
+      <div class="card shadow-sm h-100">
+        <div class="card-body">
+          <h2 class="h6 mb-3">Dossiers à statuer</h2>
+          <div class="table-responsive">
+            <table class="table align-middle">
+              <thead><tr><th>ID</th><th>Candidat</th><th>Éligibilité</th><th></th></tr></thead>
+              <tbody>
+                {% for d in dossiers %}
+                <tr>
+                  <td>{{ d.id }}</td>
+                  <td>{{ d.candidat_nom }}</td>
+                  <td>
+                    {% if d.eligibilite.verdict == 'ok' %}<span class="badge bg-success">OK</span>
+                    {% elif d.eligibilite.verdict == 'attention' %}<span class="badge bg-warning text-dark">À vérifier</span>
+                    {% else %}<span class="badge bg-danger">KO</span>{% endif %}
+                  </td>
+                  <td class="text-end">
+                    <a class="btn btn-sm btn-outline-dark" href="/jury/ui/deliberation/{{ d.id }}">Délibérer</a>
+                  </td>
+                </tr>
+                {% else %}
+                <tr><td colspan="4" class="text-center text-muted py-3">Aucun dossier</td></tr>
+                {% endfor %}
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="col-lg-5">
+      <div class="card shadow-sm h-100">
+        <div class="card-body">
+          <h2 class="h6 mb-3">Pipeline — étapes actives</h2>
+          <ul class="list-group list-group-flush">
+            {% for e in etapes %}
+              <li class="list-group-item d-flex justify-content-between align-items-center">
+                <div>{{ e.ordre }}. {{ e.libelle }}</div>
+                <span class="badge bg-light text-dark">{{ 'Active' if e.active else 'Désactivée' }}</span>
+              </li>
+            {% else %}
+              <li class="list-group-item text-muted">Aucune étape</li>
+            {% endfor %}
+          </ul>
+          <div class="mt-3">
+            <a class="btn btn-outline-dark btn-sm" href="/pipeline/ui">Modifier les étapes</a>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+{% endblock %}

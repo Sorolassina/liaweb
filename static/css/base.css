@@ -1,0 +1,745 @@
+/* ========================================
+   BASE.CSS - Styles centralisés pour Tieka
+   ========================================
+   Ce fichier contient tous les styles de base
+   utilisés par tous les templates de l'application.
+*/
+
+/* Variables CSS globales */
+:root {
+    /* Couleurs principales */
+    --primary-color: #ffcd00;
+    --secondary-color: #ffffff;
+    --text-color: #0a0a0a;
+    --accent-color: #ffcd00;
+    --background-color: #ffffff;
+    --success-color: #28a745;
+    --error-color: #dc3545;
+    --warning-color: #ffc107;
+    --font-family: 'Inter', sans-serif;
+    --border-radius: 8px;
+    --shadow-intensity: 0.1;
+
+    /* Couleurs utilitaires */
+    --gray-50: #f9fafb;
+    --gray-200: #e5e7eb;
+    --gray-300: #d1d5db;
+    --gray-400: #9ca3af;
+    --gray-500: #6b7280;
+    --gray-600: #4b5563;
+    --gray-700: #374151;
+    --gray-900: #111827;
+}
+
+/* Reset et styles de base */
+* {
+    margin: 0;
+    padding: 0;
+    box-sizing: border-box;
+}
+
+html,
+body {
+    height: 100%;
+    width: 100%;
+}
+
+body {
+    font-family: var(--font-family);
+    color: var(--text-color);
+    background-color: var(--background-color);
+    display: flex;
+    flex-direction: column;
+    min-height: 100vh;
+    background-color: var(--gray-50);
+    line-height: 1.6;
+}
+
+/* Layout principal */
+.container {
+    max-width: 1280px;
+    margin: 0 auto;
+    padding: 0 16px;
+}
+
+.container-large {
+    max-width: 1280px;
+    margin: 0 auto;
+    padding: 0 16px;
+}
+
+@media (min-width: 640px) {
+    .container-large {
+        padding: 0 24px;
+    }
+}
+
+@media (min-width: 1024px) {
+    .container-large {
+        padding: 0 32px;
+    }
+}
+
+/* Header fixe */
+.fixed-header {
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    z-index: 50;
+    background: white;
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+    border-bottom: 1px solid var(--gray-200);
+}
+
+.header-content {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 16px 0;
+}
+
+.header-left {
+    display: flex;
+    align-items: center;
+    gap: 16px;
+}
+
+.header-logo {
+    height: 32px;
+    width: auto;
+}
+
+.header-title {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+.company-name {
+    font-size: 20px;
+    font-weight: bold;
+    color: var(--gray-900);
+}
+
+.slogan {
+    font-size: 14px;
+    color: var(--gray-500);
+}
+
+.slogan.hidden {
+    display: none;
+}
+
+/* Navigation */
+.nav-desktop {
+    display: none;
+}
+
+@media (min-width: 768px) {
+    .nav-desktop {
+        display: flex;
+        gap: 32px;
+    }
+}
+
+.nav-link {
+    color: var(--gray-700);
+    padding: 8px 12px;
+    border-radius: 6px;
+    font-size: 14px;
+    font-weight: 500;
+    text-decoration: none;
+    transition: all 0.3s ease;
+}
+
+.nav-link:hover {
+    color: var(--gray-900);
+    background-color: rgba(255, 205, 0, 0.1);
+}
+
+/* Menu mobile */
+.mobile-menu-toggle {
+    display: block;
+    background: none;
+    border: none;
+    color: var(--gray-700);
+    padding: 8px;
+    cursor: pointer;
+    transition: color 0.3s ease;
+}
+
+.mobile-menu-toggle:hover {
+    color: var(--gray-900);
+}
+
+@media (min-width: 768px) {
+    .mobile-menu-toggle {
+        display: none;
+    }
+}
+
+.mobile-menu {
+    display: none;
+    border-top: 1px solid var(--gray-200);
+    margin-top: 16px;
+    padding-top: 16px;
+}
+
+.mobile-menu.show {
+    display: block;
+}
+
+@media (min-width: 768px) {
+    .mobile-menu {
+        display: none !important;
+    }
+}
+
+.mobile-menu-content {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+}
+
+/* Actions utilisateur */
+.user-actions {
+    display: flex;
+    align-items: center;
+    gap: 16px;
+}
+
+.profile-link {
+    display: none;
+}
+
+@media (min-width: 640px) {
+    .profile-link {
+        display: block;
+    }
+}
+
+.logout-btn {
+    background: linear-gradient(135deg, var(--primary-color) 0%, var(--accent-color, var(--primary-color)) 100%);
+    color: var(--text-color);
+    padding: 8px 16px;
+    border-radius: 6px;
+    font-size: 14px;
+    font-weight: 500;
+    text-decoration: none;
+    transition: all 0.3s ease;
+}
+
+.logout-btn:hover {
+    transform: translateY(-1px);
+    box-shadow: 0 4px 8px rgba(255, 205, 0, 0.3);
+}
+
+/* Contenu principal */
+.main-content {
+    flex: 1;
+    margin-top: 80px;
+    margin-bottom: 80px;
+    min-height: calc(100vh - 160px);
+    max-width: 1280px;
+    margin-left: auto;
+    margin-right: auto;
+    padding: 24px 16px;
+}
+
+@media (min-width: 640px) {
+    .main-content {
+        padding: 24px 24px;
+    }
+}
+
+@media (min-width: 1024px) {
+    .main-content {
+        padding: 24px 32px;
+    }
+}
+
+/* Footer fixe */
+.fixed-footer {
+    position: fixed;
+    bottom: 0;
+    left: 0;
+    right: 0;
+    z-index: 50;
+    background: white;
+    box-shadow: 0 -2px 4px rgba(0, 0, 0, 0.1);
+    border-top: 1px solid var(--gray-200);
+}
+
+.footer-content {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 16px 0;
+    height: 10px;
+}
+
+.footer-copyright {
+    color: var(--gray-500);
+    font-size: 14px;
+}
+
+.footer-links {
+    display: none;
+    gap: 24px;
+    font-size: 14px;
+    color: var(--gray-500);
+}
+
+@media (min-width: 768px) {
+    .footer-links {
+        display: flex;
+    }
+}
+
+.footer-link {
+    color: var(--gray-500);
+    text-decoration: none;
+    transition: color 0.3s ease;
+}
+
+.footer-link:hover {
+    color: var(--gray-700);
+}
+
+/* ========================================
+   SYSTÈME DE BOUTONS CENTRALISÉ
+   ========================================
+   Tous les styles de boutons sont définis ici
+   pour une maintenance centralisée.
+*/
+
+/* Bouton de base */
+.btn {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    padding: 12px 16px;
+    border: 1px solid transparent;
+    border-radius: 8px;
+    font-size: 14px;
+    font-weight: 500;
+    text-decoration: none;
+    cursor: pointer;
+    transition: all 0.3s ease;
+    position: relative;
+    overflow: hidden;
+}
+
+/* Bouton principal */
+.btn-primary {
+    background: linear-gradient(135deg, var(--primary-color) 0%, var(--accent-color, var(--primary-color)) 100%);
+    color: var(--text-color);
+    box-shadow: 0 2px 4px rgba(0, 0, 0, var(--shadow-intensity));
+}
+
+.btn-primary:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 10px 25px rgba(255, 205, 0, 0.3);
+}
+
+.btn-primary:focus {
+    outline: none;
+    box-shadow: 0 0 0 3px rgba(255, 205, 0, 0.3);
+}
+
+.btn-primary:disabled {
+    opacity: 0.6;
+    cursor: not-allowed;
+    transform: none;
+}
+
+/* Bouton secondaire */
+.btn-secondary {
+    background-color: var(--secondary-color);
+    color: var(--text-color);
+    border: 1px solid var(--primary-color);
+}
+
+.btn-secondary:hover {
+    background-color: var(--primary-color);
+    color: var(--text-color);
+    transform: translateY(-1px);
+}
+
+/* Bouton de succès */
+.btn-success {
+    background-color: var(--success-color);
+    color: white;
+}
+
+.btn-success:hover {
+    background-color: #218838;
+    transform: translateY(-1px);
+}
+
+/* Bouton d'erreur */
+.btn-error {
+    background-color: var(--error-color);
+    color: white;
+}
+
+.btn-error:hover {
+    background-color: #c82333;
+    transform: translateY(-1px);
+}
+
+/* Bouton d'avertissement */
+.btn-warning {
+    background-color: var(--warning-color);
+    color: var(--text-color);
+}
+
+.btn-warning:hover {
+    background-color: #e0a800;
+    transform: translateY(-1px);
+}
+
+/* Bouton outline */
+.btn-outline {
+    background-color: transparent;
+    color: var(--primary-color);
+    border: 2px solid var(--primary-color);
+}
+
+.btn-outline:hover {
+    background-color: var(--primary-color);
+    color: var(--text-color);
+    transform: translateY(-1px);
+}
+
+/* Bouton ghost */
+.btn-ghost {
+    background-color: transparent;
+    color: var(--primary-color);
+    border: 1px solid transparent;
+}
+
+.btn-ghost:hover {
+    background-color: rgba(255, 205, 0, 0.1);
+    transform: translateY(-1px);
+}
+
+/* Tailles de boutons */
+.btn-sm {
+    padding: 8px 12px;
+    font-size: 12px;
+}
+
+.btn-lg {
+    padding: 16px 24px;
+    font-size: 16px;
+}
+
+.btn-xl {
+    padding: 20px 32px;
+    font-size: 18px;
+}
+
+/* Bouton plein */
+.btn-full {
+    width: 100%;
+}
+
+/* Bouton avec icône */
+.btn-icon {
+    padding: 8px;
+    border-radius: 50%;
+    width: 40px;
+    height: 40px;
+}
+
+/* Bouton avec spinner */
+.btn-loading {
+    position: relative;
+    color: transparent;
+}
+
+.btn-loading::after {
+    content: '';
+    position: absolute;
+    width: 16px;
+    height: 16px;
+    top: 50%;
+    left: 50%;
+    margin-left: -8px;
+    margin-top: -8px;
+    border: 2px solid transparent;
+    border-top: 2px solid currentColor;
+    border-radius: 50%;
+    animation: spin 1s linear infinite;
+}
+
+@keyframes spin {
+    from {
+        transform: rotate(0deg);
+    }
+
+    to {
+        transform: rotate(360deg);
+    }
+}
+
+/* Bouton avec gradient */
+.btn-gradient {
+    background: linear-gradient(135deg, var(--primary-color) 0%, var(--accent-color, var(--primary-color)) 100%);
+    color: var(--text-color);
+}
+
+.btn-gradient:hover {
+    background: linear-gradient(135deg, var(--accent-color, var(--primary-color)) 0%, var(--primary-color) 100%);
+    transform: translateY(-2px);
+    box-shadow: 0 10px 25px rgba(255, 205, 0, 0.3);
+}
+
+/* ========================================
+   SYSTÈME D'OMBRES POUR BOUTONS
+   ========================================
+   Classes pour ajouter des ombres aux boutons
+*/
+
+/* Ombres de base */
+.btn-shadow {
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+}
+
+.btn-shadow-sm {
+    box-shadow: 0 1px 2px rgba(0, 0, 0, 0.1);
+}
+
+.btn-shadow-md {
+    box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+}
+
+.btn-shadow-lg {
+    box-shadow: 0 10px 15px rgba(0, 0, 0, 0.1);
+}
+
+.btn-shadow-xl {
+    box-shadow: 0 20px 25px rgba(0, 0, 0, 0.1);
+}
+
+/* Ombres colorées */
+.btn-shadow-primary {
+    box-shadow: 0 4px 6px rgba(255, 205, 0, 0.3);
+}
+
+.btn-shadow-primary-lg {
+    box-shadow: 0 10px 25px rgba(255, 205, 0, 0.3);
+}
+
+.btn-shadow-success {
+    box-shadow: 0 4px 6px rgba(40, 167, 69, 0.3);
+}
+
+.btn-shadow-error {
+    box-shadow: 0 4px 6px rgba(220, 53, 69, 0.3);
+}
+
+.btn-shadow-warning {
+    box-shadow: 0 4px 6px rgba(255, 193, 7, 0.3);
+}
+
+/* Ombres avec effet hover */
+.btn-shadow-hover:hover {
+    box-shadow: 0 8px 15px rgba(0, 0, 0, 0.2);
+    transform: translateY(-2px);
+}
+
+.btn-shadow-primary-hover:hover {
+    box-shadow: 0 10px 25px rgba(255, 205, 0, 0.4);
+    transform: translateY(-2px);
+}
+
+/* Ombres personnalisées */
+.btn-shadow-custom {
+    box-shadow: 0 4px 8px rgba(0, 0, 0, var(--shadow-intensity));
+}
+
+.btn-shadow-custom-hover:hover {
+    box-shadow: 0 8px 16px rgba(0, 0, 0, calc(var(--shadow-intensity) * 2));
+    transform: translateY(-2px);
+}
+
+/* ========================================
+   UTILITAIRES
+   ========================================
+   Classes utilitaires communes
+*/
+
+.hidden {
+    display: none;
+}
+
+.flex {
+    display: flex;
+}
+
+.flex-col {
+    flex-direction: column;
+}
+
+.items-center {
+    align-items: center;
+}
+
+.justify-between {
+    justify-content: space-between;
+}
+
+.space-x-4>*+* {
+    margin-left: 16px;
+}
+
+.space-x-2>*+* {
+    margin-left: 8px;
+}
+
+.space-x-8>*+* {
+    margin-left: 32px;
+}
+
+.space-y-2>*+* {
+    margin-top: 8px;
+}
+
+.space-y-4>*+* {
+    margin-top: 16px;
+}
+
+.space-y-6>*+* {
+    margin-top: 24px;
+}
+
+.w-6 {
+    width: 24px;
+}
+
+.h-6 {
+    height: 24px;
+}
+
+.h-8 {
+    height: 32px;
+}
+
+.w-auto {
+    width: auto;
+}
+
+.text-xl {
+    font-size: 20px;
+}
+
+.text-sm {
+    font-size: 14px;
+}
+
+.font-bold {
+    font-weight: bold;
+}
+
+.text-gray-900 {
+    color: var(--gray-900);
+}
+
+.text-gray-500 {
+    color: var(--gray-500);
+}
+
+.text-gray-700 {
+    color: var(--gray-700);
+}
+
+.text-gray-600 {
+    color: var(--gray-600);
+}
+
+.bg-gray-50 {
+    background-color: var(--gray-50);
+}
+
+.border-gray-200 {
+    border-color: var(--gray-200);
+}
+
+.border-t {
+    border-top-width: 1px;
+    border-top-style: solid;
+}
+
+.rounded-md {
+    border-radius: 6px;
+}
+
+.px-3 {
+    padding-left: 12px;
+    padding-right: 12px;
+}
+
+.py-2 {
+    padding-top: 8px;
+    padding-bottom: 8px;
+}
+
+.py-4 {
+    padding-top: 16px;
+    padding-bottom: 16px;
+}
+
+.px-4 {
+    padding-left: 16px;
+    padding-right: 16px;
+}
+
+.p-2 {
+    padding: 8px;
+}
+
+.mt-4 {
+    margin-top: 16px;
+}
+
+.pt-4 {
+    padding-top: 16px;
+}
+
+.mb-2 {
+    margin-bottom: 8px;
+}
+
+.mb-4 {
+    margin-bottom: 16px;
+}
+
+.mb-6 {
+    margin-bottom: 24px;
+}
+
+.mb-8 {
+    margin-bottom: 32px;
+}
+
+/* Responsive */
+@media (max-width: 768px) {
+    .main-content {
+        margin-top: 70px;
+        margin-bottom: 70px;
+        min-height: calc(100vh - 140px);
+    }
+}
+
+/* Override pour la page de login - pas de marges */
+.main-content.login-page {
+    margin: 0 !important;
+    padding: 0 !important;
+    min-height: 100vh !important;
+    height: 100vh !important;
+    overflow: hidden !important;
+    max-width: none !important;
+}

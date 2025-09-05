@@ -1,0 +1,67 @@
+{% extends "base.html" %}
+{% block contenu %}
+<div class="container-fluid">
+  <div class="d-flex justify-content-between align-items-start mb-4">
+    <div>
+      <h1 class="h4 mb-1">Espace Conseiller</h1>
+      <p class="text-muted mb-0">Compléter les dossiers, vérifier l’éligibilité, gérer les documents.</p>
+    </div>
+    <div class="d-flex gap-2">
+      <a href="/preinscriptions/ui" class="btn btn-primaire">Préinscriptions</a>
+      <a href="/inscriptions/ui" class="btn btn-outline-dark">Inscriptions</a>
+    </div>
+  </div>
+
+  <div class="row g-3">
+    <!-- Dossiers à compléter -->
+    <div class="col-lg-7">
+      <div class="card shadow-sm h-100">
+        <div class="card-body">
+          <h2 class="h6 mb-3">Dossiers à compléter</h2>
+          <div class="table-responsive">
+            <table class="table align-middle">
+              <thead><tr><th>ID</th><th>Candidat</th><th>Manquants</th><th></th></tr></thead>
+              <tbody>
+                {% for d in a_completer %}
+                <tr>
+                  <td>{{ d.id }}</td>
+                  <td>{{ d.candidat_nom }}</td>
+                  <td>{{ d.pieces_manquantes }}</td>
+                  <td class="text-end">
+                    <a class="btn btn-sm btn-outline-dark" href="/candidats/ui/{{ d.candidat_id }}">Ouvrir dossier</a>
+                    <a class="btn btn-sm btn-outline-dark" href="/documents/ui/candidat/{{ d.candidat_id }}">Documents</a>
+                  </td>
+                </tr>
+                {% else %}
+                <tr><td colspan="4" class="text-center text-muted py-3">Aucun dossier</td></tr>
+                {% endfor %}
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Aide à l’éligibilité -->
+    <div class="col-lg-5">
+      <div class="card shadow-sm h-100">
+        <div class="card-body">
+          <h2 class="h6 mb-3">Outils d’éligibilité</h2>
+          <form class="row g-2" method="get" action="/pappers/enrichir/{{ candidat_id_exemple or 1 }}">
+            <div class="col-12">
+              <label class="form-label">SIRET</label>
+              <input class="form-control" placeholder="Ex: 12345678900011">
+            </div>
+            <div class="col-12">
+              <button class="btn btn-outline-dark w-100">Enrichir via Pappers</button>
+            </div>
+          </form>
+          <div class="mt-3">
+            <a class="btn btn-outline-dark btn-sm" href="/documents/ui/candidat/1">Uploader une pièce</a>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+{% endblock %}

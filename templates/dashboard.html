@@ -1,0 +1,301 @@
+{% extends "base.html" %}
+
+{% block title %}Tableau de bord - {{ app_name }}{% endblock %}
+
+{% block content %}
+<div class="container-fluid py-4">
+    <!-- En-tête du tableau de bord -->
+    <div class="row mb-4">
+        <div class="col-12">
+            <div class="d-flex justify-content-between align-items-center">
+                <div>
+                    <h1 class="h3 mb-0">
+                        <i class="fas fa-tachometer-alt me-2 text-primary"></i>
+                        Tableau de bord
+                    </h1>
+                    <p class="text-muted mb-0">Bienvenue, {{ current_user.nom_complet }}</p>
+                </div>
+                <div class="text-end">
+                    <small class="text-muted">Dernière connexion : {{ current_user.derniere_connexion|default('Jamais', true) }}</small>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Alertes -->
+    {% if alerts %}
+    <div class="row mb-4">
+        <div class="col-12">
+            {% for alert in alerts %}
+            <div class="alert alert-{{ alert.type }} alert-dismissible fade show" role="alert">
+                <i class="fas fa-{% if alert.type == 'warning' %}exclamation-triangle{% elif alert.type == 'error' %}times-circle{% else %}info-circle{% endif %} me-2"></i>
+                {{ alert.message }}
+                <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+            </div>
+            {% endfor %}
+        </div>
+    </div>
+    {% endif %}
+
+    <!-- Statistiques principales -->
+    <div class="row mb-4">
+        <div class="col-xl-3 col-md-6 mb-4">
+            <div class="card border-left-primary shadow h-100 py-2">
+                <div class="card-body">
+                    <div class="row no-gutters align-items-center">
+                        <div class="col mr-2">
+                            <div class="text-xs font-weight-bold text-primary text-uppercase mb-1">
+                                Préinscriptions
+                            </div>
+                            <div class="h5 mb-0 font-weight-bold text-gray-800">{{ stats.candidats_preinscrits }}</div>
+                        </div>
+                        <div class="col-auto">
+                            <i class="fas fa-file-alt fa-2x text-gray-300"></i>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="col-xl-3 col-md-6 mb-4">
+            <div class="card border-left-success shadow h-100 py-2">
+                <div class="card-body">
+                    <div class="row no-gutters align-items-center">
+                        <div class="col mr-2">
+                            <div class="text-xs font-weight-bold text-success text-uppercase mb-1">
+                                Inscriptions
+                            </div>
+                            <div class="h5 mb-0 font-weight-bold text-gray-800">{{ stats.candidats_inscrits }}</div>
+                        </div>
+                        <div class="col-auto">
+                            <i class="fas fa-check-circle fa-2x text-gray-300"></i>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="col-xl-3 col-md-6 mb-4">
+            <div class="card border-left-info shadow h-100 py-2">
+                <div class="card-body">
+                    <div class="row no-gutters align-items-center">
+                        <div class="col mr-2">
+                            <div class="text-xs font-weight-bold text-info text-uppercase mb-1">
+                                Programmes actifs
+                            </div>
+                            <div class="h5 mb-0 font-weight-bold text-gray-800">{{ stats.programmes_actifs }}</div>
+                        </div>
+                        <div class="col-auto">
+                            <i class="fas fa-graduation-cap fa-2x text-gray-300"></i>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="col-xl-3 col-md-6 mb-4">
+            <div class="card border-left-warning shadow h-100 py-2">
+                <div class="card-body">
+                    <div class="row no-gutters align-items-center">
+                        <div class="col mr-2">
+                            <div class="text-xs font-weight-bold text-warning text-uppercase mb-1">
+                                Jurys planifiés
+                            </div>
+                            <div class="h5 mb-0 font-weight-bold text-gray-800">{{ stats.jurys_planifies }}</div>
+                        </div>
+                        <div class="col-auto">
+                            <i class="fas fa-gavel fa-2x text-gray-300"></i>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Statistiques par programme -->
+    {% if stats_par_programme %}
+    <div class="row mb-4">
+        <div class="col-12">
+            <div class="card shadow">
+                <div class="card-header py-3">
+                    <h6 class="m-0 font-weight-bold text-primary">
+                        <i class="fas fa-chart-bar me-2"></i>
+                        Statistiques par programme
+                    </h6>
+                </div>
+                <div class="card-body">
+                    <div class="table-responsive">
+                        <table class="table table-bordered">
+                            <thead>
+                                <tr>
+                                    <th>Programme</th>
+                                    <th>Préinscriptions</th>
+                                    <th>Inscriptions</th>
+                                    <th>Sessions de jury</th>
+                                    <th>Actions</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% for programme in stats_par_programme %}
+                                <tr>
+                                    <td>
+                                        <strong>{{ programme.programme }}</strong>
+                                        <br><small class="text-muted">{{ programme.code }}</small>
+                                    </td>
+                                    <td>
+                                        <span class="badge bg-primary">{{ programme.preinscriptions }}</span>
+                                    </td>
+                                    <td>
+                                        <span class="badge bg-success">{{ programme.inscriptions }}</span>
+                                    </td>
+                                    <td>
+                                        <span class="badge bg-info">{{ programme.jurys }}</span>
+                                    </td>
+                                    <td>
+                                        <a href="{{ url_for('programme_detail', programme_id=programme.id) }}" 
+                                           class="btn btn-sm btn-outline-primary">
+                                            <i class="fas fa-eye me-1"></i>Voir
+                                        </a>
+                                    </td>
+                                </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    {% endif %}
+
+    <!-- Actions récentes -->
+    <div class="row mb-4">
+        <div class="col-lg-8">
+            <div class="card shadow">
+                <div class="card-header py-3">
+                    <h6 class="m-0 font-weight-bold text-primary">
+                        <i class="fas fa-history me-2"></i>
+                        Actions récentes
+                    </h6>
+                </div>
+                <div class="card-body">
+                    {% if actions_recentes %}
+                    <div class="list-group list-group-flush">
+                        {% for action in actions_recentes %}
+                        <div class="list-group-item d-flex justify-content-between align-items-center">
+                            <div>
+                                <div class="d-flex align-items-center">
+                                    <i class="fas fa-{% if action.type == 'preinscription' %}file-alt{% elif action.type == 'inscription' %}check-circle{% else %}gavel{% endif %} me-2 text-{{ action.type|action_color }}"></i>
+                                    <div>
+                                        <strong>{{ action.description }}</strong>
+                                        <br>
+                                        <small class="text-muted">
+                                            <i class="fas fa-clock me-1"></i>
+                                            {{ action.date|format_datetime }}
+                                        </small>
+                                    </div>
+                                </div>
+                            </div>
+                            <span class="badge bg-{{ action.statut|statut_color }}">{{ action.statut }}</span>
+                        </div>
+                        {% endfor %}
+                    </div>
+                    {% else %}
+                    <p class="text-muted text-center py-3">
+                        <i class="fas fa-inbox fa-2x mb-2"></i><br>
+                        Aucune action récente
+                    </p>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+
+        <!-- Statistiques utilisateur -->
+        <div class="col-lg-4">
+            <div class="card shadow">
+                <div class="card-header py-3">
+                    <h6 class="m-0 font-weight-bold text-primary">
+                        <i class="fas fa-user me-2"></i>
+                        Mes statistiques
+                    </h6>
+                </div>
+                <div class="card-body">
+                    {% if user_stats %}
+                    <div class="list-group list-group-flush">
+                        {% for key, value in user_stats.items() %}
+                        <div class="list-group-item d-flex justify-content-between align-items-center">
+                            <span>{{ key|title }}</span>
+                            <span class="badge bg-primary rounded-pill">{{ value }}</span>
+                        </div>
+                        {% endfor %}
+                    </div>
+                    {% else %}
+                    <p class="text-muted text-center py-3">
+                        <i class="fas fa-chart-line fa-2x mb-2"></i><br>
+                        Aucune statistique disponible
+                    </p>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Actions rapides -->
+    <div class="row">
+        <div class="col-12">
+            <div class="card shadow">
+                <div class="card-header py-3">
+                    <h6 class="m-0 font-weight-bold text-primary">
+                        <i class="fas fa-bolt me-2"></i>
+                        Actions rapides
+                    </h6>
+                </div>
+                <div class="card-body">
+                    <div class="row">
+                        {% if current_user.role in ['ADMINISTRATEUR', 'DIRECTEUR_TECHNIQUE'] %}
+                        <div class="col-md-3 mb-3">
+                            <a href="{{ url_for('programme_create') }}" class="btn btn-primary w-100">
+                                <i class="fas fa-plus me-2"></i>Nouveau programme
+                            </a>
+                        </div>
+                        {% endif %}
+                        
+                        {% if current_user.role in ['RESPONSABLE_PROGRAMME', 'CONSEILLER'] %}
+                        <div class="col-md-3 mb-3">
+                            <a href="{{ url_for('candidat_create') }}" class="btn btn-success w-100">
+                                <i class="fas fa-user-plus me-2"></i>Nouveau candidat
+                            </a>
+                        </div>
+                        {% endif %}
+                        
+                        <div class="col-md-3 mb-3">
+                            <a href="{{ url_for('jury_create') }}" class="btn btn-info w-100">
+                                <i class="fas fa-gavel me-2"></i>Nouvelle session jury
+                            </a>
+                        </div>
+                        
+                        <div class="col-md-3 mb-3">
+                            <a href="{{ url_for('document_upload') }}" class="btn btn-warning w-100">
+                                <i class="fas fa-upload me-2"></i>Upload document
+                            </a>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+// Auto-refresh des alertes
+setInterval(function() {
+    fetch('/api/dashboard/alerts')
+        .then(response => response.json())
+        .then(alerts => {
+            // Mettre à jour les alertes si nécessaire
+            console.log('Alertes mises à jour:', alerts);
+        })
+        .catch(error => console.error('Erreur lors de la mise à jour des alertes:', error));
+}, 30000); // Toutes les 30 secondes
+</script>
+{% endblock %}

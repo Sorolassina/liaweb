@@ -1,0 +1,76 @@
+{% extends "ACD/admin/base_admin.html" %}
+{% block admin_content %}
+<div class="d-flex justify-content-between align-items-center mb-3">
+  <h5 class="m-0">Journal d’activité</h5>
+  <a class="btn btn-outline-secondary" href="/admin/logs/export"><i class="fa fa-download me-1"></i> Export CSV</a>
+</div>
+
+<div class="card-neumo p-3 mb-3">
+  <form class="row g-2" method="get" action="/admin/logs">
+    <div class="col-md-3">
+      <input class="form-control" name="q" value="{{ q }}" placeholder="Recherche libre…">
+    </div>
+    <div class="col-md-3">
+      <select class="form-select" name="action">
+        <option value="">— Action —</option>
+        {% for a in actions_distinct %}
+          <option value="{{ a }}" {% if a==action %}selected{% endif %}>{{ a }}</option>
+        {% endfor %}
+      </select>
+    </div>
+    <div class="col-md-3">
+      <select class="form-select" name="user_email">
+        <option value="">— Utilisateur —</option>
+        {% for u in users_distinct %}
+          <option value="{{ u }}" {% if u==user_email %}selected{% endif %}>{{ u }}</option>
+        {% endfor %}
+      </select>
+    </div>
+    <div class="col-md-1"><input type="date" class="form-control" name="date_from" value="{{ date_from }}"></div>
+    <div class="col-md-1"><input type="date" class="form-control" name="date_to" value="{{ date_to }}"></div>
+    <div class="col-md-1">
+      <button class="btn btn-primary w-100"><i class="fa fa-search"></i></button>
+    </div>
+  </form>
+</div>
+
+<div class="card-neumo p-0">
+  <table class="table m-0 align-middle">
+    <thead>
+      <tr>
+        <th>Quand</th>
+        <th>Qui</th>
+        <th>Action</th>
+        <th>Objet</th>
+        <th>IP</th>
+        <th>Métadonnées</th>
+      </tr>
+    </thead>
+    <tbody>
+      {% for r in rows %}
+      <tr>
+        <td class="text-muted small">{{ r.created_at.strftime('%d/%m/%Y %H:%M:%S') }}</td>
+        <td>
+          <div class="fw-bold">{{ r.user_email or '—' }}</div>
+          <div class="small text-muted">{{ r.user_agent or '' }}</div>
+        </td>
+        <td><span class="badge bg-secondary">{{ r.action }}</span></td>
+        <td>
+          <div>{{ r.entity or '—' }} {% if r.entity_id %}<span class="text-muted">#{{ r.entity_id }}</span>{% endif %}</div>
+        </td>
+        <td class="small text-muted">{{ r.ip or '—' }}</td>
+        <td style="max-width: 420px;">
+                          {% if r.activity_data %}
+                <pre class="small m-0" style="white-space:pre-wrap">{{ r.activity_data | tojson(indent=0) }}</pre>
+          {% else %}
+            <span class="text-muted">—</span>
+          {% endif %}
+        </td>
+      </tr>
+      {% else %}
+      <tr><td colspan="6" class="text-muted text-center">Aucun log.</td></tr>
+      {% endfor %}
+    </tbody>
+  </table>
+</div>
+{% endblock %}

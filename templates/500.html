@@ -1,0 +1,59 @@
+{% extends "base.html" %}
+
+{% block title %}Erreur serveur (500) - {{ super() }}{% endblock %}
+
+{% block extra_head %}
+<style>
+  :root{ --lia-jaune:#ffd300; --lia-noir:#0b0b0b; --lia-blanc:#ffffff; }
+  .err-wrap{ min-height: calc(100vh - 120px); display:flex; align-items:center; justify-content:center; padding:32px 16px; background: var(--gray-50); }
+  .err-card{
+    background:#fff; border:1px solid var(--gray-200); border-radius:16px; padding:32px; max-width:760px; width:100%;
+    box-shadow:0 6px 18px rgba(0,0,0,.06); text-align:center;
+  }
+  .code{
+    display:inline-block; font-size:84px; font-weight:900; line-height:1; letter-spacing:.03em; color: var(--lia-noir);
+    text-shadow: 0 2px 0 var(--lia-jaune), 0 4px 0 rgba(0,0,0,.05);
+  }
+  .badge-ghost{ display:inline-block; margin-top:8px; padding:6px 12px; border-radius:999px; background:#ffe8e6; color:#8a1f11; font-weight:600; font-size:12px; border:1px dashed #ffb7ad; }
+  .lead{ font-size:18px; color:var(--gray-700); margin:12px 0 6px; }
+  .muted{ color:var(--gray-500); font-size:14px; }
+  .hint{ margin-top:20px; font-size:13px; color:var(--gray-500); }
+
+  .actions{ display:flex; gap:12px; justify-content:center; margin-top:24px; flex-wrap:wrap; }
+  .btn-lia{ background: var(--lia-jaune); color: var(--lia-noir); border:none; padding:10px 16px; border-radius:10px; font-weight:600; }
+  .btn-outline{ background:#fff; color:var(--lia-noir); border:1px solid var(--gray-300); padding:10px 16px; border-radius:10px; font-weight:600; }
+
+  .meta{
+    margin-top:16px; display:flex; gap:12px; justify-content:center; flex-wrap:wrap; font-size:12px; color:var(--gray-600);
+  }
+  .meta .tag{ border:1px solid var(--gray-300); border-radius:999px; padding:4px 10px; background:#fff; }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="err-wrap">
+  <div class="err-card">
+    <div class="code">500</div>
+    <div class="badge-ghost">Erreur interne du serveur</div>
+
+    <p class="lead">Désolé, un incident est survenu lors du traitement de votre requête.</p>
+    <p class="muted">L’équipe technique a été notifiée si la journalisation est active.</p>
+
+    <div class="meta">
+      <span class="tag"><strong>Incident :</strong> {{ incident_id }}</span>
+      <span class="tag"><strong>Chemin :</strong> {{ path }}</span>
+      <span class="tag"><strong>Date :</strong> {{ now }}</span>
+    </div>
+
+    <div class="actions">
+      <a href="/accueil" class="btn btn-lia">← Retour à l’accueil</a>
+      <a href="javascript:location.reload()" class="btn btn-outline">Réessayer</a>
+      <a href="/contact" class="btn btn-outline">Contacter le support</a>
+    </div>
+
+    <div class="hint">
+      Si le problème persiste, communiquez l’ID d’incident au support pour faciliter le diagnostic.
+    </div>
+  </div>
+</div>
+{% endblock %}

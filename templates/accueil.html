@@ -1,0 +1,376 @@
+{% extends "base.html" %}
+{% block head_extra %}
+<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" crossorigin=""/>
+<style>
+  /* Container adaptatif qui tient compte de la sidebar */
+  .container-wide{ 
+    width: 100%; 
+    max-width: calc(100vw - var(--sidebar-width) - 2rem); 
+    margin: 0 auto; 
+    padding: 0 1rem;
+  }
+  
+  /* Responsive pour sidebar réduite */
+  .sidebar.collapsed ~ #content .container-wide {
+    max-width: calc(100vw - var(--sidebar-width-collapsed) - 2rem);
+  }
+  
+  /* Responsive mobile */
+  @media (max-width: 768px) {
+    .container-wide {
+      max-width: calc(100vw - 2rem);
+      padding: 0 0.5rem;
+    }
+  }
+
+  .card-neumo{ 
+    background: var(--white-color); 
+    border-radius: 18px; 
+    box-shadow: var(--shadow);
+    border: 1px solid color-mix(in srgb, var(--secondary-color) 8%, transparent);
+    transition: transform .2s ease, box-shadow .2s ease; 
+  }
+  .card-neumo:hover{ transform: translateY(-2px); box-shadow: var(--shadow-lg); }
+  
+  .section-title{ 
+    color: var(--secondary-color); 
+    font-weight: 900; 
+    margin: 0 0 0.8rem; 
+    font-size: 1.1rem;
+  }
+  
+  /* Grille KPI adaptative */
+  .kpi-grid{ 
+    display: grid; 
+    grid-template-columns: repeat(auto-fit, minmax(140px, 1fr)); 
+    gap: 12px; 
+  }
+  
+  @media (max-width: 1200px){ 
+    .kpi-grid{ grid-template-columns: repeat(3, 1fr);} 
+  }
+  @media (max-width: 680px){ 
+    .kpi-grid{ grid-template-columns: repeat(2, 1fr);} 
+  }
+  @media (max-width: 430px){ 
+    .kpi-grid{ grid-template-columns: 1fr;} 
+  }
+  
+  .kpi{ 
+    padding: 16px 14px; 
+    text-align: center; 
+    border-radius: 14px; 
+    box-shadow: var(--shadow-sm); 
+    background: var(--white-color); 
+  }
+  .kpi .val{ 
+    font-weight: 900; 
+    font-size: 1.8rem; 
+    line-height: 1; 
+    color: var(--primary-color); 
+  }
+  .kpi .lab{ 
+    margin-top: 4px; 
+    color: var(--gray-dark); 
+    font-weight: 700; 
+    text-transform: uppercase; 
+    letter-spacing: .4px; 
+    font-size: .82rem; 
+  }
+  
+  /* Carte adaptative */
+  #map{ 
+    width: 100%; 
+    height: 380px; 
+    border-radius: 18px; 
+    box-shadow: var(--shadow);
+    border: 1px solid color-mix(in srgb, var(--secondary-color) 10%, transparent); 
+  }
+  
+  /* Grilles adaptatives */
+  .grid-2{ 
+    display: grid; 
+    grid-template-columns: 1.2fr 0.8fr; 
+    gap: 16px; 
+  }
+  @media (max-width: 1200px){ 
+    .grid-2{ grid-template-columns: 1fr 1fr; } 
+  }
+  @media (max-width: 992px){ 
+    .grid-2{ grid-template-columns: 1fr; } 
+  }
+  
+  .grid-2h{ 
+    display: grid; 
+    grid-template-columns: 1fr 1fr; 
+    gap: 16px; 
+  }
+  @media (max-width: 992px){ 
+    .grid-2h{ grid-template-columns: 1fr; } 
+  }
+  
+  /* Listes adaptatives */
+  .list-group-soft{ 
+    display: flex; 
+    flex-direction: column; 
+    gap: 10px; 
+    padding: 4px 0; 
+  }
+  .list-item{ 
+    display: flex; 
+    align-items: center; 
+    justify-content: space-between; 
+    gap: 10px;
+    padding: 10px 12px; 
+    border-radius: 12px; 
+    background: var(--white-color); 
+    box-shadow: var(--shadow-sm);
+    border: 1px solid color-mix(in srgb, var(--secondary-color) 8%, transparent); 
+  }
+  .list-item .meta{ 
+    color: var(--gray-dark); 
+    font-size: .9rem; 
+  }
+  
+  /* Barres de progression */
+  .progress-soft{ 
+    width: 100%; 
+    height: 10px; 
+    border-radius: 999px; 
+    background: var(--gray-light);
+    box-shadow: inset 2px 2px 5px rgba(0,0,0,.06), inset -2px -2px 5px rgba(255,255,255,.8); 
+    overflow: hidden; 
+  }
+  .progress-soft > span{ 
+    display: block; 
+    height: 100%; 
+    background: var(--primary-color); 
+    transition: width .4s ease; 
+  }
+  
+  .badge-chip{ 
+    border-radius: 999px; 
+    padding: .25rem .55rem; 
+    font-weight: 800; 
+    font-size: .75rem;
+    background: color-mix(in srgb, var(--primary-color) 16%, transparent);
+    border: 1px solid color-mix(in srgb, var(--primary-color) 35%, transparent); 
+    color: var(--secondary-color); 
+  }
+  
+  .chart-card{ 
+    padding: 12px; 
+  }
+  
+  /* Espacement adaptatif */
+  .mb-3 {
+    margin-bottom: 1rem;
+  }
+  
+  .p-3 {
+    padding: 1rem;
+  }
+  
+  .mt-2 {
+    margin-top: 0.5rem;
+  }
+  
+  .mt-1 {
+    margin-top: 0.25rem;
+  }
+  
+  /* Responsive pour les petits écrans */
+  @media (max-width: 576px) {
+    .section-title {
+      font-size: 1rem;
+    }
+    
+    .kpi .val {
+      font-size: 1.5rem;
+    }
+    
+    .kpi .lab {
+      font-size: .75rem;
+    }
+    
+    #map {
+      height: 300px;
+    }
+    
+    .list-item {
+      padding: 8px 10px;
+    }
+  }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="container-wide">
+
+  <!-- KPIs -->
+  <div class="card-neumo p-3 mb-3">
+    <h3 class="section-title">Vue d'ensemble</h3>
+    <div class="kpi-grid">
+      <div class="kpi"><div class="val">{{ kpi.candidats }}</div><div class="lab">Candidats</div></div>
+      <div class="kpi"><div class="val">{{ kpi.preinscrits }}</div><div class="lab">Préinscrits</div></div>
+      <div class="kpi"><div class="val">{{ kpi.qpv }}</div><div class="lab">QPV</div></div>
+      <div class="kpi"><div class="val">{{ kpi.femmes }}</div><div class="lab">Femmes</div></div>
+      <div class="kpi"><div class="val">{{ kpi.hommes }}</div><div class="lab">Hommes</div></div>
+    </div>
+  </div>
+
+  <!-- Carte + Jurys -->
+  <div class="grid-2 mb-3">
+    <div class="card-neumo p-3">
+      <h3 class="section-title">Couverture géographique</h3>
+      <div id="map"></div>
+      <div class="mt-2" style="display:flex; gap:8px; flex-wrap:wrap;">
+        <span class="badge-chip">📍 Candidats</span>
+        <span class="badge-chip">🟡 QPV</span>
+        <span class="badge-chip">🔵 Femmes</span>
+        <span class="badge-chip">⚫ Hommes</span>
+      </div>
+    </div>
+
+    <div class="card-neumo p-3">
+      <h3 class="section-title">Prochains événements (Jury)</h3>
+      <div class="list-group-soft">
+        {% if jurys %}
+          {% for j in jurys %}
+          <div class="list-item">
+            <div>
+              <div style="font-weight:800">Jury {{ j.programme.code }}{% if j.promotion and j.promotion.libelle %} • {{ j.promotion.libelle }}{% endif %}</div>
+              <div class="meta">{{ j.session_le.astimezone().strftime("%d/%m/%Y %H:%M") }} • {{ j.lieu or "—" }} • {{ j.statut|capitalize }}</div>
+            </div>
+            <span class="badge-chip">Jury</span>
+          </div>
+          {% endfor %}
+        {% else %}
+          <div class="list-item"><div class="meta">Aucun jury planifié</div></div>
+        {% endif %}
+      </div>
+    </div>
+  </div>
+
+  <!-- Histogramme & Pyramide -->
+  <div class="grid-2h mb-3">
+    <div class="card-neumo chart-card">
+      <h3 class="section-title">Répartition par programme (inscriptions)</h3>
+      <canvas id="chartProgrammes" height="220"></canvas>
+    </div>
+    <div class="card-neumo chart-card">
+      <h3 class="section-title">Pyramide des âges</h3>
+      <canvas id="chartPyramid" height="220"></canvas>
+    </div>
+  </div>
+
+  <!-- RDV & Objectifs -->
+  <div class="grid-2 mb-3">
+    <div class="card-neumo p-3">
+      <h3 class="section-title">Rendez-vous à venir</h3>
+      <div class="list-group-soft">
+        {% if rdvs %}
+          {% for r in rdvs %}
+          <div class="list-item">
+            <div>
+              <div style="font-weight:800">{{ r.when.strftime("%d/%m/%Y %H:%M") }} • {{ r.etape }}</div>
+              <div class="meta">{{ r.candidat }} • {{ r.programme }}</div>
+            </div>
+            <span class="badge-chip">RDV</span>
+          </div>
+          {% endfor %}
+        {% else %}
+          <div class="list-item"><div class="meta">Aucun rendez-vous planifié</div></div>
+        {% endif %}
+      </div>
+    </div>
+
+    <div class="card-neumo p-3">
+      <h3 class="section-title">Atteinte des objectifs par programme</h3>
+      <div class="list-group-soft">
+        {% for o in objectifs %}
+        <div class="list-item" style="flex-direction:column; align-items:stretch;">
+          <div style="display:flex; justify-content:space-between; gap:10px; align-items:center;">
+            <div style="font-weight:900">{{ o.programme }}</div>
+            <div class="meta">{{ o.n }} inscrits</div>
+          </div>
+
+          {% if o.target_total %}
+          <div class="meta mt-1">Total (objectif {{ o.target_total }}) — {{ o.total_pct or 0 }}%</div>
+          <div class="progress-soft"><span style="width: {{ (o.total_pct or 0) | round(1) }}%"></span></div>
+          {% endif %}
+
+          {% if o.target_qpv is not none %}
+          <div class="meta mt-1">QPV (cible {{ o.target_qpv | round(0) }}%) — {{ o.qpv_pct }}%</div>
+          <div class="progress-soft"><span style="width: {{ [o.qpv_pct, 100] | min | round(1) }}%"></span></div>
+          {% endif %}
+
+          {% if o.target_f is not none %}
+          <div class="meta mt-1">Femmes (cible {{ o.target_f | round(0) }}%) — {{ o.f_pct }}%</div>
+          <div class="progress-soft"><span style="width: {{ [o.f_pct, 100] | min | round(1) }}%"></span></div>
+          {% endif %}
+        </div>
+        {% endfor %}
+      </div>
+    </div>
+  </div>
+
+</div>
+
+<!-- Leaflet + Charts (Chart.js déjà inclus via base.html) -->
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js" crossorigin=""></script>
+<script>
+  const PINS = {{ pins | tojson }};
+  const PROG_LABELS = {{ prog_labels | tojson }};
+  const PROG_VALUES = {{ prog_values | tojson }};
+  const PYR_LABELS = {{ pyramid_labels | tojson }};
+  const PYR_MALE = {{ pyramid_male | tojson }};
+  const PYR_FEMALE = {{ pyramid_female | tojson }};
+
+  // Carte
+  (function(){
+    const map = L.map('map', { scrollWheelZoom: false });
+    L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png',
+      { maxZoom: 18, attribution: '&copy; OpenStreetMap' }).addTo(map);
+    const markers = [];
+    PINS.forEach(p => {
+      const m = L.marker([p.lat, p.lng]).addTo(map);
+      const qpv = p.qpv ? "🟡 QPV" : "⚪ Non QPV";
+      const sx  = p.sexe === "F" ? "🔵 Femme" : (p.sexe === "H" ? "⚫ Homme" : "•");
+      m.bindPopup(`<div style="font-weight:800">${(p.prenom||"")} ${(p.nom||"")}</div>
+                   <div style="font-size:.9rem; opacity:.8">${p.adresse||""}</div>
+                   <div style="font-size:.9rem;">${qpv} • ${sx}</div>`);
+      markers.push(m);
+    });
+    if (markers.length){
+      const g = L.featureGroup(markers);
+      map.fitBounds(g.getBounds().pad(0.2));
+    } else {
+      map.setView([46.7, 2.5], 5);
+    }
+  })();
+
+  // Charts
+  (function(){
+    new Chart(document.getElementById('chartProgrammes'), {
+      type: 'bar',
+      data: { labels: PROG_LABELS, datasets: [{ label: 'Inscriptions', data: PROG_VALUES, borderWidth: 1 }] },
+      options: { responsive: true, plugins: { legend: { display:false }, tooltip:{mode:'index', intersect:false} },
+                 scales:{ x:{ticks:{autoSkip:true,maxRotation:0}}, y:{beginAtZero:true,ticks:{precision:0}} } }
+    });
+    new Chart(document.getElementById('chartPyramid'), {
+      type: 'bar',
+      data: { labels: PYR_LABELS, datasets: [
+        { label: 'Hommes', data: PYR_MALE, borderWidth: 1 },
+        { label: 'Femmes', data: PYR_FEMALE, borderWidth: 1 }
+      ]},
+      options: {
+        indexAxis: 'y', responsive:true,
+        plugins:{ legend:{position:'bottom'},
+          tooltip:{ callbacks:{ label:(ctx)=>`${ctx.dataset.label}: ${Math.abs(ctx.parsed.x)}` } } },
+        scales:{ x:{ stacked:true, ticks:{ callback:(v)=>Math.abs(v), precision:0 } }, y:{ stacked:true } }
+      }
+    });
+  })();
+</script>
+{% endblock %}

@@ -1,0 +1,60 @@
+{% extends "base.html" %}
+{% block contenu %}
+<div class="container-fluid">
+  <div class="mb-4">
+    <h1 class="h4 mb-1">Espace Jury</h1>
+    <p class="text-muted mb-0">Rendez-vous de délibération et dossiers à examiner.</p>
+  </div>
+
+  <div class="row g-3">
+    <!-- Jurys planifiés -->
+    <div class="col-lg-6">
+      <div class="card shadow-sm h-100">
+        <div class="card-body">
+          <h2 class="h6 mb-3">Jurys planifiés</h2>
+          <ul class="list-group list-group-flush">
+            {% for j in jurys %}
+              <li class="list-group-item d-flex justify-content-between align-items-center">
+                <div>
+                  <div class="fw-semibold">{{ j.titre or ('Jury #' ~ j.id) }}</div>
+                  <div class="text-muted small">{{ j.session_le }} • {{ j.lieu or '—' }}</div>
+                </div>
+                <a class="btn btn-sm btn-outline-dark" href="/jury/ui">Ouvrir</a>
+              </li>
+            {% else %}
+              <li class="list-group-item text-muted">Aucun jury</li>
+            {% endfor %}
+          </ul>
+        </div>
+      </div>
+    </div>
+
+    <!-- Dossiers à statuer -->
+    <div class="col-lg-6">
+      <div class="card shadow-sm h-100">
+        <div class="card-body">
+          <h2 class="h6 mb-3">Dossiers à statuer</h2>
+          <div class="table-responsive">
+            <table class="table align-middle">
+              <thead><tr><th>ID</th><th>Candidat</th><th>Programme</th><th></th></tr></thead>
+              <tbody>
+                {% for d in dossiers %}
+                <tr>
+                  <td>{{ d.id }}</td>
+                  <td>{{ d.candidat_nom }}</td>
+                  <td>{{ d.programme_nom }}</td>
+                  <td class="text-end"><a class="btn btn-sm btn-outline-dark" href="/jury/ui/deliberation/{{ d.id }}">Délibérer</a></td>
+                </tr>
+                {% else %}
+                <tr><td colspan="4" class="text-center text-muted py-3">Aucun dossier</td></tr>
+                {% endfor %}
+              </tbody>
+            </table>
+          </div>
+          <div class="text-muted small">⚠ Les décisions s’enregistrent côté responsable de programme.</div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+{% endblock %}

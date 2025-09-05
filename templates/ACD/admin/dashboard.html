@@ -1,0 +1,55 @@
+{% extends "ACD/admin/base_admin.html" %}
+{% block admin_content %}
+<div class="card-neumo p-3 mb-3">
+  <div class="row g-3">
+    <div class="col-md-3"><div class="p-3 border rounded-4 text-center"><div class="fw-bold fs-3">{{ kpi.programmes }}</div><div class="text-muted">Programmes</div></div></div>
+    <div class="col-md-3"><div class="p-3 border rounded-4 text-center"><div class="fw-bold fs-3">{{ kpi.preinscriptions }}</div><div class="text-muted">Préinscriptions</div></div></div>
+    <div class="col-md-3"><div class="p-3 border rounded-4 text-center"><div class="fw-bold fs-3">{{ kpi.inscriptions }}</div><div class="text-muted">Inscriptions</div></div></div>
+    <div class="col-md-3"><div class="p-3 border rounded-4 text-center"><div class="fw-bold fs-3">{{ kpi.utilisateurs }}</div><div class="text-muted">Utilisateurs</div></div></div>
+  </div>
+</div>
+
+<div class="row g-3">
+  <div class="col-lg-6">
+    <div class="card-neumo p-3">
+      <div class="fw-bold mb-2">Inscriptions par programme</div>
+      <div class="small text-muted mb-2">Répartition actuelle</div>
+      <canvas id="chartInscProg" height="220"></canvas>
+    </div>
+  </div>
+  <div class="col-lg-6">
+    <div class="card-neumo p-3">
+      <div class="fw-bold mb-2">Jurys à venir</div>
+      {% if jurys_next %}
+        <ul class="list-group">
+          {% for j in jurys_next %}
+            <li class="list-group-item d-flex justify-content-between">
+              <span>{{ j.session_le.strftime('%d/%m/%Y %H:%M') }} — {{ j.lieu or '—' }}</span>
+              <span class="badge bg-secondary">{{ j.statut }}</span>
+            </li>
+          {% endfor %}
+        </ul>
+      {% else %}
+        <div class="text-muted">Aucun jury planifié.</div>
+      {% endif %}
+    </div>
+  </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+{{ super() }}
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+<script>
+  const ctx = document.getElementById('chartInscProg');
+  const labels = {{ insc_by_prog|map(attribute=0)|list|tojson }};
+  const data = {{ insc_by_prog|map(attribute=1)|list|tojson }};
+  if (ctx) {
+    new Chart(ctx, {
+      type: 'bar',
+      data: { labels, datasets: [{ label: 'Inscriptions', data }] },
+      options: { responsive: true, plugins: { legend: { display:false } } }
+    });
+  }
+</script>
+{% endblock %}

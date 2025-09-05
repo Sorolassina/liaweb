@@ -1,0 +1,259 @@
+<!DOCTYPE html>
+<html lang="fr">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{% block title %}LIA - Plateforme de coaching intelligente{% endblock %}</title>
+
+    <!-- Google Fonts -->
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+
+    <!-- CSS de base centralisé -->
+    <link rel="stylesheet" href="{{ url_for('static', path='css/base.css') }}?v={{version}}">
+
+    <!-- Script pour charger le thème utilisateur -->
+    <script>
+        // Fonction simplifiée - pas de thème personnalisé pour LIA
+        function loadUserTheme() {
+            // Utiliser les variables CSS par défaut définies dans base.css
+            console.log('Thème LIA Coaching chargé');
+        }
+
+        // Charger le thème au chargement de la page
+        document.addEventListener('DOMContentLoaded', loadUserTheme);
+    </script>
+
+    {% block extra_head %}{% endblock %}
+</head>
+
+<body>
+    <!-- Header fixe en haut -->
+    <header class="fixed-header">
+        <div class="container-large">
+            <div class="header-content">
+                <!-- Logo et nom -->
+                <div class="header-left">
+                    <div id="user-logo" class="hidden">
+                        <img src="" alt="Logo" class="header-logo">
+                    </div>
+                    <div class="header-title">
+                        <h1 class="company-name">
+                            <span id="company-name">{{app_name}}</span>
+                        </h1>
+                        <span id="slogan" class="slogan hidden"></span>
+                    </div>
+                </div>
+
+                <!-- Navigation desktop -->
+                <nav class="nav-desktop">
+                    <a href="/" class="nav-link">
+                        Accueil
+                    </a>
+                    <a href="/ACT" class="nav-link">
+                        ACT
+                    </a>
+                    <a href="/ACI" class="nav-link">
+                        ACI
+                    </a>
+                    <a href="/ACD" class="nav-link">
+                        ACD
+                    </a>
+                    
+                    {% if roles %}
+                        {% if 'administrateur' in roles %}
+                        <a href="/admin" class="nav-link">
+                            Administration
+                        </a>
+                        {% endif %}
+                        {% if 'directeur_technique' in roles %}
+                            <li><a class="nav-link" href="/directeur">Directeur</a></li>
+                        {% endif %}
+                        {% if 'drh_daf' in roles or 'drh' in roles or 'daf' in roles %}
+                            <li><a class="nav-link" href="/drh-daf">DRH / DAF</a></li>
+                        {% endif %}
+                        {% if 'responsable_structure' in roles %}
+                            <li><a class="nav-link" href="/responsable-structure">Resp. Structure</a></li>
+                        {% endif %}
+                        {% if 'responsable_programme' in roles %}
+                            <li><a class="nav-link" href="/responsable-programme/1">Resp. Programme</a></li>
+                        {% endif %}
+                        {% if 'conseiller' in roles %}
+                            <li><a class="nav-link" href="/conseiller">Conseiller</a></li>
+                        {% endif %}
+                        {% if 'jury_externe' in roles %}
+                            <li><a class="nav-link" href="/jury-espace">Jury</a></li>
+                        {% endif %}
+                        {% if 'coach_externe' in roles %}
+                            <li><a class="nav-link" href="/coach">Coach</a></li>
+                        {% endif %}
+                        {% if 'candidat' in roles %}
+                            <li><a class="nav-link" href="/espace-candidat">Mon espace</a></li>
+                        {% endif %}
+                    {% endif %}
+                    
+
+                </nav>
+
+                <!-- Menu mobile -->
+                <div class="mobile-menu-toggle">
+                    <button id="mobile-menu-button">
+                        <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                d="M4 6h16M4 12h16M4 18h16"></path>
+                        </svg>
+                    </button>
+                </div>
+
+                <!-- Actions utilisateur -->
+                <div class="user-actions">
+                    <span class="user-name">{% if utilisateur %}{{utilisateur.nom_complet}} ({{utilisateur.role.value}}){% else %}Non connecté{% endif %}</span>
+                    <a href="" class="nav-link profile-link">
+                        Profil
+                    </a>
+                    <a href="/auth/logout" class="logout-btn">
+                        Déconnexion
+                    </a>
+                </div>
+            </div>
+
+            <!-- Menu mobile déroulant -->
+            <div id="mobile-menu" class="mobile-menu">
+                <div class="mobile-menu-content">
+                    <a href="/" class="nav-link">
+                        Accueil
+                    </a>
+                    <a href="/ACT" class="nav-link">
+                        ACT
+                    </a>
+                    <a href="/ACI" class="nav-link">
+                        ACI
+                    </a>
+                    <a href="/ACD" class="nav-link">
+                        ACD
+                    </a>
+                    
+                    {% if roles %}
+                        {% if 'administrateur' in roles %}
+                        <a href="/admin" class="nav-link">
+                            Administration
+                        </a>
+                        {% endif %}
+                        {% if 'directeur_technique' in roles %}
+                            <li><a class="nav-link" href="/directeur">Directeur</a></li>
+                        {% endif %}
+                       
+                        {% if 'drh_daf' in roles or 'drh' in roles or 'daf' in roles %}
+                            <li><a class="nav-link" href="/drh-daf">DRH / DAF</a></li>
+                        {% endif %}
+                        
+                        {% if 'responsable_structure' in roles %}
+                            <li><a class="nav-link" href="/responsable-structure">Resp. Structure</a></li>
+                        {% endif %}
+                        {% if 'responsable_programme' in roles %}
+                            <li><a class="nav-link" href="/responsable-programme/1">Resp. Programme</a></li>
+                        {% endif %}
+                        {% if 'conseiller' in roles %}
+                            <li><a class="nav-link" href="/conseiller">Conseiller</a></li>
+                        {% endif %}
+                        {% if 'jury_externe' in roles %}
+                            <li><a class="nav-link" href="/jury-espace">Jury</a></li>
+                        {% endif %}
+                        {% if 'coach_externe' in roles %}
+                            <li><a class="nav-link" href="/coach">Coach</a></li>
+                        {% endif %}
+                        {% if 'candidat' in roles %}
+                            <li><a class="nav-link" href="/espace-candidat">Mon espace</a></li>
+                        {% endif %}
+                    {% endif %}
+                    
+                </div>
+            </div>
+        </div>
+    </header>
+
+    <!-- Contenu principal avec espacement pour header et footer fixes -->
+    <main class="main-content">
+        {% block content %}
+        {% endblock %}
+    </main>
+
+    <!-- Footer fixe en bas -->
+    <footer class="fixed-footer">
+        <div class="container-large">
+            <div class="footer-content">
+                <div class="footer-copyright">
+                    <p>&copy; 2024 <span id="footer-company-name">{{app_name}}</span>. Tous droits réservés.</p>
+                </div>
+                <div class="footer-links">
+                    <a href="/privacy" class="footer-link">Confidentialité</a>
+                    <a href="/terms" class="footer-link">Conditions</a>
+                    <a href="/contact" class="footer-link">Contact</a>
+                </div>
+            </div>
+        </div>
+    </footer>
+
+    <!-- Script pour mettre à jour l'interface avec les données du thème -->
+    <script>
+        // Fonction simplifiée - pas de thème personnalisé pour LIA
+        function updateThemeUI() {
+            // Utiliser les valeurs par défaut de LIA Coaching
+            console.log('Interface LIA Coaching chargée');
+        }
+
+        // Gestion du menu mobile
+        function initMobileMenu() {
+            const mobileMenuButton = document.getElementById('mobile-menu-button');
+            const mobileMenu = document.getElementById('mobile-menu');
+
+            if (mobileMenuButton && mobileMenu) {
+                mobileMenuButton.addEventListener('click', function () {
+                    const isHidden = mobileMenu.classList.contains('hidden');
+
+                    if (isHidden) {
+                        mobileMenu.classList.remove('hidden');
+                        mobileMenu.classList.add('show');
+                        mobileMenuButton.innerHTML = `
+                            <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path>
+                            </svg>
+                        `;
+                    } else {
+                        mobileMenu.classList.add('hidden');
+                        mobileMenu.classList.remove('show');
+                        mobileMenuButton.innerHTML = `
+                            <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16M4 18h16"></path>
+                            </svg>
+                        `;
+                    }
+                });
+
+                // Fermer le menu mobile quand on clique sur un lien
+                const mobileLinks = mobileMenu.querySelectorAll('a');
+                mobileLinks.forEach(link => {
+                    link.addEventListener('click', function () {
+                        mobileMenu.classList.add('hidden');
+                        mobileMenu.classList.remove('show');
+                        mobileMenuButton.innerHTML = `
+                            <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16M4 18h16"></path>
+                            </svg>
+                        `;
+                    });
+                });
+            }
+        }
+
+        // Mettre à jour l'interface après le chargement du thème
+        document.addEventListener('DOMContentLoaded', () => {
+            updateThemeUI();
+            initMobileMenu();
+        });
+    </script>
+
+    {% block extra_scripts %}{% endblock %}
+</body>
+
+</html>
