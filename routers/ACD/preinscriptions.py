@@ -235,6 +235,60 @@ async def preinscription_public_submit(
         if settings.DEBUG:
             print(f"🔄 [DEBUG] Candidat existant mis à jour: {email}")
     
+    # Vérifier si le candidat est déjà inscrit à ce programme
+    existing_inscription = session.exec(
+        select(Inscription).where(
+            (Inscription.candidat_id == cand.id) & 
+            (Inscription.programme_id == prog.id)
+        )
+    ).first()
+    
+    if existing_inscription:
+        if settings.DEBUG:
+            print(f"⚠️ [DEBUG] Candidat déjà inscrit au programme {prog.code}")
+        
+        # Retourner une erreur claire
+        programmes_actifs = session.exec(select(Programme).where(Programme.actif.is_(True)).order_by(Programme.code)).all()
+        return templates.TemplateResponse(
+            "ACD/preinscription_public_form.html",
+            {
+                "request": request,
+                "settings": settings,
+                "programme": prog,
+                "error": f"Vous êtes déjà inscrit au programme '{prog.code} - {prog.nom}'. Vous ne pouvez vous inscrire qu'une seule fois par programme.",
+                "doc_types": DOC_TYPES_DEFAULT,
+                "programmes_actifs": programmes_actifs,
+            },
+            status_code=400
+        )
+    
+    # Vérifier si le candidat est déjà préinscrit à ce programme
+    existing_preinscription = session.exec(
+        select(Preinscription).where(
+            (Preinscription.candidat_id == cand.id) & 
+            (Preinscription.programme_id == prog.id)
+        )
+    ).first()
+    
+    if existing_preinscription:
+        if settings.DEBUG:
+            print(f"⚠️ [DEBUG] Candidat déjà préinscrit au programme {prog.code}")
+        
+        # Retourner une erreur claire
+        programmes_actifs = session.exec(select(Programme).where(Programme.actif.is_(True)).order_by(Programme.code)).all()
+        return templates.TemplateResponse(
+            "ACD/preinscription_public_form.html",
+            {
+                "request": request,
+                "settings": settings,
+                "programme": prog,
+                "error": f"Vous êtes déjà préinscrit au programme '{prog.code} - {prog.nom}'. Vous ne pouvez vous préinscrire qu'une seule fois par programme.",
+                "doc_types": DOC_TYPES_DEFAULT,
+                "programmes_actifs": programmes_actifs,
+            },
+            status_code=400
+        )
+    
     cand.civilite = civilite
     cand.date_naissance = dn
     cand.telephone = telephone
@@ -295,11 +349,11 @@ async def preinscription_public_submit(
             field_name="photo_profil",
         )
         ext = os.path.splitext(photo_profil.filename)[1].lower() or ".jpg"
-        photo_path = base_dir / f"photo_profil{ext}"
+        photo_path = base_dir / f"photo_profil_{pre.id}{ext}"
         save_upload(photo_path, photo_profil)
+        cand.photo_profil = str(photo_path)
         if settings.DEBUG:
             print(f"💾 [DEBUG] Photo sauvegardée: {photo_path}")
-        # cand.avatar_path = str(photo_path)
 
     # Documents dynamiques
     form = await request.form()
@@ -381,9 +435,9 @@ async def preinscription_public_submit(
 
     if settings.DEBUG:
         print(f"✅ [DEBUG] Préinscription terminée avec succès!")
-        print(f"🎯 [DEBUG] Redirection vers: ACD/preinscriptions/merci")
+        print(f"🎯 [DEBUG] Redirection vers: /ACD/preinscriptions/merci")
 
-    return RedirectResponse(url="ACD/preinscriptions/merci", status_code=303)
+    return RedirectResponse(url="/ACD/preinscriptions/merci", status_code=303)
 
 # --------- PAGE MERCI ---------
 @router.get("/preinscriptions/merci", response_class=HTMLResponse)
@@ -552,6 +606,33 @@ async def preinscription_public_submit_token(
         cand = Candidat(email=email, nom=nom, prenom=prenom)
         session.add(cand)
         session.flush()
+    
+    # Vérifier si le candidat est déjà inscrit à ce programme
+    existing_inscription = session.exec(
+        select(Inscription).where(
+            (Inscription.candidat_id == cand.id) & 
+            (Inscription.programme_id == prog.id)
+        )
+    ).first()
+    
+    if existing_inscription:
+        if settings.DEBUG:
+            print(f"⚠️ [DEBUG] Candidat déjà inscrit au programme {prog.code} (via token)")
+        raise HTTPException(status_code=400, detail=f"Vous êtes déjà inscrit au programme '{prog.code} - {prog.nom}'. Vous ne pouvez vous inscrire qu'une seule fois par programme.")
+    
+    # Vérifier si le candidat est déjà préinscrit à ce programme
+    existing_pre = session.exec(
+        select(Preinscription).where(
+            (Preinscription.candidat_id == cand.id) & 
+            (Preinscription.programme_id == prog.id)
+        )
+    ).first()
+    
+    if existing_pre:
+        if settings.DEBUG:
+            print(f"⚠️ [DEBUG] Candidat déjà préinscrit au programme {prog.code} (via token)")
+        raise HTTPException(status_code=400, detail=f"Vous êtes déjà préinscrit au programme '{prog.code} - {prog.nom}'. Vous ne pouvez vous préinscrire qu'une seule fois par programme.")
+    
     cand.civilite = civilite
     cand.date_naissance = dn
     cand.telephone = telephone
@@ -595,9 +676,9 @@ async def preinscription_public_submit_token(
             field_name="photo_profil",
         )
         ext = os.path.splitext(photo_profil.filename)[1].lower() or ".jpg"
-        photo_path = base_dir / f"photo_profil{ext}"
+        photo_path = base_dir / f"photo_profil_{pre.id}{ext}"
         save_upload(photo_path, photo_profil)
-        # Option: cand.avatar_path = str(photo_path)
+        cand.photo_profil = str(photo_path)
 
     # 2) Documents multiples dynamiques
     form = await request.form()

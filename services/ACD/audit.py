@@ -31,10 +31,12 @@ def log_activity(
     row = ActivityLog(
         user_id=user.id if user else None,
         user_email=user.email if user else None,
+        user_nom_complet=user.nom_complet if user else None,  # Stockage en dur
+        user_role=user.role if user else None,  # Stockage en dur
         action=action,
         entity=entity,
         entity_id=entity_id,
-        ip=_client_ip(request),
+        ip_address=_client_ip(request),  # Corrigé le nom du champ
         user_agent=_ua(request),
         activity_data=activity_data or {},
     )

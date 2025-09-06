@@ -120,7 +120,9 @@
 
 {% block content %}
 <!-- ========== Bandeau KPI fixe tout en haut ========== -->
+
 <div class="kpi-bandeau-fixe">
+  <h5>{{ current_programme }}</h5>
   <div class="card-neumo p-3">
     <div class="kpi-row">
       <div class="kpi-tile">
@@ -157,11 +159,11 @@
     <div class="p-2">
       {% for row in pre_rows %}
       {% set p, c, e, elig = row %}
-              <a class="text-decoration-none d-block mb-2" href="/ACD/inscriptions?programme={{ current_programme }}&pre_id={{ p.id }}">
+        <a class="text-decoration-none d-block mb-2" href="/ACD/inscriptions?programme={{ current_programme }}&pre_id={{ p.id }}">
         <div class="pre-card {% if selected and selected.id==p.id %}active{% endif %}">
-          <div class="avatar" style="background-image:url('{{ c.avatar_path or '/static/images/utilisateur.png' }}')"></div>
+          <div class="avatar" style="background-image:url('{{ c.photo_profil or '/static/images/utilisateur.png' }}')"></div>
           <div class="flex-grow-1">
-            <div class="fw-bold">{{ c.prenom }} {{ c.nom }}</div>
+            <div class="fw-bold" style="color: black;">{{ c.prenom }} {{ c.nom }}</div>
             <div class="small text-muted">{{ c.email }}</div>
           </div>
           {% if elig and elig.verdict %}

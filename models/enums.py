@@ -24,14 +24,8 @@ class StatutEtape(str, Enum):
     TERMINE = "termine"
     IGNORE = "ignore"
 
-class TypeDocument(str, Enum):
-    CNI = "cni"
-    PASSEPORT = "passeport"
-    KBIS = "kbis"
-    RIB = "rib"
-    AUTRE = "autre"
-
 class UserRole(str, Enum):
+    DIRECTEUR_GENERAL = "directeur_general"
     DIRECTEUR_TECHNIQUE = "directeur_technique"
     RESPONSABLE_PROGRAMME = "responsable_programme"
     CONSEILLER = "conseiller"
@@ -45,6 +39,9 @@ class UserRole(str, Enum):
     COACH_EXTERNE = "coach_externe"
     JURY_EXTERNE = "jury_externe"
     CANDIDAT = "candidat"
+    RESPONSABLE_COMMUNICATION = "responsable_communication"
+    ASSISTANT_COMMUNICATION = "assistant_communication"
+
 
 class TypeUtilisateur(str, Enum):
     INTERNE = "interne"

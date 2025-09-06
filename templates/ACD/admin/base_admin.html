@@ -14,6 +14,42 @@
   .admin-link.active{ background: var(--primary-color); color: var(--secondary-color); }
   .admin-content{ min-height: calc(100vh - 160px); }
   .card-neumo{ background:var(--white-color); border-radius:16px; box-shadow: var(--shadow); border:1px solid color-mix(in srgb, var(--secondary-color) 10%, transparent); }
+  
+  /* Styles pour le tableau des utilisateurs scrollable */
+  .users-table-container {
+    max-height: 400px;
+    overflow-y: auto;
+    overflow-x: hidden;
+    border-radius: 8px;
+  }
+  
+  .users-table-container table {
+    margin-bottom: 0;
+  }
+  
+  .users-table-container thead {
+    position: sticky;
+    top: 0;
+    background: var(--white-color);
+    z-index: 10;
+  }
+  .users-table-containerP {
+    max-height: 80%;
+    overflow-y: auto;
+    overflow-x: hidden;
+    border-radius: 8px;
+  }
+  .users-table-containerP table {
+    margin-bottom: 0;
+  }
+  
+  .users-table-containerP thead {
+    position: sticky;
+    top: 0;
+    background: var(--white-color);
+    z-index: 10;
+  }
+
 </style>
 {% endblock %}
 
@@ -25,6 +61,10 @@
     <a class="admin-link {% if '/admin/programmes' in request.url.path %}active{% endif %}" href="/admin/programmes"><i class="fa fa-layer-group"></i> Programmes</a>
     <a class="admin-link {% if '/admin/users' in request.url.path %}active{% endif %}" href="/admin/users"><i class="fa fa-users"></i> Utilisateurs</a>
     <a class="admin-link {% if '/admin/jurys' in request.url.path %}active{% endif %}" href="/admin/jurys"><i class="fa fa-gavel"></i> Jurys</a>
+    <a class="admin-link {% if '/admin/logs' in request.url.path %}active{% endif %}" href="/admin/logs"><i class="fa fa-history"></i> Traçabilité</a>
+    <a class="admin-link {% if '/admin/permissions' in request.url.path %}active{% endif %}" href="/admin/permissions"><i class="fa fa-shield"></i> Permissions</a>
+    <a class="admin-link {% if '/admin/archives' in request.url.path %}active{% endif %}" href="/admin/archives"><i class="fa fa-archive"></i> Archives</a>
+    <a class="admin-link {% if '/admin/database-status' in request.url.path %}active{% endif %}" href="/admin/database-status"><i class="fa fa-database"></i> Base de données</a>
     <a class="admin-link {% if '/admin/settings' in request.url.path %}active{% endif %}" href="/admin/settings"><i class="fa fa-sliders"></i> Paramètres</a>
   </aside>
   <main class="admin-content">

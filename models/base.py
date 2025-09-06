@@ -11,7 +11,7 @@ class User(SQLModel, table=True):
     nom_complet: str
     telephone: Optional[str] = None
     mot_de_passe_hash: str
-    role: UserRole
+    role: str  # Utilise la valeur string de l'enum UserRole
     type_utilisateur: TypeUtilisateur = TypeUtilisateur.INTERNE
     actif: bool = True
     derniere_connexion: Optional[datetime] = None
@@ -65,7 +65,7 @@ class ProgrammeUtilisateur(SQLModel, table=True):
     id: Optional[int] = Field(default=None, primary_key=True)
     programme_id: int = Field(foreign_key="programme.id")
     utilisateur_id: int = Field(foreign_key="user.id")
-    role_programme: UserRole
+    role_programme: str  # Utilise la valeur string de l'enum UserRole
     actif: bool = True
     date_debut: Optional[date] = None
     date_fin: Optional[date] = None
@@ -101,6 +101,7 @@ class Candidat(SQLModel, table=True):
     adresse_personnelle: Optional[str] = None
     niveau_etudes: Optional[str] = None
     secteur_activite: Optional[str] = None
+    photo_profil: Optional[str] = None  # Chemin vers la photo de profil
     # Géocodage (nouveaux champs)
     lat: Optional[float] = Field(default=None, index=True)
     lng: Optional[float] = Field(default=None, index=True)

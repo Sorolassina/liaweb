@@ -17,7 +17,7 @@ from typing import Optional
 
 # Importer tous les modèles pour que SQLModel.metadata.create_all() fonctionne
 from ..models.base import (
-    User, UserRole, Programme, Promotion, Candidat, Entreprise,
+    User, Programme, Promotion, Candidat, Entreprise,
     Preinscription, Document, Eligibilite, Inscription, Jury,
     MembreJury, DecisionJuryTable, EtapePipeline, AvancementEtape,
     ActionHandicap

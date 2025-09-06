@@ -34,7 +34,8 @@
 </div>
 
 <div class="card-neumo p-3">
-  <table class="table align-middle">
+  <div class="users-table-containerP">
+    <table class="table align-middle">
     <thead>
       <tr>
         <th>Code</th>
@@ -106,6 +107,7 @@
       {% endfor %}
     </tbody>
   </table>
+  </div>
 </div>
 
 <!-- Modals de visualisation -->
@@ -275,22 +277,7 @@
                   </div>
                 </td>
                 <td>
-                  {% set role_names = {
-                    'DIRECTEUR_TECHNIQUE': 'Directeur technique',
-                    'RESPONSABLE_PROGRAMME': 'Responsable programme',
-                    'CONSEILLER': 'Conseiller',
-                    'COORDINATEUR': 'Coordinateur',
-                    'FORMATEUR': 'Formateur',
-                    'EVALUATEUR': 'Évaluateur',
-                    'ACCOMPAGNATEUR': 'Accompagnateur',
-                    'ADMINISTRATEUR': 'Administrateur',
-                    'DRH': 'DRH',
-                    'RESPONSABLE_STRUCTURE': 'Responsable structure',
-                    'COACH_EXTERNE': 'Coach externe',
-                    'JURY_EXTERNE': 'Jury externe',
-                    'CANDIDAT': 'Candidat'
-                  } %}
-                  <span class="badge bg-primary">{{ role_names.get(pu.role_programme.name, pu.role_programme.name.replace('_', ' ').title()) }}</span>
+                  <span class="badge bg-primary">{{ pu.role_programme.replace('_', ' ').title() }}</span>
                 </td>
                 <td>
                   {% if pu.actif %}

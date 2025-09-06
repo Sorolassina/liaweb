@@ -22,6 +22,14 @@
 </div>
 {% endif %}
 
+{% if request.query_params.get('error') %}
+<div class="alert alert-danger alert-dismissible fade show" role="alert">
+  <i class="fa fa-exclamation-triangle me-2"></i>
+  {{ request.query_params.get('message', 'Une erreur est survenue') }}
+  <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+</div>
+{% endif %}
+
 <div class="d-flex justify-content-between align-items-center mb-3">
   <h5 class="m-0">Utilisateurs</h5>
   <form class="d-flex gap-2" method="get" action="/admin/users">
@@ -63,8 +71,8 @@
           <label for="role" class="form-label">Rôle <span class="text-danger">*</span></label>
           <select class="form-select" id="role" name="role" required>
             <option value="">Sélectionner un rôle</option>
-            {% for r in ['GENERAL_MANAGER','ADMINISTRATEUR','RESPONSABLE_PROGRAMME','CONSEILLER'] %}
-              <option value="{{ r }}">{{ r.replace('_',' ').title() }}</option>
+            {% for role in UserRole %}
+              <option value="{{ role.value }}">{{ role.name.replace('_',' ').title() }}</option>
             {% endfor %}
           </select>
         </div>
@@ -124,7 +132,8 @@ document.addEventListener('DOMContentLoaded', function() {
 </script>
 
 <div class="card-neumo p-3">
-  <table class="table align-middle">
+  <div class="users-table-container">
+    <table class="table align-middle">
     <thead>
       <tr>
         <th>Photo</th>
@@ -152,7 +161,7 @@ document.addEventListener('DOMContentLoaded', function() {
           </div>
         </td>
         <td class="fw-bold">{{ u.nom_complet }}</td>
-        <td><span class="badge bg-info">{{ u.role.name.replace('_',' ').title() }}</span></td>
+        <td><span class="badge bg-info">{{ u.role.replace('_',' ').title() }}</span></td>
         <td>{% if u.actif %}<span class="badge bg-success">Oui</span>{% else %}<span class="badge bg-secondary">Non</span>{% endif %}</td>
         <td class="text-end">
           <div class="btn-group btn-group-sm">
@@ -160,8 +169,13 @@ document.addEventListener('DOMContentLoaded', function() {
               <i class="fa fa-edit"></i>
             </button>
             <form method="post" action="/admin/users/{{ u.id }}/toggle" class="d-inline">
-              <button class="btn {% if u.actif %}btn-outline-danger{% else %}btn-outline-success{% endif %}">
-                {% if u.actif %}<i class="fa fa-ban"></i>{% else %}<i class="fa fa-check"></i>{% endif %}
+              <button class="btn {% if u.actif %}btn-outline-warning{% else %}btn-outline-success{% endif %}" 
+                      title="{% if u.actif %}Désactiver l'utilisateur{% else %}Activer l'utilisateur{% endif %}">
+                {% if u.actif %}
+                  <i class="fa fa-pause"></i>
+                {% else %}
+                  <i class="fa fa-play"></i>
+                {% endif %}
               </button>
             </form>
             <button type="button" class="btn btn-outline-danger" data-bs-toggle="modal" data-bs-target="#deleteModal{{ u.id }}">
@@ -175,6 +189,7 @@ document.addEventListener('DOMContentLoaded', function() {
       {% endfor %}
     </tbody>
   </table>
+  </div>
 </div>
 
 <!-- Modals pour changer les photos de profil -->
@@ -238,8 +253,8 @@ document.addEventListener('DOMContentLoaded', function() {
             <div class="col-md-6">
               <label for="role{{ u.id }}" class="form-label">Rôle</label>
               <select class="form-select" id="role{{ u.id }}" name="role" required>
-                {% for r in ['GENERAL_MANAGER','ADMINISTRATEUR','RESPONSABLE_PROGRAMME','CONSEILLER'] %}
-                  <option value="{{ r }}" {% if u.role.name==r %}selected{% endif %}>{{ r.replace('_',' ').title() }}</option>
+                {% for role in UserRole %}
+                  <option value="{{ role.value }}" {% if u.role==role.value %}selected{% endif %}>{{ role.name.replace('_',' ').title() }}</option>
                 {% endfor %}
               </select>
             </div>
@@ -299,4 +314,19 @@ document.addEventListener('DOMContentLoaded', function() {
 </div>
 {% endfor %}
 
+{% endblock %}
+
+{% block scripts %}
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+  // Auto-dismiss alerts after 5 seconds
+  setTimeout(function() {
+    const alerts = document.querySelectorAll('.alert-success, .alert-danger');
+    alerts.forEach(function(alert) {
+      const bsAlert = new bootstrap.Alert(alert);
+      bsAlert.close();
+    });
+  }, 5000);
+});
+</script>
 {% endblock %}

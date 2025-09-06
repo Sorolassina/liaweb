@@ -8,6 +8,7 @@ POUR LES NON-TECHNICIENS :
 """
 
 import datetime as dt
+import os
 from typing import Optional
 
 from fastapi import HTTPException, status, Depends, Request
@@ -16,9 +17,8 @@ from jose import JWTError, jwt
 from passlib.context import CryptContext
 from sqlmodel import Session, select
 
-from ..models.base import User, UserRole
+from ..models.base import User
 from ..core.config import settings
-from ..models.base import User, UserRole
 from ..core.database import get_session
 import logging
 
@@ -34,8 +34,10 @@ pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
 
 
 
-# Adresse email de l’admin par défaut
-ADMIN_EMAIL = "sorolassina58@gmail.com"
+# Configuration admin - peut être surchargée par des variables d'environnement
+ADMIN_EMAIL = os.getenv("ADMIN_EMAIL", "sorolassina58@gmail.com")
+ADMIN_PASSWORD = os.getenv("ADMIN_PASSWORD", "ChangeMoi#2025")
+ADMIN_NAME = os.getenv("ADMIN_NAME", "Soro wangboho lassina")
 
 # Current user
 # ----------------------------
@@ -83,10 +85,10 @@ async def get_current_user(
         try:
             admin_user = User(
                 email=email,
-                role=UserRole.ADMINISTRATEUR,
+                role="administrateur",
                 actif=True,
-                nom_complet="Soro wangboho lassina",
-                mot_de_passe_hash=get_password_hash("ChangeMoi#2025"),  # ⚠️ à changer
+                nom_complet=ADMIN_NAME,
+                mot_de_passe_hash=get_password_hash(ADMIN_PASSWORD),
             )
             session.add(admin_user)
             session.commit()
@@ -96,6 +98,20 @@ async def get_current_user(
         except Exception as e:
             logger.exception("❌ Erreur création admin")
             raise _credentials_exception(f"Erreur création admin: {e}")
+    
+    # ---- MISE À JOUR ADMIN EXISTANT ----
+    # Vérifier si les paramètres admin ont changé et mettre à jour si nécessaire
+    if admin_user.nom_complet != ADMIN_NAME or not verify_password(ADMIN_PASSWORD, admin_user.mot_de_passe_hash):
+        logger.info("🔧 Paramètres admin modifiés — mise à jour en base")
+        try:
+            admin_user.nom_complet = ADMIN_NAME
+            admin_user.mot_de_passe_hash = get_password_hash(ADMIN_PASSWORD)
+            session.add(admin_user)
+            session.commit()
+            logger.info("✅ Admin mis à jour avec les nouveaux paramètres")
+        except Exception as e:
+            logger.exception("❌ Erreur mise à jour admin")
+            # Ne pas faire échouer la connexion pour une erreur de mise à jour
 
     # ---- AUTRES UTILISATEURS ----
     user = session.exec(select(User).where(User.email == email)).first()
@@ -226,7 +242,7 @@ async def check_admin_permission(
 ) -> User:
     """Vérifie que l'utilisateur est admin."""
     print(f"✅ Je suis dans check_admin_permission : {current_user}")
-    if current_user.role != UserRole.ADMINISTRATEUR and current_user.email != ADMIN_EMAIL:
+    if current_user.role != "administrateur" and current_user.email != ADMIN_EMAIL:
         print(f"❌ Je n'ai pas les permissions dans check_admin_permission : {current_user}")
         raise _forbidden_exception("Pas assez de permissions")
     return current_user
@@ -236,7 +252,7 @@ async def check_manager_permission(
     current_user: User = Depends(get_current_user),
 ) -> User:
     """Vérifie que l'utilisateur est manager ou admin."""
-    if current_user.role not in (UserRole.MANAGER_GENERAL, UserRole.MANAGER_CONTRAT):
+    if current_user.role not in ("general_manager", "manager_contrat"):
         raise _forbidden_exception("Pas assez de permissions")
     return current_user
 

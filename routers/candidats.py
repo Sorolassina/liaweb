@@ -94,7 +94,7 @@ async def update_candidat(
 ):
     """Met à jour un candidat"""
     # Vérifier les permissions (conseiller ou candidat lui-même)
-    if current_user.role not in [UserRole.CONSEILLER, UserRole.RESPONSABLE_PROGRAMME, UserRole.ADMINISTRATEUR]:
+    if current_user.role not in [UserRole.CONSEILLER.value, UserRole.RESPONSABLE_PROGRAMME.value, UserRole.ADMINISTRATEUR.value]:
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
             detail="Permissions insuffisantes"

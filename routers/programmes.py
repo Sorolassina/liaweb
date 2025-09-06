@@ -23,7 +23,7 @@ async def create_programme(
     current_user: User = Depends(get_current_user)
 ):
     """Crée un nouveau programme (directeur technique seulement)"""
-    if current_user.role != UserRole.DIRECTEUR_TECHNIQUE:
+    if current_user.role != UserRole.DIRECTEUR_TECHNIQUE.value:
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
             detail="Seul le directeur technique peut créer des programmes"
@@ -81,7 +81,7 @@ async def update_programme(
     current_user: User = Depends(get_current_user)
 ):
     """Met à jour un programme (directeur technique seulement)"""
-    if current_user.role != UserRole.DIRECTEUR_TECHNIQUE:
+    if current_user.role != UserRole.DIRECTEUR_TECHNIQUE.value:
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
             detail="Seul le directeur technique peut modifier les programmes"

@@ -38,7 +38,7 @@ class UserService:
         return session.exec(select(User).where(User.email == email)).first()
     
     @staticmethod
-    def get_users_by_role(session: Session, role: UserRole) -> List[User]:
+    def get_users_by_role(session: Session, role: str) -> List[User]:
         """Récupère les utilisateurs par rôle"""
         return session.exec(select(User).where(User.role == role)).all()
     
@@ -67,7 +67,7 @@ class UserService:
             email=email,
             nom_complet=nom_complet,
             mot_de_passe_hash=hashed_password,
-            role=UserRole.ADMINISTRATEUR,
+            role="administrateur",
             type_utilisateur=TypeUtilisateur.INTERNE,
             actif=True
         )
@@ -86,7 +86,7 @@ class UserService:
         if not user:
             return False
         
-        if user.role != UserRole.ADMINISTRATEUR:
+        if user.role != "administrateur":
             return False
         
         return verify_password(password, user.mot_de_passe_hash)

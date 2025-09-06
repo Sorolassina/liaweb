@@ -26,6 +26,21 @@ router = APIRouter()
 def _prog_by_code(session: Session, code: str) -> Programme | None:
     return session.exec(select(Programme).where(Programme.code == code)).first()
 
+@router.get("/inscriptions", response_class=HTMLResponse)
+def inscriptions_redirect(
+    programme: str = Query("ACD"),
+    pre_id: Optional[int] = Query(None),
+    q: Optional[str] = Query(None),
+):
+    """Redirige vers la route /inscriptions/form avec les mêmes paramètres"""
+    from fastapi.responses import RedirectResponse
+    url = f"/ACD/inscriptions/form?programme={programme}"
+    if pre_id:
+        url += f"&pre_id={pre_id}"
+    if q:
+        url += f"&q={q}"
+    return RedirectResponse(url=url, status_code=302)
+
 @router.get("/inscriptions/form", response_class=HTMLResponse)
 def inscriptions_ui(
     request: Request,
@@ -60,13 +75,30 @@ def inscriptions_ui(
             like = f"%{q}%"
             stmt = stmt.where((Candidat.nom.ilike(like)) | (Candidat.prenom.ilike(like)) | (Candidat.email.ilike(like)))
         pre_rows = session.exec(stmt.order_by(Preinscription.cree_le.desc()).limit(400)).all()
+        
+        # Debug logs
+        if settings.DEBUG:
+            print(f"🔍 [DEBUG] Programme ID: {prog.id}")
+            print(f"📊 [DEBUG] Nombre de préinscriptions trouvées: {len(pre_rows)}")
+            for i, row in enumerate(pre_rows[:3]):  # Afficher les 3 premières
+                p, c, e, elig = row
+                print(f"   {i+1}. Préinscription ID: {p.id}, Candidat: {c.nom} {c.prenom}")
 
     selected = None; cand=None; ent=None; elig=None; inscription=None; pipeline=[]
     if pre_id:
+        if settings.DEBUG:
+            print(f"🎯 [DEBUG] Recherche de préinscription ID: {pre_id}")
         for row in pre_rows:
             if row[0].id == pre_id:
                 selected, cand, ent, elig = row
+                if settings.DEBUG:
+                    print(f"✅ [DEBUG] Préinscription trouvée: {selected.id}, Candidat: {cand.nom} {cand.prenom}")
                 break
+        
+        if not selected and settings.DEBUG:
+            print(f"❌ [DEBUG] Préinscription ID {pre_id} non trouvée dans la liste")
+            print(f"📋 [DEBUG] IDs disponibles: {[row[0].id for row in pre_rows]}")
+        
         if selected:
             inscription = session.exec(
                 select(Inscription).where(

@@ -3,16 +3,18 @@ from __future__ import annotations
 from typing import Optional, Dict, Any
 from datetime import datetime, timezone
 
-from sqlmodel import SQLModel, Field
-from sqlalchemy import Column, DateTime, Index, Text
+from sqlmodel import SQLModel, Field, Relationship
+from sqlalchemy import Column, DateTime, Index, Text, ForeignKey
 from sqlalchemy.dialects.postgresql import JSONB
 
 class ActivityLog(SQLModel, table=True):
     id: Optional[int] = Field(default=None, primary_key=True)
 
-    # Qui
-    user_id: Optional[int] = Field(default=None, index=True)
+    # Qui - Stockage en dur pour traçabilité permanente
+    user_id: Optional[int] = Field(default=None, index=True)  # ID de référence (peut devenir orphelin)
     user_email: Optional[str] = Field(default=None, index=True)
+    user_nom_complet: Optional[str] = Field(default=None)  # Nom stocké en dur
+    user_role: Optional[str] = Field(default=None)  # Rôle stocké en dur
 
     # Quoi
     action: str = Field(index=True)                      # ex: "PROGRAMME_CREATE"
@@ -20,7 +22,7 @@ class ActivityLog(SQLModel, table=True):
     entity_id: Optional[int] = Field(default=None, index=True)
 
     # Contexte
-    ip: Optional[str] = Field(default=None)
+    ip_address: Optional[str] = Field(default=None)
     user_agent: Optional[str] = Field(default=None)
 
     # Données additionnelles (JSONB)

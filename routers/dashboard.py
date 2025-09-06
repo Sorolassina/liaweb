@@ -237,7 +237,7 @@ async def get_user_stats(
     """Récupère les statistiques spécifiques à l'utilisateur connecté"""
     user_stats = {}
     
-    if current_user.role == UserRole.RESPONSABLE_PROGRAMME:
+    if current_user.role == UserRole.RESPONSABLE_PROGRAMME.value:
         # Statistiques pour un responsable de programme
         programmes_responsable = session.exec(
             select(Programme).where(Programme.responsable_id == current_user.id)
@@ -264,7 +264,7 @@ async def get_user_stats(
             "total_inscriptions": total_inscriptions
         }
     
-    elif current_user.role == UserRole.CONSEILLER:
+    elif current_user.role == UserRole.CONSEILLER.value:
         # Statistiques pour un conseiller
         inscriptions_conseiller = session.exec(
             select(Inscription).where(Inscription.conseiller_id == current_user.id)
@@ -275,7 +275,7 @@ async def get_user_stats(
             "inscriptions_en_cours": len([i for i in inscriptions_conseiller if i.statut == StatutDossier.VALIDE])
         }
     
-    elif current_user.role == UserRole.ADMINISTRATEUR:
+    elif current_user.role == UserRole.ADMINISTRATEUR.value:
         # Statistiques pour un administrateur
         total_users = session.exec(select(User)).count()
         total_programmes = session.exec(select(Programme)).count()

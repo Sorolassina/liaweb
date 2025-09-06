@@ -27,7 +27,7 @@ async def create_jury(
 ):
     """Crée une nouvelle session de jury (responsable programme seulement)"""
     # Vérifier les permissions
-    if current_user.role != UserRole.RESPONSABLE_PROGRAMME:
+    if current_user.role != UserRole.RESPONSABLE_PROGRAMME.value:
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
             detail="Seul le responsable de programme peut créer des jurys"
@@ -92,7 +92,7 @@ async def update_jury(
 ):
     """Met à jour un jury"""
     # Vérifier les permissions
-    if current_user.role != UserRole.RESPONSABLE_PROGRAMME:
+    if current_user.role != UserRole.RESPONSABLE_PROGRAMME.value:
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
             detail="Seul le responsable de programme peut modifier les jurys"
@@ -127,7 +127,7 @@ async def add_jury_member(
 ):
     """Ajoute un membre au jury"""
     # Vérifier les permissions
-    if current_user.role != UserRole.RESPONSABLE_PROGRAMME:
+    if current_user.role != UserRole.RESPONSABLE_PROGRAMME.value:
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
             detail="Seul le responsable de programme peut ajouter des membres"

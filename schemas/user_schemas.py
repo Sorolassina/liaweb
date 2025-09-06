@@ -11,7 +11,7 @@ class UserBase(BaseModel):
     email: EmailStr
     nom_complet: str
     telephone: Optional[str] = None
-    role: UserRole
+    role: str  # Utilise la valeur string de l'enum UserRole
     type_utilisateur: TypeUtilisateur = TypeUtilisateur.INTERNE
 
 

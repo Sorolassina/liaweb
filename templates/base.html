@@ -56,14 +56,14 @@
       color: var(--secondary-color);
     }
 
-        .modal-backdrop {
+    .modal-backdrop {
       background-color: transparent;
       display: none;
     }
     
     .modal-dialog {
       top: 10%;
-      height: 80%;
+      height: 90%;
       display: flex !important;
       justify-content: center;
       align-items: center;
@@ -74,12 +74,14 @@
     
     .modal.fade {
       background: rgba(0, 0, 0, 0.5);
-      
+      height: 90% !important;
     }
     
     .modal-content {
+      top: 0 !important;
       width: 80% !important;
       max-width: 80% !important;
+      max-height: 100% !important;
     }
 
     /* ===== SIDEBAR ===== */
@@ -269,7 +271,7 @@
       </button>
       <img  class="avatar" src="/static/images/utilisateur.png" alt="Logo" style="width:40px; height:40px;">
       <div class="username">{{ utilisateur.nom_complet }}</div>
-      <div class="user-function">{{ utilisateur.role.value | title }}</div>
+      <div class="user-function">{{ utilisateur.role | title }}</div>
       <div style="font-size:16px; color:var(--primary-color); font-weight:700;">LIA</div>
     </div>
 
@@ -454,7 +456,7 @@
     <div class="logo"><img src="/static/images/logo.png" alt="Logo"></div>
     <div class="username-title">LIA-Gestion coaching</div>
     <div class="user-info">
-      <span class="user-role">{{ utilisateur.nom_complet | title }} ({{ utilisateur.role.value | title }})</span>
+      <span class="user-role">{{ utilisateur.nom_complet | title }} ({{ utilisateur.role | title }})</span>
       <div class="avatar"></div>
       <button class="logout-button" onclick="window.location.href='/auth/logout'">Se déconnecter</button>
     </div>
@@ -585,7 +587,7 @@
     function htmlMoreMenu(){
       return `
         <div class="more-menu-title">Plus d'options</div>
-        {% if utilisateur and (utilisateur.email == "sorolassina58@gmail.com" or utilisateur.role.value == "GENERAL_MANAGER") %}
+        {% if utilisateur and (utilisateur.email == "sorolassina58@gmail.com" or utilisateur.role == "general_manager") %}
         <a href="/admin/"><i class="fas fa-cogs"></i><span>Administration</span></a>
         {% endif %}
         <a href="/reports"><i class="fas fa-file-alt"></i><span>Reports</span></a>
@@ -625,7 +627,7 @@
     function htmlMoreCollapsed(){
       return `
         <div class="more-menu-title">Plus d'options</div>
-        {% if utilisateur and (utilisateur.email == "sorolassina58@gmail.com" or utilisateur.role.value == "GENERAL_MANAGER") %}
+        {% if utilisateur and (utilisateur.email == "sorolassina58@gmail.com" or utilisateur.role == "general_manager") %}
         <a href="/admin"><i class="fas fa-cogs"></i><span>Administration</span></a>
         {% endif %}
         <a href="/knowledge-base"><i class="fas fa-book"></i><span>Documentation</span></a>

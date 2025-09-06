@@ -20,43 +20,43 @@ def create_test_data():
             {
                 "email": "admin@lia-coaching.com",
                 "nom_complet": "Administrateur LIA",
-                "role": UserRole.ADMINISTRATEUR,
+                "role": UserRole.ADMINISTRATEUR.value,
                 "type_utilisateur": TypeUtilisateur.INTERNE
             },
             {
                 "email": "directeur@lia-coaching.com",
                 "nom_complet": "Directeur Technique",
-                "role": UserRole.DIRECTEUR_TECHNIQUE,
+                "role": UserRole.DIRECTEUR_TECHNIQUE.value,
                 "type_utilisateur": TypeUtilisateur.INTERNE
             },
             {
                 "email": "responsable.acd@lia-coaching.com",
                 "nom_complet": "Responsable ACD",
-                "role": UserRole.RESPONSABLE_PROGRAMME,
+                "role": UserRole.RESPONSABLE_PROGRAMME.value,
                 "type_utilisateur": TypeUtilisateur.INTERNE
             },
             {
                 "email": "responsable.aci@lia-coaching.com",
                 "nom_complet": "Responsable ACI",
-                "role": UserRole.RESPONSABLE_PROGRAMME,
+                "role": UserRole.RESPONSABLE_PROGRAMME.value,
                 "type_utilisateur": TypeUtilisateur.INTERNE
             },
             {
                 "email": "responsable.act@lia-coaching.com",
                 "nom_complet": "Responsable ACT",
-                "role": UserRole.RESPONSABLE_PROGRAMME,
+                "role": UserRole.RESPONSABLE_PROGRAMME.value,
                 "type_utilisateur": TypeUtilisateur.INTERNE
             },
             {
                 "email": "conseiller1@lia-coaching.com",
                 "nom_complet": "Conseiller 1",
-                "role": UserRole.CONSEILLER,
+                "role": UserRole.CONSEILLER.value,
                 "type_utilisateur": TypeUtilisateur.INTERNE
             },
             {
                 "email": "conseiller2@lia-coaching.com",
                 "nom_complet": "Conseiller 2",
-                "role": UserRole.CONSEILLER,
+                "role": UserRole.CONSEILLER.value,
                 "type_utilisateur": TypeUtilisateur.INTERNE
             }
         ]

@@ -22,6 +22,7 @@ from .core.config import settings
 from .core.database import create_db_and_tables, test_db_connection
 from .core.middleware import setup_all_middlewares
 from .services import UserService
+from .services.database_migration import DatabaseMigrationService
 from .routers import router_configs
 
 from .core.database import get_session
@@ -250,6 +251,39 @@ async def on_startup():
     create_db_and_tables()
     logger.info("✅ Base de données initialisée")
     
+    # Migration automatique de la base de données
+    try:
+        logger.info("🔄 Début de la migration automatique...")
+        session = next(get_session())
+        migration_service = DatabaseMigrationService(session)
+        
+        # Effectuer la migration
+        migration_results = migration_service.migrate_database()
+        
+        # Afficher les résultats
+        if migration_results["enums_updated"]:
+            logger.info(f"📝 Enums mis à jour: {migration_results['enums_updated']}")
+        
+        if migration_results["tables_created"]:
+            logger.info(f"📋 Tables créées: {migration_results['tables_created']}")
+            
+        if migration_results["columns_added"]:
+            logger.info(f"🔧 Colonnes ajoutées: {migration_results['columns_added']}")
+            
+        if migration_results["errors"]:
+            logger.warning(f"⚠️ Erreurs de migration: {migration_results['errors']}")
+        else:
+            logger.info("✅ Migration automatique terminée avec succès")
+            
+        # Afficher le statut de la base de données
+        if settings.DEBUG:
+            db_status = migration_service.get_database_status()
+            logger.info(f"📊 Statut de la base de données: {len(db_status.get('tables', []))} tables, {len(db_status.get('enums', {}))} enums")
+            
+    except Exception as e:
+        logger.error(f"❌ Erreur lors de la migration automatique: {e}")
+        logger.warning("⚠️ L'application continue sans migration automatique")
+    
     # Vérifier et créer l'administrateur si nécessaire
     ensure_admin_user()
 
@@ -291,7 +325,7 @@ async def admin_dashboard(
 ):
     """Page d'administration"""
     # Vérifier les permissions
-    if current_user.role not in [UserRole.ADMINISTRATEUR, UserRole.DIRECTEUR_TECHNIQUE]:
+    if current_user.role not in [UserRole.ADMINISTRATEUR.value, UserRole.DIRECTEUR_TECHNIQUE.value]:
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
             detail="Accès non autorisé"
@@ -337,14 +371,10 @@ async def logout(request: Request):
 
 from .models.base import Programme, Preinscription, Inscription, Jury
 from sqlmodel import func
-from .models.enums import UserRole
 from .core.security import authenticate_user, create_access_token
 from .core.config import settings
 from fastapi.security import OAuth2PasswordRequestForm
 from fastapi import Depends, HTTPException, status
-from .core.security import authenticate_user, create_access_token
-from .core.config import settings
-from fastapi.security import OAuth2PasswordRequestForm
 
 @app.post("/login", response_class=RedirectResponse)
 async def login(

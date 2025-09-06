@@ -1,10 +1,40 @@
 {% extends "base.html" %}
+
 {% block content %}
-<div class="d-flex flex-column align-items-center justify-content-center" style="min-height:60vh;">
-  <div class="card-neumo p-4 text-center" style="max-width:520px;">
-    <h3 class="section-title">Merci 🙌</h3>
-    <p>Votre préinscription a bien été enregistrée. Nous revenons vers vous rapidement.</p>
-    <a href="/" class="btn btn-outline-secondary">Retour à l’accueil</a>
+<div class="d-flex flex-column align-items-center justify-content-center" style="min-height:80vh; background:var(--gray-50);">
+  
+  <div class="card-neumo p-5 text-center shadow-sm" style="max-width:560px; border-radius:20px;">
+    
+    <!-- Icône de validation -->
+    <div class="mb-4">
+      <div style="
+        width:80px; height:80px; 
+        margin:auto; 
+        border-radius:50%; 
+        display:flex; 
+        align-items:center; 
+        justify-content:center; 
+        background:linear-gradient(145deg, var(--gray-100), var(--gray-200));
+        box-shadow: 6px 6px 12px var(--gray-300), -6px -6px 12px var(--gray-50);
+      ">
+        <span style="font-size:2rem; color:var(--primary-color);">🙌</span>
+      </div>
+    </div>
+
+    <!-- Message principal -->
+    <h2 class="mb-3" style="color:var(--text-color); font-weight:600;">
+      Merci pour votre préinscription
+    </h2>
+    <p class="mb-4" style="color:var(--gray-600); font-size:1.1rem;">
+      Votre demande a bien été enregistrée.<br>
+      Nous reviendrons vers vous rapidement.
+    </p>
+
+    <!-- Bouton retour -->
+    <a href="/ACD/preinscriptions/form?programme=ACD" class="btn btn-outline-dark px-4 py-2" style="border-radius:12px;">
+      ⬅ Retour à l’accueil
+    </a>
   </div>
+
 </div>
 {% endblock %}

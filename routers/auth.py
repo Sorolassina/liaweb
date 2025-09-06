@@ -29,7 +29,7 @@ async def create_user(
     current_user: User = Depends(get_current_user)
 ):
     """Crée un nouvel utilisateur (admin seulement)"""
-    if current_user.role.value not in [UserRole.ADMINISTRATEUR.value, UserRole.DIRECTEUR_TECHNIQUE.value]:
+    if current_user.role not in [UserRole.ADMINISTRATEUR.value, UserRole.DIRECTEUR_TECHNIQUE.value]:
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
             detail="Permissions insuffisantes"
@@ -55,12 +55,12 @@ async def get_current_user_info(current_user: User = Depends(get_current_user)):
 
 @router.get("/users", response_model=List[UserResponse])
 async def get_users(
-    role: UserRole = None,
+    role: str = None,
     session: Session = Depends(get_session),
     current_user: User = Depends(get_current_user)
 ):
     """Récupère la liste des utilisateurs (admin seulement)"""
-    if current_user.role not in [UserRole.ADMINISTRATEUR, UserRole.DIRECTEUR_TECHNIQUE]:
+    if current_user.role not in [UserRole.ADMINISTRATEUR.value, UserRole.DIRECTEUR_TECHNIQUE.value]:
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
             detail="Permissions insuffisantes"
@@ -83,7 +83,7 @@ async def update_user(
 ):
     """Met à jour un utilisateur"""
     # Vérifier les permissions
-    if current_user.id != user_id and current_user.role not in [UserRole.ADMINISTRATEUR, UserRole.DIRECTEUR_TECHNIQUE]:
+    if current_user.id != user_id and current_user.role not in [UserRole.ADMINISTRATEUR.value, UserRole.DIRECTEUR_TECHNIQUE.value]:
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
             detail="Permissions insuffisantes"
@@ -106,7 +106,7 @@ async def delete_user(
     current_user: User = Depends(get_current_user)
 ):
     """Supprime un utilisateur (admin seulement)"""
-    if current_user.role not in [UserRole.ADMINISTRATEUR, UserRole.DIRECTEUR_TECHNIQUE]:
+    if current_user.role not in [UserRole.ADMINISTRATEUR.value, UserRole.DIRECTEUR_TECHNIQUE.value]:
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
             detail="Permissions insuffisantes"

@@ -31,7 +31,7 @@ async def upload_document(
 ):
     """Upload un document pour un candidat"""
     # Vérifier les permissions
-    if current_user.role not in [UserRole.CONSEILLER, UserRole.RESPONSABLE_PROGRAMME, UserRole.ADMINISTRATEUR]:
+    if current_user.role not in [UserRole.CONSEILLER.value, UserRole.RESPONSABLE_PROGRAMME.value, UserRole.ADMINISTRATEUR.value]:
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
             detail="Permissions insuffisantes"
@@ -173,7 +173,7 @@ async def delete_document(
 ):
     """Supprime un document"""
     # Vérifier les permissions
-    if current_user.role not in [UserRole.CONSEILLER, UserRole.RESPONSABLE_PROGRAMME, UserRole.ADMINISTRATEUR]:
+    if current_user.role not in [UserRole.CONSEILLER.value, UserRole.RESPONSABLE_PROGRAMME.value, UserRole.ADMINISTRATEUR.value]:
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
             detail="Permissions insuffisantes"
@@ -213,7 +213,7 @@ async def update_document(
 ):
     """Met à jour les métadonnées d'un document"""
     # Vérifier les permissions
-    if current_user.role not in [UserRole.CONSEILLER, UserRole.RESPONSABLE_PROGRAMME, UserRole.ADMINISTRATEUR]:
+    if current_user.role not in [UserRole.CONSEILLER.value, UserRole.RESPONSABLE_PROGRAMME.value, UserRole.ADMINISTRATEUR.value]:
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
             detail="Permissions insuffisantes"

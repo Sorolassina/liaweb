@@ -35,7 +35,7 @@ async def create_pipeline_etape(
     current_user: User = Depends(get_current_user)
 ):
     """Crée une nouvelle étape dans le pipeline d'un programme"""
-    require_permission(current_user, [UserRole.DIRECTEUR_TECHNIQUE, UserRole.RESPONSABLE_PROGRAMME])
+    require_permission(current_user, [UserRole.DIRECTEUR_TECHNIQUE.value, UserRole.RESPONSABLE_PROGRAMME.value])
     
     nouvelle_etape = PipelineService.create_pipeline_etape(session, programme_id, etape)
     return {"message": "Étape créée avec succès", "etape": nouvelle_etape}
@@ -49,7 +49,7 @@ async def update_pipeline_etape(
     current_user: User = Depends(get_current_user)
 ):
     """Met à jour une étape du pipeline"""
-    require_permission(current_user, [UserRole.DIRECTEUR_TECHNIQUE, UserRole.RESPONSABLE_PROGRAMME])
+    require_permission(current_user, [UserRole.DIRECTEUR_TECHNIQUE.value, UserRole.RESPONSABLE_PROGRAMME.value])
     
     etape = PipelineService.update_pipeline_etape(session, etape_id, etape_update)
     return {"message": "Étape mise à jour avec succès", "etape": etape}
@@ -62,7 +62,7 @@ async def delete_pipeline_etape(
     current_user: User = Depends(get_current_user)
 ):
     """Supprime une étape du pipeline"""
-    require_permission(current_user, [UserRole.DIRECTEUR_TECHNIQUE])
+    require_permission(current_user, [UserRole.DIRECTEUR_TECHNIQUE.value])
     
     PipelineService.delete_pipeline_etape(session, etape_id)
     return {"message": "Étape supprimée avec succès"}
@@ -75,7 +75,7 @@ async def toggle_pipeline_etape(
     current_user: User = Depends(get_current_user)
 ):
     """Active/désactive une étape du pipeline"""
-    require_permission(current_user, [UserRole.DIRECTEUR_TECHNIQUE, UserRole.RESPONSABLE_PROGRAMME])
+    require_permission(current_user, [UserRole.DIRECTEUR_TECHNIQUE.value, UserRole.RESPONSABLE_PROGRAMME.value])
     
     etape = PipelineService.toggle_pipeline_etape(session, etape_id)
     return {"message": f"Étape {'activée' if etape.active else 'désactivée'} avec succès", "etape": etape}
@@ -100,7 +100,7 @@ async def update_inscription_avancement(
     current_user: User = Depends(get_current_user)
 ):
     """Met à jour l'avancement d'un candidat dans le pipeline"""
-    require_permission(current_user, [UserRole.CONSEILLER, UserRole.RESPONSABLE_PROGRAMME])
+    require_permission(current_user, [UserRole.CONSEILLER.value, UserRole.RESPONSABLE_PROGRAMME.value])
     
     nouvel_avancement = PipelineService.update_inscription_avancement(session, inscription_id, avancement)
     return {"message": "Avancement mis à jour avec succès", "avancement": nouvel_avancement}
@@ -137,7 +137,7 @@ async def reinitialiser_pipeline(
     current_user: User = Depends(get_current_user)
 ):
     """Réinitialise le pipeline d'un programme (supprime tous les avancements)"""
-    require_permission(current_user, [UserRole.DIRECTEUR_TECHNIQUE])
+    require_permission(current_user, [UserRole.DIRECTEUR_TECHNIQUE.value])
     
     PipelineService.reinitialiser_pipeline(session, programme_id)
     return {"message": "Pipeline réinitialisé avec succès"}
@@ -174,7 +174,7 @@ async def reordonner_etapes(
     current_user: User = Depends(get_current_user)
 ):
     """Réordonne les étapes du pipeline"""
-    require_permission(current_user, [UserRole.DIRECTEUR_TECHNIQUE, UserRole.RESPONSABLE_PROGRAMME])
+    require_permission(current_user, [UserRole.DIRECTEUR_TECHNIQUE.value, UserRole.RESPONSABLE_PROGRAMME.value])
     
     PipelineService.reordonner_etapes(session, etape_id, nouvelle_position)
     return {"message": "Ordre des étapes mis à jour avec succès"}

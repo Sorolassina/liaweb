@@ -13,7 +13,7 @@ router = APIRouter()
 @router.get("/directeur", response_class=HTMLResponse)
 def page_directeur(request: Request, session=Depends(get_session), u=Depends(get_current_user)):
     # Vérifier les permissions
-    require_permission(u, [UserRole.DIRECTEUR_TECHNIQUE, UserRole.ADMINISTRATEUR])
+    require_permission(u, [UserRole.DIRECTEUR_TECHNIQUE.value, UserRole.ADMINISTRATEUR.value])
     
     # KPIs
     kpi = {
@@ -30,7 +30,7 @@ def page_directeur(request: Request, session=Depends(get_session), u=Depends(get
     # Listes pour formulaires & widgets
     programmes = session.exec(select(Programme)).all()
     responsables = session.exec(
-        select(User).where(User.role == UserRole.RESPONSABLE_PROGRAMME)
+        select(User).where(User.role == UserRole.RESPONSABLE_PROGRAMME.value)
     ).all()
 
     dossiers_en_attente = session.exec(
@@ -86,13 +86,13 @@ def page_directeur(request: Request, session=Depends(get_session), u=Depends(get
 # A) Responsable Structure
 @router.get("/responsable-structure", response_class=HTMLResponse)
 def page_rs(request: Request, session=Depends(get_session), u=Depends(get_current_user)):
-    require_permission(u, [UserRole.RESPONSABLE_STRUCTURE, UserRole.ADMINISTRATEUR])
+    require_permission(u, [UserRole.RESPONSABLE_STRUCTURE.value, UserRole.ADMINISTRATEUR.value])
     
     kpi = {
         "programmes": session.exec(select(func.count()).select_from(Programme)).one(),
         "promotions": 0,  # à brancher si modèle Promotion
         "groupes": 0,  # à brancher si modèle Groupe
-        "conseillers": session.exec(select(func.count()).select_from(User).where(User.role == UserRole.CONSEILLER)).one(),
+        "conseillers": session.exec(select(func.count()).select_from(User).where(User.role == UserRole.CONSEILLER.value)).one(),
     }
     programmes = session.exec(select(Programme)).all()
     # Groupes enrichis (exemple simple)
@@ -105,7 +105,7 @@ def page_rs(request: Request, session=Depends(get_session), u=Depends(get_curren
 # B) Responsable Programme
 @router.get("/responsable-programme/{programme_id}", response_class=HTMLResponse)
 def page_rp(programme_id: int, request: Request, session=Depends(get_session), u=Depends(get_current_user)):
-    require_permission(u, [UserRole.RESPONSABLE_PROGRAMME, UserRole.ADMINISTRATEUR])
+    require_permission(u, [UserRole.RESPONSABLE_PROGRAMME.value, UserRole.ADMINISTRATEUR.value])
     
     programme = session.get(Programme, programme_id)
     kpi = {"inscriptions_en_attente": 0, "validees": 0, "documents_manquants": 0, "progres_pipeline": 0}
@@ -118,7 +118,7 @@ def page_rp(programme_id: int, request: Request, session=Depends(get_session), u
 # C) Conseiller
 @router.get("/conseiller", response_class=HTMLResponse)
 def page_conseiller(request: Request, session=Depends(get_session), u=Depends(get_current_user)):
-    require_permission(u, [UserRole.CONSEILLER, UserRole.ADMINISTRATEUR])
+    require_permission(u, [UserRole.CONSEILLER.value, UserRole.ADMINISTRATEUR.value])
     
     a_completer = []  # id, candidat_nom, pieces_manquantes
     return templates.TemplateResponse("pages/conseiller.html", {
@@ -128,7 +128,7 @@ def page_conseiller(request: Request, session=Depends(get_session), u=Depends(ge
 # D) Jury externe
 @router.get("/jury-espace", response_class=HTMLResponse)
 def page_jury(request: Request, session=Depends(get_session), u=Depends(get_current_user)):
-    require_permission(u, [UserRole.JURY_EXTERNE, UserRole.RESPONSABLE_PROGRAMME, UserRole.ADMINISTRATEUR])
+    require_permission(u, [UserRole.JURY_EXTERNE.value, UserRole.RESPONSABLE_PROGRAMME.value, UserRole.ADMINISTRATEUR.value])
     
     jurys = session.exec(select(Jury).order_by(Jury.session_le)).all()
     dossiers = []  # peupler les dossiers soumis au jury
@@ -139,7 +139,7 @@ def page_jury(request: Request, session=Depends(get_session), u=Depends(get_curr
 # E) Coach externe
 @router.get("/coach", response_class=HTMLResponse)
 def page_coach(request: Request, session=Depends(get_session), u=Depends(get_current_user)):
-    require_permission(u, [UserRole.COACH_EXTERNE, UserRole.CONSEILLER, UserRole.ADMINISTRATEUR])
+    require_permission(u, [UserRole.COACH_EXTERNE.value, UserRole.CONSEILLER.value, UserRole.ADMINISTRATEUR.value])
     
     seances = []  # agenda coaching
     groupes = []  # groupes suivis
@@ -150,7 +150,7 @@ def page_coach(request: Request, session=Depends(get_session), u=Depends(get_cur
 # F) Candidat (self-service)
 @router.get("/espace-candidat", response_class=HTMLResponse)
 def page_candidat(request: Request, session=Depends(get_session), u=Depends(get_current_user)):
-    require_permission(u, [UserRole.CANDIDAT, UserRole.ADMINISTRATEUR])
+    require_permission(u, [UserRole.CANDIDAT.value, UserRole.ADMINISTRATEUR.value])
     
     # Ici u est un utilisateur; mappez-le à son Candidat si vous avez la relation
     candidat = session.exec(select(Candidat).where(Candidat.email == u.email)).first()
@@ -162,7 +162,7 @@ def page_candidat(request: Request, session=Depends(get_session), u=Depends(get_
 
 @router.get("/drh-daf", response_class=HTMLResponse)
 def page_drh_daf(request: Request, session=Depends(get_session), u=Depends(get_current_user)):
-    require_permission(u, [UserRole.DRH_DAF, UserRole.DRH, UserRole.DAF, UserRole.ADMINISTRATEUR])
+    require_permission(u, [UserRole.DRH_DAF.value, UserRole.DRH.value, UserRole.DAF.value, UserRole.ADMINISTRATEUR.value])
     
     # KPIs (exemples à adapter)
     kpi = {

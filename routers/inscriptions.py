@@ -26,7 +26,7 @@ async def create_inscription(
 ):
     """Crée une nouvelle inscription (responsable programme seulement)"""
     # Vérifier les permissions
-    if current_user.role != UserRole.RESPONSABLE_PROGRAMME:
+    if current_user.role != UserRole.RESPONSABLE_PROGRAMME.value:
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
             detail="Seul le responsable de programme peut créer des inscriptions"
@@ -126,7 +126,7 @@ async def update_inscription(
 ):
     """Met à jour une inscription"""
     # Vérifier les permissions
-    if current_user.role not in [UserRole.RESPONSABLE_PROGRAMME, UserRole.CONSEILLER, UserRole.ADMINISTRATEUR]:
+    if current_user.role not in [UserRole.RESPONSABLE_PROGRAMME.value, UserRole.CONSEILLER.value, UserRole.ADMINISTRATEUR.value]:
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
             detail="Permissions insuffisantes"
@@ -160,7 +160,7 @@ async def update_inscription_status(
 ):
     """Met à jour le statut d'une inscription"""
     # Vérifier les permissions
-    if current_user.role not in [UserRole.RESPONSABLE_PROGRAMME, UserRole.ADMINISTRATEUR]:
+    if current_user.role not in [UserRole.RESPONSABLE_PROGRAMME.value, UserRole.ADMINISTRATEUR.value]:
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
             detail="Permissions insuffisantes"
@@ -218,7 +218,7 @@ async def valider_preinscription(
 ):
     """Valide une préinscription en créant une inscription"""
     # Vérifier les permissions
-    if current_user.role != UserRole.RESPONSABLE_PROGRAMME:
+    if current_user.role != UserRole.RESPONSABLE_PROGRAMME.value:
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
             detail="Seul le responsable de programme peut valider les préinscriptions"
