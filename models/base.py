@@ -102,6 +102,7 @@ class Candidat(SQLModel, table=True):
     niveau_etudes: Optional[str] = None
     secteur_activite: Optional[str] = None
     photo_profil: Optional[str] = None  # Chemin vers la photo de profil
+    statut: Optional[str] = Field(default="EN_ATTENTE")  # Statut du candidat
     # Géocodage (nouveaux champs)
     lat: Optional[float] = Field(default=None, index=True)
     lng: Optional[float] = Field(default=None, index=True)
@@ -128,7 +129,7 @@ class Entreprise(SQLModel, table=True):
     date_creation: Optional[date] = None
     adresse: Optional[str] = None
     qpv: Optional[bool] = None
-    chiffre_affaires: Optional[float] = None
+    chiffre_affaires: Optional[str] = None  # Intervalle de CA (ex: "10 000 - 50 000 €")
     nombre_points_vente: Optional[int] = None
     specialite_culinaire: Optional[str] = None
     nom_concept: Optional[str] = None
@@ -354,3 +355,61 @@ class SuiviMensuel(SQLModel, table=True):
     cree_le: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
 
     inscription: "Inscription" = Relationship()
+
+
+class Partenaire(SQLModel, table=True):
+    """Partenaires pour la réorientation des candidats"""
+    id: Optional[int] = Field(default=None, primary_key=True)
+    nom: str = Field(index=True)
+    description: Optional[str] = None
+    email: Optional[str] = None
+    telephone: Optional[str] = None
+    adresse: Optional[str] = None
+    site_web: Optional[str] = None
+    specialites: Optional[str] = None  # JSON string des spécialités
+    actif: bool = Field(default=True)
+    cree_le: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
+    
+    # Relations
+    reorientations: List["ReorientationCandidat"] = Relationship(back_populates="partenaire")
+
+
+class DecisionJuryCandidat(SQLModel, table=True):
+    """Décisions du jury pour chaque candidat"""
+    id: Optional[int] = Field(default=None, primary_key=True)
+    candidat_id: int = Field(foreign_key="candidat.id", index=True)
+    jury_id: int = Field(foreign_key="jury.id", index=True)
+    decision: DecisionJury = Field(default=DecisionJury.EN_ATTENTE)
+    commentaires: Optional[str] = None
+    conseiller_id: Optional[int] = Field(foreign_key="user.id", default=None)  # Si validé
+    groupe_codev: Optional[str] = None  # Si validé
+    promotion_id: Optional[int] = Field(foreign_key="promotion.id", default=None)  # Si validé
+    partenaire_id: Optional[int] = Field(foreign_key="partenaire.id", default=None)  # Si réorienté
+    envoyer_mail_candidat: bool = Field(default=False)
+    envoyer_mail_conseiller: bool = Field(default=False)
+    envoyer_mail_partenaire: bool = Field(default=False)
+    date_decision: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
+    cree_le: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
+    
+    # Relations
+    candidat: "Candidat" = Relationship()
+    jury: "Jury" = Relationship()
+    conseiller: Optional["User"] = Relationship()
+    promotion: Optional["Promotion"] = Relationship()
+    partenaire: Optional["Partenaire"] = Relationship()
+
+
+class ReorientationCandidat(SQLModel, table=True):
+    """Historique des réorientations"""
+    id: Optional[int] = Field(default=None, primary_key=True)
+    candidat_id: int = Field(foreign_key="candidat.id", index=True)
+    partenaire_id: int = Field(foreign_key="partenaire.id", index=True)
+    decision_jury_id: int = Field(foreign_key="decisionjurycandidat.id", index=True)
+    motif: Optional[str] = None
+    mail_envoye: bool = Field(default=False)
+    date_reorientation: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
+    
+    # Relations
+    candidat: "Candidat" = Relationship()
+    partenaire: "Partenaire" = Relationship(back_populates="reorientations")
+    decision_jury: "DecisionJuryCandidat" = Relationship()

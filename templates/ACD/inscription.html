@@ -115,6 +115,21 @@
       margin-top: 180px; /* Plus d'espace sur mobile */
     }
   }
+  
+  /* Styles pour les boutons avec spinner */
+  .btn:disabled {
+    opacity: 0.6;
+    cursor: not-allowed;
+  }
+  
+  .btn .fa-spinner {
+    animation: spin 1s linear infinite;
+  }
+  
+  @keyframes spin {
+    0% { transform: rotate(0deg); }
+    100% { transform: rotate(360deg); }
+  }
 </style>
 {% endblock %}
 
@@ -146,7 +161,7 @@
 </div>
 
 <div class="content-with-fixed-kpi">
-  <div class="board">
+<div class="board">
   <!-- ========== Liste gauche ========== -->
   <div class="card-neumo">
     <div class="search-box">
@@ -159,17 +174,37 @@
     <div class="p-2">
       {% for row in pre_rows %}
       {% set p, c, e, elig = row %}
-        <a class="text-decoration-none d-block mb-2" href="/ACD/inscriptions?programme={{ current_programme }}&pre_id={{ p.id }}">
+        <a class="text-decoration-none d-block mb-2" href="/ACD/inscriptions/form?programme={{ current_programme }}&pre_id={{ p.id }}&t={{ timestamp }}">
         <div class="pre-card {% if selected and selected.id==p.id %}active{% endif %}">
-          <div class="avatar" style="background-image:url('{{ c.photo_profil or '/static/images/utilisateur.png' }}')"></div>
+          <div class="avatar" style="background-image:url('{% if c.photo_profil %}/media/{{ c.photo_profil.replace('\\', '/') }}{% else %}/static/images/utilisateur.png{% endif %}')"></div>
           <div class="flex-grow-1">
             <div class="fw-bold" style="color: black;">{{ c.prenom }} {{ c.nom }}</div>
             <div class="small text-muted">{{ c.email }}</div>
           </div>
-          {% if elig and elig.verdict %}
-            <span class="tag">{{ elig.verdict|upper }}</span>
+          {% if c.statut %}
+            {% if c.statut == "EN_ATTENTE" %}
+              <span class="badge bg-warning text-dark">
+                <i class="fas fa-clock"></i> En attente
+              </span>
+            {% elif c.statut == "VALIDE" %}
+              <span class="badge bg-success">
+                <i class="fas fa-check-circle"></i> Validé
+              </span>
+            {% elif c.statut == "REORIENTE" %}
+              <span class="badge bg-info">
+                <i class="fas fa-exchange-alt"></i> Réorienté
+              </span>
+            {% elif c.statut == "REJETE" %}
+              <span class="badge bg-danger">
+                <i class="fas fa-times-circle"></i> Rejeté
+              </span>
           {% else %}
-            <span class="tag">À Évaluer</span>
+              <span class="badge bg-secondary">{{ c.statut }}</span>
+            {% endif %}
+          {% else %}
+            <span class="badge bg-warning text-dark">
+              <i class="fas fa-clock"></i> En attente
+            </span>
           {% endif %}
         </div>
       </a>
@@ -195,19 +230,30 @@
         </div>
         <div class="d-flex gap-2">
           {% if not inscription %}
-            <form method="post" action="/inscriptions/create-from-pre">
+            <form method="post" action="/ACD/inscriptions/create-from-pre">
               <input type="hidden" name="pre_id" value="{{ selected.id }}">
               <button class="btn btn-primary"><i class="fa fa-user-plus me-1"></i>Démarrer l'inscription</button>
             </form>
           {% else %}
             <span class="tag">Inscription #{{ inscription.id }}</span>
           {% endif %}
+          
+          <!-- Boutons QPV et SIRET -->
+          <div class="btn-group" role="group">
+            <button type="button" class="btn btn-outline-info btn-sm" onclick="checkQPV({{ cand.id }})" title="Vérifier le statut QPV">
+              <i class="fas fa-map-marker-alt"></i> QPV
+            </button>
+            <button type="button" class="btn btn-outline-success btn-sm" onclick="checkSIRET({{ cand.id }})" title="Vérifier les informations SIRET">
+              <i class="fas fa-building"></i> SIRET
+            </button>
+          </div>
         </div>
       </div>
 
       <div class="tab-head">
         <button class="tab-btn active" data-tab="#tab-pipeline">Pipeline</button>
         <button class="tab-btn" data-tab="#tab-infos">Infos & mise à jour</button>
+        <button class="tab-btn" data-tab="#tab-docs">Documentation</button>
         <button class="tab-btn" data-tab="#tab-elig">Éligibilité</button>
         <button class="tab-btn" data-tab="#tab-jury">Jury</button>
       </div>
@@ -227,7 +273,7 @@
                 </div>
                 <div class="d-flex align-items-center gap-2">
                   <span class="status-badge">{{ st.statut.value.replace('_',' ').title() }}</span>
-                  <form method="post" action="/inscriptions/etape/advance">
+                  <form method="post" action="/ACD/inscriptions/etape/advance">
                     <input type="hidden" name="avancement_id" value="{{ st.id }}">
                     <select name="statut" class="form-select form-select-sm">
                       <option value="A_FAIRE" {% if st.statut.name=='A_FAIRE' %}selected{% endif %}>À faire</option>
@@ -243,38 +289,296 @@
           {% endif %}
         </div>
 
-        <!-- ========== Infos ========== -->
+        <!-- ========== Infos & Mise à jour ========== -->
         <div id="tab-infos" class="tab-pane">
-          <form method="post" action="/inscriptions/update-infos" class="form-inline-grid">
+          <form method="post" action="/ACD/inscriptions/update-infos" class="needs-validation" novalidate enctype="multipart/form-data">
             <input type="hidden" name="pre_id" value="{{ selected.id }}">
-            <div>
+            
+            <!-- Accordion pour organiser les informations -->
+            <div class="accordion" id="infosAccordion">
+              
+              <!-- Informations personnelles -->
+              <div class="accordion-item">
+                <h2 class="accordion-header" id="headingPersonal">
+                  <button class="accordion-button" type="button" data-bs-toggle="collapse" data-bs-target="#collapsePersonal" aria-expanded="true" aria-controls="collapsePersonal">
+                    <i class="fas fa-user me-2"></i>Informations personnelles
+                  </button>
+                </h2>
+                <div id="collapsePersonal" class="accordion-collapse collapse show" aria-labelledby="headingPersonal" data-bs-parent="#infosAccordion">
+                  <div class="accordion-body">
+                    <!-- Photo de profil -->
+                    <div class="mb-4">
+                      <label class="form-label">Photo de profil</label>
+                      <div class="d-flex align-items-center gap-3">
+                        <div class="avatar-preview" style="width: 80px; height: 80px; border-radius: 50%; overflow: hidden; border: 2px solid #dee2e6;">
+                          <img id="photoPreview" 
+                               src="{% if cand.photo_profil %}/media/{{ cand.photo_profil.replace('\\', '/') }}{% else %}/static/images/utilisateur.png{% endif %}" 
+                               alt="Photo de profil" 
+                               style="width: 100%; height: 100%; object-fit: cover;">
+                        </div>
+                        <div class="flex-grow-1">
+                          <input type="file" 
+                                 class="form-control" 
+                                 name="photo_profil" 
+                                 id="photoProfil" 
+                                 accept="image/*"
+                                 onchange="previewPhoto(this)">
+                          <div class="form-text">Formats acceptés : JPG, PNG, WEBP — 2 Mo max</div>
+                        </div>
+                      </div>
+                    </div>
+                    
+                    <div class="row g-3">
+                      <div class="col-md-6">
+                        <label class="form-label">Civilité</label>
+                        <select class="form-select" name="civilite" required>
+                          <option value="">Sélectionner...</option>
+                          <option value="M" {% if cand.civilite == "M" %}selected{% endif %}>Monsieur</option>
+                          <option value="Mme" {% if cand.civilite == "Mme" %}selected{% endif %}>Madame</option>
+                          <option value="Mlle" {% if cand.civilite == "Mlle" %}selected{% endif %}>Mademoiselle</option>
+                        </select>
+                      </div>
+                      <div class="col-md-6">
+                        <label class="form-label">Date de naissance</label>
+                        <input type="date" class="form-control" name="date_naissance" value="{{ cand.date_naissance }}" required>
+                      </div>
+                      <div class="col-md-6">
               <label class="form-label">Téléphone</label>
-              <input class="form-control" name="telephone" value="{{ cand.telephone or '' }}">
+                        <input type="tel" class="form-control" name="telephone" value="{{ cand.telephone or '' }}" pattern="[0-9+\s\-\(\)]+">
             </div>
-            <div>
+                      <div class="col-md-6">
+                        <label class="form-label">Email</label>
+                        <input type="email" class="form-control" value="{{ cand.email }}" readonly>
+                        <div class="form-text">L'email ne peut pas être modifié</div>
+                      </div>
+                      <div class="col-12">
               <label class="form-label">Adresse personnelle</label>
-              <input class="form-control" name="adresse_personnelle" value="{{ cand.adresse_personnelle or '' }}">
+                        <textarea class="form-control" name="adresse_personnelle" rows="2">{{ cand.adresse_personnelle or '' }}</textarea>
             </div>
-            <div>
-              <label class="form-label">Adresse entreprise</label>
-              <input class="form-control" name="adresse_entreprise" value="{{ ent.adresse or '' }}">
+                      <div class="col-md-6">
+                        <label class="form-label">Niveau d'études</label>
+                        <input type="text" class="form-control" name="niveau_etudes" value="{{ cand.niveau_etudes or '' }}">
             </div>
-            <div>
+                      <div class="col-md-6">
+                        <label class="form-label">Secteur d'activité</label>
+                        <input type="text" class="form-control" name="secteur_activite" value="{{ cand.secteur_activite or '' }}">
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              <!-- Informations entreprise -->
+              <div class="accordion-item">
+                <h2 class="accordion-header" id="headingCompany">
+                  <button class="accordion-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#collapseCompany" aria-expanded="false" aria-controls="collapseCompany">
+                    <i class="fas fa-building me-2"></i>Informations entreprise
+                  </button>
+                </h2>
+                <div id="collapseCompany" class="accordion-collapse collapse" aria-labelledby="headingCompany" data-bs-parent="#infosAccordion">
+                  <div class="accordion-body">
+                    <div class="row g-3">
+                      <div class="col-md-6">
               <label class="form-label">SIRET</label>
-              <input class="form-control" name="siret" value="{{ ent.siret or '' }}">
+                        <input type="text" class="form-control" name="siret" value="{{ ent.siret or '' }}" pattern="[0-9]{14}">
+                        <div class="form-text">14 chiffres</div>
             </div>
-            <div>
-              <label class="form-label">Date création</label>
+                      <div class="col-md-6">
+                        <label class="form-label">SIREN</label>
+                        <input type="text" class="form-control" name="siren" value="{{ ent.siren or '' }}" pattern="[0-9]{9}">
+                        <div class="form-text">9 chiffres</div>
+                      </div>
+                      <div class="col-12">
+                        <label class="form-label">Raison sociale</label>
+                        <input type="text" class="form-control" name="raison_sociale" value="{{ ent.raison_sociale or '' }}">
+                      </div>
+                      <div class="col-md-6">
+                        <label class="form-label">Code NAF</label>
+                        <input type="text" class="form-control" name="code_naf" value="{{ ent.code_naf or '' }}">
+                      </div>
+                      <div class="col-md-6">
+                        <label class="form-label">Date de création</label>
               <input type="date" class="form-control" name="date_creation" value="{{ ent.date_creation }}">
             </div>
-            <div>
-              <label class="form-label">Chiffre d'affaires</label>
-              <input class="form-control" name="chiffre_affaires" value="{{ ent.chiffre_affaires or '' }}">
+                      <div class="col-12">
+                        <label class="form-label">Adresse entreprise</label>
+                        <textarea class="form-control" name="adresse_entreprise" rows="2">{{ ent.adresse or '' }}</textarea>
             </div>
-            <div class="d-flex align-items-end">
-              <button class="btn btn-primary"><i class="fa fa-save me-1"></i> Enregistrer</button>
+                      <div class="col-md-6">
+                        <label class="form-label">Chiffre d'affaires</label>
+                        <select class="form-select" name="chiffre_affaires">
+                          <option value="">Sélectionner...</option>
+                          <option value="0 - 10 000 €" {% if ent.chiffre_affaires == "0 - 10 000 €" %}selected{% endif %}>0 - 10 000 €</option>
+                          <option value="10 000 - 50 000 €" {% if ent.chiffre_affaires == "10 000 - 50 000 €" %}selected{% endif %}>10 000 - 50 000 €</option>
+                          <option value="50 000 - 100 000 €" {% if ent.chiffre_affaires == "50 000 - 100 000 €" %}selected{% endif %}>50 000 - 100 000 €</option>
+                          <option value="100 000 - 500 000 €" {% if ent.chiffre_affaires == "100 000 - 500 000 €" %}selected{% endif %}>100 000 - 500 000 €</option>
+                          <option value="500 000 - 1 000 000 €" {% if ent.chiffre_affaires == "500 000 - 1 000 000 €" %}selected{% endif %}>500 000 - 1 000 000 €</option>
+                          <option value="1 000 000 € et plus" {% if ent.chiffre_affaires == "1 000 000 € et plus" %}selected{% endif %}>1 000 000 € et plus</option>
+                        </select>
+                      </div>
+                      <div class="col-md-6">
+                        <label class="form-label">Nombre de points de vente</label>
+                        <input type="number" class="form-control" name="nombre_points_vente" value="{{ ent.nombre_points_vente or '' }}" min="0">
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              <!-- Informations restauration -->
+              <div class="accordion-item">
+                <h2 class="accordion-header" id="headingRestaurant">
+                  <button class="accordion-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#collapseRestaurant" aria-expanded="false" aria-controls="collapseRestaurant">
+                    <i class="fas fa-utensils me-2"></i>Informations restauration
+                  </button>
+                </h2>
+                <div id="collapseRestaurant" class="accordion-collapse collapse" aria-labelledby="headingRestaurant" data-bs-parent="#infosAccordion">
+                  <div class="accordion-body">
+                    <div class="row g-3">
+                      <div class="col-12">
+                        <label class="form-label">Spécialité culinaire</label>
+                        <input type="text" class="form-control" name="specialite_culinaire" value="{{ ent.specialite_culinaire or '' }}">
+                      </div>
+                      <div class="col-12">
+                        <label class="form-label">Nom du concept</label>
+                        <input type="text" class="form-control" name="nom_concept" value="{{ ent.nom_concept or '' }}">
+                      </div>
+                      <div class="col-md-6">
+                        <label class="form-label">Site internet</label>
+                        <input type="url" class="form-control" name="site_internet" value="{{ ent.site_internet or '' }}">
+                      </div>
+                      <div class="col-md-6">
+                        <label class="form-label">Liens réseaux sociaux</label>
+                        <input type="text" class="form-control" name="lien_reseaux_sociaux" value="{{ ent.lien_reseaux_sociaux or '' }}">
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              <!-- Informations géographiques -->
+              <div class="accordion-item">
+                <h2 class="accordion-header" id="headingGeo">
+                  <button class="accordion-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#collapseGeo" aria-expanded="false" aria-controls="collapseGeo">
+                    <i class="fas fa-map-marker-alt me-2"></i>Informations géographiques
+                  </button>
+                </h2>
+                <div id="collapseGeo" class="accordion-collapse collapse" aria-labelledby="headingGeo" data-bs-parent="#infosAccordion">
+                  <div class="accordion-body">
+                    <div class="row g-3">
+                      <div class="col-md-6">
+                        <label class="form-label">Zone QPV</label>
+                        <div class="form-check">
+                          <input class="form-check-input" type="checkbox" name="qpv" value="true" {% if ent.qpv %}checked{% endif %}>
+                          <label class="form-check-label">Situé en Zone de Revitalisation Rurale (QPV)</label>
+                        </div>
+                      </div>
+                      <div class="col-md-6">
+                        <label class="form-label">Coordonnées GPS</label>
+                        <div class="input-group">
+                          <span class="input-group-text">Lat</span>
+                          <input type="number" class="form-control" name="lat" value="{{ cand.lat or '' }}" step="any" readonly>
+                          <span class="input-group-text">Lng</span>
+                          <input type="number" class="form-control" name="lng" value="{{ cand.lng or '' }}" step="any" readonly>
+                        </div>
+                        <div class="form-text">Coordonnées automatiques basées sur l'adresse</div>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              <!-- Informations handicap -->
+              <div class="accordion-item">
+                <h2 class="accordion-header" id="headingHandicap">
+                  <button class="accordion-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#collapseHandicap" aria-expanded="false" aria-controls="collapseHandicap">
+                    <i class="fas fa-wheelchair me-2"></i>Informations handicap
+                  </button>
+                </h2>
+                <div id="collapseHandicap" class="accordion-collapse collapse" aria-labelledby="headingHandicap" data-bs-parent="#infosAccordion">
+                  <div class="accordion-body">
+                    <div class="row g-3">
+                      <div class="col-12">
+                        <div class="form-check">
+                          <input class="form-check-input" type="checkbox" name="handicap" value="true" {% if cand.handicap %}checked{% endif %}>
+                          <label class="form-check-label">Reconnaissance de handicap</label>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+            </div>
+
+            <!-- Boutons d'action -->
+            <div class="d-flex justify-content-between mt-4">
+              <button type="button" class="btn btn-outline-secondary" onclick="resetForm()">
+                <i class="fas fa-undo me-1"></i>Réinitialiser
+              </button>
+              <button type="submit" class="btn btn-primary">
+                <i class="fas fa-save me-1"></i>Enregistrer les modifications
+              </button>
             </div>
           </form>
+        </div>
+
+        <!-- ========== Documentation ========== -->
+        <div id="tab-docs" class="tab-pane">
+          <div class="d-flex justify-content-between align-items-center mb-3">
+            <h5><i class="fas fa-file-alt me-2"></i>Documents du candidat</h5>
+            <button type="button" class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#addDocumentModal">
+              <i class="fas fa-plus me-1"></i>Ajouter un document
+            </button>
+          </div>
+
+          <!-- Liste des documents -->
+          <div class="table-responsive">
+            <table class="table table-striped">
+              <thead>
+                <tr>
+                  <th>Type</th>
+                  <th>Nom du fichier</th>                
+                  <th>Actions</th>
+                </tr>
+              </thead>
+              <tbody>
+                {% if cand and cand.documents %}
+                  {% for doc in cand.documents %}
+                  <tr>
+                    <td>
+                      <span class="badge bg-info">{{ doc.type_document.value if doc.type_document else 'Autre' }}</span>
+                    </td>
+                    <td>
+                      <i class="fas fa-file me-1"></i>
+                      {{ doc.nom_fichier }}
+                    </td>
+                    <td>
+                      <div class="btn-group btn-group-sm">
+                        <a href="/ACD/inscriptions/document/{{ doc.id }}/view" target="_blank" class="btn btn-outline-primary" title="Voir">
+                          <i class="fas fa-eye"></i>
+                        </a>
+                        <a href="/ACD/inscriptions/document/{{ doc.id }}/download" class="btn btn-outline-success" title="Télécharger">
+                          <i class="fas fa-download"></i>
+                        </a>
+                        <button type="button" class="btn btn-outline-danger" onclick="deleteDocument({{ doc.id }})" title="Supprimer">
+                          <i class="fas fa-trash"></i>
+                        </button>
+                      </div>
+                    </td>
+                  </tr>
+                  {% endfor %}
+                {% else %}
+                  <tr>
+                    <td colspan="5" class="text-center text-muted">
+                      <i class="fas fa-inbox fa-2x mb-2"></i><br>
+                      Aucun document ajouté
+                    </td>
+                  </tr>
+                {% endif %}
+              </tbody>
+            </table>
+          </div>
         </div>
 
         <!-- ========== Éligibilité ========== -->
@@ -282,10 +586,27 @@
           <div class="elig-row">
             <div class="elig-card">
               <div class="fw-bold mb-1">Récap</div>
-              <div>CA déclaré : <b>{{ elig and elig.ca_score or '—' }}</b></div>
-              <div>Ancienneté (ans) : <b>{{ elig and (elig.anciennete_annees or '—') }}</b></div>
+              <div>CA déclaré : <b>{{ elig and (elig.preinscription.candidat.entreprise.chiffre_affaires or '—') }}</b>
+                {% if elig and elig.ca_seuil_ok is not none %}
+                  <span class="badge bg-{{ 'success' if elig.ca_seuil_ok else 'danger' }} ms-2">
+                    {{ 'Validé' if elig.ca_seuil_ok else 'Non validé' }}
+                  </span>
+                {% endif %}
+              </div>
+              <div>Ancienneté (ans) : <b>{{ elig and (elig.anciennete_annees or '—') }}</b>
+                {% if elig and elig.anciennete_ok is not none %}
+                  <span class="badge bg-{{ 'success' if elig.anciennete_ok else 'danger' }} ms-2">
+                    {{ 'Validé' if elig.anciennete_ok else 'Non validé' }}
+                  </span>
+                {% endif %}
+              </div>
               <div>QPV : 
-                {% if elig and elig.qpv_ok %}<span class="ok">OK</span>{% else %}<span class="ko">Non</span>{% endif %}
+                {% if qpv_name %}             
+                  <small class="text-muted">({{ qpv_name }})</small>
+                  <span class="badge bg-success me-2">Validé</span>
+                {% else %}
+                  <span class="badge bg-danger">Non validé</span>
+                {% endif %}
               </div>
               <div class="mt-2">Verdict :
                 {% if elig and elig.verdict == 'ok' %}
@@ -301,7 +622,7 @@
             </div>
             <div class="elig-card">
               <div class="fw-bold mb-1">Actions</div>
-              <form method="post" action="/inscriptions/eligibilite/recalc">
+              <form method="post" action="/ACD/inscriptions/eligibilite/recalc">
                 <input type="hidden" name="pre_id" value="{{ selected.id }}">
                 <button class="btn btn-outline"><i class="fa fa-rotate me-1"></i> Recalculer</button>
               </form>
@@ -315,37 +636,225 @@
           {% if not inscription %}
             <div class="text-muted">Créez l'inscription pour voter en jury.</div>
           {% else %}
-          <div class="jury-box">
-            <form method="post" action="/inscriptions/jury/decision">
-              <input type="hidden" name="inscription_id" value="{{ inscription.id }}">
-              <div class="form-inline-grid">
-                <div>
+          
+          <!-- Statut actuel du candidat -->
+          <div class="alert alert-info mb-4">
+            <h6><i class="fas fa-info-circle me-2"></i>Statut actuel du candidat</h6>
+            {% if cand.statut %}
+              {% if cand.statut == "EN_ATTENTE" %}
+                <span class="badge bg-warning text-dark">
+                  <i class="fas fa-clock"></i> En attente de décision du jury
+                </span>
+              {% elif cand.statut == "VALIDE" %}
+                <span class="badge bg-success">
+                  <i class="fas fa-check-circle"></i> Validé par le jury
+                </span>
+              {% elif cand.statut == "REORIENTE" %}
+                <span class="badge bg-info">
+                  <i class="fas fa-exchange-alt"></i> Réorienté vers un partenaire
+                </span>
+              {% elif cand.statut == "REJETE" %}
+                <span class="badge bg-danger">
+                  <i class="fas fa-times-circle"></i> Rejeté par le jury
+                </span>
+              {% endif %}
+            {% else %}
+              <span class="badge bg-warning text-dark">
+                <i class="fas fa-clock"></i> En attente de décision du jury
+              </span>
+            {% endif %}
+          </div>
+
+          <!-- Formulaire de décision du jury -->
+          <div class="card mb-4">
+            <div class="card-header">
+              <h6 class="mb-0"><i class="fas fa-gavel me-2"></i>Décision du jury</h6>
+            </div>
+            <div class="card-body">
+              <form method="post" action="/ACD/inscriptions/jury/decision" class="needs-validation" novalidate>
+                <input type="hidden" name="candidat_id" value="{{ cand.id }}">
+                
+                <div class="row g-3">
+                  <!-- Session jury -->
+                  <div class="col-md-6">
                   <label class="form-label">Session jury</label>
-                  <select class="form-select" name="jury_id">
-                    <option value="">—</option>
+                    <select class="form-select" name="jury_id" required>
+                      <option value="">— Sélectionner une session —</option>
                     {% for j in jurys %}
                       <option value="{{ j.id }}">{{ j.session_le.strftime('%d/%m/%Y %H:%M') }} — {{ j.lieu or '—' }}</option>
                     {% endfor %}
                   </select>
                 </div>
-                <div>
+                  
+                  <!-- Décision -->
+                  <div class="col-md-6">
                   <label class="form-label">Décision</label>
-                  <select class="form-select" name="decision" required>
-                    <option value="ACCEPTE">Accepté</option>
-                    <option value="LISTE_ATTENTE">Liste d'attente</option>
-                    <option value="REFUSE">Refusé</option>
+                    <select class="form-select" name="decision" id="decisionSelect" required onchange="toggleDecisionFields()">
+                      <option value="">— Sélectionner une décision —</option>
+                      <option value="EN_ATTENTE">En attente</option>
+                      <option value="VALIDE">Validé</option>
+                      <option value="REORIENTE">Réorienté</option>
+                      <option value="REJETE">Rejeté</option>
                   </select>
                 </div>
-                <div style="grid-column: 1 / -1">
+                  
+                  <!-- Commentaires -->
+                  <div class="col-12">
                   <label class="form-label">Commentaires</label>
-                  <textarea class="form-control" name="commentaires" rows="3" placeholder="Notes, conditions..."></textarea>
+                    <textarea class="form-control" name="commentaires" rows="3" placeholder="Notes, conditions, observations du jury..."></textarea>
                 </div>
               </div>
-              <div class="mt-2">
-                <button class="btn btn-primary"><i class="fa fa-gavel me-1"></i> Enregistrer la décision</button>
+
+                <!-- Champs conditionnels pour VALIDÉ -->
+                <div id="valideFields" class="mt-4" style="display: none;">
+                  <div class="alert alert-success">
+                    <h6><i class="fas fa-check-circle me-2"></i>Informations pour candidat validé</h6>
+                  </div>
+                  <div class="row g-3">
+                    <div class="col-md-6">
+                      <label class="form-label">Conseiller assigné</label>
+                      <select class="form-select" name="conseiller_id">
+                        <option value="">— Sélectionner un conseiller —</option>
+                        {% for conseiller in conseillers %}
+                          <option value="{{ conseiller.id }}">{{ conseiller.nom_complet }}</option>
+                        {% endfor %}
+                      </select>
+                    </div>
+                    <div class="col-md-6">
+                      <label class="form-label">Groupe Codev</label>
+                      <input type="text" class="form-control" name="groupe_codev" placeholder="Ex: Groupe A, Groupe B...">
+                    </div>
+                    <div class="col-md-6">
+                      <label class="form-label">Promotion</label>
+                      <select class="form-select" name="promotion_id">
+                        <option value="">— Sélectionner une promotion —</option>
+                        {% for promo in promotions %}
+                          <option value="{{ promo.id }}">{{ promo.libelle }}</option>
+                        {% endfor %}
+                      </select>
+                    </div>
+                  </div>
+                </div>
+
+                <!-- Champs conditionnels pour RÉORIENTÉ -->
+                <div id="reorienteFields" class="mt-4" style="display: none;">
+                  <div class="alert alert-info">
+                    <h6><i class="fas fa-exchange-alt me-2"></i>Informations pour candidat réorienté</h6>
+                  </div>
+                  <div class="row g-3">
+                    <div class="col-md-6">
+                      <label class="form-label">Partenaire</label>
+                      <select class="form-select" name="partenaire_id">
+                        <option value="">— Sélectionner un partenaire —</option>
+                        {% for partenaire in partenaires %}
+                          <option value="{{ partenaire.id }}">{{ partenaire.nom }}</option>
+                        {% endfor %}
+                      </select>
+                    </div>
+                  </div>
+                </div>
+
+                <!-- Options d'envoi d'emails -->
+                <div class="mt-4">
+                  <div class="alert alert-light">
+                    <h6><i class="fas fa-envelope me-2"></i>Notifications par email</h6>
+                    <div class="form-check">
+                      <input class="form-check-input" type="checkbox" name="envoyer_mail_candidat" id="mailCandidat" checked>
+                      <label class="form-check-label" for="mailCandidat">
+                        Envoyer un email au candidat
+                      </label>
+                    </div>
+                    <div class="form-check">
+                      <input class="form-check-input" type="checkbox" name="envoyer_mail_conseiller" id="mailConseiller">
+                      <label class="form-check-label" for="mailConseiller">
+                        Envoyer un email au conseiller (si validé)
+                      </label>
+                    </div>
+                    <div class="form-check">
+                      <input class="form-check-input" type="checkbox" name="envoyer_mail_partenaire" id="mailPartenaire">
+                      <label class="form-check-label" for="mailPartenaire">
+                        Envoyer un email au partenaire (si réorienté)
+                      </label>
+                    </div>
+                  </div>
+                </div>
+
+                <!-- Boutons d'action -->
+                <div class="d-flex justify-content-between mt-4">
+                  <button type="button" class="btn btn-outline-secondary" onclick="resetJuryForm()">
+                    <i class="fas fa-undo me-1"></i>Réinitialiser
+                  </button>
+                  <button type="submit" class="btn btn-primary">
+                    <i class="fas fa-gavel me-1"></i>Enregistrer la décision
+                  </button>
               </div>
             </form>
           </div>
+          </div>
+
+          <!-- Historique des décisions -->
+          <div class="card">
+            <div class="card-header">
+              <h6 class="mb-0"><i class="fas fa-history me-2"></i>Historique des décisions</h6>
+            </div>
+            <div class="card-body">
+              {% if decisions_jury %}
+                <div class="table-responsive">
+                  <table class="table table-sm">
+                    <thead>
+                      <tr>
+                        <th>Date</th>
+                        <th>Jury</th>
+                        <th>Décision</th>
+                        <th>Conseiller</th>
+                        <th>Promotion</th>
+                        <th>Partenaire</th>
+                        <th>Actions</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {% for decision in decisions_jury %}
+                      <tr>
+                        <td>{{ decision.date_decision.strftime('%d/%m/%Y %H:%M') }}</td>
+                        <td>{{ decision.jury.session_le.strftime('%d/%m/%Y') }}</td>
+                        <td>
+                          {% if decision.decision == "VALIDE" %}
+                            <span class="badge bg-success">Validé</span>
+                          {% elif decision.decision == "REORIENTE" %}
+                            <span class="badge bg-info">Réorienté</span>
+                          {% elif decision.decision == "REJETE" %}
+                            <span class="badge bg-danger">Rejeté</span>
+                          {% else %}
+                            <span class="badge bg-warning">En attente</span>
+          {% endif %}
+                        </td>
+                        <td>{{ decision.conseiller.nom_complet if decision.conseiller else '—' }}</td>
+                        <td>{{ decision.promotion.libelle if decision.promotion else '—' }}</td>
+                        <td>{{ decision.partenaire.nom if decision.partenaire else '—' }}</td>
+                        <td>
+                          <div class="btn-group btn-group-sm">
+                            <button class="btn btn-outline-primary" onclick="editDecision({{ decision.id }})">
+                              <i class="fas fa-edit"></i>
+                            </button>
+                            <button class="btn btn-outline-danger" onclick="deleteDecision({{ decision.id }})">
+                              <i class="fas fa-trash"></i>
+                            </button>
+        </div>
+                        </td>
+                      </tr>
+                      {% endfor %}
+                    </tbody>
+                  </table>
+      </div>
+              {% else %}
+                <div class="text-muted text-center py-3">
+                  <i class="fas fa-inbox fa-2x mb-2"></i><br>
+                  Aucune décision du jury enregistrée pour ce candidat.
+    </div>
+    {% endif %}
+  </div>
+          </div>
+          
           {% endif %}
         </div>
       </div>
@@ -353,6 +862,9 @@
     {% endif %}
   </div>
 </div>
+
+
+
 </div>
 {% endblock %}
 
@@ -381,6 +893,394 @@
     }
   }
 
+  // Fonction pour réinitialiser le formulaire
+  function resetForm() {
+    if (confirm('Êtes-vous sûr de vouloir réinitialiser le formulaire ? Toutes les modifications non sauvegardées seront perdues.')) {
+      // Recharger la page pour restaurer les valeurs originales
+      window.location.reload();
+    }
+  }
+
+  // Fonction pour prévisualiser la photo de profil
+  function previewPhoto(input) {
+    if (input.files && input.files[0]) {
+      const reader = new FileReader();
+      reader.onload = function(e) {
+        const preview = document.getElementById('photoPreview');
+        if (preview) {
+          preview.src = e.target.result;
+        }
+      };
+      reader.readAsDataURL(input.files[0]);
+    }
+  }
+
+  // Fonction pour gérer les champs conditionnels du jury
+  function toggleDecisionFields() {
+    const decision = document.getElementById('decisionSelect').value;
+    const valideFields = document.getElementById('valideFields');
+    const reorienteFields = document.getElementById('reorienteFields');
+    
+    // Masquer tous les champs conditionnels
+    if (valideFields) valideFields.style.display = 'none';
+    if (reorienteFields) reorienteFields.style.display = 'none';
+    
+    // Afficher les champs selon la décision
+    if (decision === 'VALIDE' && valideFields) {
+      valideFields.style.display = 'block';
+    } else if (decision === 'REORIENTE' && reorienteFields) {
+      reorienteFields.style.display = 'block';
+    }
+  }
+
+  // Fonction pour réinitialiser le formulaire jury
+  function resetJuryForm() {
+    if (confirm('Êtes-vous sûr de vouloir réinitialiser le formulaire ? Toutes les modifications non sauvegardées seront perdues.')) {
+      document.querySelector('form[action="/ACD/inscriptions/jury/decision"]').reset();
+      toggleDecisionFields(); // Masquer les champs conditionnels
+    }
+  }
+
+  // Fonction pour éditer une décision
+  function editDecision(decisionId) {
+    // TODO: Implémenter l'édition via modal ou redirection
+    alert('Fonction d\'édition à implémenter pour la décision ID: ' + decisionId);
+  }
+
+  // Fonction pour supprimer une décision
+  function deleteDecision(decisionId) {
+    if (confirm('Êtes-vous sûr de vouloir supprimer cette décision ? Cette action est irréversible.')) {
+      // Créer un formulaire de suppression
+      const form = document.createElement('form');
+      form.method = 'POST';
+      form.action = `/ACD/inscriptions/jury/decision/${decisionId}/delete`;
+      
+      // Ajouter un token CSRF si nécessaire
+      const csrfToken = document.querySelector('meta[name="csrf-token"]');
+      if (csrfToken) {
+        const input = document.createElement('input');
+        input.type = 'hidden';
+        input.name = 'csrf_token';
+        input.value = csrfToken.getAttribute('content');
+        form.appendChild(input);
+      }
+      
+      document.body.appendChild(form);
+      form.submit();
+    }
+  }
+
+  // Fonctions QPV et SIRET
+  async function checkQPV(candidatId) {
+    // Trouver le bouton QPV pour ce candidat
+    const qpvButton = document.querySelector(`button[onclick="checkQPV(${candidatId})"]`);
+    const originalContent = qpvButton.innerHTML;
+    
+    try {
+      // Afficher le spinner et désactiver le bouton
+      qpvButton.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Vérification...';
+      qpvButton.disabled = true;
+      
+      // Afficher le modal avec spinner immédiatement
+      const modal = document.getElementById('qpvResultModal');
+      const modalBody = modal.querySelector('.modal-body');
+      
+      modalBody.innerHTML = `
+        <div class="text-center py-4">
+          <div class="spinner-border text-primary mb-3" role="status">
+            <span class="visually-hidden">Chargement...</span>
+          </div>
+          <h6>Vérification QPV en cours...</h6>
+          <p class="text-muted">Analyse des adresses et géolocalisation</p>
+        </div>
+      `;
+      
+      // Afficher le modal
+      const bsModal = new bootstrap.Modal(modal);
+      bsModal.show();
+      
+      const response = await fetch('/ACD/inscriptions/qpv-check', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/x-www-form-urlencoded',
+        },
+        body: `candidat_id=${candidatId}`
+      });
+      
+      if (!response.ok) {
+        throw new Error(`Erreur HTTP: ${response.status}`);
+      }
+      
+      const result = await response.json();
+      console.log('Résultat QPV:', result); // Debug
+      
+      // Mettre à jour le contenu du modal avec les résultats
+      showQPVResult(result);
+      
+    } catch (error) {
+      console.error('Erreur lors de la vérification QPV:', error);
+      
+      // Afficher l'erreur dans le modal
+      const modal = document.getElementById('qpvResultModal');
+      const modalBody = modal.querySelector('.modal-body');
+      modalBody.innerHTML = `
+        <div class="alert alert-danger">
+          <i class="fas fa-exclamation-triangle me-2"></i>
+          <strong>Erreur lors de la vérification QPV</strong><br>
+          ${error.message}
+        </div>
+      `;
+      
+    } finally {
+      // Restaurer le bouton dans tous les cas
+      qpvButton.innerHTML = originalContent;
+      qpvButton.disabled = false;
+    }
+  }
+
+  async function checkSIRET(candidatId) {
+    const siret = prompt('Entrez le numéro SIRET/SIREN (9 ou 14 chiffres):');
+    if (!siret) return;
+    
+    // Trouver le bouton SIRET pour ce candidat
+    const siretButton = document.querySelector(`button[onclick="checkSIRET(${candidatId})"]`);
+    const originalContent = siretButton.innerHTML;
+    
+    try {
+      // Afficher le spinner et désactiver le bouton
+      siretButton.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Recherche...';
+      siretButton.disabled = true;
+      
+      const response = await fetch('/ACD/inscriptions/siret-check', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/x-www-form-urlencoded',
+        },
+        body: `candidat_id=${candidatId}&numero_siret=${siret}`
+      });
+      
+      const result = await response.json();
+      showSIRETResult(result);
+    } catch (error) {
+      console.error('Erreur lors de la vérification SIRET:', error);
+      alert('Erreur lors de la vérification SIRET');
+    } finally {
+      // Restaurer le bouton dans tous les cas
+      siretButton.innerHTML = originalContent;
+      siretButton.disabled = false;
+    }
+  }
+
+  function showQPVResult(result) {
+    console.log('🔍 [DEBUG] Structure complète des données QPV:', result);
+    console.log('🔍 [DEBUG] Adresses analysées:', result.adresses_analysees);
+    
+    const modal = document.getElementById('qpvResultModal');
+    const modalBody = modal.querySelector('.modal-body');
+    
+    // Indicateur si les données viennent du cache
+    const cacheIndicator = result.from_cache ? 
+      '<div class="alert alert-info"><i class="fas fa-database me-2"></i>Données récupérées depuis la base de données</div>' : 
+      '<div class="alert alert-success"><i class="fas fa-search me-2"></i>Recherche effectuée en temps réel</div>';
+    
+    let html = `
+      ${cacheIndicator}
+      <div class="alert alert-${result.statut_qpv_final === 'QPV' ? 'success' : 'warning'}">
+        <h6><i class="fas fa-map-marker-alt me-2"></i>Statut QPV: ${result.statut_qpv_final || 'Non déterminé'}</h6>
+      </div>
+    `;
+    
+    // Vérifier si les adresses analysées existent
+    if (result.adresses_analysees && Array.isArray(result.adresses_analysees)) {
+      html += `
+        <div class="accordion" id="qpvAccordion">
+      `;
+      
+      result.adresses_analysees.forEach((analyse, index) => {
+        const accordionId = `qpvAccordion${index}`;
+        const collapseId = `qpvCollapse${index}`;
+        
+        // Déterminer la couleur selon le statut
+        let badgeClass = 'secondary';
+        let statusText = 'Non déterminé';
+        
+        if (analyse.non_disponible) {
+          badgeClass = 'light';
+          statusText = 'Non disponible';
+        } else if (analyse.resultat && !analyse.erreur) {
+          const resultat = analyse.resultat;
+          if (resultat.nom_qp) {
+            if (resultat.nom_qp.includes('QPV:')) {
+              badgeClass = 'success';
+              statusText = 'QPV';
+            } else if (resultat.nom_qp.includes('QPV limit:')) {
+              badgeClass = 'warning';
+              statusText = 'QPV limite';
+            } else if (resultat.nom_qp === 'Aucun QPV') {
+              badgeClass = 'secondary';
+              statusText = 'Non QPV';
+            }
+          }
+        } else if (analyse.erreur) {
+          badgeClass = 'danger';
+          statusText = 'Erreur';
+        }
+        
+        html += `
+          <div class="accordion-item">
+            <h2 class="accordion-header" id="heading${index}">
+              <button class="accordion-button ${index === 0 ? '' : 'collapsed'}" type="button" 
+                      data-bs-toggle="collapse" data-bs-target="#${collapseId}" 
+                      aria-expanded="${index === 0 ? 'true' : 'false'}" 
+                      aria-controls="${collapseId}">
+                <span class="me-2">${analyse.type === 'personnelle' ? '👤' : '🏢'}</span>
+                <strong>${analyse.type === 'personnelle' ? 'Adresse personnelle' : 'Adresse entreprise'}</strong>
+                <span class="badge bg-${badgeClass} ms-2">${statusText}</span>
+              </button>
+            </h2>
+            <div id="${collapseId}" class="accordion-collapse collapse ${index === 0 ? 'show' : ''}" 
+                 aria-labelledby="heading${index}" data-bs-parent="#qpvAccordion">
+              <div class="accordion-body">
+                <p><strong>Adresse:</strong> ${analyse.address || analyse.adresse || 'Non fournie'}</p>
+        `;
+        
+        // Vérifier si on a un résultat ou une erreur
+        if (analyse.non_disponible) {
+          html += `
+            <div class="alert alert-light">
+              <i class="fas fa-info-circle me-2"></i>
+              <strong>Adresse non disponible</strong><br>
+              Cette adresse n'a pas été fournie lors de la préinscription.
+            </div>
+          `;
+        } else if (analyse.resultat && !analyse.erreur) {
+          const resultat = analyse.resultat;
+          
+          // Déterminer le statut QPV
+          let statutQPV = 'Non déterminé';
+          if (resultat.nom_qp) {
+            if (resultat.nom_qp.includes('QPV:')) {
+              statutQPV = 'QPV';
+            } else if (resultat.nom_qp.includes('QPV limit:')) {
+              statutQPV = 'QPV limite';
+            } else if (resultat.nom_qp === 'Aucun QPV') {
+              statutQPV = 'Non QPV';
+            }
+          }
+          
+          html += `
+            <p><strong>Statut:</strong> ${statutQPV}</p>
+          `;
+          
+          if (resultat.distance_m && resultat.distance_m !== 'N/A') {
+            html += `<p><strong>Distance:</strong> ${resultat.distance_m} mètres</p>`;
+          }
+          
+          if (resultat.nom_qp && resultat.nom_qp !== 'Aucun QPV') {
+            const qpvName = resultat.nom_qp.split(':')[1] || resultat.nom_qp;
+            html += `<p><strong>QPV:</strong> ${qpvName}</p>`;
+          }
+          
+          // Image réduite
+          if (resultat.image_url) {
+            html += `
+              <div class="mt-3">
+                <h6>Carte géographique:</h6>
+                <img src="${resultat.image_url}" class="img-fluid rounded" 
+                     style="max-width: 300px; max-height: 200px;" 
+                     alt="Carte QPV">
+              </div>
+            `;
+          }
+          
+          // Lien vers la carte interactive
+          if (resultat.carte) {
+            html += `
+              <div class="mt-2">
+                <a href="${resultat.carte}" target="_blank" class="btn btn-sm btn-outline-primary">
+                  <i class="fas fa-external-link-alt me-1"></i>Voir la carte interactive
+                </a>
+              </div>
+            `;
+          }
+          
+        } else if (analyse.erreur) {
+          html += `
+            <div class="alert alert-danger">
+              <strong>Erreur:</strong> ${analyse.erreur}
+            </div>
+          `;
+        } else {
+          html += `
+            <div class="alert alert-warning">
+              <strong>Aucun résultat disponible</strong>
+            </div>
+          `;
+        }
+        
+        html += `
+              </div>
+            </div>
+          </div>
+        `;
+      });
+      
+      html += `</div>`; // Fermeture accordion
+    } else {
+      html += `<p class="text-muted">Aucune adresse analysée disponible.</p>`;
+    }
+    
+    modalBody.innerHTML = html;
+  }
+
+  function showSIRETResult(result) {
+    const modal = document.getElementById('siretResultModal');
+    const modalBody = modal.querySelector('.modal-body');
+    
+    let html = `
+      <div class="alert alert-${result.entreprise_mise_a_jour ? 'success' : 'warning'}">
+        <h6><i class="fas fa-building me-2"></i>SIRET: ${result.numero_siret}</h6>
+        <p>${result.resultat.message}</p>
+      </div>
+    `;
+    
+    if (result.resultat.entreprise_data) {
+      const data = result.resultat.entreprise_data;
+      html += `
+        <div class="row">
+          <div class="col-md-6">
+            <h6>Informations générales</h6>
+            <p><strong>Nom:</strong> ${data.nom_entreprise || 'N/A'}</p>
+            <p><strong>Forme juridique:</strong> ${data.forme_juridique || 'N/A'}</p>
+            <p><strong>Date création:</strong> ${data.date_creation_formate || 'N/A'}</p>
+            <p><strong>Code NAF:</strong> ${data.code_naf || 'N/A'}</p>
+            <p><strong>Activité:</strong> ${data.activite || 'N/A'}</p>
+          </div>
+          <div class="col-md-6">
+            <h6>Siège social</h6>
+            <p><strong>Adresse:</strong> ${data.siege.adresse || 'N/A'}</p>
+            <p><strong>Code postal:</strong> ${data.siege.code_postal || 'N/A'}</p>
+            <p><strong>Ville:</strong> ${data.siege.ville || 'N/A'}</p>
+            <p><strong>SIRET:</strong> ${data.siege.siret || 'N/A'}</p>
+          </div>
+        </div>
+      `;
+      
+      if (result.resultat.csv_file) {
+        html += `
+          <div class="mt-3">
+            <a href="${result.resultat.csv_file}" class="btn btn-outline-primary" download>
+              <i class="fas fa-download me-1"></i>Télécharger les données CSV
+            </a>
+          </div>
+        `;
+      }
+    }
+    
+    modalBody.innerHTML = html;
+    new bootstrap.Modal(modal).show();
+  }
+
   // Observer les changements du sidebar
   document.addEventListener('DOMContentLoaded', function() {
     const sidebar = document.getElementById('sidebar');
@@ -403,5 +1303,130 @@
       adjustKpiBandeau();
     }
   });
+
+  // Fonction pour supprimer un document
+  function deleteDocument(documentId) {
+    if (confirm('Êtes-vous sûr de vouloir supprimer ce document ?')) {
+      // Créer un formulaire pour la soumission POST
+      const form = document.createElement('form');
+      form.method = 'POST';
+      form.action = '/ACD/inscriptions/delete-document';
+      
+      const input = document.createElement('input');
+      input.type = 'hidden';
+      input.name = 'document_id';
+      input.value = documentId;
+      
+      form.appendChild(input);
+      document.body.appendChild(form);
+      form.submit();
+    }
+  }
 </script>
+
+<!-- Modals pour QPV et SIRET -->
+<div class="modal fade" id="qpvResultModal" tabindex="-1" aria-labelledby="qpvResultModalLabel" aria-hidden="true">
+  <div class="modal-dialog modal-lg">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h5 class="modal-title" id="qpvResultModalLabel">
+          <i class="fas fa-map-marker-alt me-2"></i>Résultat de la vérification QPV
+        </h5>
+        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+      </div>
+      <div class="modal-body">
+        <div class="alert alert-info">
+          <i class="fas fa-info-circle me-2"></i>
+          <strong>Processus de vérification QPV :</strong><br>
+          • Géocodage des adresses personnelle et entreprise<br>
+          • Vérification des coordonnées GPS<br>
+          • Analyse de la zone géographique<br>
+          • Génération de cartes interactives<br>
+          <small class="text-muted">Ce processus peut prendre quelques secondes...</small>
+        </div>
+        <!-- Le contenu sera rempli dynamiquement par JavaScript -->
+      </div>
+      <div class="modal-footer">
+        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Fermer</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div class="modal fade" id="siretResultModal" tabindex="-1" aria-labelledby="siretResultModalLabel" aria-hidden="true">
+  <div class="modal-dialog modal-lg">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h5 class="modal-title" id="siretResultModalLabel">
+          <i class="fas fa-building me-2"></i>Résultat de la vérification SIRET
+        </h5>
+        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+      </div>
+      <div class="modal-body">
+        <div class="alert alert-info">
+          <i class="fas fa-info-circle me-2"></i>
+          <strong>Processus de vérification SIRET :</strong><br>
+          • Recherche des informations entreprise via API Pappers<br>
+          • Vérification du numéro SIRET/SIREN<br>
+          • Récupération des données légales<br>
+          • Analyse des informations financières<br>
+          <small class="text-muted">Ce processus peut prendre quelques secondes...</small>
+        </div>
+        <!-- Le contenu sera rempli dynamiquement par JavaScript -->
+      </div>
+      <div class="modal-footer">
+        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Fermer</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Modal pour ajouter un document -->
+<div class="modal fade" id="addDocumentModal" tabindex="-1" aria-labelledby="addDocumentModalLabel" aria-hidden="true">
+  <div class="modal-dialog">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h5 class="modal-title" id="addDocumentModalLabel">
+          <i class="fas fa-file-upload me-2"></i>Ajouter un document
+        </h5>
+        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+      </div>
+      <form method="post" action="/ACD/inscriptions/add-document" enctype="multipart/form-data">
+        <div class="modal-body">
+          <input type="hidden" name="candidat_id" value="{{ cand.id if cand else '' }}">
+          
+          <div class="mb-3">
+            <label for="type_document" class="form-label">Type de document</label>
+            <select class="form-select" id="type_document" name="type_document" required>
+              <option value="">Sélectionnez un type</option>
+              {% for type_doc in type_documents %}
+              <option value="{{ type_doc.value }}">{{ type_doc.value }}</option>
+              {% endfor %}
+            </select>
+          </div>
+          
+          <div class="mb-3">
+            <label for="document_file" class="form-label">Fichier</label>
+            <input type="file" class="form-control" id="document_file" name="document_file" 
+                   accept=".pdf,.doc,.docx,.jpg,.jpeg,.png" required>
+            <div class="form-text">Formats acceptés : PDF, DOC, DOCX, JPG, PNG (max 10MB)</div>
+          </div>
+          
+          <div class="mb-3">
+            <label for="description" class="form-label">Description (optionnel)</label>
+            <textarea class="form-control" id="description" name="description" rows="3" 
+                      placeholder="Description du document..."></textarea>
+          </div>
+        </div>
+        <div class="modal-footer">
+          <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Annuler</button>
+          <button type="submit" class="btn btn-primary">
+            <i class="fas fa-upload me-1"></i>Ajouter le document
+          </button>
+        </div>
+      </form>
+    </div>
+  </div>
+</div>
+
 {% endblock %}

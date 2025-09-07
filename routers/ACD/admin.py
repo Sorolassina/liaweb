@@ -38,17 +38,28 @@ router = APIRouter()
 # Fonction pour sauvegarder les photos de profil
 def save_profile_photo(photo: UploadFile, user_id: int, old_photo_path: str = None) -> str:
     """Sauvegarde une photo de profil et retourne le chemin relatif"""
+    from ...core.config import Settings
+    settings = Settings()
+    
     print(f"🔍 [DEBUG] save_profile_photo appelée avec user_id={user_id}, filename={photo.filename}")
     
+    # Validation du type MIME
+    if photo.content_type not in settings.ALLOWED_IMAGE_MIME_TYPES:
+        raise HTTPException(status_code=400, detail="Type de fichier non autorisé")
+    
+    # Validation de la taille
+    if photo.size > settings.MAX_UPLOAD_SIZE_MB * 1024 * 1024:
+        raise HTTPException(status_code=400, detail=f"Fichier trop volumineux. Max: {settings.MAX_UPLOAD_SIZE_MB}MB")
+    
     # Créer le dossier media/users s'il n'existe pas
-    media_dir = Path("media/users")
+    media_dir = settings.MEDIA_ROOT / "users"
     print(f"📁 [DEBUG] Création du dossier: {media_dir}")
     media_dir.mkdir(parents=True, exist_ok=True)
     
     # Supprimer l'ancienne photo si elle existe
     if old_photo_path:
         try:
-            old_file_path = Path("." + old_photo_path)  # Ajouter le point pour le chemin relatif
+            old_file_path = settings.MEDIA_ROOT / old_photo_path.lstrip('/')
             if old_file_path.exists():
                 print(f"🗑️ [DEBUG] Suppression de l'ancienne photo: {old_file_path}")
                 old_file_path.unlink()
@@ -81,7 +92,7 @@ def save_profile_photo(photo: UploadFile, user_id: int, old_photo_path: str = No
         raise e
     
     # Retourner le chemin relatif pour l'affichage
-    relative_path = f"/media/users/{filename}"
+    relative_path = settings.get_media_url(f"users/{filename}")
     print(f"🔗 [DEBUG] Chemin relatif retourné: {relative_path}")
     return relative_path
 

@@ -17,8 +17,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
 from fastapi.templating import Jinja2Templates
 
-
-from .core.config import settings
+from .core.config import settings, BASE_DIR
 from .core.database import create_db_and_tables, test_db_connection
 from .core.middleware import setup_all_middlewares
 from .services import UserService
@@ -36,16 +35,27 @@ from starlette.exceptions import HTTPException as StarletteHTTPException
 # ----------------------------
 # Chemins project/ressources
 # ----------------------------
-BASE_DIR = Path(__file__).resolve().parent               # .../app
-STATIC_DIR = BASE_DIR / "static"
-TEMPLATES_DIR = BASE_DIR / "templates"
+
+# Créer les dossiers nécessaires au démarrage
+settings.ensure_directories()
+
+# Utiliser les propriétés de la configuration
+STATIC_DIR = settings.STATIC_DIR
+TEMPLATES_DIR = settings.TEMPLATE_DIR
+STATIC_MAPS_DIR = settings.STATIC_MAPS_DIR
+STATIC_IMAGES_DIR = settings.STATIC_IMAGES_DIR
+FICHIERS_DIR = settings.FICHIERS_DIR
+MEDIA_ROOT = settings.MEDIA_ROOT
+
+logger = logging.getLogger("uvicorn.error")
+logger.info("📁 BASE_DIR        = %s", BASE_DIR)
+logger.info("📂 STATIC_DIR     = %s", STATIC_DIR)
+logger.info("📂 TEMPLATES_DIR  = %s", TEMPLATES_DIR)
+logger.info("📂 MEDIA_ROOT     = %s", MEDIA_ROOT)
 
 # Script SQL d'init (recommandé: app/core/init_postgres.sql)
 SQL_INIT_FILE = (BASE_DIR / "core" / "init_postgres.sql").resolve()
 DB_BOOTSTRAP_SENTINEL = (BASE_DIR / ".db_bootstrapped").resolve()
-
-logger = logging.getLogger("uvicorn.error")
-logger.info("📁 BASE_DIR        = %s", BASE_DIR)
 logger.info("📄 SQL_INIT_FILE   = %s (exists=%s)", SQL_INIT_FILE, SQL_INIT_FILE.exists())
 logger.info("🔖 SENTINEL        = %s (exists=%s)", DB_BOOTSTRAP_SENTINEL, DB_BOOTSTRAP_SENTINEL.exists())
 
@@ -93,26 +103,37 @@ if settings.DEBUG and not cors_origins:
 # Static & Templates
 # ----------------------------
 if settings.DEBUG:
-    STATIC_DIR.mkdir(parents=True, exist_ok=True)
+    # Créer les sous-dossiers CSS et JS
     (STATIC_DIR / "css").mkdir(exist_ok=True)
     (STATIC_DIR / "js").mkdir(exist_ok=True)
+    
+    # Créer le fichier CSS de thème s'il n'existe pas
     theme_css = STATIC_DIR / "css" / "theme.css"
     if not theme_css.exists():
         theme_css.write_text(
-            """/* Thème LIA Coaching (dev) */
-:root { --primary-color: rgb(255,211,0); --secondary-color:#000; --white-color:#fff; --gray-light:#f8f9fa; --gray-dark:#343a40; }
-body { font-family:Segoe UI, Tahoma, Geneva, Verdana, sans-serif; background:var(--gray-light); }
-.navbar-brand { color: var(--primary-color) !important; font-weight:700; }
-.btn-primary { background:var(--primary-color); border-color:var(--primary-color); color:var(--secondary-color); }
-.btn-primary:hover { background:#e6b800; border-color:#e6b800; color:var(--secondary-color); }
-.card { border:none; box-shadow:0 0.125rem 0.25rem rgba(0,0,0,.075); }
-.card-header { background:var(--primary-color); color:var(--secondary-color); font-weight:700; }
-.text-primary { color:var(--primary-color) !important; }
-.bg-primary { background:var(--primary-color) !important; color:var(--secondary-color) !important; }
+            f"""/* Thème LIA Coaching (dev) */
+:root {{ 
+    --primary-color: {settings.THEME_PRIMARY}; 
+    --secondary-color: {settings.THEME_SECONDARY}; 
+    --white-color: {settings.THEME_WHITE}; 
+    --gray-light: #f8f9fa; 
+    --gray-dark: #343a40; 
+}}
+body {{ font-family: Segoe UI, Tahoma, Geneva, Verdana, sans-serif; background: var(--gray-light); }}
+.navbar-brand {{ color: var(--primary-color) !important; font-weight: 700; }}
+.btn-primary {{ background: var(--primary-color); border-color: var(--primary-color); color: var(--secondary-color); }}
+.btn-primary:hover {{ background: #e6b800; border-color: #e6b800; color: var(--secondary-color); }}
+.card {{ border: none; box-shadow: 0 0.125rem 0.25rem rgba(0,0,0,.075); }}
+.card-header {{ background: var(--primary-color); color: var(--secondary-color); font-weight: 700; }}
+.text-primary {{ color: var(--primary-color) !important; }}
+.bg-primary {{ background: var(--primary-color) !important; color: var(--secondary-color) !important; }}
 """
         )
 
 app.mount("/static", StaticFiles(directory=str(STATIC_DIR), check_dir=True), name="static")
+app.mount("/static/maps", StaticFiles(directory=str(settings.STATIC_DIR / "maps"), check_dir=True), name="static_maps")
+app.mount("/static/images", StaticFiles(directory=str(settings.STATIC_DIR / "images"), check_dir=True), name="static_images")
+app.mount("/static/files", StaticFiles(directory=str(settings.FICHIERS_DIR), check_dir=True), name="static_files")
 
 templates = Jinja2Templates(directory=str(TEMPLATES_DIR))
 templates.env.auto_reload = bool(settings.DEBUG)
@@ -120,10 +141,13 @@ templates.env.globals.update(
     app_name=settings.APP_NAME,
     app_version=settings.VERSION,
     is_debug=settings.DEBUG,
+    theme_primary=settings.THEME_PRIMARY,
+    theme_secondary=settings.THEME_SECONDARY,
+    theme_white=settings.THEME_WHITE,
 )
 
-Path(settings.MEDIA_ROOT).mkdir(parents=True, exist_ok=True)
-app.mount("/media", StaticFiles(directory=settings.MEDIA_ROOT), name="media")
+# Mount media directory
+app.mount("/media", StaticFiles(directory=str(MEDIA_ROOT)), name="media")
 
 # ----------------------------
 # Bootstrap SQL via psql (idempotent)

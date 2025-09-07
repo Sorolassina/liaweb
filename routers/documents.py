@@ -46,18 +46,20 @@ async def upload_document(
         )
     
     # Vérifier le type de fichier
-    allowed_extensions = ['.pdf', '.jpg', '.jpeg', '.png', '.doc', '.docx']
-    if not FileUtils.is_allowed_file(file.filename, allowed_extensions):
+    from ...core.config import Settings
+    settings = Settings()
+    
+    if not FileUtils.is_allowed_file(file.filename, settings.ALLOWED_DOC_EXTENSIONS):
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
             detail="Type de fichier non autorisé. Types autorisés: PDF, JPG, PNG, DOC, DOCX"
         )
     
-    # Vérifier la taille du fichier (max 10MB)
-    if file.size > 10 * 1024 * 1024:
+    # Vérifier la taille du fichier
+    if file.size > settings.MAX_UPLOAD_SIZE_MB * 1024 * 1024:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
-            detail="Fichier trop volumineux. Taille maximum: 10MB"
+            detail=f"Fichier trop volumineux. Taille maximum: {settings.MAX_UPLOAD_SIZE_MB}MB"
         )
     
     # Créer le répertoire d'upload s'il n'existe pas

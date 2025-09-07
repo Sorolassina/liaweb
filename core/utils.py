@@ -4,9 +4,11 @@ Module utilitaire pour les traitements communs
 import os
 import json
 import logging
+import shutil
 from typing import Optional, Dict, Any, List
 from datetime import datetime, date
 import requests
+from fastapi import UploadFile
 from ..core.config import settings
 
 logger = logging.getLogger(__name__)
@@ -18,8 +20,11 @@ class FileUtils:
     @staticmethod
     def ensure_upload_dir() -> str:
         """Crée le répertoire d'upload s'il n'existe pas"""
-        os.makedirs(settings.UPLOAD_DIR, exist_ok=True)
-        return settings.UPLOAD_DIR
+        from .config import Settings
+        settings = Settings()
+        upload_path = settings.BASE_DIR / settings.UPLOAD_DIR
+        upload_path.mkdir(parents=True, exist_ok=True)
+        return str(upload_path)
     
     @staticmethod
     def get_file_extension(filename: str) -> str:
@@ -31,6 +36,44 @@ class FileUtils:
         """Vérifie si le fichier a une extension autorisée"""
         return FileUtils.get_file_extension(filename) in allowed_extensions
     
+    @staticmethod
+    def save_upload_file(file: UploadFile, destination_dir: str, filename: str) -> str:
+        """Sauvegarde un fichier uploadé et retourne le chemin complet"""
+        from .config import Settings
+        settings = Settings()
+        
+        # Créer le chemin de destination
+        dest_path = settings.BASE_DIR / destination_dir
+        dest_path.mkdir(parents=True, exist_ok=True)
+        
+        # Chemin complet du fichier
+        file_path = dest_path / filename
+        
+        # Sauvegarder le fichier
+        with open(file_path, "wb") as f:
+            shutil.copyfileobj(file.file, f)
+        
+        return str(file_path)
+    
+    @staticmethod
+    def validate_file_upload(file: UploadFile, allowed_mime_types: List[str], max_size_mb: int) -> None:
+        """Valide un fichier uploadé"""
+        from fastapi import HTTPException
+        
+        # Vérifier le type MIME
+        if file.content_type not in allowed_mime_types:
+            raise HTTPException(
+                status_code=400,
+                detail=f"Type de fichier non autorisé. Types autorisés: {', '.join(allowed_mime_types)}"
+            )
+        
+        # Vérifier la taille
+        if file.size > max_size_mb * 1024 * 1024:
+            raise HTTPException(
+                status_code=400,
+                detail=f"Fichier trop volumineux. Taille maximum: {max_size_mb}MB"
+            )
+
     @staticmethod
     def get_file_size_mb(file_path: str) -> float:
         """Retourne la taille d'un fichier en MB"""

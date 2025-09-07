@@ -3,7 +3,6 @@ from __future__ import annotations
 
 import os
 import re
-import uuid
 import shutil
 from datetime import datetime, timezone, date as _date
 from pathlib import Path
@@ -11,7 +10,7 @@ from typing import Optional, Set
 
 from fastapi import (
     APIRouter, Request, Depends, Form, HTTPException,
-    BackgroundTasks, Query, UploadFile, File
+    Query, UploadFile, File
 )
 from fastapi.responses import HTMLResponse, RedirectResponse
 from sqlalchemy import func
@@ -24,7 +23,7 @@ from ...templates import templates
 
 from ...models.base import (
     Programme, Candidat, Entreprise, Preinscription, Eligibilite,
-    StatutDossier, Document
+    StatutDossier, Document, Inscription
 )
 
 # Enums
@@ -36,8 +35,6 @@ except Exception:
     except Exception:
         TypeDocument = None  # pas d'enum dispo
 
-from ...models.ACD.preinscription_invite import PreinscriptionInvite
-from ...services.ACD.mailer import SmtpMailer, EmailMessage
 from ...services.geocoding import geocode_one
 from ...services.ACD.eligibilite import evaluate_eligibilite, entreprise_age_annees
 from ...services.uploads import validate_upload  # limites taille/type
@@ -62,9 +59,10 @@ def safe_name(s: str) -> str:
 
 
 def ensure_media_root() -> Path:
-    """Récupère le MEDIA_ROOT (config) ou 'media' par défaut, et s'assure qu'il existe."""
-    root = Path(getattr(settings, "MEDIA_ROOT", "media"))
-    root.mkdir(parents=True, exist_ok=True)
+    """Récupère le MEDIA_ROOT (config) et s'assure qu'il existe."""
+    from ...core.config import Settings
+    settings = Settings()
+    root = settings.MEDIA_ROOT
     return root
 
 
@@ -89,7 +87,33 @@ def coerce_doc_type(value: Optional[str]):
             return getattr(TypeDocument, "AUTRE", list(TypeDocument)[0])
 
 
-# --------- UI LISTE ---------
+# --------- FORMULAIRE PUBLIC (pour les candidats) ---------
+@router.get("/preinscriptions/public-form", response_class=HTMLResponse)
+def preinscription_public_form(
+    request: Request,
+    session: Session = Depends(get_session),
+    programme: Optional[str] = Query(None),
+):
+    # Récupérer le programme spécifique si fourni
+    prog = None
+    if programme:
+        prog = session.exec(select(Programme).where(Programme.code == programme)).first()
+    
+    # Récupérer tous les programmes actifs pour la liste déroulante
+    programmes_actifs = session.exec(select(Programme).where(Programme.actif.is_(True)).order_by(Programme.code)).all()
+    
+    return templates.TemplateResponse(
+        "ACD/preinscription_public_form.html",
+        {
+            "request": request,
+            "settings": settings,
+            "programme": prog,
+            "programmes_actifs": programmes_actifs,
+            "doc_types": DOC_TYPES_DEFAULT,
+        },
+    )
+
+# --------- LISTE ADMIN (pour les administrateurs) ---------
 @router.get("/preinscriptions/form", response_class=HTMLResponse)
 def preinscriptions(
     request: Request,
@@ -159,7 +183,7 @@ def preinscriptions(
         },
     )
 
-# --------- SOUMISSION (sans token) AVEC UPLOAD PHOTO + DOCS ---------
+# --------- SOUMISSION PUBLIQUE (sans token) AVEC UPLOAD PHOTO + DOCS ---------
 @router.post("/preinscriptions/submit")
 async def preinscription_public_submit(
     request: Request,
@@ -219,10 +243,10 @@ async def preinscription_public_submit(
 
     dn = _date.fromisoformat(date_naissance)
     dce = _date.fromisoformat(date_creation_entreprise) if date_creation_entreprise else None
-    try:
-        ca_float = float(str(chiffre_affaire).replace(" ", "").replace(",", "."))
-    except Exception:
-        ca_float = None
+    # Le chiffre d'affaires est un intervalle (string), pas un nombre
+    ca_string = str(chiffre_affaire).strip() if chiffre_affaire else None
+    if settings.DEBUG:
+        print(f"💰 [DEBUG] Chiffre d'affaires (intervalle): {ca_string}")
 
     cand = session.exec(select(Candidat).where(Candidat.email == email)).first()
     if not cand:
@@ -310,7 +334,10 @@ async def preinscription_public_submit(
     ent.adresse = adresse_entreprise
     ent.date_creation = dce
     ent.siret = siret
-    ent.chiffre_affaires = ca_float
+    ent.chiffre_affaires = ca_string
+    
+    if settings.DEBUG:
+        print(f"🏢 [DEBUG] Entreprise mise à jour - CA: {ent.chiffre_affaires}, SIRET: {ent.siret}")
 
     addr_for_geo = adresse_entreprise or adresse_personnelle
     if addr_for_geo:
@@ -351,9 +378,10 @@ async def preinscription_public_submit(
         ext = os.path.splitext(photo_profil.filename)[1].lower() or ".jpg"
         photo_path = base_dir / f"photo_profil_{pre.id}{ext}"
         save_upload(photo_path, photo_profil)
-        cand.photo_profil = str(photo_path)
+        cand.photo_profil = f"Preinscrits/{prog.code or 'UNK'}/{pre.id}/photo_profil_{pre.id}{ext}"
         if settings.DEBUG:
             print(f"💾 [DEBUG] Photo sauvegardée: {photo_path}")
+            print(f"📸 [DEBUG] Chemin relatif sauvegardé: {cand.photo_profil}")
 
     # Documents dynamiques
     form = await request.form()
@@ -415,7 +443,7 @@ async def preinscription_public_submit(
     verdict, details = evaluate_eligibilite(
         adresse_perso=adresse_personnelle,
         adresse_entreprise=adresse_entreprise,
-        chiffre_affaires=ca_float,
+        chiffre_affaires=ca_string,
         anciennete_annees=anciennete,
         ca_min=prog.ca_seuil_min,
         ca_max=prog.ca_seuil_max,
@@ -424,7 +452,7 @@ async def preinscription_public_submit(
     el = Eligibilite(
         preinscription_id=pre.id,
         ca_seuil_ok=details.get("ca_ok"),
-        ca_score=ca_float,
+        ca_score=None,  # Pas de valeur numérique unique pour les intervalles
         qpv_ok=details.get("qpv_ok"),
         anciennete_ok=details.get("anciennete_ok"),
         anciennete_annees=details.get("anciennete_annees"),
@@ -432,6 +460,68 @@ async def preinscription_public_submit(
     )
     session.add(el)
     session.commit()
+
+    # 🔍 RECHERCHE QPV AUTOMATIQUE après création de la préinscription
+    try:
+        from ...services.ACD.service_qpv import verif_qpv
+        from ...schemas.ACD.schema_qpv import Adresse
+        
+        # Préparer les données pour la vérification QPV
+        adresses_a_verifier = []
+        
+        # Adresse personnelle
+        if adresse_personnelle:
+            adresses_a_verifier.append({
+                "address": adresse_personnelle,
+                "type": "personnelle"
+            })
+        
+        # Adresse entreprise
+        if adresse_entreprise:
+            adresses_a_verifier.append({
+                "address": adresse_entreprise,
+                "type": "entreprise"
+            })
+        
+        # Lancer la vérification QPV pour chaque adresse
+        qpv_found = False
+        details_qpv = {"adresses_analysees": []}
+        
+        for adresse_data in adresses_a_verifier:
+            try:
+                adresse_obj = Adresse(**adresse_data)
+                result_qpv = await verif_qpv(adresse_obj, request)
+                
+                if result_qpv.get("etat_qpv") == "QPV":
+                    qpv_found = True
+                
+                details_qpv["adresses_analysees"].append({
+                    "type": adresse_data["type"],
+                    "adresse": adresse_data["address"],
+                    "resultat": result_qpv
+                })
+                
+            except Exception as e:
+                print(f"⚠️ [QPV] Erreur lors de la vérification {adresse_data['type']}: {e}")
+                details_qpv["adresses_analysees"].append({
+                    "address": adresse_data["address"],
+                    "type": adresse_data["type"],
+                    "etat_qpv": "ERREUR",
+                    "erreur": str(e)
+                })
+        
+        # Mettre à jour l'éligibilité avec les résultats QPV
+        import json
+        el.qpv_ok = qpv_found
+        el.details_json = json.dumps(details_qpv)
+        session.add(el)
+        session.commit()
+        
+        print(f"✅ [QPV] Recherche automatique terminée - QPV trouvé: {qpv_found}")
+        
+    except Exception as e:
+        print(f"⚠️ [QPV] Erreur lors de la recherche automatique QPV: {e}")
+        # Ne pas faire échouer la préinscription si QPV échoue
 
     if settings.DEBUG:
         print(f"✅ [DEBUG] Préinscription terminée avec succès!")
@@ -446,318 +536,3 @@ def preinscription_merci(request: Request):
         "ACD/preinscription_merci.html",
         {"request": request, "settings": settings},
     )
-
-
-# --------- ENVOI D’INVITATION PAR MAIL ---------
-@router.post("/preinscriptions/send-link")
-def send_preinscription_link(
-    background: BackgroundTasks,
-    email: str = Form(...),
-    programme_code: str = Form(...),
-    message: Optional[str] = Form(None),
-    request: Request = None,
-    session: Session = Depends(get_session),
-):
-    prog = session.exec(select(Programme).where(Programme.code == programme_code)).first()
-    if not prog:
-        raise HTTPException(status_code=404, detail="Programme introuvable")
-    token = uuid.uuid4().hex
-    inv = PreinscriptionInvite(token=token, email=email, programme_id=prog.id, message=message)
-    session.add(inv)
-    session.commit()
-
-    # Lien public
-    base_url = str(request.base_url).rstrip("/")
-    link = f"{base_url}/preinscriptions/form/{token}"
-
-    subject = f"Préinscription {prog.code} — LIA Coaching"
-    html = f"""
-      <p>Bonjour,</p>
-      <p>Vous pouvez compléter votre préinscription au programme <b>{prog.nom}</b> en cliquant sur le lien ci-dessous :</p>
-      <p><a href="{link}">{link}</a></p>
-      {"<p>Message : " + message + "</p>" if message else ""}
-      <p>Bien cordialement,</p>
-      <p>L’équipe LIA Coaching</p>
-    """
-    background.add_task(SmtpMailer().send, EmailMessage(to=[email], subject=subject, html=html))
-    return {"ok": True}
-
-
-# --------- FORMULAIRE PUBLIC (lien token) ---------
-@router.get("/preinscriptions/form/{token}", response_class=HTMLResponse)
-def preinscription_public_form_token(token: str, request: Request, session: Session = Depends(get_session)):
-    inv = session.exec(select(PreinscriptionInvite).where(PreinscriptionInvite.token == token)).first()
-    
-            # Debug logs pour comprendre l'expiration
-    if settings.DEBUG and inv:
-        now = datetime.now(timezone.utc)
-        print(f"🔍 [DEBUG] Vérification token: {token}")
-        print(f"📅 [DEBUG] Date de création: {inv.cree_le}")
-        print(f"⏰ [DEBUG] Date d'expiration: {inv.expire_le}")
-        print(f"🕐 [DEBUG] Date actuelle (UTC): {now}")
-        print(f"⏳ [DEBUG] Temps restant: {inv.expire_le - now}")
-        print(f"❌ [DEBUG] Token expiré: {inv.expire_le < now}")
-        print(f"✅ [DEBUG] Token utilisé: {inv.utilise}")
-    
-    if not inv or inv.utilise or inv.expire_le < datetime.now(timezone.utc):
-        if settings.DEBUG:
-            print(f"🚫 [DEBUG] Token rejeté - inv: {bool(inv)}, utilisé: {inv.utilise if inv else 'N/A'}, expiré: {inv.expire_le < datetime.now(timezone.utc) if inv else 'N/A'}")
-        return templates.TemplateResponse(
-            "preinscription_public_form.html",
-            {"request": request, "settings": settings, "error": "Lien invalide ou expiré."},
-            status_code=400,
-        )
-    prog = session.get(Programme, inv.programme_id)
-    return templates.TemplateResponse(
-        "ACD/preinscription_public_form.html",
-        {
-            "request": request,
-            "settings": settings,
-            "invite": inv,
-            "programme": prog,
-            "doc_types": DOC_TYPES_DEFAULT,
-        },
-    )
-
-
-# --------- FORMULAIRE PUBLIC (sans token) ---------
-@router.get("/preinscriptions/public_form", response_class=HTMLResponse)
-def preinscription_public_form(
-    request: Request,
-    programme: Optional[str] = None,
-    email: Optional[str] = None,
-    session: Session = Depends(get_session),
-):
-    # Récupérer tous les programmes actifs pour la liste déroulante
-    programmes_actifs = session.exec(select(Programme).where(Programme.actif.is_(True)).order_by(Programme.code)).all()
-    
-    prog = None
-    if programme:
-        prog = session.exec(select(Programme).where(Programme.code == programme)).first()
-    
-    return templates.TemplateResponse(
-        "ACD/preinscription_public_form.html",
-        {
-            "request": request,
-            "settings": settings,
-            "programme": prog,
-            "prefill_email": email,
-            "doc_types": DOC_TYPES_DEFAULT,
-            "programmes_actifs": programmes_actifs,  # Nouveau : tous les programmes actifs
-        },
-    )
-
-
-# --------- SOUMISSION (token) AVEC UPLOAD PHOTO + DOCS ---------
-@router.post("/preinscriptions/form/{token}")
-async def preinscription_public_submit_token(
-    token: str,
-    request: Request,
-    # champs formulaire
-    civilite: Optional[str] = Form(None),
-    nom: str = Form(...),
-    prenom: str = Form(...),
-    date_naissance: str = Form(...),  # 'YYYY-MM-DD'
-    email: str = Form(...),
-    telephone: Optional[str] = Form(None),
-    adresse_personnelle: str = Form(...),
-    adresse_entreprise: Optional[str] = Form(None),
-    date_creation_entreprise: Optional[str] = Form(None),
-    chiffre_affaire: Optional[str] = Form(None),
-    siret: Optional[str] = Form(None),
-    niveau_etudes: Optional[str] = Form(None),
-    secteur_activite: Optional[str] = Form(None),
-    # fichiers
-    photo_profil: UploadFile | None = File(None),
-    session: Session = Depends(get_session),
-):
-    inv = session.exec(select(PreinscriptionInvite).where(PreinscriptionInvite.token == token)).first()
-    
-            # Debug logs pour comprendre l'expiration
-    if settings.DEBUG and inv:
-        now = datetime.now(timezone.utc)
-        print(f"🔍 [DEBUG] Vérification token (POST): {token}")
-        print(f"📅 [DEBUG] Date de création: {inv.cree_le}")
-        print(f"⏰ [DEBUG] Date d'expiration: {inv.expire_le}")
-        print(f"🕐 [DEBUG] Date actuelle (UTC): {now}")
-        print(f"⏳ [DEBUG] Temps restant: {inv.expire_le - now}")
-        print(f"❌ [DEBUG] Token expiré: {inv.expire_le < now}")
-        print(f"✅ [DEBUG] Token utilisé: {inv.utilise}")
-    
-    if not inv or inv.utilise or inv.expire_le < datetime.now(timezone.utc):
-        if settings.DEBUG:
-            print(f"🚫 [DEBUG] Token rejeté (POST) - inv: {bool(inv)}, utilisé: {inv.utilise if inv else 'N/A'}, expiré: {inv.expire_le < datetime.now(timezone.utc) if inv else 'N/A'}")
-        raise HTTPException(status_code=400, detail="Lien invalide ou expiré.")
-    prog = session.get(Programme, inv.programme_id)
-    if not prog:
-        raise HTTPException(status_code=404, detail="Programme introuvable.")
-
-    # Parse dates & CA
-    dn = _date.fromisoformat(date_naissance)
-    dce = _date.fromisoformat(date_creation_entreprise) if date_creation_entreprise else None
-    try:
-        ca_float = float(str(chiffre_affaire).replace(" ", "").replace(",", "."))
-    except Exception:
-        ca_float = None
-
-    # Upsert Candidat
-    cand = session.exec(select(Candidat).where(Candidat.email == email)).first()
-    if not cand:
-        cand = Candidat(email=email, nom=nom, prenom=prenom)
-        session.add(cand)
-        session.flush()
-    
-    # Vérifier si le candidat est déjà inscrit à ce programme
-    existing_inscription = session.exec(
-        select(Inscription).where(
-            (Inscription.candidat_id == cand.id) & 
-            (Inscription.programme_id == prog.id)
-        )
-    ).first()
-    
-    if existing_inscription:
-        if settings.DEBUG:
-            print(f"⚠️ [DEBUG] Candidat déjà inscrit au programme {prog.code} (via token)")
-        raise HTTPException(status_code=400, detail=f"Vous êtes déjà inscrit au programme '{prog.code} - {prog.nom}'. Vous ne pouvez vous inscrire qu'une seule fois par programme.")
-    
-    # Vérifier si le candidat est déjà préinscrit à ce programme
-    existing_pre = session.exec(
-        select(Preinscription).where(
-            (Preinscription.candidat_id == cand.id) & 
-            (Preinscription.programme_id == prog.id)
-        )
-    ).first()
-    
-    if existing_pre:
-        if settings.DEBUG:
-            print(f"⚠️ [DEBUG] Candidat déjà préinscrit au programme {prog.code} (via token)")
-        raise HTTPException(status_code=400, detail=f"Vous êtes déjà préinscrit au programme '{prog.code} - {prog.nom}'. Vous ne pouvez vous préinscrire qu'une seule fois par programme.")
-    
-    cand.civilite = civilite
-    cand.date_naissance = dn
-    cand.telephone = telephone
-    cand.adresse_personnelle = adresse_personnelle
-    cand.niveau_etudes = niveau_etudes
-    cand.secteur_activite = secteur_activite
-
-    # Entreprise
-    ent = session.exec(select(Entreprise).where(Entreprise.candidat_id == cand.id)).first()
-    if not ent:
-        ent = Entreprise(candidat_id=cand.id)
-        session.add(ent)
-        session.flush()
-    ent.adresse = adresse_entreprise
-    ent.date_creation = dce
-    ent.siret = siret
-    ent.chiffre_affaires = ca_float
-
-    # Géocodage (adresse entreprise prioritaire, sinon perso)
-    addr_for_geo = adresse_entreprise or adresse_personnelle
-    if addr_for_geo:
-        latlng = await geocode_one(addr_for_geo)
-        if latlng:
-            ent.lat, ent.lng = latlng
-
-    # Crée la Préinscription
-    pre = Preinscription(programme_id=prog.id, candidat_id=cand.id, source="formulaire")
-    session.add(pre)
-    session.flush()  # pour avoir pre.id
-
-    # Dossier de stockage
-    media_root = ensure_media_root()
-    base_dir = media_root / "Preinscrits" / (prog.code or "UNK") / str(pre.id)
-
-    # 1) Photo de profil (validation + save)
-    if photo_profil and getattr(photo_profil, "filename", ""):
-        validate_upload(
-            photo_profil,
-            allowed_mime_types=settings.ALLOWED_IMAGE_MIME_TYPES,
-            max_mb=settings.MAX_UPLOAD_SIZE_MB,
-            field_name="photo_profil",
-        )
-        ext = os.path.splitext(photo_profil.filename)[1].lower() or ".jpg"
-        photo_path = base_dir / f"photo_profil_{pre.id}{ext}"
-        save_upload(photo_path, photo_profil)
-        cand.photo_profil = str(photo_path)
-
-    # 2) Documents multiples dynamiques
-    form = await request.form()
-    indices: Set[str] = set()
-    for k in form.keys():
-        if k.startswith("doc_type_"):
-            indices.add(k.split("_")[-1])
-
-    for idx in indices:
-        doc_type_val = form.get(f"doc_type_{idx}")
-        title = form.get(f"doc_title_{idx}")
-        file = form.get(f"doc_file_{idx}")  # UploadFile depuis FormData
-
-        if not file or not getattr(file, "filename", ""):
-            continue
-
-        # validation fichier
-        validate_upload(
-            file,
-            allowed_mime_types=settings.ALLOWED_DOC_MIME_TYPES,
-            max_mb=settings.MAX_UPLOAD_SIZE_MB,
-            field_name=f"doc_file_{idx}",
-        )
-
-        doc_type_for_db = coerce_doc_type(doc_type_val)
-
-        # Création en DB
-        doc = Document(
-            candidat_id=cand.id,
-            type_document=doc_type_for_db,  # enum ou texte libre
-            titre=title,
-            nom_fichier=file.filename,
-            chemin_fichier="",  # MAJ après écriture
-            mimetype=getattr(file, "content_type", None),
-            taille_octets=None,
-            depose_par_id=None,  # public
-        )
-        session.add(doc)
-        session.flush()  # doc.id
-
-        ext = os.path.splitext(file.filename)[1].lower() or ""
-        safe_title = safe_name(title or os.path.splitext(file.filename)[0])
-        final_path = base_dir / f"{safe_title}_{doc.id}{ext}"
-        save_upload(final_path, file)  # type: ignore[arg-type]
-
-        # MAJ chemin & taille
-        doc.chemin_fichier = str(final_path)
-        try:
-            doc.taille_octets = final_path.stat().st_size
-        except Exception:
-            pass
-
-    # Éligibilité
-    anciennete = entreprise_age_annees(ent.date_creation)
-    verdict, details = evaluate_eligibilite(
-        adresse_perso=adresse_personnelle,
-        adresse_entreprise=adresse_entreprise,
-        chiffre_affaires=ca_float,
-        anciennete_annees=anciennete,
-        ca_min=prog.ca_seuil_min,
-        ca_max=prog.ca_seuil_max,
-        anciennete_min_annees=prog.anciennete_min_annees,
-    )
-    el = Eligibilite(
-        preinscription_id=pre.id,
-        ca_seuil_ok=details.get("ca_ok"),
-        ca_score=ca_float,
-        qpv_ok=details.get("qpv_ok"),
-        anciennete_ok=details.get("anciennete_ok"),
-        anciennete_annees=details.get("anciennete_annees"),
-        verdict=verdict,
-        details_json=None,  # json.dumps(details) si tu veux conserver le détail
-    )
-    session.add(el)
-
-    # Marque l’invitation comme utilisée
-    inv.utilise = True
-    session.commit()
-
-    return RedirectResponse(url="/preinscriptions/merci", status_code=303)
-
-

@@ -157,7 +157,7 @@
         <input type="text" class="form-control form-control-sm" name="q" placeholder="Recherche (nom, email)" value="{{ q }}">
         <button class="btn btn-sm btn-primary">Filtrer</button>
       </form>
-      <a href="/ACD/preinscriptions/public_form?programme={{ current_programme }}" class="submenu-item {% if request.url.path == '/ACD/preinscriptions/public_form' %}active{% endif %}">
+      <a href="/ACD/preinscriptions/public-form?programme={{ current_programme }}" class="submenu-item {% if request.url.path == '/ACD/preinscriptions/public_form' %}active{% endif %}">
         <div class="icon"><i class="fas fa-tachometer-alt"></i></div><div>Formulaire</div>
       </a>
       <button class="btn btn-sm btn-outline-secondary" data-bs-toggle="modal" data-bs-target="#sendInviteModal">

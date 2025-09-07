@@ -18,6 +18,12 @@ class DecisionJury(str, Enum):
     REORIENTE = "reoriente"
     REFUSE = "refuse"
 
+class StatutCandidat(str, Enum):
+    EN_ATTENTE = "EN_ATTENTE"
+    VALIDE = "VALIDE"
+    REORIENTE = "REORIENTE"
+    REJETE = "REJETE"
+
 class StatutEtape(str, Enum):
     A_FAIRE = "a_faire"
     EN_COURS = "en_cours"
@@ -75,6 +81,12 @@ class StatutPresence(str, Enum):
     ABSENT = "absent"
     PRESENT = "present"
     EXCUSE = "excuse"
+
+class DecisionJury(str, Enum):
+    VALIDE = "VALIDE"
+    REORIENTE = "REORIENTE"
+    REJETE = "REJETE"
+    EN_ATTENTE = "EN_ATTENTE"
 
 class TypeDocument(str, Enum):
     CNI = "CNI"                        # Carte d'identité / Passeport
