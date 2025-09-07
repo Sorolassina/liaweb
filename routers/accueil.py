@@ -13,7 +13,7 @@ from ..core.database import get_session
 from ..core.security import get_current_user
 from ..models.base import (
     Candidat, Entreprise, Programme, Preinscription, Inscription,
-    Jury, AvancementEtape, EtapePipeline
+    Jury, AvancementEtape, EtapePipeline, Eligibilite, DecisionJuryCandidat
 )
 from ..templates import templates
 
@@ -47,29 +47,67 @@ def accueil(request: Request, session: Session = Depends(get_session), current_u
     now = datetime.now(tz)
 
     # KPIs
+    # --- KPIs enrichis ---
     total_candidats = session.exec(select(func.count(Candidat.id))).one() or 0
     total_preinscrits = session.exec(select(func.count(Preinscription.id))).one() or 0
-    total_qpv = session.exec(
-        select(func.count(Entreprise.id)).join(Candidat, Candidat.id == Entreprise.candidat_id)
-        .where(Entreprise.qpv.is_(True))
+    
+    # Candidats validés, reorientés, rejetés
+    candidats_valides = session.exec(
+        select(func.count(Candidat.id))
+        .join(DecisionJuryCandidat, DecisionJuryCandidat.candidat_id == Candidat.id)
+        .where(DecisionJuryCandidat.decision == "VALIDE")
     ).one() or 0
-    femmes = session.exec(
-        select(func.count(Candidat.id)).where(
-            func.lower(func.coalesce(Candidat.civilite, "")).in_(
-                ["f","mme","madame","mlle","mademoiselle","madam"]
-            )
-        )
+    
+    candidats_reorientes = session.exec(
+        select(func.count(Candidat.id))
+        .join(DecisionJuryCandidat, DecisionJuryCandidat.candidat_id == Candidat.id)
+        .where(DecisionJuryCandidat.decision == "REORIENTE")
     ).one() or 0
-    hommes = session.exec(
-        select(func.count(Candidat.id)).where(
-            func.lower(func.coalesce(Candidat.civilite, "")).in_(
-                ["m","mr","monsieur","monsier"]
-            )
-        )
+    
+    candidats_rejetes = session.exec(
+        select(func.count(Candidat.id))
+        .join(DecisionJuryCandidat, DecisionJuryCandidat.candidat_id == Candidat.id)
+        .where(DecisionJuryCandidat.decision == "REJETE")
+    ).one() or 0
+    
+    # QPV et QPV Limite (basé sur candidats validés)
+    qpv_valides = session.exec(
+        select(func.count(Candidat.id))
+        .join(DecisionJuryCandidat, DecisionJuryCandidat.candidat_id == Candidat.id)
+        .join(Entreprise, Entreprise.candidat_id == Candidat.id, isouter=True)
+        .where(DecisionJuryCandidat.decision == "VALIDE", Entreprise.qpv.is_(True))
+    ).one() or 0
+    
+    qpv_limite_valides = session.exec(
+        select(func.count(Candidat.id))
+        .join(DecisionJuryCandidat, DecisionJuryCandidat.candidat_id == Candidat.id)
+        .join(Preinscription, Preinscription.candidat_id == Candidat.id)
+        .join(Eligibilite, Eligibilite.preinscription_id == Preinscription.id)
+        .where(DecisionJuryCandidat.decision == "VALIDE", 
+               Eligibilite.details_json.like('%"distance_m":%'))
+        .where(~Eligibilite.details_json.like('%"distance_m": 0%'))
+    ).one() or 0
+    
+    # Candidats en attente (sans décision du jury)
+    candidats_en_attente = session.exec(
+        select(func.count(Candidat.id))
+        .join(Inscription, Inscription.candidat_id == Candidat.id)
+        .where(~Candidat.id.in_(
+            select(DecisionJuryCandidat.candidat_id)
+            .where(DecisionJuryCandidat.candidat_id.is_not(None))
+        ))
     ).one() or 0
 
-    kpi = {"candidats": int(total_candidats), "preinscrits": int(total_preinscrits),
-           "qpv": int(total_qpv), "femmes": int(femmes), "hommes": int(hommes)}
+    kpi = {
+        "candidats": int(total_candidats), 
+        "preinscrits": int(total_preinscrits),
+        "valides": int(candidats_valides),
+        "reorientes": int(candidats_reorientes),
+        "rejetes": int(candidats_rejetes),
+        "en_attente": int(candidats_en_attente),
+        "qpv": int(qpv_valides), 
+        "qpv_limite": int(qpv_limite_valides)
+    }
 
     # Répartition par programme (sur inscriptions)
     rows_prog = session.exec(
@@ -96,16 +134,46 @@ def accueil(request: Request, session: Session = Depends(get_session), current_u
     rows_geo = session.exec(
         select(
             Candidat.prenom, Candidat.nom, Candidat.civilite,
-            Entreprise.lat, Entreprise.lng, Entreprise.qpv, Entreprise.adresse, Entreprise.territoire
+            Entreprise.lat, Entreprise.lng, Entreprise.qpv, Entreprise.adresse, Entreprise.territoire,
+            Eligibilite.details_json
         ).join(Entreprise, Entreprise.candidat_id == Candidat.id, isouter=True)
+        .join(Preinscription, Preinscription.candidat_id == Candidat.id, isouter=True)
+        .join(Eligibilite, Eligibilite.preinscription_id == Preinscription.id, isouter=True)
         .where(Entreprise.lat.is_not(None), Entreprise.lng.is_not(None))
     ).all()
-    pins = [{
-        "prenom": p, "nom": n,
-        "sexe": ("F" if _is_f(c) else ("H" if _is_h(c) else "")),
-        "lat": float(lat), "lng": float(lng),
-        "qpv": bool(qpv), "adresse": adr or ter or ""
-    } for p,n,c,lat,lng,qpv,adr,ter in rows_geo]
+    
+    pins = []
+    for p,n,c,lat,lng,qpv,adr,ter,elig_json in rows_geo:
+        # Analyser le JSON d'éligibilité pour déterminer QPV limite
+        qpv_limite = False
+        if elig_json:
+            try:
+                import json
+                elig_data = json.loads(elig_json)
+                
+                # Nouvelle structure : adresses_analysees avec tableau
+                if 'adresses_analysees' in elig_data and elig_data['adresses_analysees']:
+                    for adresse_info in elig_data['adresses_analysees']:
+                        if adresse_info.get('type') == 'personnelle' and 'resultat' in adresse_info:
+                            resultat = adresse_info['resultat']
+                            if 'distance_m' in resultat:
+                                distance = resultat['distance_m']
+                                qpv_limite = distance > 0  # Distance > 0 = QPV limite
+                                break
+                # Ancienne structure : personnelle directe (fallback)
+                elif 'personnelle' in elig_data and 'distance_m' in elig_data['personnelle']:
+                    distance = elig_data['personnelle']['distance_m']
+                    qpv_limite = distance > 0  # Distance > 0 = QPV limite
+            except Exception as e:
+                pass
+        
+        pins.append({
+            "prenom": p, "nom": n,
+            "sexe": ("F" if _is_f(c) else ("H" if _is_h(c) else "")),
+            "lat": float(lat), "lng": float(lng),
+            "qpv": bool(qpv), "qpv_limite": qpv_limite,
+            "adresse": adr or ter or ""
+        })
 
     # Événements = Jury à venir
     jurys = session.exec(
@@ -130,36 +198,51 @@ def accueil(request: Request, session: Session = Depends(get_session), current_u
         "programme": pg.code
     } for a,e,i,c,pg in rdvs]
 
-    # Objectifs (pris désormais sur Programme.*)
-    agg = session.exec(
-        select(
-            Programme.code,
-            func.count(Inscription.id).label("n"),
-            func.sum(case((Entreprise.qpv.is_(True),1), else_=0)).label("n_qpv"),
-            func.sum(case((func.lower(func.coalesce(Candidat.civilite,""))
-                .in_(["f","mme","madame","mlle","mademoiselle","madam"]),1), else_=0)).label("n_f"),
-            Programme.objectif_total, Programme.cible_qpv_pct, Programme.cible_femmes_pct
-        )
-        .join(Inscription, Inscription.programme_id == Programme.id, isouter=True)
-        .join(Candidat, Candidat.id == Inscription.candidat_id, isouter=True)
-        .join(Entreprise, Entreprise.candidat_id == Candidat.id, isouter=True)
-        .group_by(Programme.code, Programme.objectif_total, Programme.cible_qpv_pct, Programme.cible_femmes_pct)
-    ).all()
-
+    # Objectifs : tous les programmes avec leurs objectifs basés sur candidats validés
+    # D'abord récupérer tous les programmes
+    programmes = session.exec(select(Programme)).all()
+    
     objectifs = []
-    for code, n, n_qpv, n_f, target_total, target_qpv, target_f in agg:
-        n = int(n or 0); n_qpv = int(n_qpv or 0); n_f = int(n_f or 0)
+    for programme in programmes:
+        # Pour chaque programme, calculer les candidats validés
+        agg = session.exec(
+            select(
+                func.count(Candidat.id).label("n"),
+                func.sum(case((Entreprise.qpv.is_(True),1), else_=0)).label("n_qpv"),
+                func.sum(case((func.lower(func.coalesce(Candidat.civilite,""))
+                    .in_(["f","mme","madame","mlle","mademoiselle","madam"]),1), else_=0)).label("n_f")
+            )
+            .select_from(Inscription)
+            .join(Candidat, Candidat.id == Inscription.candidat_id, isouter=True)
+            .join(DecisionJuryCandidat, DecisionJuryCandidat.candidat_id == Candidat.id, isouter=True)
+            .join(Entreprise, Entreprise.candidat_id == Candidat.id, isouter=True)
+            .where(Inscription.programme_id == programme.id)
+            .where(DecisionJuryCandidat.decision == "VALIDE")  # Seulement les candidats validés
+        ).first()
+        
+        n = int((agg and agg[0]) or 0)
+        n_qpv = int((agg and agg[1]) or 0)
+        n_f = int((agg and agg[2]) or 0)
+        
         qpv_pct = round((n_qpv / n * 100.0) if n else 0.0, 1)
-        f_pct   = round((n_f   / n * 100.0) if n else 0.0, 1)
-        total_pct = round((n / target_total * 100.0), 1) if (target_total and target_total > 0) else None
+        f_pct = round((n_f / n * 100.0) if n else 0.0, 1)
+        
+        # Calculer l'atteinte des objectifs (pour les jauges)
+        qpv_objectif_atteint = round((qpv_pct / programme.cible_qpv_pct * 100.0) if programme.cible_qpv_pct and programme.cible_qpv_pct > 0 else 0.0, 1)
+        f_objectif_atteint = round((f_pct / programme.cible_femmes_pct * 100.0) if programme.cible_femmes_pct and programme.cible_femmes_pct > 0 else 0.0, 1)
+        
+        total_pct = round((n / programme.objectif_total * 100.0), 1) if (programme.objectif_total and programme.objectif_total > 0) else None
+        
         objectifs.append({
-            "programme": code or "—",
+            "programme": programme.code or "—",
             "n": n,
             "qpv_pct": qpv_pct,
             "f_pct": f_pct,
-            "target_qpv": target_qpv,
-            "target_f": target_f,
-            "target_total": target_total,
+            "qpv_objectif_atteint": qpv_objectif_atteint,
+            "f_objectif_atteint": f_objectif_atteint,
+            "target_qpv": programme.cible_qpv_pct,
+            "target_f": programme.cible_femmes_pct,
+            "target_total": programme.objectif_total,
             "total_pct": total_pct
         })
 

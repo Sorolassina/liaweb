@@ -21,7 +21,13 @@
       {% elif request.query_params.get('success') == 'archive_deleted' %}
         <i class="fa fa-check-circle me-2"></i>Archive supprimée avec succès
       {% elif request.query_params.get('success') == 'cleanup_completed' %}
-        <i class="fa fa-check-circle me-2"></i>Nettoyage effectué avec succès
+        <i class="fa fa-broom me-2"></i>Nettoyage des archives terminé !
+      {% elif request.query_params.get('success') == 'export_created' %}
+        <i class="fa fa-download me-2"></i>Export créé avec succès !
+      {% elif request.query_params.get('success') == 'import_completed' %}
+        <i class="fa fa-upload me-2"></i>Import terminé avec succès !
+      {% elif request.query_params.get('success') == 'bulk_delete_completed' %}
+        <i class="fa fa-trash me-2"></i>{{ request.query_params.get('count', 0) }} archive(s) supprimée(s) !
       {% endif %}
       <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
     </div>
@@ -36,7 +42,15 @@
       {% elif request.query_params.get('error') == 'delete_failed' %}
         <i class="fa fa-exclamation-circle me-2"></i>Échec de la suppression
       {% elif request.query_params.get('error') == 'cleanup_failed' %}
-        <i class="fa fa-exclamation-circle me-2"></i>Échec du nettoyage
+        <i class="fa fa-exclamation-triangle me-2"></i>Erreur lors du nettoyage
+      {% elif request.query_params.get('error') == 'export_failed' %}
+        <i class="fa fa-exclamation-triangle me-2"></i>Erreur lors de l'export
+      {% elif request.query_params.get('error') == 'file_not_found' %}
+        <i class="fa fa-file-o me-2"></i>Fichier d'export non trouvé - Vérifiez les permissions du dossier archives
+      {% elif request.query_params.get('error') == 'import_failed' %}
+        <i class="fa fa-exclamation-triangle me-2"></i>Erreur lors de l'import
+      {% elif request.query_params.get('error') == 'bulk_delete_failed' %}
+        <i class="fa fa-exclamation-triangle me-2"></i>Erreur lors de la suppression en lot
       {% endif %}
       <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
     </div>
@@ -49,7 +63,7 @@
         <div class="card-body text-center">
           <i class="fa fa-broom fa-2x text-warning mb-2"></i>
           <h6 class="card-title">Nettoyage</h6>
-          <p class="card-text small">Supprimer les données obsolètes</p>
+          <p class="card-text small">Supprimer les données</p>
           <button class="btn btn-warning btn-sm" onclick="executeCleanup()">
             <i class="fa fa-play me-1"></i>Exécuter
           </button>
@@ -87,7 +101,7 @@
     <table class="table align-middle">
       <thead>
         <tr>
-          <th>Nom</th>
+          <!--<th>Nom</th>-->
           <th>Type</th>
           <th>Statut</th>
           <th>Taille</th>
@@ -99,68 +113,69 @@
       <tbody>
         {% for archive in archives %}
         <tr>
+          <!--
           <td>
             <div>
-              <div class="fw-bold">{{ archive.name }}</div>
+              <div class="fw-bold">{{ archive.nom }}</div>
               {% if archive.description %}
                 <small class="text-muted">{{ archive.description }}</small>
               {% endif %}
             </div>
-          </td>
+          </td>-->
           <td>
-            {% if archive.archive_type == 'full_backup' %}
+            {% if archive.type_archive == 'full_backup' %}
               <span class="badge bg-primary">Sauvegarde complète</span>
-            {% elif archive.archive_type == 'data_only' %}
+            {% elif archive.type_archive == 'data_only' %}
               <span class="badge bg-info">Données uniquement</span>
-            {% elif archive.archive_type == 'files_only' %}
+            {% elif archive.type_archive == 'files_only' %}
               <span class="badge bg-warning">Fichiers uniquement</span>
             {% else %}
-              <span class="badge bg-secondary">{{ archive.archive_type }}</span>
+              <span class="badge bg-secondary">{{ archive.type_archive.value }}</span>
             {% endif %}
           </td>
           <td>
-            {% if archive.status == 'completed' %}
+            {% if archive.statut == 'TERMINE' %}
               <span class="badge bg-success">
                 <i class="fa fa-check me-1"></i>Terminé
               </span>
-            {% elif archive.status == 'in_progress' %}
+            {% elif archive.statut == 'EN_COURS' %}
               <span class="badge bg-primary">
                 <i class="fa fa-spinner me-1"></i>En cours
               </span>
-            {% elif archive.status == 'failed' %}
+            {% elif archive.statut == 'ECHEC' %}
               <span class="badge bg-danger">
                 <i class="fa fa-times me-1"></i>Échec
               </span>
-            {% elif archive.status == 'pending' %}
+            {% elif archive.statut == 'EN_ATTENTE' %}
               <span class="badge bg-warning">
                 <i class="fa fa-clock me-1"></i>En attente
               </span>
             {% else %}
-              <span class="badge bg-secondary">{{ archive.status }}</span>
+              <span class="badge bg-secondary">{{ archive.statut.value }}</span>
             {% endif %}
           </td>
           <td>
-            {% if archive.file_size %}
-              {{ (archive.file_size / 1024 / 1024) | round(2) }} MB
+            {% if archive.taille_fichier %}
+              {{ (archive.taille_fichier / 1024 / 1024) | round(2) }} MB
             {% else %}
               <span class="text-muted">—</span>
             {% endif %}
           </td>
           <td>
-            <div class="fw-bold small">{{ archive.created_at.strftime('%d/%m/%Y') }}</div>
-            <div class="text-muted small">{{ archive.created_at.strftime('%H:%M') }}</div>
+                <div class="fw-bold small">{{ archive.cree_le.strftime('%d/%m/%Y') }}</div>
+            <div class="text-muted small">{{ archive.cree_le.strftime('%H:%M') }}</div>
           </td>
           <td>
-            {% if archive.expires_at %}
-              <div class="fw-bold small">{{ archive.expires_at.strftime('%d/%m/%Y') }}</div>
-              <div class="text-muted small">{{ archive.expires_at.strftime('%H:%M') }}</div>
+            {% if archive.expire_le %}
+              <div class="fw-bold small">{{ archive.expire_le.strftime('%d/%m/%Y') }}</div>
+              <div class="text-muted small">{{ archive.expire_le.strftime('%H:%M') }}</div>
             {% else %}
               <span class="text-muted">—</span>
             {% endif %}
           </td>
           <td class="text-end">
             <div class="btn-group btn-group-sm">
-              {% if archive.status == 'completed' %}
+              {% if archive.statut == 'TERMINE' %}
                 <button class="btn btn-outline-primary" onclick="downloadArchive({{ archive.id }})" title="Télécharger">
                   <i class="fa fa-download"></i>
                 </button>
@@ -263,17 +278,55 @@ function executeCleanup() {
   
   const form = document.createElement('form');
   form.method = 'POST';
-  form.action = '/admin/cleanup/execute';
+  form.action = '/admin/archives/cleanup';
   document.body.appendChild(form);
   form.submit();
 }
 
 function exportData() {
-  alert('Fonctionnalité d\'export à implémenter');
+  // Ouvrir le modal d'export
+  const exportModal = new bootstrap.Modal(document.getElementById('exportModal'));
+  exportModal.show();
 }
 
 function importData() {
-  alert('Fonctionnalité d\'import à implémenter');
+  // Ouvrir le modal d'import
+  const importModal = new bootstrap.Modal(document.getElementById('importModal'));
+  importModal.show();
+}
+
+function cleanupArchives() {
+  if (confirm('Êtes-vous sûr de vouloir nettoyer les anciennes archives ? Cette action supprimera les archives expirées.')) {
+    const form = document.createElement('form');
+    form.method = 'POST';
+    form.action = '/admin/archives/cleanup';
+    document.body.appendChild(form);
+    form.submit();
+  }
+}
+
+function downloadArchive(archiveId) {
+  window.open(`/admin/archives/${archiveId}/download`, '_blank');
+}
+
+function restoreArchive(archiveId) {
+  if (confirm('⚠️ ATTENTION: Cette action va remplacer toutes les données actuelles par celles de l\'archive. Êtes-vous sûr de vouloir continuer ?')) {
+    const form = document.createElement('form');
+    form.method = 'POST';
+    form.action = `/admin/archives/${archiveId}/restore`;
+    document.body.appendChild(form);
+    form.submit();
+  }
+}
+
+function deleteArchive(archiveId) {
+  if (confirm('Êtes-vous sûr de vouloir supprimer cette archive ? Cette action est irréversible.')) {
+    const form = document.createElement('form');
+    form.method = 'POST';
+    form.action = `/admin/archives/${archiveId}/delete`;
+    document.body.appendChild(form);
+    form.submit();
+  }
 }
 
 // Auto-dismiss alerts after 5 seconds
@@ -287,4 +340,96 @@ document.addEventListener('DOMContentLoaded', function() {
   });
 });
 </script>
+
+<!-- Modal d'export -->
+<div class="modal fade" id="exportModal" tabindex="-1">
+  <div class="modal-dialog">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h5 class="modal-title">
+          <i class="fa fa-download me-2"></i>Exporter des données
+        </h5>
+        <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+      </div>
+      <form method="post" action="/admin/archives/export">
+        <div class="modal-body">
+          <div class="row g-3">
+            <div class="col-12">
+              <label class="form-label">Type d'export <span class="text-danger">*</span></label>
+              <select name="export_type" class="form-select" required>
+                <option value="">— Sélectionnez un type —</option>
+                <option value="full_backup">Sauvegarde complète (données + fichiers)</option>
+                <option value="data_only">Données uniquement (base de données)</option>
+                <option value="files_only">Fichiers uniquement (uploads, documents)</option>
+              </select>
+            </div>
+            <div class="col-12">
+              <label class="form-label">Description</label>
+              <textarea name="description" class="form-control" rows="3" placeholder="Description de l'export (optionnel)"></textarea>
+            </div>
+          </div>
+          <div class="alert alert-info mt-3">
+            <i class="fa fa-info-circle me-2"></i>
+            <strong>Note :</strong> L'export sera créé et téléchargé automatiquement une fois terminé.
+          </div>
+        </div>
+        <div class="modal-footer">
+          <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Annuler</button>
+          <button type="submit" class="btn btn-success">
+            <i class="fa fa-download me-2"></i>Exporter
+          </button>
+        </div>
+      </form>
+    </div>
+  </div>
+</div>
+
+<!-- Modal d'import -->
+<div class="modal fade" id="importModal" tabindex="-1">
+  <div class="modal-dialog">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h5 class="modal-title">
+          <i class="fa fa-upload me-2"></i>Importer des données
+        </h5>
+        <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+      </div>
+      <form method="post" action="/admin/archives/import" enctype="multipart/form-data">
+        <div class="modal-body">
+          <div class="row g-3">
+            <div class="col-12">
+              <label class="form-label">Fichier d'archive <span class="text-danger">*</span></label>
+              <input type="file" name="file" class="form-control" accept=".zip" required>
+              <div class="form-text">Seuls les fichiers ZIP sont acceptés (max 100MB)</div>
+            </div>
+            <div class="col-12">
+              <label class="form-label">Type d'import <span class="text-danger">*</span></label>
+              <select name="import_type" class="form-select" required>
+                <option value="">— Sélectionnez un type —</option>
+                <option value="full_backup">Sauvegarde complète (remplace tout)</option>
+                <option value="data_only">Données uniquement (remplace la base)</option>
+                <option value="files_only">Fichiers uniquement (remplace les uploads)</option>
+              </select>
+            </div>
+            <div class="col-12">
+              <label class="form-label">Description</label>
+              <textarea name="description" class="form-control" rows="3" placeholder="Description de l'import (optionnel)"></textarea>
+            </div>
+          </div>
+          <div class="alert alert-warning mt-3">
+            <i class="fa fa-exclamation-triangle me-2"></i>
+            <strong>Attention :</strong> L'import remplacera les données existantes. Assurez-vous de faire une sauvegarde avant d'importer.
+          </div>
+        </div>
+        <div class="modal-footer">
+          <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Annuler</button>
+          <button type="submit" class="btn btn-info">
+            <i class="fa fa-upload me-2"></i>Importer
+          </button>
+        </div>
+      </form>
+    </div>
+  </div>
+</div>
+
 {% endblock %}

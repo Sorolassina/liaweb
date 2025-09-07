@@ -722,10 +722,10 @@
                     </div>
                     <div class="col-md-6">
                       <label class="form-label">Groupe Codev</label>
-                      <select class="form-select" name="groupe_codev">
+                      <select class="form-select" name="groupe_id">
                         <option value="">— Sélectionner un groupe —</option>
-                        {% for groupe in groupe_codev_enum %}
-                          <option value="{{ groupe.value }}">{{ groupe.value.replace('_', ' ').title() }}</option>
+                        {% for groupe in groupes %}
+                          <option value="{{ groupe.id }}">{{ groupe.nom }}</option>
                         {% endfor %}
                       </select>
                     </div>
@@ -812,6 +812,7 @@
                         <th>Jury</th>
                         <th>Décision</th>
                         <th>Conseiller</th>
+                        <th>Groupe</th>
                         <th>Promotion</th>
                         <th>Partenaire</th>
                         <th>Actions</th>
@@ -834,6 +835,7 @@
           {% endif %}
                         </td>
                         <td>{{ decision.conseiller.nom_complet if decision.conseiller else '—' }}</td>
+                        <td>{{ decision.groupe.nom if decision.groupe else '—' }}</td>
                         <td>{{ decision.promotion.libelle if decision.promotion else '—' }}</td>
                         <td>{{ decision.partenaire.nom if decision.partenaire else '—' }}</td>
                         <td>

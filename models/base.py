@@ -382,7 +382,7 @@ class DecisionJuryCandidat(SQLModel, table=True):
     decision: DecisionJury = Field(default=DecisionJury.EN_ATTENTE)
     commentaires: Optional[str] = None
     conseiller_id: Optional[int] = Field(foreign_key="user.id", default=None)  # Si validé
-    groupe_codev: Optional[GroupeCodev] = None  # Si validé
+    groupe_id: Optional[int] = Field(foreign_key="groupe.id", default=None)  # Si validé
     promotion_id: Optional[int] = Field(foreign_key="promotion.id", default=None)  # Si validé
     partenaire_id: Optional[int] = Field(foreign_key="partenaire.id", default=None)  # Si réorienté
     envoyer_mail_candidat: bool = Field(default=False)
@@ -395,6 +395,7 @@ class DecisionJuryCandidat(SQLModel, table=True):
     candidat: "Candidat" = Relationship()
     jury: "Jury" = Relationship()
     conseiller: Optional["User"] = Relationship()
+    groupe: Optional["Groupe"] = Relationship(back_populates="decisions_jury")
     promotion: Optional["Promotion"] = Relationship()
     partenaire: Optional["Partenaire"] = Relationship()
 
@@ -413,3 +414,17 @@ class ReorientationCandidat(SQLModel, table=True):
     candidat: "Candidat" = Relationship()
     partenaire: "Partenaire" = Relationship(back_populates="reorientations")
     decision_jury: "DecisionJuryCandidat" = Relationship()
+
+
+class Groupe(SQLModel, table=True):
+    """Groupes de codéveloppement"""
+    id: Optional[int] = Field(default=None, primary_key=True)
+    nom: str = Field(index=True, max_length=100)
+    description: Optional[str] = Field(default=None, max_length=500)
+    capacite_max: Optional[int] = Field(default=None)
+    actif: bool = Field(default=True)
+    date_creation: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
+    date_modification: Optional[datetime] = Field(default=None)
+    
+    # Relations
+    decisions_jury: List["DecisionJuryCandidat"] = Relationship(back_populates="groupe")

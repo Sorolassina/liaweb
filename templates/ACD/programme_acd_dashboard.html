@@ -228,9 +228,12 @@
   <!-- KPIs -->
   <div class="card-neumo p-3 mb-3">
     <div class="kpi-grid">
-      <div class="kpi"><div class="val">{{ kpi.preinscriptions }}</div><div class="lab">Préinscriptions</div></div>
-      <div class="kpi"><div class="val">{{ kpi.inscriptions }}</div><div class="lab">Inscriptions</div></div>
+      <!-- <div class="kpi"><div class="val">{{ kpi.preinscriptions }}</div><div class="lab">Préinscriptions</div></div> -->
+      <!-- <div class="kpi"><div class="val">{{ kpi.inscriptions }}</div><div class="lab">Inscriptions</div></div> -->
+      <!-- <div class="kpi"><div class="val">{{ kpi.candidats_valides }}</div><div class="lab">Candidats validés</div></div> -->
       <div class="kpi"><div class="val">{{ kpi.qpv }}</div><div class="lab">QPV</div></div>
+      <div class="kpi"><div class="val">{{ kpi.qpv_limite }}</div><div class="lab">QPV Limite</div></div>
+      <!-- <div class="kpi"><div class="val">{{ kpi.qpv_total }}</div><div class="lab">Total QPV</div></div> -->
       <div class="kpi"><div class="val">{{ kpi.femmes }}</div><div class="lab">Femmes</div></div>
       <div class="kpi"><div class="val">{{ kpi.hommes }}</div><div class="lab">Hommes</div></div>
     </div>
@@ -243,13 +246,14 @@
       <canvas id="chartFunnel" height="220"></canvas>
     </div>
     <div class="card-neumo p-3">
-      <h3 class="section-title">Couverture géographique (inscrits ACD)</h3>
+      <h3 class="section-title">Couverture géographique (candidats validés)</h3>
       <div id="map"></div>
       <div class="mt-2" style="display:flex; gap:8px; flex-wrap:wrap;">
-        <span class="badge-chip">📍 Candidats</span>
+        <!-- <span class="badge-chip">📍 Candidats validés</span> -->
         <span class="badge-chip">🟡 QPV</span>
-        <span class="badge-chip">🔵 Femmes</span>
-        <span class="badge-chip">⚫ Hommes</span>
+        <span class="badge-chip">🟠 QPV Limite</span>
+        <!-- <span class="badge-chip">🔵 Femmes</span> -->
+        <!-- <span class="badge-chip">⚫ Hommes</span> -->
       </div>
     </div>
   </div>
@@ -339,19 +343,19 @@
       <div class="list-item" style="flex-direction:column; align-items:stretch;">
         {% if objectifs.objectif_total %}
           <div class="meta">Total (objectif {{ objectifs.objectif_total }}) — {{ objectifs.total_pct or 0 }}%</div>
-          <div class="progress-soft"><span style="width: {{ (objectifs.total_pct or 0) | round(1) }}%"></span></div>
+          <div class="progress-soft"><span style="width: {{ (objectifs.total_pct or 0) | round(1) }}%; background-color: var(--primary-color);"></span></div>
         {% else %}
           <div class="meta">Objectif total non défini</div>
         {% endif %}
 
         {% if objectifs.cible_qpv_pct is not none %}
           <div class="meta mt-2">QPV (cible {{ objectifs.cible_qpv_pct | round(0) }}%) — {{ objectifs.qpv_pct }}%</div>
-          <div class="progress-soft"><span style="width: {{ [objectifs.qpv_pct, 100] | min | round(1) }}%"></span></div>
-        {% endif %}
+          <div class="progress-soft"><span style="width: {{ [objectifs.qpv_objectif_atteint, 100] | min | round(1) }}%; background-color: var(--secondary-color);"></span></div>
+          {% endif %}
 
-        {% if objectifs.cible_femmes_pct is not none %}
+          {% if objectifs.cible_femmes_pct is not none %}
           <div class="meta mt-2">Femmes (cible {{ objectifs.cible_femmes_pct | round(0) }}%) — {{ objectifs.f_pct }}%</div>
-          <div class="progress-soft"><span style="width: {{ [objectifs.f_pct, 100] | min | round(1) }}%"></span></div>
+          <div class="progress-soft"><span style="width: {{ [objectifs.f_objectif_atteint, 100] | min | round(1) }}%; background-color: var(--primary-color);"></span></div>
         {% endif %}
       </div>
     </div>
@@ -361,6 +365,7 @@
 
 <!-- Leaflet + Charts -->
 <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js" crossorigin=""></script>
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.js"></script>
 <script>
   const PINS = {{ pins | tojson }};
   const FUNNEL_LABELS = {{ funnel_labels | tojson }};
@@ -376,12 +381,48 @@
       { maxZoom: 18, attribution: '&copy; OpenStreetMap' }).addTo(map);
     const markers = [];
     PINS.forEach(p => {
-      const m = L.marker([p.lat, p.lng]).addTo(map);
-      const qpv = p.qpv ? "🟡 QPV" : "⚪ Non QPV";
-      const sx  = p.sexe === "F" ? "🔵 Femme" : (p.sexe === "H" ? "⚫ Homme" : "•");
+      // Debug pour voir les données
+      console.log('Pin data:', p);
+      
+      // Déterminer la couleur du pin selon le statut QPV
+      let pinColor = '#3388ff'; // Bleu par défaut (Non QPV)
+      let qpv_status = "⚪ Non QPV";
+      
+      if (p.qpv) {
+        pinColor = '#ffd700'; // Jaune pour QPV
+        qpv_status = "🟡 QPV";
+        console.log('QPV détecté:', p.prenom, p.nom);
+      } else if (p.qpv_limite) {
+        pinColor = '#ff8c00'; // Orange pour QPV Limite
+        qpv_status = "🟠 QPV Limite";
+        console.log('QPV Limite détecté:', p.prenom, p.nom);
+      } else {
+        console.log('Non QPV:', p.prenom, p.nom, 'qpv:', p.qpv, 'qpv_limite:', p.qpv_limite);
+      }
+      
+      // Créer une icône Leaflet colorée
+      const coloredIcon = L.icon({
+        iconUrl: 'https://raw.githubusercontent.com/pointhi/leaflet-color-markers/master/img/marker-icon-2x-blue.png',
+        shadowUrl: 'https://cdnjs.cloudflare.com/ajax/libs/leaflet/0.7.7/images/marker-shadow.png',
+        iconSize: [25, 41],
+        iconAnchor: [12, 41],
+        popupAnchor: [1, -34],
+        shadowSize: [41, 41]
+      });
+      
+      // Modifier la couleur de l'icône
+      if (p.qpv) {
+        coloredIcon.options.iconUrl = 'https://raw.githubusercontent.com/pointhi/leaflet-color-markers/master/img/marker-icon-2x-gold.png';
+      } else if (p.qpv_limite) {
+        coloredIcon.options.iconUrl = 'https://raw.githubusercontent.com/pointhi/leaflet-color-markers/master/img/marker-icon-2x-orange.png';
+      }
+      
+      const m = L.marker([p.lat, p.lng], { icon: coloredIcon }).addTo(map);
+      
+      const sx = p.sexe === "F" ? "🔵 Femme" : (p.sexe === "H" ? "⚫ Homme" : "•");
       m.bindPopup(`<div style="font-weight:800">${(p.prenom||"")} ${(p.nom||"")}</div>
                    <div style="font-size:.9rem; opacity:.8">${p.adresse||""}</div>
-                   <div style="font-size:.9rem;">${qpv} • ${sx}</div>`);
+                   <div style="font-size:.9rem;">${qpv_status} • ${sx}</div>`);
       markers.push(m);
     });
     if (markers.length){
@@ -397,12 +438,54 @@
     const ctx = document.getElementById('chartFunnel').getContext('2d');
     new Chart(ctx, {
       type: 'bar',
-      data: { labels: FUNNEL_LABELS, datasets: [{ label: 'Volume', data: FUNNEL_VALUES, borderWidth: 1 }] },
+      data: { 
+        labels: FUNNEL_LABELS, 
+        datasets: [{ 
+          label: 'Volume', 
+          data: FUNNEL_VALUES, 
+          borderWidth: 1,
+          backgroundColor: ['#e3f2fd', '#bbdefb', '#90caf9', '#ffecb3', '#ffcdd2'],
+          borderColor: ['#1976d2', '#1565c0', '#0d47a1', '#ff8f00', '#d32f2f']
+        }] 
+      },
       options: {
-        responsive:true,
-        plugins:{ legend:{ display:false }, tooltip:{ mode:'index', intersect:false } },
-        scales:{ x:{ ticks:{ autoSkip:true, maxRotation:0 } }, y:{ beginAtZero:true, ticks:{ precision:0 } } }
-      }
+        responsive: true,
+        plugins: { 
+          legend: { display: false }, 
+          tooltip: { mode: 'index', intersect: false },
+          datalabels: {
+            display: true,
+            color: '#333',
+            font: { weight: 'bold', size: 12 },
+            formatter: (value) => value
+          }
+        },
+        scales: { 
+          x: { ticks: { autoSkip: true, maxRotation: 0 } }, 
+          y: { 
+            beginAtZero: true, 
+            ticks: { precision: 0 },
+            suggestedMax: Math.max(...FUNNEL_VALUES) + 2
+          } 
+        }
+      },
+      plugins: [{
+        id: 'datalabels',
+        afterDatasetsDraw: (chart) => {
+          const ctx = chart.ctx;
+          chart.data.datasets.forEach((dataset, i) => {
+            const meta = chart.getDatasetMeta(i);
+            meta.data.forEach((bar, index) => {
+              const data = dataset.data[index];
+              ctx.fillStyle = '#333';
+              ctx.font = 'bold 12px Arial';
+              ctx.textAlign = 'center';
+              ctx.textBaseline = 'bottom';
+              ctx.fillText(data, bar.x, bar.y - 5);
+            });
+          });
+        }
+      }]
     });
   })();
 
@@ -411,16 +494,68 @@
     const ctx = document.getElementById('chartPyramid').getContext('2d');
     new Chart(ctx, {
       type: 'bar',
-      data: { labels: PYR_LABELS, datasets: [
-        { label:'Hommes', data: PYR_MALE, borderWidth:1 },
-        { label:'Femmes', data: PYR_FEMALE, borderWidth:1 }
-      ]},
+      data: { 
+        labels: PYR_LABELS, 
+        datasets: [
+          { 
+            label:'Hommes', 
+            data: PYR_MALE, // Valeurs négatives pour les hommes (gauche)
+            borderWidth: 1,
+            backgroundColor: '#90caf9',
+            borderColor: '#1976d2'
+          },
+          { 
+            label:'Femmes', 
+            data: PYR_FEMALE, // Valeurs positives pour les femmes (droite)
+            borderWidth: 1,
+            backgroundColor: '#f8bbd9',
+            borderColor: '#e91e63'
+          }
+        ]
+      },
       options:{
-        indexAxis:'y', responsive:true,
-        plugins:{ legend:{ position:'bottom' },
-          tooltip:{ callbacks:{ label:(ctx)=>`${ctx.dataset.label}: ${Math.abs(ctx.parsed.x)}` } } },
-        scales:{ x:{ stacked:true, ticks:{ callback:(v)=>Math.abs(v), precision:0 } }, y:{ stacked:true } }
-      }
+        indexAxis:'y', 
+        responsive:true,
+        plugins:{ 
+          legend:{ position:'bottom' },
+          tooltip:{ callbacks:{ label:(ctx)=>`${ctx.dataset.label}: ${Math.abs(ctx.parsed.x)}` } }
+        },
+        scales:{ 
+          x:{ 
+            stacked:false, // Pas de stacking pour une vraie pyramide
+            ticks:{ 
+              callback:(v)=>Math.abs(v), 
+              precision:0 
+            },
+            suggestedMax: Math.max(...PYR_MALE.map(Math.abs), ...PYR_FEMALE.map(Math.abs)) + 1,
+            suggestedMin: -(Math.max(...PYR_MALE.map(Math.abs), ...PYR_FEMALE.map(Math.abs)) + 1)
+          }, 
+          y:{ stacked:false }
+        }
+      },
+      plugins: [{
+        id: 'datalabels',
+        afterDatasetsDraw: (chart) => {
+          const ctx = chart.ctx;
+          chart.data.datasets.forEach((dataset, i) => {
+            const meta = chart.getDatasetMeta(i);
+            meta.data.forEach((bar, index) => {
+              const data = Math.abs(dataset.data[index]);
+              if (data > 0) { // Afficher seulement si > 0
+                ctx.fillStyle = '#333';
+                ctx.font = 'bold 10px Arial';
+                ctx.textAlign = 'center';
+                ctx.textBaseline = 'middle';
+                
+                // Positionner l'étiquette au centre de la barre
+                const x = bar.x;
+                const y = bar.y;
+                ctx.fillText(data, x, y);
+              }
+            });
+          });
+        }
+      }]
     });
   })();
 </script>

@@ -18,6 +18,7 @@ from fastapi.staticfiles import StaticFiles
 from fastapi.templating import Jinja2Templates
 
 from .core.config import settings, BASE_DIR
+from .core.enum_middleware import add_enum_validation_middleware
 from .core.database import create_db_and_tables, test_db_connection
 from .core.middleware import setup_all_middlewares
 from .services import UserService
@@ -83,6 +84,9 @@ setup_all_middlewares(
     allowed_hosts=getattr(settings, "ALLOWED_HOSTS", ["localhost", "127.0.0.1"]),
     secret_key=settings.SECRET_KEY,
 )
+
+# Validation des enums au démarrage
+enum_middleware = add_enum_validation_middleware(app)
 
 # ----------------------------
 # CORS

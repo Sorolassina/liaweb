@@ -7,7 +7,7 @@ from sqlalchemy import func, delete
 from typing import Optional, Literal
 
 from fastapi import APIRouter, Depends, Form, HTTPException, Query, Request, File, UploadFile
-from fastapi.responses import HTMLResponse, RedirectResponse, StreamingResponse
+from fastapi.responses import HTMLResponse, RedirectResponse, StreamingResponse, FileResponse
 from fastapi.staticfiles import StaticFiles
 from sqlalchemy import func, and_
 from sqlmodel import Session, select
@@ -21,7 +21,7 @@ from ...templates import templates
 
 from ...models.base import (
     User, TypeUtilisateur,
-    Programme, EtapePipeline, Preinscription, Inscription, Jury, ProgrammeUtilisateur, MembreJury, Promotion, Partenaire
+    Programme, EtapePipeline, Preinscription, Inscription, Jury, ProgrammeUtilisateur, MembreJury, Promotion, Partenaire, Groupe, DecisionJuryCandidat
 )
 from ...models.enums import UserRole as UserRoleEnum
 from ...models.ACD.admin import AppSetting
@@ -739,10 +739,23 @@ def admin_users_update(
 @router.get("/jurys", response_class=HTMLResponse)
 def admin_jurys(request: Request, session: Session = Depends(get_session), current_user: User = Depends(get_current_user)):
     admin_required(current_user)
-    jurys = session.exec(select(Jury).order_by(Jury.session_le.desc())).all()
+    
+    # Charger les jurys avec leurs relations
+    from sqlalchemy.orm import joinedload
+    jurys = session.exec(
+        select(Jury)
+        .options(
+            joinedload(Jury.programme),
+            joinedload(Jury.promotion)
+        )
+        .order_by(Jury.session_le.desc())
+    ).all()
+    
     progs = session.exec(select(Programme).order_by(Programme.code)).all()
     promotions = session.exec(select(Promotion).order_by(Promotion.libelle)).all()
+    groupes = session.exec(select(Groupe).where(Groupe.actif == True).order_by(Groupe.nom)).all()
     users = session.exec(select(User).where(User.actif == True)).all()
+    
     return templates.TemplateResponse("ACD/admin/jurys.html", {
         "request": request, 
         "settings": settings, 
@@ -750,6 +763,7 @@ def admin_jurys(request: Request, session: Session = Depends(get_session), curre
         "jurys": jurys, 
         "progs": progs,
         "promotions": promotions,
+        "groupes": groupes,
         "users": users
     })
 
@@ -1576,3 +1590,629 @@ def admin_partenaires_delete(
     
     timestamp = int(datetime.now(timezone.utc).timestamp())
     return RedirectResponse(url=f"/admin/partenaires?success=1&action=delete&t={timestamp}", status_code=303)
+
+# ===== PROMOTIONS =====
+@router.get("/promotions", response_class=HTMLResponse)
+def admin_promotions(request: Request, session: Session = Depends(get_session), current_user: User = Depends(get_current_user), q: Optional[str] = Query(None)):
+    admin_required(current_user)
+    stmt = select(Promotion)
+    if q:
+        like = f"%{q}%"
+        stmt = stmt.where((Promotion.libelle.ilike(like)))
+    promotions = session.exec(stmt.order_by(Promotion.libelle)).all()
+    
+    # Charger les relations programme pour chaque promotion
+    for promo in promotions:
+        promo.programme = session.get(Programme, promo.programme_id)
+    
+    # Récupérer tous les programmes pour les dropdowns
+    programmes = session.exec(select(Programme).order_by(Programme.code)).all()
+    
+    return templates.TemplateResponse("ACD/admin/promotions.html", {
+        "request": request, 
+        "settings": settings, 
+        "utilisateur": current_user, 
+        "promotions": promotions, 
+        "programmes": programmes,
+        "q": q or ""
+    })
+
+@router.post("/promotions/add")
+def admin_promotions_add(
+    programme_id: int = Form(...),
+    libelle: str = Form(...), 
+    capacite: Optional[str] = Form(None),
+    date_debut: Optional[str] = Form(None),
+    date_fin: Optional[str] = Form(None),
+    actif: Literal["on", "off", ""] = Form("on"),
+    request: Request = None, 
+    session: Session = Depends(get_session), 
+    current_user: User = Depends(get_current_user)
+):
+    admin_required(current_user)
+    
+    # Vérifier que le programme existe
+    programme = session.get(Programme, programme_id)
+    if not programme:
+        raise HTTPException(status_code=400, detail="Programme introuvable")
+    
+    # Vérifier si une promotion avec ce libellé existe déjà pour ce programme
+    existing = session.exec(select(Promotion).where(
+        Promotion.programme_id == programme_id,
+        Promotion.libelle == libelle.strip()
+    )).first()
+    if existing:
+        raise HTTPException(status_code=400, detail="Une promotion avec ce libellé existe déjà pour ce programme")
+    
+    promotion = Promotion(
+        programme_id=programme_id,
+        libelle=libelle.strip(),
+        capacite=int(capacite) if capacite and capacite.strip().isdigit() else None,
+        date_debut=datetime.fromisoformat(date_debut).date() if date_debut else None,
+        date_fin=datetime.fromisoformat(date_fin).date() if date_fin else None,
+        actif=(actif != "off")
+    )
+    session.add(promotion)
+    log_activity(session, user=current_user, action="PROMOTION_CREATE", entity="Promotion", entity_id=promotion.id,
+                 activity_data={"libelle": promotion.libelle, "programme_id": programme_id}, request=request)
+    session.commit()
+    
+    timestamp = int(datetime.now(timezone.utc).timestamp())
+    return RedirectResponse(url=f"/admin/promotions?success=1&action=add&t={timestamp}", status_code=303)
+
+@router.post("/promotions/{promotion_id}/update")
+def admin_promotions_update(
+    promotion_id: int,
+    programme_id: int = Form(...),
+    libelle: str = Form(...),
+    capacite: Optional[str] = Form(None),
+    date_debut: Optional[str] = Form(None),
+    date_fin: Optional[str] = Form(None),
+    actif: Literal["on", "off", ""] = Form("on"),
+    request: Request = None,
+    session: Session = Depends(get_session),
+    current_user: User = Depends(get_current_user)
+):
+    admin_required(current_user)
+    promotion = session.get(Promotion, promotion_id)
+    if not promotion:
+        raise HTTPException(status_code=404, detail="Promotion introuvable")
+    
+    # Vérifier que le programme existe
+    programme = session.get(Programme, programme_id)
+    if not programme:
+        raise HTTPException(status_code=400, detail="Programme introuvable")
+    
+    # Vérifier si une autre promotion avec ce libellé existe déjà pour ce programme
+    existing = session.exec(select(Promotion).where(
+        Promotion.programme_id == programme_id,
+        Promotion.libelle == libelle.strip(),
+        Promotion.id != promotion_id
+    )).first()
+    if existing:
+        raise HTTPException(status_code=400, detail="Une autre promotion avec ce libellé existe déjà pour ce programme")
+    
+    # Sauvegarder les anciennes valeurs pour le log
+    old_values = {
+        "programme_id": promotion.programme_id,
+        "libelle": promotion.libelle,
+        "capacite": promotion.capacite,
+        "date_debut": promotion.date_debut,
+        "date_fin": promotion.date_fin,
+        "actif": promotion.actif
+    }
+    
+    # Mettre à jour les champs
+    promotion.programme_id = programme_id
+    promotion.libelle = libelle.strip()
+    promotion.capacite = int(capacite) if capacite and capacite.strip().isdigit() else None
+    promotion.date_debut = datetime.fromisoformat(date_debut).date() if date_debut else None
+    promotion.date_fin = datetime.fromisoformat(date_fin).date() if date_fin else None
+    promotion.actif = (actif != "off")
+    
+    session.add(promotion)
+    log_activity(session, user=current_user, action="PROMOTION_UPDATE", entity="Promotion", entity_id=promotion.id,
+                 activity_data={"old": old_values, "new": {
+                     "programme_id": promotion.programme_id,
+                     "libelle": promotion.libelle,
+                     "capacite": promotion.capacite,
+                     "date_debut": promotion.date_debut,
+                     "date_fin": promotion.date_fin,
+                     "actif": promotion.actif
+                 }}, request=request)
+    session.commit()
+    
+    timestamp = int(datetime.now(timezone.utc).timestamp())
+    return RedirectResponse(url=f"/admin/promotions?success=1&action=update&t={timestamp}", status_code=303)
+
+@router.post("/promotions/{promotion_id}/toggle")
+def admin_promotions_toggle(promotion_id: int, request: Request, session: Session = Depends(get_session), current_user: User = Depends(get_current_user)):
+    admin_required(current_user)
+    promotion = session.get(Promotion, promotion_id)
+    if not promotion:
+        raise HTTPException(status_code=404, detail="Promotion introuvable")
+    
+    promotion.actif = not bool(promotion.actif)
+    log_activity(session, user=current_user, action="PROMOTION_TOGGLE", entity="Promotion", entity_id=promotion.id,
+                activity_data={"libelle": promotion.libelle, "actif": promotion.actif}, request=request)
+    session.commit()
+    
+    timestamp = int(datetime.now(timezone.utc).timestamp())
+    return RedirectResponse(url=f"/admin/promotions?success=1&action=toggle&t={timestamp}", status_code=303)
+
+@router.post("/promotions/{promotion_id}/delete")
+def admin_promotions_delete(
+    promotion_id: int,
+    request: Request = None,
+    session: Session = Depends(get_session),
+    current_user: User = Depends(get_current_user)
+):
+    admin_required(current_user)
+    promotion = session.get(Promotion, promotion_id)
+    if not promotion:
+        raise HTTPException(status_code=404, detail="Promotion introuvable")
+    
+    # Vérifier si la promotion est utilisée dans des inscriptions
+    inscriptions_count = session.exec(select(func.count(Inscription.id)).where(Inscription.promotion_id == promotion_id)).first()
+    if inscriptions_count > 0:
+        timestamp = int(datetime.now(timezone.utc).timestamp())
+        return RedirectResponse(
+            url=f"/admin/promotions?error=1&message=Impossible de supprimer la promotion '{promotion.libelle}' car elle est utilisée dans {inscriptions_count} inscription(s). Veuillez d'abord réassigner ces inscriptions.&t={timestamp}", 
+            status_code=303
+        )
+    
+    # Vérifier si la promotion est utilisée dans des jurys
+    jurys_count = session.exec(select(func.count(Jury.id)).where(Jury.promotion_id == promotion_id)).first()
+    if jurys_count > 0:
+        timestamp = int(datetime.now(timezone.utc).timestamp())
+        return RedirectResponse(
+            url=f"/admin/promotions?error=1&message=Impossible de supprimer la promotion '{promotion.libelle}' car elle est utilisée dans {jurys_count} jury(s). Veuillez d'abord réassigner ces jurys.&t={timestamp}", 
+            status_code=303
+        )
+    
+    # Sauvegarder les informations pour le log avant suppression
+    promotion_libelle = promotion.libelle
+    promotion_programme_id = promotion.programme_id
+    
+    try:
+        session.delete(promotion)
+        session.commit()
+        
+        log_activity(session, user=current_user, action="PROMOTION_DELETE", entity="Promotion", entity_id=promotion_id,
+                     activity_data={"deleted_promotion_libelle": promotion_libelle, "deleted_promotion_programme_id": promotion_programme_id}, request=request)
+        
+    except Exception as e:
+        session.rollback()
+        raise HTTPException(status_code=500, detail="Erreur lors de la suppression de la promotion")
+    
+    timestamp = int(datetime.now(timezone.utc).timestamp())
+    return RedirectResponse(url=f"/admin/promotions?success=1&action=delete&t={timestamp}", status_code=303)
+
+# ===== GROUPES =====
+@router.get("/groupes", response_class=HTMLResponse)
+def admin_groupes(request: Request, session: Session = Depends(get_session), current_user: User = Depends(get_current_user), q: Optional[str] = Query(None)):
+    admin_required(current_user)
+    stmt = select(Groupe)
+    if q:
+        like = f"%{q}%"
+        stmt = stmt.where((Groupe.nom.ilike(like)) | (Groupe.description.ilike(like)))
+    groupes = session.exec(stmt.order_by(Groupe.nom)).all()
+    
+    return templates.TemplateResponse("ACD/admin/groupes.html", {
+        "request": request, 
+        "settings": settings, 
+        "utilisateur": current_user, 
+        "groupes": groupes, 
+        "q": q or ""
+    })
+
+@router.post("/groupes/add")
+def admin_groupes_add(
+    nom: str = Form(...), 
+    description: Optional[str] = Form(None),
+    capacite_max: Optional[str] = Form(None),
+    actif: Literal["on", "off", ""] = Form("on"),
+    request: Request = None, 
+    session: Session = Depends(get_session), 
+    current_user: User = Depends(get_current_user)
+):
+    admin_required(current_user)
+    
+    # Vérifier si un groupe avec ce nom existe déjà
+    existing = session.exec(select(Groupe).where(Groupe.nom == nom.strip())).first()
+    if existing:
+        raise HTTPException(status_code=400, detail="Un groupe avec ce nom existe déjà")
+    
+    groupe = Groupe(
+        nom=nom.strip(),
+        description=description.strip() if description else None,
+        capacite_max=int(capacite_max) if capacite_max and capacite_max.strip().isdigit() else None,
+        actif=(actif != "off")
+    )
+    session.add(groupe)
+    log_activity(session, user=current_user, action="GROUPE_CREATE", entity="Groupe", entity_id=groupe.id,
+                 activity_data={"nom": groupe.nom, "capacite_max": groupe.capacite_max}, request=request)
+    session.commit()
+    
+    timestamp = int(datetime.now(timezone.utc).timestamp())
+    return RedirectResponse(url=f"/admin/groupes?success=1&action=add&t={timestamp}", status_code=303)
+
+@router.post("/groupes/{groupe_id}/update")
+def admin_groupes_update(
+    groupe_id: int,
+    nom: str = Form(...),
+    description: Optional[str] = Form(None),
+    capacite_max: Optional[str] = Form(None),
+    actif: Literal["on", "off", ""] = Form("on"),
+    request: Request = None,
+    session: Session = Depends(get_session),
+    current_user: User = Depends(get_current_user)
+):
+    admin_required(current_user)
+    groupe = session.get(Groupe, groupe_id)
+    if not groupe:
+        raise HTTPException(status_code=404, detail="Groupe introuvable")
+    
+    # Vérifier si un autre groupe avec ce nom existe déjà
+    existing = session.exec(select(Groupe).where(
+        Groupe.nom == nom.strip(),
+        Groupe.id != groupe_id
+    )).first()
+    if existing:
+        raise HTTPException(status_code=400, detail="Un autre groupe avec ce nom existe déjà")
+    
+    # Sauvegarder les anciennes valeurs pour le log
+    old_values = {
+        "nom": groupe.nom,
+        "description": groupe.description,
+        "capacite_max": groupe.capacite_max,
+        "actif": groupe.actif
+    }
+    
+    # Mettre à jour les champs
+    groupe.nom = nom.strip()
+    groupe.description = description.strip() if description else None
+    groupe.capacite_max = int(capacite_max) if capacite_max and capacite_max.strip().isdigit() else None
+    groupe.actif = (actif != "off")
+    groupe.date_modification = datetime.now(timezone.utc)
+    
+    session.add(groupe)
+    log_activity(session, user=current_user, action="GROUPE_UPDATE", entity="Groupe", entity_id=groupe.id,
+                 activity_data={"old": old_values, "new": {
+                     "nom": groupe.nom,
+                     "description": groupe.description,
+                     "capacite_max": groupe.capacite_max,
+                     "actif": groupe.actif
+                 }}, request=request)
+    session.commit()
+    
+    timestamp = int(datetime.now(timezone.utc).timestamp())
+    return RedirectResponse(url=f"/admin/groupes?success=1&action=update&t={timestamp}", status_code=303)
+
+@router.post("/groupes/{groupe_id}/toggle")
+def admin_groupes_toggle(groupe_id: int, request: Request, session: Session = Depends(get_session), current_user: User = Depends(get_current_user)):
+    admin_required(current_user)
+    groupe = session.get(Groupe, groupe_id)
+    if not groupe:
+        raise HTTPException(status_code=404, detail="Groupe introuvable")
+    
+    groupe.actif = not bool(groupe.actif)
+    groupe.date_modification = datetime.now(timezone.utc)
+    log_activity(session, user=current_user, action="GROUPE_TOGGLE", entity="Groupe", entity_id=groupe.id,
+                activity_data={"nom": groupe.nom, "actif": groupe.actif}, request=request)
+    session.commit()
+    
+    timestamp = int(datetime.now(timezone.utc).timestamp())
+    return RedirectResponse(url=f"/admin/groupes?success=1&action=toggle&t={timestamp}", status_code=303)
+
+@router.post("/groupes/{groupe_id}/delete")
+def admin_groupes_delete(
+    groupe_id: int,
+    request: Request = None,
+    session: Session = Depends(get_session),
+    current_user: User = Depends(get_current_user)
+):
+    admin_required(current_user)
+    groupe = session.get(Groupe, groupe_id)
+    if not groupe:
+        raise HTTPException(status_code=404, detail="Groupe introuvable")
+    
+    # Vérifier si le groupe est utilisé dans des décisions de jury
+    decisions_count = session.exec(select(func.count(DecisionJuryCandidat.id)).where(DecisionJuryCandidat.groupe_id == groupe_id)).first()
+    if decisions_count > 0:
+        timestamp = int(datetime.now(timezone.utc).timestamp())
+        return RedirectResponse(
+            url=f"/admin/groupes?error=1&message=Impossible de supprimer le groupe '{groupe.nom}' car il est utilisé dans {decisions_count} décision(s) de jury. Veuillez d'abord réassigner ces décisions.&t={timestamp}", 
+            status_code=303
+        )
+    
+    # Sauvegarder les informations pour le log avant suppression
+    groupe_nom = groupe.nom
+    
+    try:
+        session.delete(groupe)
+        session.commit()
+        
+        log_activity(session, user=current_user, action="GROUPE_DELETE", entity="Groupe", entity_id=groupe_id,
+                     activity_data={"deleted_groupe_nom": groupe_nom}, request=request)
+        
+    except Exception as e:
+        session.rollback()
+        raise HTTPException(status_code=500, detail="Erreur lors de la suppression du groupe")
+    
+    timestamp = int(datetime.now(timezone.utc).timestamp())
+    return RedirectResponse(url=f"/admin/groupes?success=1&action=delete&t={timestamp}", status_code=303)
+
+# ===== ARCHIVES - NETTOYAGE, EXPORT, IMPORT =====
+@router.post("/archives/cleanup")
+def admin_archives_cleanup(
+    request: Request = None,
+    session: Session = Depends(get_session),
+    current_user: User = Depends(get_current_user)
+):
+    admin_required(current_user)
+    
+    archive_service = ArchiveService(session)
+    try:
+        cleanup_stats = archive_service.cleanup_old_data(current_user)
+        log_activity(session, user=current_user, action="ARCHIVE_CLEANUP", entity="Archive", entity_id=None,
+                     activity_data={"cleanup_stats": cleanup_stats}, request=request)
+        return RedirectResponse(url="/admin/archives?success=cleanup_completed", status_code=303)
+    except Exception as e:
+        log_activity(session, user=current_user, action="ARCHIVE_CLEANUP_FAILED", entity="Archive", entity_id=None,
+                     activity_data={"error": str(e)}, request=request)
+        return RedirectResponse(url="/admin/archives?error=cleanup_failed", status_code=303)
+
+@router.get("/archives/{archive_id}/download")
+def admin_archives_download(
+    archive_id: int,
+    session: Session = Depends(get_session),
+    current_user: User = Depends(get_current_user)
+):
+    admin_required(current_user)
+    
+    archive_service = ArchiveService(session)
+    archive = session.get(Archive, archive_id)
+    
+    if not archive:
+        raise HTTPException(status_code=404, detail="Archive introuvable")
+    
+    if archive.statut != StatutArchive.TERMINE:
+        raise HTTPException(status_code=400, detail="L'archive n'est pas terminée")
+    
+    if not archive.chemin_fichier or not os.path.exists(archive.chemin_fichier):
+        raise HTTPException(status_code=404, detail="Fichier d'archive introuvable")
+    
+    # Log de téléchargement
+    log_activity(session, user=current_user, action="ARCHIVE_DOWNLOAD", entity="Archive", entity_id=archive_id,
+                 activity_data={"archive_nom": archive.nom, "archive_type": archive.type_archive.value})
+    
+    return FileResponse(
+        path=archive.chemin_fichier,
+        filename=f"{archive.nom}.zip",
+        media_type="application/zip"
+    )
+
+@router.post("/archives/export")
+def admin_archives_export(
+    export_type: str = Form(...),
+    description: Optional[str] = Form(None),
+    request: Request = None,
+    session: Session = Depends(get_session),
+    current_user: User = Depends(get_current_user)
+):
+    admin_required(current_user)
+    
+    archive_service = ArchiveService(session)
+    
+    try:
+        print(f"🔄 [EXPORT] Début de l'export - Type: {export_type}, Description: {description}")
+        print(f"🔄 [EXPORT] Utilisateur: {current_user.email}")
+        
+        # Vérifier que le dossier archives existe
+        from pathlib import Path
+        archive_dir = Path("archives")
+        if not archive_dir.exists():
+            print(f"📁 [EXPORT] Création du dossier archives...")
+            archive_dir.mkdir(exist_ok=True)
+        
+        print(f"📁 [EXPORT] Dossier archives: {archive_dir.absolute()}")
+        
+        if export_type == "data_only":
+            print(f"🔄 [EXPORT] Création export données...")
+            archive = archive_service.create_data_export(current_user, description)
+        elif export_type == "files_only":
+            print(f"🔄 [EXPORT] Création export fichiers...")
+            archive = archive_service.create_files_export(current_user, description)
+        elif export_type == "full_backup":
+            print(f"🔄 [EXPORT] Création sauvegarde complète...")
+            archive = archive_service.create_full_backup(current_user, description)
+        else:
+            raise HTTPException(status_code=400, detail="Type d'export invalide")
+        
+        print(f"📦 [EXPORT] Archive créée: {archive}")
+        
+        if archive:
+            print(f"📊 [EXPORT] Détails archive:")
+            print(f"   - ID: {archive.id}")
+            print(f"   - Nom: {archive.nom}")
+            print(f"   - Statut: {archive.statut}")
+            print(f"   - Chemin: {archive.chemin_fichier}")
+            print(f"   - Taille: {archive.taille_fichier}")
+            print(f"   - Message erreur: {archive.message_erreur}")
+        
+        if archive and archive.statut == StatutArchive.TERMINE and archive.chemin_fichier:
+            print(f"✅ [EXPORT] Export réussi - Fichier: {archive.chemin_fichier}")
+            
+            # Vérifier que le fichier existe
+            file_path = Path(archive.chemin_fichier)
+            if not file_path.exists():
+                print(f"❌ [EXPORT] Fichier non trouvé: {archive.chemin_fichier}")
+                return RedirectResponse(url="/admin/archives?error=file_not_found", status_code=303)
+            
+            print(f"✅ [EXPORT] Fichier trouvé, taille: {file_path.stat().st_size} bytes")
+            
+            # Log de l'export
+            log_activity(session, user=current_user, action="ARCHIVE_EXPORT", entity="Archive", entity_id=archive.id,
+                         activity_data={"export_type": export_type, "description": description}, request=request)
+            
+            # Télécharger directement le fichier
+            return FileResponse(
+                path=archive.chemin_fichier,
+                filename=f"{archive.nom}.zip",
+                media_type="application/zip"
+            )
+        else:
+            print(f"❌ [EXPORT] Échec de l'export - Archive: {archive}")
+            if archive:
+                print(f"   Statut: {archive.statut}")
+                print(f"   Chemin: {archive.chemin_fichier}")
+                print(f"   Message erreur: {archive.message_erreur}")
+            return RedirectResponse(url="/admin/archives?error=export_failed", status_code=303)
+            
+    except Exception as e:
+        print(f"💥 [EXPORT] Erreur: {str(e)}")
+        import traceback
+        traceback.print_exc()
+        
+        log_activity(session, user=current_user, action="ARCHIVE_EXPORT_FAILED", entity="Archive", entity_id=None,
+                     activity_data={"export_type": export_type, "error": str(e)}, request=request)
+        return RedirectResponse(url="/admin/archives?error=export_failed", status_code=303)
+
+@router.post("/archives/import")
+def admin_archives_import(
+    file: UploadFile = File(...),
+    import_type: str = Form(...),
+    description: Optional[str] = Form(None),
+    request: Request = None,
+    session: Session = Depends(get_session),
+    current_user: User = Depends(get_current_user)
+):
+    admin_required(current_user)
+    
+    # Vérifier le type de fichier
+    if not file.filename.endswith('.zip'):
+        raise HTTPException(status_code=400, detail="Seuls les fichiers ZIP sont acceptés")
+    
+    # Vérifier la taille du fichier (max 100MB)
+    if file.size and file.size > 100 * 1024 * 1024:
+        raise HTTPException(status_code=400, detail="Fichier trop volumineux (max 100MB)")
+    
+    archive_service = ArchiveService(session)
+    
+    try:
+        # Sauvegarder le fichier temporairement
+        import tempfile
+        import shutil
+        
+        with tempfile.NamedTemporaryFile(delete=False, suffix='.zip') as tmp_file:
+            shutil.copyfileobj(file.file, tmp_file)
+            tmp_path = tmp_file.name
+        
+        # Créer l'enregistrement d'archive
+        archive = Archive(
+            nom=f"Import_{import_type}_{datetime.now().strftime('%Y%m%d_%H%M%S')}",
+            type_archive=TypeArchive(import_type),
+            statut=StatutArchive.EN_COURS,
+            description=description or f"Import {import_type}",
+            cree_par=current_user.id,
+            chemin_fichier=tmp_path,
+            metadonnees={"import_source": file.filename, "import_type": import_type}
+        )
+        
+        session.add(archive)
+        session.commit()
+        
+        # Traiter l'import en arrière-plan
+        try:
+            if import_type == "data_only":
+                result = archive_service.import_data_from_archive(archive, current_user)
+            elif import_type == "files_only":
+                result = archive_service.import_files_from_archive(archive, current_user)
+            elif import_type == "full_backup":
+                result = archive_service.import_full_backup(archive, current_user)
+            else:
+                raise ValueError(f"Type d'import invalide: {import_type}")
+            
+            if result:
+                archive.statut = StatutArchive.TERMINE
+                archive.termine_le = datetime.now(timezone.utc)
+                log_activity(session, user=current_user, action="ARCHIVE_IMPORT_SUCCESS", entity="Archive", entity_id=archive.id,
+                             activity_data={"import_type": import_type, "source_file": file.filename}, request=request)
+            else:
+                archive.statut = StatutArchive.ECHEC
+                archive.message_erreur = "Échec de l'import"
+                log_activity(session, user=current_user, action="ARCHIVE_IMPORT_FAILED", entity="Archive", entity_id=archive.id,
+                             activity_data={"import_type": import_type, "error": "Import failed"}, request=request)
+            
+        except Exception as e:
+            archive.statut = StatutArchive.ECHEC
+            archive.message_erreur = str(e)
+            log_activity(session, user=current_user, action="ARCHIVE_IMPORT_FAILED", entity="Archive", entity_id=archive.id,
+                         activity_data={"import_type": import_type, "error": str(e)}, request=request)
+        
+        session.commit()
+        
+        # Nettoyer le fichier temporaire
+        try:
+            os.unlink(tmp_path)
+        except:
+            pass
+        
+        return RedirectResponse(url="/admin/archives?success=import_completed", status_code=303)
+        
+    except Exception as e:
+        # Nettoyer le fichier temporaire en cas d'erreur
+        try:
+            if 'tmp_path' in locals():
+                os.unlink(tmp_path)
+        except:
+            pass
+        
+        log_activity(session, user=current_user, action="ARCHIVE_IMPORT_ERROR", entity="Archive", entity_id=None,
+                     activity_data={"import_type": import_type, "error": str(e)}, request=request)
+        return RedirectResponse(url="/admin/archives?error=import_failed", status_code=303)
+
+@router.post("/archives/bulk-delete")
+def admin_archives_bulk_delete(
+    archive_ids: str = Form(...),  # Liste d'IDs séparés par des virgules
+    request: Request = None,
+    session: Session = Depends(get_session),
+    current_user: User = Depends(get_current_user)
+):
+    admin_required(current_user)
+    
+    try:
+        ids = [int(id.strip()) for id in archive_ids.split(',') if id.strip()]
+        if not ids:
+            raise HTTPException(status_code=400, detail="Aucun ID d'archive fourni")
+        
+        archive_service = ArchiveService(session)
+        deleted_count = 0
+        
+        for archive_id in ids:
+            archive = session.get(Archive, archive_id)
+            if archive:
+                try:
+                    # Supprimer le fichier physique
+                    if archive.chemin_fichier and os.path.exists(archive.chemin_fichier):
+                        os.unlink(archive.chemin_fichier)
+                    
+                    # Supprimer l'enregistrement
+                    session.delete(archive)
+                    deleted_count += 1
+                    
+                    log_activity(session, user=current_user, action="ARCHIVE_BULK_DELETE", entity="Archive", entity_id=archive_id,
+                                 activity_data={"archive_nom": archive.nom}, request=request)
+                    
+                except Exception as e:
+                    print(f"Erreur lors de la suppression de l'archive {archive_id}: {e}")
+        
+        session.commit()
+        
+        return RedirectResponse(url=f"/admin/archives?success=bulk_delete_completed&count={deleted_count}", status_code=303)
+        
+    except Exception as e:
+        log_activity(session, user=current_user, action="ARCHIVE_BULK_DELETE_FAILED", entity="Archive", entity_id=None,
+                     activity_data={"error": str(e)}, request=request)
+        return RedirectResponse(url="/admin/archives?error=bulk_delete_failed", status_code=303)

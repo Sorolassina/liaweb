@@ -42,40 +42,40 @@
   /* Grille KPI adaptative */
   .kpi-grid{ 
     display: grid; 
-    grid-template-columns: repeat(auto-fit, minmax(140px, 1fr)); 
-    gap: 12px; 
+    grid-template-columns: repeat(auto-fit, minmax(120px, 1fr)); 
+    gap: 10px; 
   }
   
   @media (max-width: 1200px){ 
-    .kpi-grid{ grid-template-columns: repeat(3, 1fr);} 
+    .kpi-grid{ grid-template-columns: repeat(4, 1fr);} 
   }
   @media (max-width: 680px){ 
-    .kpi-grid{ grid-template-columns: repeat(2, 1fr);} 
+    .kpi-grid{ grid-template-columns: repeat(3, 1fr);} 
   }
   @media (max-width: 430px){ 
-    .kpi-grid{ grid-template-columns: 1fr;} 
+    .kpi-grid{ grid-template-columns: repeat(2, 1fr);} 
   }
   
   .kpi{ 
-    padding: 16px 14px; 
+    padding: 12px 10px; 
     text-align: center; 
-    border-radius: 14px; 
+    border-radius: 12px; 
     box-shadow: var(--shadow-sm); 
     background: var(--white-color); 
   }
   .kpi .val{ 
     font-weight: 900; 
-    font-size: 1.8rem; 
+    font-size: 1.6rem; 
     line-height: 1; 
     color: var(--primary-color); 
   }
   .kpi .lab{ 
-    margin-top: 4px; 
+    margin-top: 3px; 
     color: var(--gray-dark); 
     font-weight: 700; 
     text-transform: uppercase; 
-    letter-spacing: .4px; 
-    font-size: .82rem; 
+    letter-spacing: .3px; 
+    font-size: .75rem; 
   }
   
   /* Carte adaptative */
@@ -211,11 +211,13 @@
   <div class="card-neumo p-3 mb-3">
     <h3 class="section-title">Vue d'ensemble</h3>
     <div class="kpi-grid">
-      <div class="kpi"><div class="val">{{ kpi.candidats }}</div><div class="lab">Candidats</div></div>
       <div class="kpi"><div class="val">{{ kpi.preinscrits }}</div><div class="lab">Préinscrits</div></div>
+      <div class="kpi"><div class="val">{{ kpi.valides }}</div><div class="lab">Validés</div></div>
+      <div class="kpi"><div class="val">{{ kpi.reorientes }}</div><div class="lab">Réorientés</div></div>
+      <div class="kpi"><div class="val">{{ kpi.rejetes }}</div><div class="lab">Rejetés</div></div>
+      <div class="kpi"><div class="val">{{ kpi.en_attente }}</div><div class="lab">En attente</div></div>
       <div class="kpi"><div class="val">{{ kpi.qpv }}</div><div class="lab">QPV</div></div>
-      <div class="kpi"><div class="val">{{ kpi.femmes }}</div><div class="lab">Femmes</div></div>
-      <div class="kpi"><div class="val">{{ kpi.hommes }}</div><div class="lab">Hommes</div></div>
+      <div class="kpi"><div class="val">{{ kpi.qpv_limite }}</div><div class="lab">QPV Limite</div></div>
     </div>
   </div>
 
@@ -225,10 +227,11 @@
       <h3 class="section-title">Couverture géographique</h3>
       <div id="map"></div>
       <div class="mt-2" style="display:flex; gap:8px; flex-wrap:wrap;">
-        <span class="badge-chip">📍 Candidats</span>
+        <!-- <span class="badge-chip">📍 Candidats</span> -->
         <span class="badge-chip">🟡 QPV</span>
-        <span class="badge-chip">🔵 Femmes</span>
-        <span class="badge-chip">⚫ Hommes</span>
+        <span class="badge-chip">🟠 QPV Limite</span>
+        <!-- <span class="badge-chip">🔵 Femmes</span> -->
+        <!-- <span class="badge-chip">⚫ Hommes</span> -->
       </div>
     </div>
 
@@ -302,12 +305,12 @@
 
           {% if o.target_qpv is not none %}
           <div class="meta mt-1">QPV (cible {{ o.target_qpv | round(0) }}%) — {{ o.qpv_pct }}%</div>
-          <div class="progress-soft"><span style="width: {{ [o.qpv_pct, 100] | min | round(1) }}%"></span></div>
+          <div class="progress-soft"><span style="width: {{ [o.qpv_objectif_atteint, 100] | min | round(1) }}%"></span></div>
           {% endif %}
 
           {% if o.target_f is not none %}
           <div class="meta mt-1">Femmes (cible {{ o.target_f | round(0) }}%) — {{ o.f_pct }}%</div>
-          <div class="progress-soft"><span style="width: {{ [o.f_pct, 100] | min | round(1) }}%"></span></div>
+          <div class="progress-soft"><span style="width: {{ [o.f_objectif_atteint, 100] | min | round(1) }}%"></span></div>
           {% endif %}
         </div>
         {% endfor %}
@@ -317,8 +320,9 @@
 
 </div>
 
-<!-- Leaflet + Charts (Chart.js déjà inclus via base.html) -->
+<!-- Leaflet + Charts -->
 <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js" crossorigin=""></script>
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.js"></script>
 <script>
   const PINS = {{ pins | tojson }};
   const PROG_LABELS = {{ prog_labels | tojson }};
@@ -334,12 +338,41 @@
       { maxZoom: 18, attribution: '&copy; OpenStreetMap' }).addTo(map);
     const markers = [];
     PINS.forEach(p => {
-      const m = L.marker([p.lat, p.lng]).addTo(map);
-      const qpv = p.qpv ? "🟡 QPV" : "⚪ Non QPV";
-      const sx  = p.sexe === "F" ? "🔵 Femme" : (p.sexe === "H" ? "⚫ Homme" : "•");
+      // Déterminer la couleur du pin selon le statut QPV
+      let pinColor = '#3388ff'; // Bleu par défaut (Non QPV)
+      let qpv_status = "⚪ Non QPV";
+      
+      if (p.qpv) {
+        pinColor = '#ffd700'; // Jaune pour QPV
+        qpv_status = "🟡 QPV";
+      } else if (p.qpv_limite) {
+        pinColor = '#ff8c00'; // Orange pour QPV Limite
+        qpv_status = "🟠 QPV Limite";
+      }
+      
+      // Créer une icône Leaflet colorée
+      const coloredIcon = L.icon({
+        iconUrl: 'https://raw.githubusercontent.com/pointhi/leaflet-color-markers/master/img/marker-icon-2x-blue.png',
+        shadowUrl: 'https://cdnjs.cloudflare.com/ajax/libs/leaflet/0.7.7/images/marker-shadow.png',
+        iconSize: [25, 41],
+        iconAnchor: [12, 41],
+        popupAnchor: [1, -34],
+        shadowSize: [41, 41]
+      });
+      
+      // Modifier la couleur de l'icône
+      if (p.qpv) {
+        coloredIcon.options.iconUrl = 'https://raw.githubusercontent.com/pointhi/leaflet-color-markers/master/img/marker-icon-2x-gold.png';
+      } else if (p.qpv_limite) {
+        coloredIcon.options.iconUrl = 'https://raw.githubusercontent.com/pointhi/leaflet-color-markers/master/img/marker-icon-2x-orange.png';
+      }
+      
+      const m = L.marker([p.lat, p.lng], { icon: coloredIcon }).addTo(map);
+      
+      const sx = p.sexe === "F" ? "🔵 Femme" : (p.sexe === "H" ? "⚫ Homme" : "•");
       m.bindPopup(`<div style="font-weight:800">${(p.prenom||"")} ${(p.nom||"")}</div>
                    <div style="font-size:.9rem; opacity:.8">${p.adresse||""}</div>
-                   <div style="font-size:.9rem;">${qpv} • ${sx}</div>`);
+                   <div style="font-size:.9rem;">${qpv_status} • ${sx}</div>`);
       markers.push(m);
     });
     if (markers.length){
@@ -352,24 +385,118 @@
 
   // Charts
   (function(){
+    // Graphique des programmes
     new Chart(document.getElementById('chartProgrammes'), {
       type: 'bar',
-      data: { labels: PROG_LABELS, datasets: [{ label: 'Inscriptions', data: PROG_VALUES, borderWidth: 1 }] },
-      options: { responsive: true, plugins: { legend: { display:false }, tooltip:{mode:'index', intersect:false} },
-                 scales:{ x:{ticks:{autoSkip:true,maxRotation:0}}, y:{beginAtZero:true,ticks:{precision:0}} } }
+      data: { 
+        labels: PROG_LABELS, 
+        datasets: [{ 
+          label: 'Inscriptions', 
+          data: PROG_VALUES, 
+          borderWidth: 1,
+          backgroundColor: '#e3f2fd',
+          borderColor: '#1976d2'
+        }] 
+      },
+      options: {
+        responsive: true,
+        plugins: { 
+          legend: { display: false }, 
+          tooltip: { mode: 'index', intersect: false }
+        },
+        scales: { 
+          x: { ticks: { autoSkip: true, maxRotation: 0 } }, 
+          y: { 
+            beginAtZero: true, 
+            ticks: { precision: 0 },
+            suggestedMax: Math.max(...PROG_VALUES) + 2
+          } 
+        }
+      },
+      plugins: [{
+        id: 'datalabels',
+        afterDatasetsDraw: (chart) => {
+          const ctx = chart.ctx;
+          chart.data.datasets.forEach((dataset, i) => {
+            const meta = chart.getDatasetMeta(i);
+            meta.data.forEach((bar, index) => {
+              const data = dataset.data[index];
+              ctx.fillStyle = '#333';
+              ctx.font = 'bold 12px Arial';
+              ctx.textAlign = 'center';
+              ctx.textBaseline = 'bottom';
+              ctx.fillText(data, bar.x, bar.y - 5);
+            });
+          });
+        }
+      }]
     });
+
+    // Pyramide des âges
     new Chart(document.getElementById('chartPyramid'), {
       type: 'bar',
-      data: { labels: PYR_LABELS, datasets: [
-        { label: 'Hommes', data: PYR_MALE, borderWidth: 1 },
-        { label: 'Femmes', data: PYR_FEMALE, borderWidth: 1 }
-      ]},
-      options: {
-        indexAxis: 'y', responsive:true,
-        plugins:{ legend:{position:'bottom'},
-          tooltip:{ callbacks:{ label:(ctx)=>`${ctx.dataset.label}: ${Math.abs(ctx.parsed.x)}` } } },
-        scales:{ x:{ stacked:true, ticks:{ callback:(v)=>Math.abs(v), precision:0 } }, y:{ stacked:true } }
-      }
+      data: { 
+        labels: PYR_LABELS, 
+        datasets: [
+          { 
+            label:'Hommes', 
+            data: PYR_MALE, // Valeurs négatives pour les hommes (gauche)
+            borderWidth: 1,
+            backgroundColor: '#90caf9',
+            borderColor: '#1976d2'
+          },
+          { 
+            label:'Femmes', 
+            data: PYR_FEMALE, // Valeurs positives pour les femmes (droite)
+            borderWidth: 1,
+            backgroundColor: '#f8bbd9',
+            borderColor: '#e91e63'
+          }
+        ]
+      },
+      options:{
+        indexAxis:'y', 
+        responsive:true,
+        plugins:{ 
+          legend:{ position:'bottom' },
+          tooltip:{ callbacks:{ label:(ctx)=>`${ctx.dataset.label}: ${Math.abs(ctx.parsed.x)}` } }
+        },
+        scales:{ 
+          x:{ 
+            stacked:false, // Pas de stacking pour une vraie pyramide
+            ticks:{ 
+              callback:(v)=>Math.abs(v), 
+              precision:0 
+            },
+            suggestedMax: Math.max(...PYR_MALE.map(Math.abs), ...PYR_FEMALE.map(Math.abs)) + 1,
+            suggestedMin: -(Math.max(...PYR_MALE.map(Math.abs), ...PYR_FEMALE.map(Math.abs)) + 1)
+          }, 
+          y:{ stacked:false }
+        }
+      },
+      plugins: [{
+        id: 'datalabels',
+        afterDatasetsDraw: (chart) => {
+          const ctx = chart.ctx;
+          chart.data.datasets.forEach((dataset, i) => {
+            const meta = chart.getDatasetMeta(i);
+            meta.data.forEach((bar, index) => {
+              const data = Math.abs(dataset.data[index]);
+              if (data > 0) { // Afficher seulement si > 0
+                ctx.fillStyle = '#333';
+                ctx.font = 'bold 10px Arial';
+                ctx.textAlign = 'center';
+                ctx.textBaseline = 'middle';
+                
+                // Positionner l'étiquette au centre de la barre
+                const x = bar.x;
+                const y = bar.y;
+                ctx.fillText(data, x, y);
+              }
+            });
+          });
+        }
+      }]
     });
   })();
 </script>

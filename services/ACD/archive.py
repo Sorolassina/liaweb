@@ -83,34 +83,249 @@ class ArchiveService:
             print(f"Erreur lors de la création de l'archive: {e}")
             return None
     
+    def create_data_export(self, user: User, description: str = None) -> Optional[Archive]:
+        """Crée un export des données uniquement (base de données)"""
+        try:
+            # Créer l'enregistrement d'archive
+            archive = Archive(
+                nom=f"export_donnees_{datetime.now().strftime('%Y%m%d_%H%M%S')}",
+                type_archive=TypeArchive.DONNEES_UNIQUEMENT,
+                statut=StatutArchive.EN_COURS,
+                description=description or "Export des données uniquement",
+                cree_par=user.id
+            )
+            self.session.add(archive)
+            self.session.commit()
+            self.session.refresh(archive)
+            
+            # Créer le fichier d'archive
+            archive_path = self.archive_dir / f"{archive.nom}.zip"
+            
+            with zipfile.ZipFile(archive_path, 'w', zipfile.ZIP_DEFLATED) as zipf:
+                # Sauvegarder uniquement la base de données
+                self._backup_database(zipf)
+                
+                # Ajouter les métadonnées
+                metadata = {
+                    "created_at": archive.cree_le.isoformat(),
+                    "created_by": user.email,
+                    "archive_type": archive.type_archive,
+                    "description": archive.description,
+                    "export_type": "data_only",
+                    "version": "1.0"
+                }
+                zipf.writestr("metadata.json", json.dumps(metadata, indent=2))
+            
+            # Mettre à jour l'archive
+            archive.chemin_fichier = str(archive_path)
+            archive.taille_fichier = archive_path.stat().st_size
+            archive.statut = StatutArchive.TERMINE
+            archive.termine_le = datetime.now(timezone.utc)
+            archive.expire_le = datetime.now(timezone.utc) + timedelta(days=7)  # 7 jours pour les exports
+            
+            self.session.add(archive)
+            self.session.commit()
+            
+            return archive
+            
+        except Exception as e:
+            if 'archive' in locals():
+                archive.statut = StatutArchive.ECHEC
+                archive.message_erreur = str(e)
+                self.session.add(archive)
+                self.session.commit()
+            print(f"Erreur lors de la création de l'export de données: {e}")
+            return None
+    
+    def create_files_export(self, user: User, description: str = None) -> Optional[Archive]:
+        """Crée un export des fichiers uniquement"""
+        try:
+            # Créer l'enregistrement d'archive
+            archive = Archive(
+                nom=f"export_fichiers_{datetime.now().strftime('%Y%m%d_%H%M%S')}",
+                type_archive=TypeArchive.FICHIERS_UNIQUEMENT,
+                statut=StatutArchive.EN_COURS,
+                description=description or "Export des fichiers uniquement",
+                cree_par=user.id
+            )
+            self.session.add(archive)
+            self.session.commit()
+            self.session.refresh(archive)
+            
+            # Créer le fichier d'archive
+            archive_path = self.archive_dir / f"{archive.nom}.zip"
+            
+            with zipfile.ZipFile(archive_path, 'w', zipfile.ZIP_DEFLATED) as zipf:
+                # Sauvegarder uniquement les fichiers uploadés
+                self._backup_uploaded_files(zipf)
+                
+                # Ajouter les métadonnées
+                metadata = {
+                    "created_at": archive.cree_le.isoformat(),
+                    "created_by": user.email,
+                    "archive_type": archive.type_archive,
+                    "description": archive.description,
+                    "export_type": "files_only",
+                    "version": "1.0"
+                }
+                zipf.writestr("metadata.json", json.dumps(metadata, indent=2))
+            
+            # Mettre à jour l'archive
+            archive.chemin_fichier = str(archive_path)
+            archive.taille_fichier = archive_path.stat().st_size
+            archive.statut = StatutArchive.TERMINE
+            archive.termine_le = datetime.now(timezone.utc)
+            archive.expire_le = datetime.now(timezone.utc) + timedelta(days=7)  # 7 jours pour les exports
+            
+            self.session.add(archive)
+            self.session.commit()
+            
+            return archive
+            
+        except Exception as e:
+            if 'archive' in locals():
+                archive.statut = StatutArchive.ECHEC
+                archive.message_erreur = str(e)
+                self.session.add(archive)
+                self.session.commit()
+            print(f"Erreur lors de la création de l'export de fichiers: {e}")
+            return None
+    
     def _backup_database(self, zipf: zipfile.ZipFile):
         """Sauvegarde la base de données en SQL"""
         try:
             # Créer un fichier SQL temporaire
-            with tempfile.NamedTemporaryFile(mode='w', suffix='.sql', delete=False) as sql_file:
-                # Utiliser pg_dump pour PostgreSQL
-                import subprocess
-                result = subprocess.run([
-                    'pg_dump', 
-                    settings.DATABASE_URL,
-                    '--no-password',
-                    '--format=plain',
-                    '--no-owner',
-                    '--no-privileges'
-                ], capture_output=True, text=True)
+            with tempfile.NamedTemporaryFile(mode='w', suffix='.sql', delete=False, encoding='utf-8') as sql_file:
+                print("🔄 [BACKUP] Début de la sauvegarde de la base de données...")
                 
-                if result.returncode == 0:
-                    sql_file.write(result.stdout)
+                # Essayer d'abord pg_dump (si disponible)
+                try:
+                    import subprocess
+                    result = subprocess.run([
+                        'pg_dump', 
+                        settings.DATABASE_URL,
+                        '--no-password',
+                        '--format=plain',
+                        '--no-owner',
+                        '--no-privileges'
+                    ], capture_output=True, text=True, timeout=30)
+                    
+                    if result.returncode == 0:
+                        sql_file.write(result.stdout)
+                        sql_file.flush()
+                        print("✅ [BACKUP] Sauvegarde pg_dump réussie")
+                        
+                        # Ajouter le fichier SQL à l'archive
+                        zipf.write(sql_file.name, "database_backup.sql")
+                        return
+                    else:
+                        print(f"⚠️ [BACKUP] pg_dump échoué: {result.stderr}")
+                        raise Exception("pg_dump non disponible")
+                        
+                except (subprocess.TimeoutExpired, FileNotFoundError, Exception) as e:
+                    print(f"⚠️ [BACKUP] pg_dump non disponible ({e}), utilisation de SQLAlchemy...")
+                    
+                    # Fallback: utiliser SQLAlchemy pour exporter les données
+                    self._backup_database_sqlalchemy(sql_file)
                     sql_file.flush()
                     
                     # Ajouter le fichier SQL à l'archive
                     zipf.write(sql_file.name, "database_backup.sql")
-                    
-                else:
-                    print(f"Erreur pg_dump: {result.stderr}")
+                    print("✅ [BACKUP] Sauvegarde SQLAlchemy réussie")
                     
         except Exception as e:
-            print(f"Erreur lors de la sauvegarde de la base: {e}")
+            print(f"❌ [BACKUP] Erreur lors de la sauvegarde de la base: {e}")
+            # Créer un fichier d'erreur pour informer l'utilisateur
+            error_content = f"-- Erreur lors de la sauvegarde de la base de données\n-- {str(e)}\n-- Date: {datetime.now().isoformat()}\n"
+            zipf.writestr("database_backup_error.txt", error_content)
+    
+    def _backup_database_sqlalchemy(self, sql_file):
+        """Sauvegarde alternative utilisant SQLAlchemy"""
+        try:
+            from sqlalchemy import create_engine, MetaData, inspect
+            from sqlalchemy.schema import CreateTable
+            
+            # Créer une connexion à la base
+            engine = create_engine(settings.DATABASE_URL)
+            metadata = MetaData()
+            metadata.reflect(bind=engine)
+            
+            sql_file.write("-- Sauvegarde de la base de données générée par SQLAlchemy\n")
+            sql_file.write(f"-- Date: {datetime.now().isoformat()}\n")
+            sql_file.write("-- ATTENTION: Cette sauvegarde ne contient que la structure et les données\n")
+            sql_file.write("-- Les contraintes et index peuvent nécessiter une restauration manuelle\n\n")
+            
+            # Exporter la structure des tables
+            sql_file.write("-- ============================================\n")
+            sql_file.write("-- STRUCTURE DES TABLES\n")
+            sql_file.write("-- ============================================\n\n")
+            
+            for table_name, table in metadata.tables.items():
+                sql_file.write(f"-- Table: {table_name}\n")
+                create_sql = str(CreateTable(table).compile(engine))
+                sql_file.write(create_sql + ";\n\n")
+            
+            # Exporter les données
+            sql_file.write("-- ============================================\n")
+            sql_file.write("-- DONNÉES DES TABLES\n")
+            sql_file.write("-- ============================================\n\n")
+            
+            with engine.connect() as conn:
+                for table_name, table in metadata.tables.items():
+                    try:
+                        sql_file.write(f"-- Données de la table: {table_name}\n")
+                        
+                        # Compter les enregistrements
+                        count_result = conn.execute(f"SELECT COUNT(*) FROM {table_name}")
+                        count = count_result.scalar()
+                        
+                        if count > 0:
+                            sql_file.write(f"-- {count} enregistrement(s) trouvé(s)\n")
+                            
+                            # Récupérer les données par chunks pour éviter les problèmes de mémoire
+                            chunk_size = 1000
+                            offset = 0
+                            
+                            while offset < count:
+                                result = conn.execute(f"SELECT * FROM {table_name} LIMIT {chunk_size} OFFSET {offset}")
+                                rows = result.fetchall()
+                                
+                                if not rows:
+                                    break
+                                
+                                # Générer les INSERT
+                                for row in rows:
+                                    columns = list(table.columns.keys())
+                                    values = []
+                                    
+                                    for col in columns:
+                                        value = getattr(row, col)
+                                        if value is None:
+                                            values.append("NULL")
+                                        elif isinstance(value, str):
+                                            # Échapper les apostrophes
+                                            escaped_value = value.replace("'", "''")
+                                            values.append(f"'{escaped_value}'")
+                                        elif isinstance(value, datetime):
+                                            values.append(f"'{value.isoformat()}'")
+                                        else:
+                                            values.append(f"'{value}'")
+                                    
+                                    insert_sql = f"INSERT INTO {table_name} ({', '.join(columns)}) VALUES ({', '.join(values)});\n"
+                                    sql_file.write(insert_sql)
+                                
+                                offset += chunk_size
+                        else:
+                            sql_file.write("-- Aucune donnée\n")
+                        
+                        sql_file.write("\n")
+                        
+                    except Exception as e:
+                        sql_file.write(f"-- Erreur lors de l'export de {table_name}: {str(e)}\n\n")
+                        
+        except Exception as e:
+            print(f"❌ [BACKUP] Erreur SQLAlchemy: {e}")
+            sql_file.write(f"-- Erreur lors de la sauvegarde SQLAlchemy: {str(e)}\n")
     
     def _backup_uploaded_files(self, zipf: zipfile.ZipFile):
         """Sauvegarde les fichiers uploadés"""

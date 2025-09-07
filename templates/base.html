@@ -111,11 +111,11 @@
     }
     .avatar{
       width:60px; height:60px; border-radius:50%;
-      background: var(--white-color) url('/static/images/utilisateur.png') center/cover no-repeat;
+      background: var(--white-color) center/cover no-repeat;
       box-shadow: var(--shadow);
     }
     .username{ font-weight:600; color: var(--secondary-color); text-align:center; word-break:break-word; }
-    .user-function{ font-size:12px; color: var(--primary-color); }
+    .user-function{ font-size:12px; color: var(--secondary-color); }
 
     .menu{ padding:0 15px; display:flex; flex-direction:column; gap:6px; flex:1; overflow-y:auto;}
     .accordion-menu{ margin-bottom:6px; }
@@ -195,10 +195,10 @@
       text-shadow: 1px 1px 2px var(--white-color), -1px -1px 2px var(--gray-light);
     }
     .header-neumorphism .user-info{ display:flex; align-items:center; gap:8px; }
-    .header-neumorphism .user-role{ color: var(--primary-color); font-weight:500; font-size:14px; }
+    .header-neumorphism .user-role{ color: var(--secondary-color); font-weight:500; font-size:14px; }
     .header-neumorphism .avatar{
       width:30px; height:30px; border-radius:50%;
-      background: var(--white-color) url('/static/images/utilisateur.png') center/cover no-repeat;
+      background: var(--white-color) center/cover no-repeat;
       box-shadow: var(--shadow-sm);
     }
     .logout-button{
@@ -269,27 +269,27 @@
       <button class="icon-button" title="Réduire / Étendre" onclick="toggleSidebar()">
         <i class="fas fa-bars"></i>
       </button>
-      <img  class="avatar" src="/static/images/utilisateur.png" alt="Logo" style="width:40px; height:40px;">
+      <img  class="avatar" src="{% if utilisateur.photo_profil %}{{ utilisateur.photo_profil }}{% else %}/static/images/utilisateur.png{% endif %}" alt="Logo" style="width:40px; height:40px;">
       <div class="username">{{ utilisateur.nom_complet }}</div>
       <div class="user-function">{{ utilisateur.role | title }}</div>
-      <div style="font-size:16px; color:var(--primary-color); font-weight:700;">LIA</div>
+      <div style="font-size:16px; color:var(--secondary-color); font-weight:700;">LIA</div>
     </div>
 
     <!-- Réduit : top burger + avatar (optionnel) -->
     <div class="top-icons">
       <button class="icon-button" title="Menu" onclick="toggleSidebar()"><i class="fas fa-bars"></i></button>
-      <img  class="avatar" src="/static/images/utilisateur.png" alt="Logo" style="width:40px; height:40px;">
+      <img  class="avatar" src="{% if utilisateur.photo_profil %}{{ utilisateur.photo_profil }}{% else %}/static/images/utilisateur.png{% endif %}" alt="Logo" style="width:40px; height:40px;">
     </div>
 
     <!-- Menu étendu -->
     <div class="menu">
       <a href="/accueil" class="submenu-item {% if '/accueil' in request.url.path %}active{% endif %}">
-        <div class="icon"><i class="fas fa-calculator"></i></div><div>ACCUEIL</div>
+        <div class="icon"><i class="fas fa-home"></i></div><div>ACCUEIL</div>
       </a>
       <!-- ACD -->
       <div id="acc-ext" class="accordion-menu">
         <div class="accordion-header" onclick="toggleAccordion('acc-ext')">
-          <div class="icon"><i class="fas fa-search-dollar"></i></div>
+          <div class="icon"><i class="fas fa-graduation-cap"></i></div>
           <div>ACD</div>
           <div class="accordion-arrow"><i class="fas fa-chevron-down"></i></div>
         </div>
@@ -324,7 +324,7 @@
       <!-- ACI -->
       <div id="acc-int" class="accordion-menu">
         <div class="accordion-header" onclick="toggleAccordion('acc-int')">
-          <div class="icon"><i class="fas fa-shield-alt"></i></div>
+          <div class="icon"><i class="fas fa-building"></i></div>
           <div>ACI</div>
           <div class="accordion-arrow"><i class="fas fa-chevron-down"></i></div>
         </div>
@@ -359,7 +359,7 @@
       <!-- ACT -->
       <div id="acc-af" class="accordion-menu">
         <div class="accordion-header" onclick="toggleAccordion('acc-af')">
-          <div class="icon"><i class="fas fa-chart-bar"></i></div>
+          <div class="icon"><i class="fas fa-handshake"></i></div>
           <div>ACT</div>
           <div class="accordion-arrow"><i class="fas fa-chevron-down"></i></div>
         </div>
@@ -385,7 +385,7 @@
       <!-- Communication -->
       <div id="acc-com" class="accordion-menu">
         <div class="accordion-header" onclick="toggleAccordion('acc-com')">
-          <div class="icon"><i class="fas fa-comments"></i></div>
+          <div class="icon"><i class="fas fa-bullhorn"></i></div>
           <div>Communication</div>
           <div class="accordion-arrow"><i class="fas fa-chevron-down"></i></div>
         </div>
@@ -406,17 +406,20 @@
 
     <!-- Menu réduit : icônes -->
     <div class="menu-icons">
-      <button class="icon-button" onclick="toggleAuditExterneMenu(event, this)" title="ACD">
-        <i class="fas fa-search-dollar"></i>
+      <a href="/accueil" class="icon-button" title="Accueil">
+        <i class="fas fa-home"></i>
+      </a>
+      <button class="icon-button" onclick="toggleACDMenu(event, this)" title="ACD">
+        <i class="fas fa-graduation-cap"></i>
       </button>
-      <button class="icon-button" onclick="toggleAuditInterneMenu(event, this)" title="ACI">
-        <i class="fas fa-shield-alt"></i>
+      <button class="icon-button" onclick="toggleACIMenu(event, this)" title="ACI">
+        <i class="fas fa-building"></i>
       </button>
-      <button class="icon-button" onclick="toggleAnalyseFinanciereMenu(event, this)" title="ACT">
-        <i class="fas fa-chart-bar"></i>
+      <button class="icon-button" onclick="toggleACTMenu(event, this)" title="ACT">
+        <i class="fas fa-handshake"></i>
       </button>
       <button class="icon-button" onclick="toggleCommunicationMenu(event, this)" title="Communication">
-        <i class="fas fa-comments"></i>
+        <i class="fas fa-bullhorn"></i>
       </button>
       <button class="icon-button" onclick="toggleMoreMenuCollapsed(event, this)" title="Plus">
         <i class="fas fa-ellipsis-h"></i>
@@ -457,7 +460,7 @@
     <div class="username-title">LIA-Gestion coaching</div>
     <div class="user-info">
       <span class="user-role">{{ utilisateur.nom_complet | title }} ({{ utilisateur.role | title }})</span>
-      <div class="avatar"></div>
+      <div class="avatar" style="background-image: url('{% if utilisateur.photo_profil %}{{ utilisateur.photo_profil }}{% else %}/static/images/utilisateur.png{% endif %}');"></div>
       <button class="logout-button" onclick="window.location.href='/auth/logout'">Se déconnecter</button>
     </div>
   </div>
@@ -594,28 +597,40 @@
         <a href="/knowledge-base"><i class="fas fa-book"></i><span>Knowledge Base</span></a>
       `;
     }
-    function htmlAuditExterne(){
+    function htmlACDMenu(){
       return `
-        <div class="more-menu-title">Audit Financier Externe</div>
-        <a href="/dashboard"><i class="fas fa-tachometer-alt"></i><span>Dashboard</span></a>
-        <a href="/clients"><i class="fas fa-building"></i><span>Clients</span></a>
-        <a href="/engagements"><i class="fas fa-project-diagram"></i><span>Engagements</span></a>
+        <div class="more-menu-title">ACD</div>
+        <a href="/ACD/dashboard"><i class="fas fa-tachometer-alt"></i><span>Tableau de bord</span></a>
+        <a href="/ACD/preinscriptions/form?programme=ACD"><i class="fas fa-building"></i><span>Préinscriptions</span></a>
+        <a href="/ACD/inscriptions/form?programme=ACD"><i class="fas fa-project-diagram"></i><span>Inscriptions</span></a>
+        <a href="#"><i class="fas fa-tasks"></i><span>Rendez-vous</span></a>
+        <a href="#"><i class="fas fa-chart-line"></i><span>Séminaires</span></a>
+        <a href="#"><i class="fas fa-file-alt"></i><span>Codev</span></a>
+        <a href="#"><i class="fas fa-file-alt"></i><span>Webinaire</span></a>
+        <a href="#"><i class="fas fa-file-alt"></i><span>Suivi mensuel</span></a>
       `;
     }
-    function htmlAuditInterne(){
+    function htmlACIMenu(){
       return `
-        <div class="more-menu-title">Audit Interne</div>
-        <a href="/internal-audit"><i class="fas fa-shield-alt"></i><span>Contrôles Internes</span></a>
-        <a href="/internal-audit/compliance"><i class="fas fa-check-circle"></i><span>Conformité</span></a>
-        <a href="/internal-audit/risk-management"><i class="fas fa-exclamation-triangle"></i><span>Gestion des Risques</span></a>
+        <div class="more-menu-title">ACI</div>
+        <a href="#"><i class="fas fa-tachometer-alt"></i><span>Tableau de bord</span></a>
+        <a href="#"><i class="fas fa-building"></i><span>Préinscriptions</span></a>
+        <a href="#"><i class="fas fa-project-diagram"></i><span>Inscriptions</span></a>
+        <a href="#"><i class="fas fa-tasks"></i><span>Rendez-vous</span></a>
+        <a href="#"><i class="fas fa-chart-line"></i><span>Séminaires</span></a>
+        <a href="#"><i class="fas fa-file-alt"></i><span>Codev</span></a>
+        <a href="#"><i class="fas fa-file-alt"></i><span>Webinaire</span></a>
+        <a href="#"><i class="fas fa-file-alt"></i><span>Suivi mensuel</span></a>
       `;
     }
-    function htmlAnalyseFinanciere(){
+    function htmlACTMenu(){
       return `
-        <div class="more-menu-title">Analyse Financière</div>
-        <a href="/analyse-financiere/ratios"><i class="fas fa-calculator"></i><span>Ratios</span></a>
-        <a href="/analyse-financiere/indicateurs"><i class="fas fa-chart-area"></i><span>Indicateurs</span></a>
-        <a href="/analyse-financiere/business-plan"><i class="fas fa-balance-scale"></i><span>Business-plan</span></a>
+        <div class="more-menu-title">ACT</div>
+        <a href="#"><i class="fas fa-calculator"></i><span>Tableau de bord</span></a>
+        <a href="#"><i class="fas fa-chart-area"></i><span>Candidats</span></a>
+        <a href="#"><i class="fas fa-balance-scale"></i><span>Rendez-vous</span></a>
+        <a href="#"><i class="fas fa-balance-scale"></i><span>Séminaires</span></a>
+        <a href="#"><i class="fas fa-balance-scale"></i><span>Webinaire</span></a>
       `;
     }
     function htmlCommunication(){
@@ -635,9 +650,9 @@
     }
 
     function toggleMoreMenu(evt, btn){ if(evt) evt.stopPropagation(); toggleOverlay(htmlMoreMenu(), btn || evt.currentTarget); }
-    function toggleAuditExterneMenu(evt, btn){ if(evt) evt.stopPropagation(); toggleOverlay(htmlAuditExterne(), btn || evt.currentTarget); }
-    function toggleAuditInterneMenu(evt, btn){ if(evt) evt.stopPropagation(); toggleOverlay(htmlAuditInterne(), btn || evt.currentTarget); }
-    function toggleAnalyseFinanciereMenu(evt, btn){ if(evt) evt.stopPropagation(); toggleOverlay(htmlAnalyseFinanciere(), btn || evt.currentTarget); }
+    function toggleACDMenu(evt, btn){ if(evt) evt.stopPropagation(); toggleOverlay(htmlACDMenu(), btn || evt.currentTarget); }
+    function toggleACIMenu(evt, btn){ if(evt) evt.stopPropagation(); toggleOverlay(htmlACIMenu(), btn || evt.currentTarget); }
+    function toggleACTMenu(evt, btn){ if(evt) evt.stopPropagation(); toggleOverlay(htmlACTMenu(), btn || evt.currentTarget); }
     function toggleCommunicationMenu(evt, btn){ if(evt) evt.stopPropagation(); toggleOverlay(htmlCommunication(), btn || evt.currentTarget); }
     function toggleMoreMenuCollapsed(evt, btn){ if(evt) evt.stopPropagation(); toggleOverlay(htmlMoreCollapsed(), btn || evt.currentTarget); }
     window.addEventListener('resize', closeAnyOverlay);

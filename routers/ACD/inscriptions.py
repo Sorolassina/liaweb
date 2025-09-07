@@ -18,7 +18,7 @@ from ...templates import templates
 from ...models.base import (
     Programme, Candidat, Entreprise, Preinscription, Eligibilite,
     Inscription, EtapePipeline, AvancementEtape, StatutEtape,
-    DecisionJuryTable, Jury, DecisionJuryCandidat, Partenaire, User, Promotion,
+    DecisionJuryTable, Jury, DecisionJuryCandidat, Partenaire, User, Promotion, Groupe,
     ReorientationCandidat, Document
 )
 from ...models.enums import TypeDocument, DecisionJury, UserRole, GroupeCodev, TypePromotion
@@ -146,6 +146,7 @@ def inscriptions_ui(
             .options(
                 joinedload(DecisionJuryCandidat.jury),
                 joinedload(DecisionJuryCandidat.conseiller),
+                joinedload(DecisionJuryCandidat.groupe),
                 joinedload(DecisionJuryCandidat.promotion),
                 joinedload(DecisionJuryCandidat.partenaire)
             )
@@ -161,6 +162,9 @@ def inscriptions_ui(
     
     # Récupérer les partenaires actifs
     partenaires = session.exec(select(Partenaire).where(Partenaire.actif == True)).all()
+    
+    # Récupérer les groupes actifs
+    groupes = session.exec(select(Groupe).where(Groupe.actif == True).order_by(Groupe.nom)).all()
 
     # Extraire le nom du QPV si disponible
     qpv_name = None
@@ -201,7 +205,7 @@ def inscriptions_ui(
             "partenaires": partenaires,
             "qpv_name": qpv_name,
             "type_documents": TypeDocument,
-            "groupe_codev_enum": GroupeCodev,
+            "groupes": groupes,
             "type_promotion_enum": TypePromotion,
             "kpi": {
                 "total_pre": int(total_pre),
@@ -701,7 +705,7 @@ def create_jury_decision(
     decision: str = Form(...),
     commentaires: Optional[str] = Form(None),
     conseiller_id: Optional[str] = Form(None), # Changé de Optional[int] à Optional[str]
-    groupe_codev: Optional[str] = Form(None),
+    groupe_id: Optional[str] = Form(None),
     promotion_id: Optional[str] = Form(None),
     partenaire_id: Optional[str] = Form(None),
     envoyer_mail_candidat: bool = Form(False),
@@ -737,21 +741,21 @@ def create_jury_decision(
     promotion_id_int = safe_int_convert(promotion_id)
     partenaire_id_int = safe_int_convert(partenaire_id)
     conseiller_id_int = safe_int_convert(conseiller_id)
+    groupe_id_int = safe_int_convert(groupe_id)
     
-    # Convertir groupe_codev en enum s'il est fourni
-    groupe_codev_enum = None
-    if groupe_codev and groupe_codev.strip():
-        try:
-            groupe_codev_enum = GroupeCodev(groupe_codev.strip())
-        except ValueError:
-            print(f"⚠️ [JURY] Valeur groupe_codev invalide: {groupe_codev}")
-            groupe_codev_enum = None
+    # Vérifier que le groupe existe (si fourni)
+    groupe = None
+    if groupe_id_int:
+        groupe = session.get(Groupe, groupe_id_int)
+        if not groupe:
+            print(f"⚠️ [JURY] Groupe introuvable: {groupe_id}")
+            groupe_id_int = None
     
     print(f"📋 [JURY] IDs convertis:")
     print(f"   - promotion_id_int: {promotion_id_int}")
     print(f"   - partenaire_id_int: {partenaire_id_int}")
     print(f"   - conseiller_id_int: {conseiller_id_int}")
-    print(f"   - groupe_codev_enum: {groupe_codev_enum}")
+    print(f"   - groupe_id_int: {groupe_id_int}")
     
     # Vérifier que le candidat existe
     candidat = session.get(Candidat, candidat_id)
@@ -783,7 +787,7 @@ def create_jury_decision(
         decision=DecisionJury(decision),
         commentaires=commentaires,
         conseiller_id=conseiller_id_int if decision == DecisionJury.VALIDE.value else None,
-        groupe_codev=groupe_codev_enum if decision == DecisionJury.VALIDE.value else None,
+        groupe_id=groupe_id_int if decision == DecisionJury.VALIDE.value else None,
         promotion_id=promotion_id_int if decision == DecisionJury.VALIDE.value else None,
         partenaire_id=partenaire_id_int if decision == DecisionJury.REORIENTE.value else None,
         envoyer_mail_candidat=envoyer_mail_candidat,
