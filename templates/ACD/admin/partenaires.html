@@ -1,0 +1,326 @@
+{% extends "ACD/admin/base_admin.html" %}
+{% block admin_content %}
+
+<!-- Messages flash -->
+{% if request.query_params.get('success') %}
+<div class="alert alert-success alert-dismissible fade show" role="alert">
+  <i class="fa fa-check-circle me-2"></i>
+  {% if request.query_params.get('action') == 'add' %}
+    Partenaire créé avec succès !
+  {% elif request.query_params.get('action') == 'update' %}
+    Partenaire modifié avec succès !
+  {% elif request.query_params.get('action') == 'toggle' %}
+    Statut du partenaire modifié avec succès !
+  {% elif request.query_params.get('action') == 'delete' %}
+    Partenaire supprimé avec succès !
+  {% else %}
+    Opération réussie !
+  {% endif %}
+  <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+</div>
+{% endif %}
+
+{% if request.query_params.get('error') %}
+<div class="alert alert-danger alert-dismissible fade show" role="alert">
+  <i class="fa fa-exclamation-triangle me-2"></i>
+  {{ request.query_params.get('message', 'Une erreur est survenue') }}
+  <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+</div>
+{% endif %}
+
+<div class="d-flex justify-content-between align-items-center mb-3">
+  <h5 class="m-0">Partenaires</h5>
+  <form class="d-flex gap-2" method="get" action="/admin/partenaires">
+    <input class="form-control" name="q" value="{{ q }}" placeholder="Rechercher...">
+    <button class="btn btn-outline-secondary"><i class="fa fa-search"></i></button>
+  </form>
+</div>
+
+<div class="card-neumo p-4 mb-3">
+  <div class="d-flex justify-content-between align-items-center mb-3" data-bs-toggle="collapse" data-bs-target="#addPartenaireForm" aria-expanded="false" aria-controls="addPartenaireForm" style="cursor: pointer;">
+    <h6 class="m-0"><i class="fa fa-handshake me-2"></i>Ajouter un nouveau partenaire</h6>
+    <i class="fa fa-chevron-down" id="addPartenaireIcon"></i>
+  </div>
+  
+  <div class="collapse" id="addPartenaireForm">
+    <form method="post" action="/admin/partenaires/add">
+      <div class="row g-3">
+        <!-- Informations principales -->
+        <div class="col-md-6">
+          <label class="form-label">Nom du partenaire *</label>
+          <input type="text" class="form-control" name="nom" required>
+        </div>
+        <div class="col-md-6">
+          <label class="form-label">Email</label>
+          <input type="email" class="form-control" name="email">
+        </div>
+        
+        <!-- Description -->
+        <div class="col-12">
+          <label class="form-label">Description</label>
+          <textarea class="form-control" name="description" rows="3" placeholder="Description du partenaire..."></textarea>
+        </div>
+        
+        <!-- Contact -->
+        <div class="col-md-6">
+          <label class="form-label">Téléphone</label>
+          <input type="tel" class="form-control" name="telephone">
+        </div>
+        <div class="col-md-6">
+          <label class="form-label">Site web</label>
+          <input type="url" class="form-control" name="site_web" placeholder="https://...">
+        </div>
+        
+        <!-- Adresse -->
+        <div class="col-12">
+          <label class="form-label">Adresse</label>
+          <textarea class="form-control" name="adresse" rows="2" placeholder="Adresse complète..."></textarea>
+        </div>
+        
+        <!-- Spécialités -->
+        <div class="col-12">
+          <label class="form-label">Spécialités</label>
+          <input type="text" class="form-control" name="specialites" placeholder="Séparées par des virgules...">
+        </div>
+        
+        <!-- Statut -->
+        <div class="col-12">
+          <div class="form-check">
+            <input class="form-check-input" type="checkbox" name="actif" checked>
+            <label class="form-check-label">Partenaire actif</label>
+          </div>
+        </div>
+        
+        <div class="col-12">
+          <button type="submit" class="btn btn-primary">
+            <i class="fa fa-plus me-2"></i>Créer le partenaire
+          </button>
+        </div>
+      </div>
+    </form>
+  </div>
+</div>
+
+<!-- Liste des partenaires -->
+<div class="card-neumo">
+  <div class="p-4">
+    <h6 class="mb-3">Liste des partenaires ({{ partenaires|length }})</h6>
+    
+    {% if partenaires %}
+    <div class="table-responsive">
+      <table class="table table-hover">
+        <thead>
+          <tr>
+            <th>Nom</th>
+            <th>Email</th>
+            <th>Téléphone</th>
+            <th>Description</th>
+            <th>Statut</th>
+            <th>Créé le</th>
+            <th>Actions</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for partenaire in partenaires %}
+          <tr>
+            <td>
+              <div class="fw-bold">{{ partenaire.nom }}</div>
+              {% if partenaire.site_web %}
+              <small class="text-muted">
+                <a href="{{ partenaire.site_web }}" target="_blank" class="text-decoration-none">
+                  <i class="fa fa-external-link-alt me-1"></i>{{ partenaire.site_web }}
+                </a>
+              </small>
+              {% endif %}
+            </td>
+            <td>
+              {% if partenaire.email %}
+              <a href="mailto:{{ partenaire.email }}" class="text-decoration-none">{{ partenaire.email }}</a>
+              {% else %}
+              <span class="text-muted">—</span>
+              {% endif %}
+            </td>
+            <td>
+              {% if partenaire.telephone %}
+              <a href="tel:{{ partenaire.telephone }}" class="text-decoration-none">{{ partenaire.telephone }}</a>
+              {% else %}
+              <span class="text-muted">—</span>
+              {% endif %}
+            </td>
+            <td>
+              {% if partenaire.description %}
+              <span class="text-truncate d-inline-block" style="max-width: 200px;" title="{{ partenaire.description }}">
+                {{ partenaire.description }}
+              </span>
+              {% else %}
+              <span class="text-muted">—</span>
+              {% endif %}
+            </td>
+            <td>
+              {% if partenaire.actif %}
+              <span class="badge bg-success">Actif</span>
+              {% else %}
+              <span class="badge bg-secondary">Inactif</span>
+              {% endif %}
+            </td>
+            <td>
+              <small class="text-muted">{{ partenaire.cree_le.strftime('%d/%m/%Y') }}</small>
+            </td>
+            <td>
+              <div class="btn-group btn-group-sm">
+                <button class="btn btn-outline-primary" onclick="editPartenaire({{ partenaire.id }})" title="Modifier">
+                  <i class="fa fa-edit"></i>
+                </button>
+                <button class="btn btn-outline-warning" onclick="togglePartenaire({{ partenaire.id }})" title="{% if partenaire.actif %}Désactiver{% else %}Activer{% endif %}">
+                  <i class="fa fa-{% if partenaire.actif %}pause{% else %}play{% endif %}"></i>
+                </button>
+                <button class="btn btn-outline-danger" onclick="deletePartenaire({{ partenaire.id }}, '{{ partenaire.nom }}')" title="Supprimer">
+                  <i class="fa fa-trash"></i>
+                </button>
+              </div>
+            </td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+    {% else %}
+    <div class="text-center py-4">
+      <i class="fa fa-handshake fa-3x text-muted mb-3"></i>
+      <p class="text-muted">Aucun partenaire trouvé</p>
+      {% if q %}
+      <a href="/admin/partenaires" class="btn btn-outline-secondary">Voir tous les partenaires</a>
+      {% endif %}
+    </div>
+    {% endif %}
+  </div>
+</div>
+
+<!-- Modal de modification -->
+<div class="modal fade" id="editPartenaireModal" tabindex="-1">
+  <div class="modal-dialog modal-lg">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h5 class="modal-title">Modifier le partenaire</h5>
+        <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+      </div>
+      <form id="editPartenaireForm" method="post">
+        <div class="modal-body">
+          <div class="row g-3">
+            <!-- Informations principales -->
+            <div class="col-md-6">
+              <label class="form-label">Nom du partenaire *</label>
+              <input type="text" class="form-control" name="nom" id="edit_nom" required>
+            </div>
+            <div class="col-md-6">
+              <label class="form-label">Email</label>
+              <input type="email" class="form-control" name="email" id="edit_email">
+            </div>
+            
+            <!-- Description -->
+            <div class="col-12">
+              <label class="form-label">Description</label>
+              <textarea class="form-control" name="description" id="edit_description" rows="3"></textarea>
+            </div>
+            
+            <!-- Contact -->
+            <div class="col-md-6">
+              <label class="form-label">Téléphone</label>
+              <input type="tel" class="form-control" name="telephone" id="edit_telephone">
+            </div>
+            <div class="col-md-6">
+              <label class="form-label">Site web</label>
+              <input type="url" class="form-control" name="site_web" id="edit_site_web">
+            </div>
+            
+            <!-- Adresse -->
+            <div class="col-12">
+              <label class="form-label">Adresse</label>
+              <textarea class="form-control" name="adresse" id="edit_adresse" rows="2"></textarea>
+            </div>
+            
+            <!-- Spécialités -->
+            <div class="col-12">
+              <label class="form-label">Spécialités</label>
+              <input type="text" class="form-control" name="specialites" id="edit_specialites">
+            </div>
+            
+            <!-- Statut -->
+            <div class="col-12">
+              <div class="form-check">
+                <input class="form-check-input" type="checkbox" name="actif" id="edit_actif">
+                <label class="form-check-label">Partenaire actif</label>
+              </div>
+            </div>
+          </div>
+        </div>
+        <div class="modal-footer">
+          <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Annuler</button>
+          <button type="submit" class="btn btn-primary">Enregistrer</button>
+        </div>
+      </form>
+    </div>
+  </div>
+</div>
+
+<script>
+// Animation du chevron pour le formulaire d'ajout
+document.getElementById('addPartenaireForm').addEventListener('show.bs.collapse', function () {
+  document.getElementById('addPartenaireIcon').style.transform = 'rotate(180deg)';
+});
+document.getElementById('addPartenaireForm').addEventListener('hide.bs.collapse', function () {
+  document.getElementById('addPartenaireIcon').style.transform = 'rotate(0deg)';
+});
+
+// Fonction pour modifier un partenaire
+function editPartenaire(partenaireId) {
+  // Récupérer les données du partenaire depuis le tableau
+  const row = document.querySelector(`button[onclick="editPartenaire(${partenaireId})"]`).closest('tr');
+  const cells = row.querySelectorAll('td');
+  
+  // Remplir le formulaire avec les données actuelles
+  document.getElementById('edit_nom').value = cells[0].querySelector('.fw-bold').textContent.trim();
+  
+  const emailLink = cells[1].querySelector('a');
+  document.getElementById('edit_email').value = emailLink ? emailLink.textContent.trim() : '';
+  
+  const telLink = cells[2].querySelector('a');
+  document.getElementById('edit_telephone').value = telLink ? telLink.textContent.trim() : '';
+  
+  const descriptionSpan = cells[3].querySelector('span');
+  document.getElementById('edit_description').value = descriptionSpan ? descriptionSpan.textContent.trim() : '';
+  
+  const statusBadge = cells[4].querySelector('.badge');
+  document.getElementById('edit_actif').checked = statusBadge.classList.contains('bg-success');
+  
+  // Définir l'action du formulaire
+  document.getElementById('editPartenaireForm').action = `/admin/partenaires/${partenaireId}/update`;
+  
+  // Afficher le modal
+  new bootstrap.Modal(document.getElementById('editPartenaireModal')).show();
+}
+
+// Fonction pour basculer le statut d'un partenaire
+function togglePartenaire(partenaireId) {
+  if (confirm('Êtes-vous sûr de vouloir changer le statut de ce partenaire ?')) {
+    const form = document.createElement('form');
+    form.method = 'POST';
+    form.action = `/admin/partenaires/${partenaireId}/toggle`;
+    document.body.appendChild(form);
+    form.submit();
+  }
+}
+
+// Fonction pour supprimer un partenaire
+function deletePartenaire(partenaireId, partenaireNom) {
+  if (confirm(`Êtes-vous sûr de vouloir supprimer le partenaire "${partenaireNom}" ?\n\nCette action est irréversible.`)) {
+    const form = document.createElement('form');
+    form.method = 'POST';
+    form.action = `/admin/partenaires/${partenaireId}/delete`;
+    document.body.appendChild(form);
+    form.submit();
+  }
+}
+</script>
+
+{% endblock %}

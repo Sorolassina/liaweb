@@ -722,7 +722,12 @@
                     </div>
                     <div class="col-md-6">
                       <label class="form-label">Groupe Codev</label>
-                      <input type="text" class="form-control" name="groupe_codev" placeholder="Ex: Groupe A, Groupe B...">
+                      <select class="form-select" name="groupe_codev">
+                        <option value="">— Sélectionner un groupe —</option>
+                        {% for groupe in groupe_codev_enum %}
+                          <option value="{{ groupe.value }}">{{ groupe.value.replace('_', ' ').title() }}</option>
+                        {% endfor %}
+                      </select>
                     </div>
                     <div class="col-md-6">
                       <label class="form-label">Promotion</label>
@@ -1039,8 +1044,32 @@
   }
 
   async function checkSIRET(candidatId) {
-    const siret = prompt('Entrez le numéro SIRET/SIREN (9 ou 14 chiffres):');
-    if (!siret) return;
+    // Récupérer le SIRET depuis les données de l'entreprise du candidat
+    const siret = '{{ ent.siret if ent and ent.siret else "" }}';
+    
+    if (!siret || siret.trim() === '') {
+      // Afficher le modal avec un message d'information
+      const modal = document.getElementById('siretResultModal');
+      const modalBody = modal.querySelector('.modal-body');
+      modalBody.innerHTML = `
+        <div class="alert alert-warning">
+          <i class="fas fa-exclamation-triangle me-2"></i>
+          <strong>SIRET non renseigné</strong><br>
+          Le candidat n'a pas encore renseigné son numéro SIRET/SIREN.<br>
+          Veuillez d'abord mettre à jour les informations de l'entreprise dans l'onglet "Infos & mise à jour".
+        </div>
+        <div class="text-center mt-3">
+          <button type="button" class="btn btn-primary" data-bs-dismiss="modal">
+            <i class="fas fa-check me-1"></i>Compris
+          </button>
+        </div>
+      `;
+      
+      // Afficher le modal
+      const bsModal = new bootstrap.Modal(modal);
+      bsModal.show();
+      return;
+    }
     
     // Trouver le bouton SIRET pour ce candidat
     const siretButton = document.querySelector(`button[onclick="checkSIRET(${candidatId})"]`);
@@ -1051,6 +1080,23 @@
       siretButton.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Recherche...';
       siretButton.disabled = true;
       
+      // Afficher immédiatement le modal avec un spinner
+      const modal = document.getElementById('siretResultModal');
+      const modalBody = modal.querySelector('.modal-body');
+      modalBody.innerHTML = `
+        <div class="text-center">
+          <div class="spinner-border text-primary" role="status">
+            <span class="visually-hidden">Recherche en cours...</span>
+          </div>
+          <p class="mt-3">Recherche des informations SIRET en cours...</p>
+          <small class="text-muted">SIRET: ${siret}</small>
+        </div>
+      `;
+      
+      // Afficher le modal
+      const bsModal = new bootstrap.Modal(modal);
+      bsModal.show();
+      
       const response = await fetch('/ACD/inscriptions/siret-check', {
         method: 'POST',
         headers: {
@@ -1060,10 +1106,18 @@
       });
       
       const result = await response.json();
-      showSIRETResult(result);
+      showSIRETResult(result, candidatId);
     } catch (error) {
       console.error('Erreur lors de la vérification SIRET:', error);
-      alert('Erreur lors de la vérification SIRET');
+      const modal = document.getElementById('siretResultModal');
+      const modalBody = modal.querySelector('.modal-body');
+      modalBody.innerHTML = `
+        <div class="alert alert-danger">
+          <i class="fas fa-exclamation-triangle me-2"></i>
+          <strong>Erreur lors de la vérification SIRET</strong><br>
+          ${error.message || 'Erreur inconnue'}
+        </div>
+      `;
     } finally {
       // Restaurer le bouton dans tous les cas
       siretButton.innerHTML = originalContent;
@@ -1233,39 +1287,397 @@
     modalBody.innerHTML = html;
   }
 
-  function showSIRETResult(result) {
+    // Fonction pour afficher des alertes
+    function showAlert(type, message) {
+        const alertContainer = document.getElementById('alertContainer') || createAlertContainer();
+        const alertId = 'alert-' + Date.now();
+        
+        const alertHtml = `
+            <div id="${alertId}" class="alert alert-${type} alert-dismissible fade show" role="alert">
+                ${message}
+                <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+            </div>
+        `;
+        
+        alertContainer.insertAdjacentHTML('beforeend', alertHtml);
+        
+        // Auto-supprimer après 5 secondes
+        setTimeout(() => {
+            const alert = document.getElementById(alertId);
+            if (alert) {
+                alert.remove();
+            }
+        }, 5000);
+    }
+    
+    // Fonction pour créer le conteneur d'alertes s'il n'existe pas
+    function createAlertContainer() {
+        const container = document.createElement('div');
+        container.id = 'alertContainer';
+        container.style.position = 'fixed';
+        container.style.top = '20px';
+        container.style.right = '20px';
+        container.style.zIndex = '9999';
+        container.style.maxWidth = '400px';
+        document.body.appendChild(container);
+        return container;
+    }
+
+    // Fonction pour télécharger un document SIRET et l'ajouter aux documents du candidat
+    async function downloadSiretDocument(candidatId, token, nomFichier, typeDocument) {
+        try {
+            console.log(`📥 [SIRET DOC] Téléchargement: ${nomFichier} (${typeDocument})`);
+            
+            // Afficher un spinner sur le bouton
+            const button = event.target.closest('button');
+            const originalContent = button.innerHTML;
+            button.innerHTML = '<i class="fas fa-spinner fa-spin me-1"></i>Téléchargement...';
+            button.disabled = true;
+            
+            const response = await fetch('/ACD/inscriptions/download-siret-document', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({
+                    candidat_id: candidatId,
+                    token: token,
+                    nom_fichier: nomFichier,
+                    type_document: typeDocument
+                })
+            });
+            
+            const result = await response.json();
+            
+            if (result.success) {
+                console.log(`✅ [SIRET DOC] Document téléchargé: ${result.filename}`);
+                
+                // Afficher un message de succès
+                showAlert('success', `Document "${nomFichier}" téléchargé et ajouté aux documents du candidat !`);
+                
+                // Recharger la page pour afficher le nouveau document
+                setTimeout(() => {
+                    window.location.reload();
+                }, 1500);
+                
+            } else {
+                console.error(`❌ [SIRET DOC] Erreur: ${result.message}`);
+                
+                // Si c'est une erreur de téléchargement, proposer le lien direct
+                if (result.message.includes('téléchargement')) {
+                    const confirmDirect = confirm(`Erreur lors du téléchargement automatique.\n\nVoulez-vous ouvrir le lien direct vers le document ?`);
+                    if (confirmDirect) {
+                        window.open(`https://api.pappers.fr/v2/document?token=${token}`, '_blank');
+                    }
+                } else {
+                    showAlert('danger', `Erreur lors du téléchargement: ${result.message}`);
+                }
+                
+                // Restaurer le bouton
+                button.innerHTML = originalContent;
+                button.disabled = false;
+            }
+            
+        } catch (error) {
+            console.error('❌ [SIRET DOC] Erreur:', error);
+            showAlert('danger', 'Erreur lors du téléchargement du document');
+            
+            // Restaurer le bouton
+            const button = event.target.closest('button');
+            button.innerHTML = originalContent;
+            button.disabled = false;
+        }
+    }
+
+  function showSIRETResult(result, candidatId) {
+    console.log('🔍 [DEBUG] Structure complète des données SIRET:', result);
+    
     const modal = document.getElementById('siretResultModal');
     const modalBody = modal.querySelector('.modal-body');
     
+    // Indicateur si les données viennent du cache ou sont nouvelles
+    const cacheIndicator = result.from_cache ? 
+      '<div class="alert alert-info"><i class="fas fa-database me-2"></i>Données récupérées depuis la base de données</div>' : 
+      '<div class="alert alert-success"><i class="fas fa-search me-2"></i>Recherche effectuée en temps réel</div>';
+    
     let html = `
+      ${cacheIndicator}
       <div class="alert alert-${result.entreprise_mise_a_jour ? 'success' : 'warning'}">
         <h6><i class="fas fa-building me-2"></i>SIRET: ${result.numero_siret}</h6>
         <p>${result.resultat.message}</p>
+        ${result.resultat.opposition_commerciale ? 
+          '<div class="alert alert-warning mt-2"><i class="fas fa-exclamation-triangle me-2"></i><strong>Attention:</strong> Cette entreprise s\'oppose à l\'utilisation commerciale de ses données.</div>' : 
+          ''
+        }
       </div>
     `;
     
     if (result.resultat.entreprise_data) {
       const data = result.resultat.entreprise_data;
+      
       html += `
-        <div class="row">
-          <div class="col-md-6">
-            <h6>Informations générales</h6>
-            <p><strong>Nom:</strong> ${data.nom_entreprise || 'N/A'}</p>
-            <p><strong>Forme juridique:</strong> ${data.forme_juridique || 'N/A'}</p>
-            <p><strong>Date création:</strong> ${data.date_creation_formate || 'N/A'}</p>
-            <p><strong>Code NAF:</strong> ${data.code_naf || 'N/A'}</p>
-            <p><strong>Activité:</strong> ${data.activite || 'N/A'}</p>
+        <div class="accordion" id="siretAccordion">
+          <div class="accordion-item">
+            <h2 class="accordion-header" id="headingGeneral">
+              <button class="accordion-button" type="button" 
+                      data-bs-toggle="collapse" data-bs-target="#collapseGeneral" 
+                      aria-expanded="true" aria-controls="collapseGeneral">
+                <span class="me-2">🏢</span>
+                <strong>Informations générales</strong>
+              </button>
+            </h2>
+            <div id="collapseGeneral" class="accordion-collapse collapse show" 
+                 aria-labelledby="headingGeneral" data-bs-parent="#siretAccordion">
+              <div class="accordion-body">
+                <div class="row">
+                  <div class="col-md-6">
+                    <p><strong>Nom:</strong> ${data.nom_entreprise || 'N/A'}</p>
+                    <p><strong>Forme juridique:</strong> ${data.forme_juridique || 'N/A'}</p>
+                    <p><strong>Date création:</strong> ${data.date_creation_formate || 'N/A'}</p>
+                  </div>
+                  <div class="col-md-6">
+                    <p><strong>Code NAF:</strong> ${data.code_naf || 'N/A'}</p>
+                    <p><strong>Activité:</strong> ${data.activite || 'N/A'}</p>
+                  </div>
+                </div>
+              </div>
+            </div>
           </div>
-          <div class="col-md-6">
-            <h6>Siège social</h6>
-            <p><strong>Adresse:</strong> ${data.siege.adresse || 'N/A'}</p>
-            <p><strong>Code postal:</strong> ${data.siege.code_postal || 'N/A'}</p>
-            <p><strong>Ville:</strong> ${data.siege.ville || 'N/A'}</p>
-            <p><strong>SIRET:</strong> ${data.siege.siret || 'N/A'}</p>
+          
+          <div class="accordion-item">
+            <h2 class="accordion-header" id="headingSiege">
+              <button class="accordion-button collapsed" type="button" 
+                      data-bs-toggle="collapse" data-bs-target="#collapseSiege" 
+                      aria-expanded="false" aria-controls="collapseSiege">
+                <span class="me-2">📍</span>
+                <strong>Siège social</strong>
+              </button>
+            </h2>
+            <div id="collapseSiege" class="accordion-collapse collapse" 
+                 aria-labelledby="headingSiege" data-bs-parent="#siretAccordion">
+              <div class="accordion-body">
+                <p><strong>Adresse:</strong> ${data.siege.adresse || 'N/A'}</p>
+                <p><strong>Code postal:</strong> ${data.siege.code_postal || 'N/A'}</p>
+                <p><strong>Ville:</strong> ${data.siege.ville || 'N/A'}</p>
+                <p><strong>SIRET:</strong> ${data.siege.siret || 'N/A'}</p>
+              </div>
+            </div>
           </div>
-        </div>
       `;
       
+      // Ajouter les informations financières si disponibles
+      if (data.finances) {
+        html += `
+          <div class="accordion-item">
+            <h2 class="accordion-header" id="headingFinances">
+              <button class="accordion-button collapsed" type="button" 
+                      data-bs-toggle="collapse" data-bs-target="#collapseFinances" 
+                      aria-expanded="false" aria-controls="collapseFinances">
+                <span class="me-2">💰</span>
+                <strong>Informations financières</strong>
+              </button>
+            </h2>
+            <div id="collapseFinances" class="accordion-collapse collapse" 
+                 aria-labelledby="headingFinances" data-bs-parent="#siretAccordion">
+              <div class="accordion-body">
+                <p><strong>Chiffre d'affaires:</strong> ${data.finances.ca || 'N/A'}</p>
+                <p><strong>Résultat net:</strong> ${data.finances.resultat_net || 'N/A'}</p>
+                <p><strong>Effectif:</strong> ${data.finances.effectif || 'N/A'}</p>
+              </div>
+            </div>
+          </div>
+        `;
+      }
+      
+      // Ajouter les documents disponibles si disponibles
+      if (data.comptes && data.comptes.length > 0) {
+        html += `
+          <div class="accordion-item">
+            <h2 class="accordion-header" id="headingDocuments">
+              <button class="accordion-button collapsed" type="button" 
+                      data-bs-toggle="collapse" data-bs-target="#collapseDocuments" 
+                      aria-expanded="false" aria-controls="collapseDocuments">
+                <span class="me-2">📄</span>
+                <strong>Documents disponibles (${data.comptes.length})</strong>
+              </button>
+            </h2>
+            <div id="collapseDocuments" class="accordion-collapse collapse" 
+                 aria-labelledby="headingDocuments" data-bs-parent="#siretAccordion">
+              <div class="accordion-body">
+                <div class="table-responsive">
+                  <table class="table table-sm">
+                    <thead>
+                      <tr>
+                        <th>Année</th>
+                        <th>Type</th>
+                        <th>Date dépôt</th>
+                        <th>Actions</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+        `;
+        
+        data.comptes.forEach((compte, index) => {
+          const annee = compte.annee_cloture || 'N/A';
+          const type = compte.type_comptes || 'N/A';
+          const dateDepot = compte.date_depot_formate || 'N/A';
+          const nomFichier = compte.nom_fichier_pdf || '';
+          const token = compte.token || '';
+          
+          html += `
+            <tr>
+              <td>${annee}</td>
+              <td>${type}</td>
+              <td>${dateDepot}</td>
+              <td>
+          `;
+          
+          if (nomFichier && token) {
+            html += `
+              <button onclick="downloadSiretDocument('${candidatId}', '${token}', '${nomFichier}', 'COMPTE_ANNUEL')" 
+                      class="btn btn-sm btn-outline-primary" 
+                      title="Télécharger ${nomFichier}">
+                <i class="fas fa-download me-1"></i>Télécharger
+              </button>
+            `;
+          } else {
+            html += `<span class="text-muted">Non disponible</span>`;
+          }
+          
+          html += `
+              </td>
+            </tr>
+          `;
+        });
+        
+        html += `
+                    </tbody>
+                  </table>
+                </div>
+              </div>
+            </div>
+          </div>
+        `;
+      }
+      
+      // Ajouter les autres documents disponibles (statuts, extraits, etc.)
+      if (data.documents_disponibles) {
+        const docs = data.documents_disponibles;
+        const hasOtherDocs = docs.statuts || docs.extrait_immatriculation || 
+                           (docs.publications_bodacc && docs.publications_bodacc.length > 0) ||
+                           (docs.depots_actes && docs.depots_actes.length > 0);
+        
+        if (hasOtherDocs) {
+          html += `
+            <div class="accordion-item">
+              <h2 class="accordion-header" id="headingOtherDocs">
+                <button class="accordion-button collapsed" type="button" 
+                        data-bs-toggle="collapse" data-bs-target="#collapseOtherDocs" 
+                        aria-expanded="false" aria-controls="collapseOtherDocs">
+                  <span class="me-2">📋</span>
+                  <strong>Autres documents</strong>
+                </button>
+              </h2>
+              <div id="collapseOtherDocs" class="accordion-collapse collapse" 
+                   aria-labelledby="headingOtherDocs" data-bs-parent="#siretAccordion">
+                <div class="accordion-body">
+          `;
+          
+          // Statuts
+          if (docs.statuts) {
+            html += `
+              <div class="mb-3">
+                <h6><i class="fas fa-file-contract me-2"></i>Statuts</h6>
+                <p><strong>Date:</strong> ${docs.statuts.date_depot_formate || 'N/A'}</p>
+                ${docs.statuts.token ? 
+                  `<button onclick="downloadSiretDocument('${candidatId}', '${docs.statuts.token}', 'Statuts', 'STATUTS')" 
+                          class="btn btn-sm btn-outline-primary">
+                    <i class="fas fa-download me-1"></i>Télécharger les statuts
+                  </button>` : 
+                  '<span class="text-muted">Non disponible</span>'
+                }
+              </div>
+            `;
+          }
+          
+          // Extrait d'immatriculation
+          if (docs.extrait_immatriculation) {
+            html += `
+              <div class="mb-3">
+                <h6><i class="fas fa-certificate me-2"></i>Extrait d'immatriculation</h6>
+                <p><strong>Date:</strong> ${docs.extrait_immatriculation.date_depot_formate || 'N/A'}</p>
+                ${docs.extrait_immatriculation.token ? 
+                  `<button onclick="downloadSiretDocument('${candidatId}', '${docs.extrait_immatriculation.token}', 'Extrait immatriculation', 'EXTRACT_KBIS')" 
+                          class="btn btn-sm btn-outline-primary">
+                    <i class="fas fa-download me-1"></i>Télécharger l'extrait
+                  </button>` : 
+                  '<span class="text-muted">Non disponible</span>'
+                }
+              </div>
+            `;
+          }
+          
+          // Publications BODACC
+          if (docs.publications_bodacc && docs.publications_bodacc.length > 0) {
+            html += `
+              <div class="mb-3">
+                <h6><i class="fas fa-newspaper me-2"></i>Publications BODACC (${docs.publications_bodacc.length})</h6>
+                <div class="table-responsive">
+                  <table class="table table-sm">
+                    <thead>
+                      <tr>
+                        <th>Date</th>
+                        <th>Type</th>
+                        <th>Actions</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+            `;
+            
+            docs.publications_bodacc.forEach((pub, index) => {
+              html += `
+                <tr>
+                  <td>${pub.date_publication_formate || 'N/A'}</td>
+                  <td>${pub.type_publication || 'N/A'}</td>
+                  <td>
+              `;
+              
+              if (pub.token) {
+                html += `
+                  <button onclick="downloadSiretDocument('${candidatId}', '${pub.token}', '${pub.type_publication || 'Publication BODACC'}', 'PUBLICATION_BODACC')" 
+                          class="btn btn-sm btn-outline-primary">
+                    <i class="fas fa-download me-1"></i>Télécharger
+                  </button>
+                `;
+              } else {
+                html += `<span class="text-muted">Non disponible</span>`;
+              }
+              
+              html += `
+                  </td>
+                </tr>
+              `;
+            });
+            
+            html += `
+                    </tbody>
+                  </table>
+                </div>
+              </div>
+            `;
+          }
+          
+          html += `
+                </div>
+              </div>
+            </div>
+          `;
+        }
+      }
+      
+      html += `</div>`; // Fermeture accordion
+      
+      // Bouton de téléchargement CSV si disponible
       if (result.resultat.csv_file) {
         html += `
           <div class="mt-3">
@@ -1275,10 +1687,19 @@
           </div>
         `;
       }
+    } else {
+      html += `
+        <div class="alert alert-warning">
+          <i class="fas fa-exclamation-triangle me-2"></i>
+          <strong>Aucune donnée entreprise trouvée</strong><br>
+          Le numéro SIRET/SIREN fourni n'a pas retourné d'informations.
+        </div>
+      `;
     }
     
     modalBody.innerHTML = html;
-    new bootstrap.Modal(modal).show();
+    
+    // Le modal est déjà affiché par la fonction checkSIRET, pas besoin de le réafficher
   }
 
   // Observer les changements du sidebar

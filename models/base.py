@@ -382,7 +382,7 @@ class DecisionJuryCandidat(SQLModel, table=True):
     decision: DecisionJury = Field(default=DecisionJury.EN_ATTENTE)
     commentaires: Optional[str] = None
     conseiller_id: Optional[int] = Field(foreign_key="user.id", default=None)  # Si validé
-    groupe_codev: Optional[str] = None  # Si validé
+    groupe_codev: Optional[GroupeCodev] = None  # Si validé
     promotion_id: Optional[int] = Field(foreign_key="promotion.id", default=None)  # Si validé
     partenaire_id: Optional[int] = Field(foreign_key="partenaire.id", default=None)  # Si réorienté
     envoyer_mail_candidat: bool = Field(default=False)

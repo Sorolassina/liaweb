@@ -21,7 +21,7 @@ from ...templates import templates
 
 from ...models.base import (
     User, TypeUtilisateur,
-    Programme, EtapePipeline, Preinscription, Inscription, Jury, ProgrammeUtilisateur, MembreJury, Promotion
+    Programme, EtapePipeline, Preinscription, Inscription, Jury, ProgrammeUtilisateur, MembreJury, Promotion, Partenaire
 )
 from ...models.enums import UserRole as UserRoleEnum
 from ...models.ACD.admin import AppSetting
@@ -1400,3 +1400,179 @@ def admin_users_delete(
     # Redirection avec message de succès
     timestamp = int(datetime.now(timezone.utc).timestamp())
     return RedirectResponse(url=f"/admin/users?success=1&action=delete&t={timestamp}", status_code=303)
+
+# ===== PARTENAIRES =====
+@router.get("/partenaires", response_class=HTMLResponse)
+def admin_partenaires(request: Request, session: Session = Depends(get_session), current_user: User = Depends(get_current_user), q: Optional[str] = Query(None)):
+    admin_required(current_user)
+    stmt = select(Partenaire)
+    if q:
+        like = f"%{q}%"
+        stmt = stmt.where((Partenaire.nom.ilike(like)) | (Partenaire.email.ilike(like)) | (Partenaire.description.ilike(like)))
+    partenaires = session.exec(stmt.order_by(Partenaire.nom)).all()
+    
+    return templates.TemplateResponse("ACD/admin/partenaires.html", {
+        "request": request, 
+        "settings": settings, 
+        "utilisateur": current_user, 
+        "partenaires": partenaires, 
+        "q": q or ""
+    })
+
+@router.post("/partenaires/add")
+def admin_partenaires_add(
+    nom: str = Form(...), 
+    description: Optional[str] = Form(None),
+    email: Optional[str] = Form(None),
+    telephone: Optional[str] = Form(None),
+    adresse: Optional[str] = Form(None),
+    site_web: Optional[str] = Form(None),
+    specialites: Optional[str] = Form(None),
+    actif: Literal["on", "off", ""] = Form("on"),
+    request: Request = None, 
+    session: Session = Depends(get_session), 
+    current_user: User = Depends(get_current_user)
+):
+    admin_required(current_user)
+    
+    # Vérifier si un partenaire avec ce nom existe déjà
+    existing = session.exec(select(Partenaire).where(Partenaire.nom == nom.strip())).first()
+    if existing:
+        raise HTTPException(status_code=400, detail="Un partenaire avec ce nom existe déjà")
+    
+    partenaire = Partenaire(
+        nom=nom.strip(),
+        description=description.strip() if description else None,
+        email=email.strip() if email else None,
+        telephone=telephone.strip() if telephone else None,
+        adresse=adresse.strip() if adresse else None,
+        site_web=site_web.strip() if site_web else None,
+        specialites=specialites.strip() if specialites else None,
+        actif=(actif != "off")
+    )
+    session.add(partenaire)
+    log_activity(session, user=current_user, action="PARTENAIRE_CREATE", entity="Partenaire", entity_id=partenaire.id,
+                 activity_data={"nom": partenaire.nom, "email": partenaire.email}, request=request)
+    session.commit()
+    
+    timestamp = int(datetime.now(timezone.utc).timestamp())
+    return RedirectResponse(url=f"/admin/partenaires?success=1&action=add&t={timestamp}", status_code=303)
+
+@router.post("/partenaires/{partenaire_id}/update")
+def admin_partenaires_update(
+    partenaire_id: int,
+    nom: str = Form(...),
+    description: Optional[str] = Form(None),
+    email: Optional[str] = Form(None),
+    telephone: Optional[str] = Form(None),
+    adresse: Optional[str] = Form(None),
+    site_web: Optional[str] = Form(None),
+    specialites: Optional[str] = Form(None),
+    actif: Literal["on", "off", ""] = Form("on"),
+    request: Request = None,
+    session: Session = Depends(get_session),
+    current_user: User = Depends(get_current_user)
+):
+    admin_required(current_user)
+    partenaire = session.get(Partenaire, partenaire_id)
+    if not partenaire:
+        raise HTTPException(status_code=404, detail="Partenaire introuvable")
+    
+    # Vérifier si un autre partenaire avec ce nom existe déjà
+    existing = session.exec(select(Partenaire).where(Partenaire.nom == nom.strip(), Partenaire.id != partenaire_id)).first()
+    if existing:
+        raise HTTPException(status_code=400, detail="Un autre partenaire avec ce nom existe déjà")
+    
+    # Sauvegarder les anciennes valeurs pour le log
+    old_values = {
+        "nom": partenaire.nom,
+        "description": partenaire.description,
+        "email": partenaire.email,
+        "telephone": partenaire.telephone,
+        "adresse": partenaire.adresse,
+        "site_web": partenaire.site_web,
+        "specialites": partenaire.specialites,
+        "actif": partenaire.actif
+    }
+    
+    # Mettre à jour les champs
+    partenaire.nom = nom.strip()
+    partenaire.description = description.strip() if description else None
+    partenaire.email = email.strip() if email else None
+    partenaire.telephone = telephone.strip() if telephone else None
+    partenaire.adresse = adresse.strip() if adresse else None
+    partenaire.site_web = site_web.strip() if site_web else None
+    partenaire.specialites = specialites.strip() if specialites else None
+    partenaire.actif = (actif != "off")
+    
+    session.add(partenaire)
+    log_activity(session, user=current_user, action="PARTENAIRE_UPDATE", entity="Partenaire", entity_id=partenaire.id,
+                 activity_data={"old": old_values, "new": {
+                     "nom": partenaire.nom,
+                     "description": partenaire.description,
+                     "email": partenaire.email,
+                     "telephone": partenaire.telephone,
+                     "adresse": partenaire.adresse,
+                     "site_web": partenaire.site_web,
+                     "specialites": partenaire.specialites,
+                     "actif": partenaire.actif
+                 }}, request=request)
+    session.commit()
+    
+    timestamp = int(datetime.now(timezone.utc).timestamp())
+    return RedirectResponse(url=f"/admin/partenaires?success=1&action=update&t={timestamp}", status_code=303)
+
+@router.post("/partenaires/{partenaire_id}/toggle")
+def admin_partenaires_toggle(partenaire_id: int, request: Request, session: Session = Depends(get_session), current_user: User = Depends(get_current_user)):
+    admin_required(current_user)
+    partenaire = session.get(Partenaire, partenaire_id)
+    if not partenaire:
+        raise HTTPException(status_code=404, detail="Partenaire introuvable")
+    
+    partenaire.actif = not bool(partenaire.actif)
+    log_activity(session, user=current_user, action="PARTENAIRE_TOGGLE", entity="Partenaire", entity_id=partenaire.id,
+                activity_data={"nom": partenaire.nom, "actif": partenaire.actif}, request=request)
+    session.commit()
+    
+    timestamp = int(datetime.now(timezone.utc).timestamp())
+    return RedirectResponse(url=f"/admin/partenaires?success=1&action=toggle&t={timestamp}", status_code=303)
+
+@router.post("/partenaires/{partenaire_id}/delete")
+def admin_partenaires_delete(
+    partenaire_id: int,
+    request: Request = None,
+    session: Session = Depends(get_session),
+    current_user: User = Depends(get_current_user)
+):
+    admin_required(current_user)
+    partenaire = session.get(Partenaire, partenaire_id)
+    if not partenaire:
+        raise HTTPException(status_code=404, detail="Partenaire introuvable")
+    
+    # Vérifier si le partenaire est utilisé dans des réorientations
+    from ...models.base import DecisionJuryCandidat
+    reorientations_count = session.exec(select(func.count(DecisionJuryCandidat.id)).where(DecisionJuryCandidat.partenaire_id == partenaire_id)).first()
+    if reorientations_count > 0:
+        timestamp = int(datetime.now(timezone.utc).timestamp())
+        return RedirectResponse(
+            url=f"/admin/partenaires?error=1&message=Impossible de supprimer le partenaire '{partenaire.nom}' car il est utilisé dans {reorientations_count} réorientation(s). Veuillez d'abord réassigner ces réorientations.&t={timestamp}", 
+            status_code=303
+        )
+    
+    # Sauvegarder les informations pour le log avant suppression
+    partenaire_nom = partenaire.nom
+    partenaire_email = partenaire.email
+    
+    try:
+        session.delete(partenaire)
+        session.commit()
+        
+        log_activity(session, user=current_user, action="PARTENAIRE_DELETE", entity="Partenaire", entity_id=partenaire_id,
+                     activity_data={"deleted_partenaire_nom": partenaire_nom, "deleted_partenaire_email": partenaire_email}, request=request)
+        
+    except Exception as e:
+        session.rollback()
+        raise HTTPException(status_code=500, detail="Erreur lors de la suppression du partenaire")
+    
+    timestamp = int(datetime.now(timezone.utc).timestamp())
+    return RedirectResponse(url=f"/admin/partenaires?success=1&action=delete&t={timestamp}", status_code=303)

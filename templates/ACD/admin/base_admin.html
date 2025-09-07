@@ -60,6 +60,7 @@
     <a class="admin-link {% if request.url.path == '/admin' or request.url.path == '/admin/' %}active{% endif %}" href="/admin/"><i class="fa fa-gauge"></i> Tableau de bord</a>
     <a class="admin-link {% if '/admin/programmes' in request.url.path %}active{% endif %}" href="/admin/programmes"><i class="fa fa-layer-group"></i> Programmes</a>
     <a class="admin-link {% if '/admin/users' in request.url.path %}active{% endif %}" href="/admin/users"><i class="fa fa-users"></i> Utilisateurs</a>
+    <a class="admin-link {% if '/admin/partenaires' in request.url.path %}active{% endif %}" href="/admin/partenaires"><i class="fa fa-handshake"></i> Partenaires</a>
     <a class="admin-link {% if '/admin/jurys' in request.url.path %}active{% endif %}" href="/admin/jurys"><i class="fa fa-gavel"></i> Jurys</a>
     <a class="admin-link {% if '/admin/logs' in request.url.path %}active{% endif %}" href="/admin/logs"><i class="fa fa-history"></i> Traçabilité</a>
     <a class="admin-link {% if '/admin/permissions' in request.url.path %}active{% endif %}" href="/admin/permissions"><i class="fa fa-shield"></i> Permissions</a>

@@ -12,12 +12,6 @@ class StatutDossier(str, Enum):
     REFUSE = "refuse"
     CLOTURE = "cloture"
 
-class DecisionJury(str, Enum):
-    VALIDE = "valide"
-    EN_ATTENTE = "en_attente"
-    REORIENTE = "reoriente"
-    REFUSE = "refuse"
-
 class StatutCandidat(str, Enum):
     EN_ATTENTE = "EN_ATTENTE"
     VALIDE = "VALIDE"
@@ -88,6 +82,31 @@ class DecisionJury(str, Enum):
     REJETE = "REJETE"
     EN_ATTENTE = "EN_ATTENTE"
 
+class GroupeCodev(str, Enum):
+    """Groupes de codéveloppement"""
+    GROUPE_1 = "GROUPE_1"
+    GROUPE_2 = "GROUPE_2"
+    GROUPE_3 = "GROUPE_3"
+    GROUPE_4 = "GROUPE_4"
+    GROUPE_5 = "GROUPE_5"
+    GROUPE_6 = "GROUPE_6"
+    GROUPE_7 = "GROUPE_7"
+    GROUPE_8 = "GROUPE_8"
+    GROUPE_9 = "GROUPE_9"
+    GROUPE_10 = "GROUPE_10"
+
+class TypePromotion(str, Enum):
+    """Types de promotions"""
+    PROMOTION_2024_A = "PROMOTION_2024_A"
+    PROMOTION_2024_B = "PROMOTION_2024_B"
+    PROMOTION_2024_C = "PROMOTION_2024_C"
+    PROMOTION_2025_A = "PROMOTION_2025_A"
+    PROMOTION_2025_B = "PROMOTION_2025_B"
+    PROMOTION_2025_C = "PROMOTION_2025_C"
+    PROMOTION_2026_A = "PROMOTION_2026_A"
+    PROMOTION_2026_B = "PROMOTION_2026_B"
+    PROMOTION_2026_C = "PROMOTION_2026_C"
+
 class TypeDocument(str, Enum):
     CNI = "CNI"                        # Carte d'identité / Passeport
     KBIS = "KBIS"                      # Extrait Kbis
@@ -97,3 +116,8 @@ class TypeDocument(str, Enum):
     DIPLOME = "DIPLOME"
     ATTESTATION = "ATTESTATION"
     AUTRE = "AUTRE"
+    # Nouveaux types pour les documents SIRET
+    COMPTE_ANNUEL = "COMPTE_ANNUEL"    # Comptes annuels
+    STATUTS = "STATUTS"                # Statuts de l'entreprise
+    EXTRACT_KBIS = "EXTRACT_KBIS"     # Extrait d'immatriculation
+    PUBLICATION_BODACC = "PUBLICATION_BODACC"  # Publications BODACC

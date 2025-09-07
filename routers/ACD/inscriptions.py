@@ -6,7 +6,7 @@ from datetime import date as _date, datetime, timezone
 from typing import Optional
 
 from fastapi import APIRouter, Depends, Form, HTTPException, Query, Request, UploadFile, File
-from fastapi.responses import HTMLResponse, RedirectResponse
+from fastapi.responses import HTMLResponse, RedirectResponse, JSONResponse
 from sqlmodel import Session, select
 from sqlalchemy import func
 
@@ -19,9 +19,9 @@ from ...models.base import (
     Programme, Candidat, Entreprise, Preinscription, Eligibilite,
     Inscription, EtapePipeline, AvancementEtape, StatutEtape,
     DecisionJuryTable, Jury, DecisionJuryCandidat, Partenaire, User, Promotion,
-    ReorientationCandidat
+    ReorientationCandidat, Document
 )
-from ...models.enums import TypeDocument, DecisionJury, UserRole
+from ...models.enums import TypeDocument, DecisionJury, UserRole, GroupeCodev, TypePromotion
 from ...services.ACD.eligibilite import evaluate_eligibilite, entreprise_age_annees
 from ...services.ACD.service_qpv import verif_qpv
 from ...services.ACD.service_siret_pappers import get_entreprise_process
@@ -139,13 +139,16 @@ def inscriptions_ui(
     partenaires = []
     
     if cand:
-        # Récupérer les décisions du jury pour ce candidat
+        # Récupérer les décisions du jury pour ce candidat avec les relations
+        from sqlalchemy.orm import joinedload
         decisions_jury = session.exec(
-            select(DecisionJuryCandidat, Jury, User, Promotion, Partenaire)
-            .join(Jury, Jury.id == DecisionJuryCandidat.jury_id)
-            .outerjoin(User, User.id == DecisionJuryCandidat.conseiller_id)
-            .outerjoin(Promotion, Promotion.id == DecisionJuryCandidat.promotion_id)
-            .outerjoin(Partenaire, Partenaire.id == DecisionJuryCandidat.partenaire_id)
+            select(DecisionJuryCandidat)
+            .options(
+                joinedload(DecisionJuryCandidat.jury),
+                joinedload(DecisionJuryCandidat.conseiller),
+                joinedload(DecisionJuryCandidat.promotion),
+                joinedload(DecisionJuryCandidat.partenaire)
+            )
             .where(DecisionJuryCandidat.candidat_id == cand.id)
             .order_by(DecisionJuryCandidat.date_decision.desc())
         ).all()
@@ -198,6 +201,8 @@ def inscriptions_ui(
             "partenaires": partenaires,
             "qpv_name": qpv_name,
             "type_documents": TypeDocument,
+            "groupe_codev_enum": GroupeCodev,
+            "type_promotion_enum": TypePromotion,
             "kpi": {
                 "total_pre": int(total_pre),
                 "total_insc": int(total_insc),
@@ -290,6 +295,15 @@ def update_infos(
     if cand:
         from ...models.base import Document
         cand.documents = session.exec(select(Document).where(Document.candidat_id == cand.id)).all()
+        print(f"📋 [INSCRIPTION] Documents chargés pour candidat {cand.id}: {len(cand.documents)} documents")
+        for doc in cand.documents:
+            print(f"   - {doc.nom_fichier} ({doc.type_document})")
+        
+        # Vérification supplémentaire : tous les documents en base pour ce candidat
+        all_docs = session.exec(select(Document).where(Document.candidat_id == cand.id)).all()
+        print(f"🔍 [INSCRIPTION] Vérification directe en base: {len(all_docs)} documents trouvés")
+        for doc in all_docs:
+            print(f"   - ID: {doc.id}, Nom: {doc.nom_fichier}, Type: {doc.type_document}")
     ent = session.exec(select(Entreprise).where(Entreprise.candidat_id==cand.id)).first()
     if not ent:
         ent = Entreprise(candidat_id=cand.id)
@@ -679,54 +693,17 @@ def etape_advance(
     return RedirectResponse(url=f"ACD/inscriptions?programme={prog.code}&pre_id={pre.id if pre else ''}", status_code=303)
 
 
-# Décision de jury
-@router.post("/inscriptions/jury/decision")
-def jury_decision(
-    inscription_id: int = Form(...),
-    decision: str = Form(...),  # ACCEPTE | LISTE_ATTENTE | REFUSE
-    commentaires: Optional[str] = Form(None),
-    jury_id: Optional[int] = Form(None),
-    session: Session = Depends(get_session),
-    current_user=Depends(get_current_user),
-):
-    ins = session.get(Inscription, inscription_id)
-    if not ins:
-        raise HTTPException(status_code=404, detail="Inscription introuvable")
-
-    jury = session.get(Jury, jury_id) if jury_id else None
-
-    # Enum DecisionJury sur ton modèle; si c’est un Enum, on mappe :
-    from ...models.enums import DecisionJury as DecisionEnum  # adapte si ailleurs
-    try:
-        dec_enum = DecisionEnum[decision]
-    except Exception:
-        dec_enum = DecisionEnum.REFUSE  # fallback
-
-    dj = DecisionJuryTable(
-        inscription_id=inscription_id,
-        jury_id=jury.id if jury else None,
-        decision=dec_enum,
-        commentaires=commentaires
-    )
-    session.add(dj)
-    session.commit()
-
-    prog = session.get(Programme, ins.programme_id)
-    pre = session.exec(select(Preinscription).where(Preinscription.programme_id==prog.id, Preinscription.candidat_id==ins.candidat_id)).first()
-    return RedirectResponse(url=f"ACD/inscriptions?programme={prog.code}&pre_id={pre.id if pre else ''}", status_code=303)
-
-
 # --------- GESTION DES DÉCISIONS DU JURY ---------
 @router.post("/inscriptions/jury/decision")
 def create_jury_decision(
     candidat_id: int = Form(...),
-    jury_id: int = Form(...),
+    jury_id: Optional[int] = Form(None),
     decision: str = Form(...),
     commentaires: Optional[str] = Form(None),
-    conseiller_id: Optional[int] = Form(None),
+    conseiller_id: Optional[str] = Form(None), # Changé de Optional[int] à Optional[str]
     groupe_codev: Optional[str] = Form(None),
-    promotion_id: Optional[int] = Form(None),
-    partenaire_id: Optional[int] = Form(None),
+    promotion_id: Optional[str] = Form(None),
+    partenaire_id: Optional[str] = Form(None),
     envoyer_mail_candidat: bool = Form(False),
     envoyer_mail_conseiller: bool = Form(False),
     envoyer_mail_partenaire: bool = Form(False),
@@ -735,15 +712,58 @@ def create_jury_decision(
 ):
     """Créer une décision du jury"""
     
+    print(f"📋 [JURY] Données reçues:")
+    print(f"   - candidat_id: {candidat_id} (type: {type(candidat_id)})")
+    print(f"   - jury_id: {jury_id} (type: {type(jury_id)})")
+    print(f"   - decision: {decision} (type: {type(decision)})")
+    print(f"   - commentaires: {commentaires} (type: {type(commentaires)})")
+    print(f"   - conseiller_id: {conseiller_id} (type: {type(conseiller_id)})")
+    print(f"   - promotion_id: {promotion_id} (type: {type(promotion_id)})")
+    print(f"   - partenaire_id: {partenaire_id} (type: {type(partenaire_id)})")
+    
+    # Convertir les chaînes vides en None pour les IDs
+    def safe_int_convert(value):
+        if value is None:
+            return None
+        if isinstance(value, int):
+            return value
+        if isinstance(value, str) and value.strip():
+            try:
+                return int(value)
+            except ValueError:
+                return None
+        return None
+    
+    promotion_id_int = safe_int_convert(promotion_id)
+    partenaire_id_int = safe_int_convert(partenaire_id)
+    conseiller_id_int = safe_int_convert(conseiller_id)
+    
+    # Convertir groupe_codev en enum s'il est fourni
+    groupe_codev_enum = None
+    if groupe_codev and groupe_codev.strip():
+        try:
+            groupe_codev_enum = GroupeCodev(groupe_codev.strip())
+        except ValueError:
+            print(f"⚠️ [JURY] Valeur groupe_codev invalide: {groupe_codev}")
+            groupe_codev_enum = None
+    
+    print(f"📋 [JURY] IDs convertis:")
+    print(f"   - promotion_id_int: {promotion_id_int}")
+    print(f"   - partenaire_id_int: {partenaire_id_int}")
+    print(f"   - conseiller_id_int: {conseiller_id_int}")
+    print(f"   - groupe_codev_enum: {groupe_codev_enum}")
+    
     # Vérifier que le candidat existe
     candidat = session.get(Candidat, candidat_id)
     if not candidat:
         raise HTTPException(status_code=404, detail="Candidat introuvable")
     
-    # Vérifier que le jury existe
-    jury = session.get(Jury, jury_id)
-    if not jury:
-        raise HTTPException(status_code=404, detail="Jury introuvable")
+    # Vérifier que le jury existe (si fourni)
+    jury = None
+    if jury_id:
+        jury = session.get(Jury, jury_id)
+        if not jury:
+            raise HTTPException(status_code=404, detail="Jury introuvable")
     
     # Vérifier qu'il n'y a pas déjà une décision pour ce candidat et ce jury
     existing = session.exec(
@@ -762,10 +782,10 @@ def create_jury_decision(
         jury_id=jury_id,
         decision=DecisionJury(decision),
         commentaires=commentaires,
-        conseiller_id=conseiller_id if decision == DecisionJury.VALIDE.value else None,
-        groupe_codev=groupe_codev if decision == DecisionJury.VALIDE.value else None,
-        promotion_id=promotion_id if decision == DecisionJury.VALIDE.value else None,
-        partenaire_id=partenaire_id if decision == DecisionJury.REORIENTE.value else None,
+        conseiller_id=conseiller_id_int if decision == DecisionJury.VALIDE.value else None,
+        groupe_codev=groupe_codev_enum if decision == DecisionJury.VALIDE.value else None,
+        promotion_id=promotion_id_int if decision == DecisionJury.VALIDE.value else None,
+        partenaire_id=partenaire_id_int if decision == DecisionJury.REORIENTE.value else None,
         envoyer_mail_candidat=envoyer_mail_candidat,
         envoyer_mail_conseiller=envoyer_mail_conseiller,
         envoyer_mail_partenaire=envoyer_mail_partenaire,
@@ -1122,19 +1142,13 @@ async def check_siret_candidate(
             # Mettre à jour les champs de l'entreprise
             entreprise.siret = data.get("siege", {}).get("siret")
             entreprise.siren = data.get("siren")
-            entreprise.nom_entreprise = data.get("nom_entreprise")
-            entreprise.forme_juridique = data.get("forme_juridique")
-            entreprise.date_creation = data.get("date_creation")
+            entreprise.raison_sociale = data.get("nom_entreprise")  # Utiliser raison_sociale au lieu de nom_entreprise
             entreprise.code_naf = data.get("code_naf")
-            entreprise.activite = data.get("activite")
-            entreprise.effectif = data.get("effectif")
-            entreprise.capital = data.get("capital")
+            entreprise.date_creation = data.get("date_creation")
             
             # Mettre à jour l'adresse du siège
             siege = data.get("siege", {})
             entreprise.adresse = siege.get("adresse")
-            entreprise.code_postal = siege.get("code_postal")
-            entreprise.ville = siege.get("ville")
             entreprise.lat = siege.get("latitude")
             entreprise.lng = siege.get("longitude")
             
@@ -1204,6 +1218,139 @@ def get_qpv_status(
     }
 
 
+@router.post("/inscriptions/download-siret-document")
+async def download_siret_document(
+    request: Request,
+    session: Session = Depends(get_session),
+    current_user: User = Depends(get_current_user)
+):
+    """Télécharge un document depuis l'API SIRET et l'ajoute aux documents du candidat"""
+    try:
+        data = await request.json()
+        candidat_id = data.get("candidat_id")
+        token = data.get("token")
+        nom_fichier = data.get("nom_fichier", "document_siret.pdf")
+        type_document = data.get("type_document", "AUTRE")
+        
+        if not candidat_id or not token:
+            return JSONResponse(
+                status_code=400,
+                content={"success": False, "message": "Candidat ID et token requis"}
+            )
+        
+        # Vérifier que le token n'est pas vide
+        if not token.strip():
+            return JSONResponse(
+                status_code=400,
+                content={"success": False, "message": "Token de téléchargement invalide"}
+            )
+        
+        # Vérifier que le candidat existe
+        candidat = session.query(Candidat).filter(Candidat.id == candidat_id).first()
+        if not candidat:
+            return JSONResponse(
+                status_code=404,
+                content={"success": False, "message": "Candidat non trouvé"}
+            )
+        
+        # Vérifier que l'API key Pappers est configurée
+        if not settings.PAPPERS_API_KEY:
+            return JSONResponse(
+                status_code=500,
+                content={"success": False, "message": "API key Pappers non configurée"}
+            )
+        
+        # Télécharger le document depuis l'API Pappers
+        import requests
+        pappers_url = f"https://api.pappers.fr/v2/document/telechargement?token={token}&api_token={settings.PAPPERS_API_KEY}"
+        
+        print(f"📥 [SIRET DOC] Téléchargement depuis: {pappers_url}")
+        print(f"🔑 [SIRET DOC] Token utilisé: {token[:20]}...")
+        print(f"🔑 [SIRET DOC] API key utilisée: {settings.PAPPERS_API_KEY[:10]}...")
+        
+        response = requests.get(pappers_url, timeout=30)
+        print(f"📊 [SIRET DOC] Status code: {response.status_code}")
+        print(f"📊 [SIRET DOC] Headers: {dict(response.headers)}")
+        
+        if response.status_code != 200:
+            print(f"❌ [SIRET DOC] Erreur téléchargement: {response.status_code}")
+            print(f"❌ [SIRET DOC] Réponse: {response.text[:200]}")
+            return JSONResponse(
+                status_code=400,
+                content={"success": False, "message": f"Erreur lors du téléchargement du document (HTTP {response.status_code})"}
+            )
+        
+        # Préparer le répertoire de sauvegarde
+        candidat_dir = settings.FICHIERS_DIR / "documents" / f"candidat_{candidat_id}"
+        candidat_dir.mkdir(parents=True, exist_ok=True)
+        
+        # Créer un nom de fichier unique
+        file_ext = ".pdf"  # Les documents SIRET sont généralement des PDF
+        base_filename = f"siret_{type_document.lower()}_{candidat_id}{file_ext}"
+        unique_filename = base_filename
+        
+        # Vérifier si le fichier existe déjà et ajouter un suffixe numérique si nécessaire
+        counter = 1
+        while (candidat_dir / unique_filename).exists():
+            name_without_ext = f"siret_{type_document.lower()}_{candidat_id}"
+            unique_filename = f"{name_without_ext}_{counter}{file_ext}"
+            counter += 1
+        
+        file_path = candidat_dir / unique_filename
+        
+        # Sauvegarder le fichier
+        with open(file_path, "wb") as f:
+            f.write(response.content)
+        
+        print(f"✅ [SIRET DOC] Fichier sauvegardé: {file_path}")
+        
+        # Créer l'enregistrement en base de données
+        document = Document(
+            candidat_id=candidat_id,
+            nom_fichier=unique_filename,
+            chemin_fichier=str(file_path.relative_to(settings.FICHIERS_DIR)),
+            type_document="AUTRE",  # Utiliser AUTRE temporairement
+            taille_octets=len(response.content),
+            depose_le=datetime.now(timezone.utc)
+        )
+        
+        session.add(document)
+        session.commit()
+        session.refresh(document)
+        
+        print(f"✅ [SIRET DOC] Document enregistré en base: ID {document.id}")
+        print(f"📋 [SIRET DOC] Détails du document:")
+        print(f"   - Candidat ID: {document.candidat_id}")
+        print(f"   - Nom fichier: {document.nom_fichier}")
+        print(f"   - Type document: {document.type_document}")
+        print(f"   - Chemin: {document.chemin_fichier}")
+        print(f"   - Taille: {document.taille_octets} bytes")
+        
+        # Vérification immédiate que le document existe en base
+        verification = session.exec(select(Document).where(Document.id == document.id)).first()
+        if verification:
+            print(f"✅ [SIRET DOC] Vérification OK: Document {document.id} trouvé en base")
+        else:
+            print(f"❌ [SIRET DOC] ERREUR: Document {document.id} non trouvé en base")
+        
+        return JSONResponse(
+            status_code=200,
+            content={
+                "success": True, 
+                "message": f"Document '{nom_fichier}' téléchargé et ajouté avec succès",
+                "document_id": document.id,
+                "filename": unique_filename
+            }
+        )
+        
+    except Exception as e:
+        print(f"❌ [SIRET DOC] Erreur: {str(e)}")
+        session.rollback()
+        return JSONResponse(
+            status_code=500,
+            content={"success": False, "message": f"Erreur lors du traitement: {str(e)}"}
+        )
+
 # Routes pour servir les fichiers documents
 @router.get("/inscriptions/document/{document_id}/view")
 def view_document(
@@ -1219,17 +1366,21 @@ def view_document(
         if not doc:
             raise HTTPException(status_code=404, detail="Document introuvable")
         
-        if not doc.chemin_fichier or not os.path.exists(doc.chemin_fichier):
+        # Construire le chemin complet du fichier
+        file_path = settings.FICHIERS_DIR / doc.chemin_fichier
+        
+        if not file_path.exists():
+            print(f"❌ [DOC] Fichier non trouvé: {file_path}")
             raise HTTPException(status_code=404, detail="Fichier introuvable")
         
         # Déterminer le type MIME
         import mimetypes
-        mime_type, _ = mimetypes.guess_type(doc.chemin_fichier)
+        mime_type, _ = mimetypes.guess_type(str(file_path))
         if not mime_type:
             mime_type = "application/octet-stream"
         
         # Lire le fichier
-        with open(doc.chemin_fichier, "rb") as f:
+        with open(file_path, "rb") as f:
             content = f.read()
         
         from fastapi.responses import Response
@@ -1262,11 +1413,15 @@ def download_document(
         if not doc:
             raise HTTPException(status_code=404, detail="Document introuvable")
         
-        if not doc.chemin_fichier or not os.path.exists(doc.chemin_fichier):
+        # Construire le chemin complet du fichier
+        file_path = settings.FICHIERS_DIR / doc.chemin_fichier
+        
+        if not file_path.exists():
+            print(f"❌ [DOC] Fichier non trouvé: {file_path}")
             raise HTTPException(status_code=404, detail="Fichier introuvable")
         
         return FileResponse(
-            path=doc.chemin_fichier,
+            path=str(file_path),
             filename=doc.nom_fichier,
             media_type="application/octet-stream"
         )

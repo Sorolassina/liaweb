@@ -59,14 +59,6 @@ async def get_entreprise_process(numero_siret: str, request: Request):
                 "status_code": 403
             }
 
-        # Vérification de l'opposition à l'utilisation commerciale
-        if data.get("opposition_utilisation_commerciale", False):
-            print("⚠️ [SERVICE] Opposition à l'utilisation commerciale")
-            return {
-                "message": "Cette entreprise s'oppose à l'utilisation commerciale de ses données",
-                "entreprise_data": None,
-                "status_code": 403
-            }
 
     except requests.exceptions.HTTPError as e:
         print(f"❌ [SERVICE] Erreur HTTP: {str(e)}")
@@ -216,6 +208,15 @@ async def get_entreprise_process(numero_siret: str, request: Request):
             "conventions_collectives": data.get("conventions_collectives", []),
             "comptes": comptes_disponibles,
             
+            # Documents disponibles
+            "documents_disponibles": {
+                "comptes": comptes_disponibles,
+                "statuts": data.get("derniers_statuts"),
+                "extrait_immatriculation": data.get("extrait_immatriculation"),
+                "publications_bodacc": data.get("publications_bodacc", []),
+                "depots_actes": data.get("depots_actes", [])
+            },
+            
             # Informations supplémentaires
             "economie_sociale_solidaire": data.get("economie_sociale_solidaire"),
             "societe_a_mission": data.get("societe_a_mission"),
@@ -228,6 +229,16 @@ async def get_entreprise_process(numero_siret: str, request: Request):
         }
         
         print("📊 [SERVICE] Données de l'entreprise extraites avec succès")
+        
+        # Vérification de l'opposition à l'utilisation commerciale
+        if data.get("opposition_utilisation_commerciale", False):
+            print("⚠️ [SERVICE] Opposition à l'utilisation commerciale")
+            return {
+                "message": "Cette entreprise s'oppose à l'utilisation commerciale de ses données. Les informations affichées sont limitées.",
+                "entreprise_data": entreprise_info,
+                "status_code": 200,
+                "opposition_commerciale": True
+            }
         
         return {
             "message": "Données extraites avec succès",
