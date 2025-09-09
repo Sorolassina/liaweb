@@ -27,6 +27,7 @@ from .ACD.route_qpv import router as ACD_qpv_router
 from .ACD.route_siret_pappers import router as ACD_siret_router
 from .rendez_vous import router as rendez_vous_router
 from .video_router import router as video_router
+from .emargement_router import router as emargement_router
 from .candidat_email_update import router as candidat_email_router
 
 # Configuration des routers avec préfixes et tags
@@ -58,6 +59,11 @@ router_configs = [
     # Dashboard et pipelines
     (dashboard_router, "/dashboard", ["dashboard"]),
     (pipelines_router, "/pipelines", ["pipelines"]),
+    
+    # Routers spéciaux (sans préfixe)
+    (video_router, "", ["video"]),
+    (emargement_router, "", ["emargement"]),
+    (candidat_email_router, "", ["candidat-email"]),
 ]
 
 # Export des routers individuels pour utilisation spécifique
@@ -77,6 +83,7 @@ __all__ = [
     "ACD_siret_router",
     "rendez_vous_router",
     "video_router",
+    "emargement_router",
     "candidat_email_router",
     "router_configs",
 ]

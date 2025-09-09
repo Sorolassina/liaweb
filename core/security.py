@@ -125,6 +125,37 @@ async def get_current_user(
     return user
 
 
+async def get_current_user_optional(
+    request: Request,
+    session: Session = Depends(get_session),
+) -> Optional[User]:
+    """
+    Version optionnelle de get_current_user qui retourne None si pas d'authentification.
+    Utilisée pour les endpoints qui peuvent fonctionner avec ou sans authentification.
+    """
+    try:
+        # Utiliser la même logique que get_current_user pour récupérer le token
+        token = _extract_token_from_request(request, None)
+        if not token:
+            return None
+        
+        # Vérifier le token
+        payload = jwt.decode(token, SECRET_KEY, algorithms=[ALGORITHM])
+        user_id: int = payload.get("sub")
+        if user_id is None:
+            return None
+        
+        # Récupérer l'utilisateur
+        user = session.get(User, user_id)
+        if not user or not user.actif:
+            return None
+        
+        return user
+    except Exception:
+        # En cas d'erreur, retourner None au lieu de lever une exception
+        return None
+
+
 # ----------------------------
 # Password utils
 # ----------------------------

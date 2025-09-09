@@ -556,6 +556,132 @@ class EmailUtils:
         corps_texte = f"Bonjour {nom}, votre inscription au programme {programme} a été confirmée. Votre conseiller : {conseiller}"
         
         return EmailUtils.envoyer_mail(email, objet, corps_html, corps_texte)
+    
+    @staticmethod
+    def send_emargement_invitation(
+        to_email: str,
+        candidat_nom: str,
+        candidat_prenom: str,
+        rdv_id: int,
+        rdv_date: str,
+        rdv_type: str,
+        lien_emargement: str
+    ) -> bool:
+        """Envoie un email d'invitation pour l'émargement d'un RDV"""
+        logger.info(f"📧 Envoi invitation émargement - RDV {rdv_id} à {to_email}")
+        
+        try:
+            from .config import settings
+            
+            # Construire l'URL complète
+            base_url = settings.get_base_url_for_email()
+            lien_complet = f"{base_url}{lien_emargement}"
+            
+            objet = f"✍️ Émargement requis - Rendez-vous du {rdv_date}"
+            
+            corps_html = f"""
+            <!DOCTYPE html>
+            <html>
+            <head>
+                <meta charset="UTF-8">
+                <meta name="viewport" content="width=device-width, initial-scale=1.0">
+                <title>Émargement Rendez-vous</title>
+            </head>
+            <body style="margin: 0; padding: 0; font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; background-color: #f8f9fa;">
+                <div style="max-width: 600px; margin: 0 auto; background-color: #ffffff; border-radius: 10px; overflow: hidden; box-shadow: 0 4px 6px rgba(0,0,0,0.1);">
+                    
+                    <!-- En-tête -->
+                    <div style="background: linear-gradient(135deg, {settings.THEME_PRIMARY} 0%, {settings.THEME_SECONDARY} 100%); color: {settings.THEME_WHITE}; padding: 30px; text-align: center;">
+                        <img src="{settings.get_static_url('images/logo.png')}" alt="LIA Coaching" style="height: 60px; margin-bottom: 15px;">
+                        <h1 style="margin: 0; font-size: 24px; font-weight: 600;">✍️ Émargement Requis</h1>
+                        <p style="margin: 10px 0 0 0; font-size: 16px; opacity: 0.9;">Signature électronique pour votre rendez-vous</p>
+                    </div>
+                    
+                    <!-- Contenu principal -->
+                    <div style="padding: 40px 30px; color: #333333;">
+                        <p style="font-size: 16px; line-height: 1.6; margin-bottom: 20px;">
+                            Bonjour <strong>{candidat_prenom} {candidat_nom}</strong>,
+                        </p>
+                        
+                        <p style="font-size: 16px; line-height: 1.6; margin-bottom: 25px;">
+                            Votre rendez-vous de coaching approche et nous avons besoin de votre <strong>signature électronique</strong> 
+                            pour confirmer votre présence.
+                        </p>
+                        
+                        <!-- Informations du RDV -->
+                        <div style="background-color: #e9ecef; border-left: 4px solid {settings.THEME_PRIMARY}; padding: 20px; margin: 25px 0; border-radius: 5px;">
+                            <h3 style="margin: 0 0 15px 0; color: {settings.THEME_PRIMARY}; font-size: 18px;">📋 Détails du rendez-vous</h3>
+                            <p style="margin: 8px 0; font-size: 15px;"><strong>Type :</strong> {rdv_type}</p>
+                            <p style="margin: 8px 0; font-size: 15px;"><strong>Date :</strong> {rdv_date}</p>
+                            <p style="margin: 8px 0; font-size: 15px;"><strong>ID RDV :</strong> #{rdv_id}</p>
+                        </div>
+                        
+                        <p style="font-size: 16px; line-height: 1.6; margin-bottom: 25px;">
+                            <strong>Important :</strong> Votre signature est <strong>obligatoire</strong> pour pouvoir participer au rendez-vous. 
+                            Sans cette signature, le rendez-vous ne pourra pas commencer.
+                        </p>
+                        
+                        <!-- Bouton d'action -->
+                        <div style="text-align: center; margin: 30px 0;">
+                            <a href="{lien_complet}" style="display: inline-block; background: linear-gradient(135deg, {settings.THEME_PRIMARY} 0%, {settings.THEME_SECONDARY} 100%); color: {settings.THEME_WHITE}; padding: 15px 30px; text-decoration: none; border-radius: 8px; font-weight: 600; font-size: 16px; box-shadow: 0 4px 8px rgba(0,0,0,0.2);">
+                                ✍️ Signer l'émargement
+                            </a>
+                        </div>
+                        
+                        <p style="font-size: 14px; color: #6c757d; margin-top: 25px; padding: 15px; background-color: #f8f9fa; border-radius: 5px;">
+                            <strong>🔒 Sécurité :</strong> Ce lien est personnel et sécurisé. Ne le partagez pas avec d'autres personnes.
+                        </p>
+                        
+                        <p style="font-size: 14px; color: #6c757d; margin-top: 20px;">
+                            <strong>Lien direct :</strong> <a href="{lien_complet}" style="color: {settings.THEME_PRIMARY}; text-decoration: none;">{lien_complet}</a>
+                        </p>
+                    </div>
+                    
+                    <!-- Pied de page -->
+                    <div style="background-color: #f8f9fa; padding: 20px; text-align: center; border-top: 1px solid #dee2e6;">
+                        <p style="margin: 0; font-size: 12px; color: #6c757d;">
+                            Cet email a été envoyé automatiquement par le système LIA Coaching.<br>
+                            Si vous avez des questions, contactez votre conseiller.
+                        </p>
+                    </div>
+                </div>
+            </body>
+            </html>
+            """
+            
+            corps_texte = f"""
+            ÉMARGEMENT REQUIS - RENDEZ-VOUS DU {rdv_date}
+            
+            Bonjour {candidat_prenom} {candidat_nom},
+            
+            Votre rendez-vous de coaching approche et nous avons besoin de votre signature électronique pour confirmer votre présence.
+            
+            DÉTAILS DU RENDEZ-VOUS :
+            - Type : {rdv_type}
+            - Date : {rdv_date}
+            - ID RDV : #{rdv_id}
+            
+            IMPORTANT : Votre signature est OBLIGATOIRE pour pouvoir participer au rendez-vous. Sans cette signature, le rendez-vous ne pourra pas commencer.
+            
+            Pour signer votre émargement, cliquez sur le lien suivant :
+            {lien_complet}
+            
+            Ce lien est personnel et sécurisé. Ne le partagez pas avec d'autres personnes.
+            
+            Cordialement,
+            L'équipe LIA Coaching
+            """
+            
+            return EmailUtils.envoyer_mail(
+                to_email=to_email,
+                objet=objet,
+                corps_html=corps_html,
+                corps_texte=corps_texte
+            )
+            
+        except Exception as e:
+            logger.error(f"❌ Erreur lors de l'envoi de l'invitation d'émargement: {e}")
+            return False
 
 
 class JsonUtils:

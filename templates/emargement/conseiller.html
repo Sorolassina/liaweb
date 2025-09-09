@@ -1,0 +1,309 @@
+{% extends "base.html" %}
+
+{% block title %}Émargement - RDV #{{ rdv.id }}{% endblock %}
+
+{% block extra_css %}
+<style>
+:root {
+    --primary-color: {{ settings.THEME_PRIMARY }};
+    --secondary-color: {{ settings.THEME_SECONDARY }};
+    --white-color: {{ settings.THEME_WHITE }};
+}
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="container-fluid">
+    <div class="row">
+        <div class="col-12">
+            <div class="card">
+                <div class="card-header" style="background-color: var(--primary-color); color: white;">
+                    <h4 class="card-title mb-0">
+                        <i class="fas fa-signature me-2"></i>
+                        Émargement - Rendez-vous #{{ rdv.id }}
+                    </h4>
+                </div>
+                <div class="card-body">
+                    <!-- Informations du RDV -->
+                    <div class="row mb-4">
+                        <div class="col-md-6">
+                            <h5><i class="fas fa-calendar-alt me-2" style="color: var(--primary-color);"></i>Détails du rendez-vous</h5>
+                            <div class="bg-light p-3 rounded">
+                                <p><strong>Date :</strong> {{ rdv.debut.strftime('%d/%m/%Y à %H:%M') if rdv.debut else 'Non définie' }}</p>
+                                <p><strong>Type :</strong> {{ rdv.type }}</p>
+                                <p><strong>Lieu :</strong> {{ rdv.lieu or 'Non défini' }}</p>
+                                <p><strong>Statut :</strong> 
+                                    <span class="badge bg-warning">{{ rdv.statut.value }}</span>
+                                </p>
+                            </div>
+                        </div>
+                        <div class="col-md-6">
+                            <h5><i class="fas fa-user me-2" style="color: var(--primary-color);"></i>Candidat</h5>
+                            <div class="bg-light p-3 rounded">
+                                <p><strong>Nom :</strong> {{ candidat.prenom }} {{ candidat.nom }}</p>
+                                <p><strong>Email :</strong> {{ candidat.email }}</p>
+                                <p><strong>Téléphone :</strong> {{ candidat.telephone or 'Non renseigné' }}</p>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Statut des signatures -->
+                    <div class="row mb-4">
+                        <div class="col-md-6">
+                            <div class="card border-{% if emargement.signature_conseiller %}success{% else %}warning{% endif %}">
+                                <div class="card-header bg-{% if emargement.signature_conseiller %}success{% else %}warning{% endif %} text-white">
+                                    <h6 class="mb-0">
+                                        <i class="fas fa-user-tie me-2"></i>
+                                        Signature Conseiller
+                                        {% if emargement.signature_conseiller %}
+                                            <i class="fas fa-check-circle float-end"></i>
+                                        {% endif %}
+                                    </h6>
+                                </div>
+                                <div class="card-body">
+                                    {% if emargement.signature_conseiller %}
+                                        <p class="text-success mb-1">
+                                            <i class="fas fa-check-circle me-2"></i>
+                                            <strong>Signé le :</strong> {{ emargement.date_signature_conseiller.strftime('%d/%m/%Y à %H:%M') }}
+                                        </p>
+                                        <small class="text-muted">Signature enregistrée avec succès</small>
+                                    {% else %}
+                                        <p class="text-warning mb-1">
+                                            <i class="fas fa-exclamation-triangle me-2"></i>
+                                            <strong>En attente de signature</strong>
+                                        </p>
+                                        <small class="text-muted">Veuillez signer ci-dessous</small>
+                                    {% endif %}
+                                </div>
+                            </div>
+                        </div>
+                        <div class="col-md-6">
+                            <div class="card border-{% if emargement.signature_candidat %}success{% else %}warning{% endif %}">
+                                <div class="card-header bg-{% if emargement.signature_candidat %}success{% else %}warning{% endif %} text-white">
+                                    <h6 class="mb-0">
+                                        <i class="fas fa-user me-2"></i>
+                                        Signature Candidat
+                                        {% if emargement.signature_candidat %}
+                                            <i class="fas fa-check-circle float-end"></i>
+                                        {% endif %}
+                                    </h6>
+                                </div>
+                                <div class="card-body">
+                                    {% if emargement.signature_candidat %}
+                                        <p class="text-success mb-1">
+                                            <i class="fas fa-check-circle me-2"></i>
+                                            <strong>Signé le :</strong> {{ emargement.date_signature_candidat.strftime('%d/%m/%Y à %H:%M') }}
+                                        </p>
+                                        <small class="text-muted">Signature reçue par email</small>
+                                    {% else %}
+                                        <p class="text-warning mb-1">
+                                            <i class="fas fa-exclamation-triangle me-2"></i>
+                                            <strong>En attente de signature</strong>
+                                        </p>
+                                        <small class="text-muted">Le candidat doit signer via le lien email</small>
+                                    {% endif %}
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Zone de signature pour le conseiller -->
+                    {% if not emargement.signature_conseiller %}
+                    <div class="row">
+                        <div class="col-12">
+                            <div class="card" style="border-color: var(--primary-color);">
+                                <div class="card-header" style="background-color: var(--primary-color); color: white;">
+                                    <h6 class="mb-0">
+                                        <i class="fas fa-signature me-2"></i>
+                                        Votre signature
+                                    </h6>
+                                </div>
+                                <div class="card-body">
+                                    <div class="signature-container">
+                                        <canvas id="signatureCanvas" width="600" height="200" 
+                                                style="border: 2px dashed #dee2e6; border-radius: 8px; cursor: crosshair;"></canvas>
+                                    </div>
+                                    <div class="mt-3">
+                                        <button type="button" class="btn btn-outline-secondary" onclick="clearSignature()">
+                                            <i class="fas fa-eraser me-2"></i>Effacer
+                                        </button>
+                                        <button type="button" class="btn" style="background-color: var(--primary-color); color: white;" onclick="saveSignature()" id="saveBtn" disabled>
+                                            <i class="fas fa-save me-2"></i>Enregistrer ma signature
+                                        </button>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    {% endif %}
+
+                    <!-- Actions -->
+                    <div class="row mt-4">
+                        <div class="col-12">
+                            <div class="d-flex justify-content-between">
+                                <a href="/rendez-vous" class="btn btn-outline-secondary">
+                                    <i class="fas fa-arrow-left me-2"></i>Retour à la liste
+                                </a>
+                                
+                                <div>
+                                    {% if not emargement.signature_candidat %}
+                                    <button type="button" class="btn btn-info me-2" onclick="envoyerLienCandidat()">
+                                        <i class="fas fa-envelope me-2"></i>Envoyer lien au candidat
+                                    </button>
+                                    {% endif %}
+                                    
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<style>
+.signature-container {
+    text-align: center;
+    margin: 20px 0;
+}
+
+#signatureCanvas {
+    max-width: 100%;
+    height: auto;
+}
+
+.signature-required {
+    border-color: #dc3545 !important;
+    background-color: #f8d7da !important;
+}
+</style>
+
+<script>
+let canvas = document.getElementById('signatureCanvas');
+let ctx = canvas.getContext('2d');
+let isDrawing = false;
+let hasSignature = false;
+
+// Configuration du canvas
+ctx.strokeStyle = 'var(--primary-color)';
+ctx.lineWidth = 2;
+ctx.lineCap = 'round';
+ctx.lineJoin = 'round';
+
+// Événements de dessin
+canvas.addEventListener('mousedown', startDrawing);
+canvas.addEventListener('mousemove', draw);
+canvas.addEventListener('mouseup', stopDrawing);
+canvas.addEventListener('mouseout', stopDrawing);
+
+// Événements tactiles
+canvas.addEventListener('touchstart', handleTouch);
+canvas.addEventListener('touchmove', handleTouch);
+canvas.addEventListener('touchend', stopDrawing);
+
+function startDrawing(e) {
+    isDrawing = true;
+    const rect = canvas.getBoundingClientRect();
+    const x = e.clientX - rect.left;
+    const y = e.clientY - rect.top;
+    ctx.beginPath();
+    ctx.moveTo(x, y);
+}
+
+function draw(e) {
+    if (!isDrawing) return;
+    
+    const rect = canvas.getBoundingClientRect();
+    const x = e.clientX - rect.left;
+    const y = e.clientY - rect.top;
+    
+    ctx.lineTo(x, y);
+    ctx.stroke();
+    
+    if (!hasSignature) {
+        hasSignature = true;
+        document.getElementById('saveBtn').disabled = false;
+    }
+}
+
+function stopDrawing() {
+    isDrawing = false;
+}
+
+function handleTouch(e) {
+    e.preventDefault();
+    const touch = e.touches[0];
+    const mouseEvent = new MouseEvent(e.type === 'touchstart' ? 'mousedown' : 
+                                    e.type === 'touchmove' ? 'mousemove' : 'mouseup', {
+        clientX: touch.clientX,
+        clientY: touch.clientY
+    });
+    canvas.dispatchEvent(mouseEvent);
+}
+
+function clearSignature() {
+    ctx.clearRect(0, 0, canvas.width, canvas.height);
+    hasSignature = false;
+    document.getElementById('saveBtn').disabled = true;
+}
+
+function saveSignature() {
+    if (!hasSignature) {
+        alert('Veuillez signer avant d\'enregistrer');
+        return;
+    }
+    
+    const signatureData = canvas.toDataURL('image/png');
+    
+    fetch(`/emargement/{{ rdv.id }}/signer`, {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+            type: 'conseiller',
+            signature: signatureData
+        })
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.status === 'success') {
+            alert('Signature enregistrée avec succès !');
+            location.reload();
+        } else {
+            alert('Erreur lors de l\'enregistrement de la signature');
+        }
+    })
+    .catch(error => {
+        console.error('Erreur:', error);
+        alert('Erreur lors de l\'enregistrement de la signature');
+    });
+}
+
+function envoyerLienCandidat() {
+    if (confirm('Êtes-vous sûr de vouloir envoyer le lien d\'émargement au candidat ?')) {
+        fetch(`/emargement/{{ rdv.id }}/envoyer-lien-candidat`, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+            }
+        })
+        .then(response => response.json())
+        .then(data => {
+            if (data.status === 'success') {
+                alert('Lien d\'émargement envoyé au candidat par email !');
+            } else {
+                alert('Erreur lors de l\'envoi de l\'email');
+            }
+        })
+        .catch(error => {
+            console.error('Erreur:', error);
+            alert('Erreur lors de l\'envoi de l\'email');
+        });
+    }
+}
+</script>
+{% endblock %}

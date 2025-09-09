@@ -396,7 +396,7 @@ class DecisionJuryCandidat(SQLModel, table=True):
     candidat: "Candidat" = Relationship()
     jury: "Jury" = Relationship()
     conseiller: Optional["User"] = Relationship()
-    groupe: Optional["Groupe"] = Relationship(back_populates="decisions_jury")
+    groupe: Optional["Groupe"] = Relationship()
     promotion: Optional["Promotion"] = Relationship()
     partenaire: Optional["Partenaire"] = Relationship()
 
@@ -426,6 +426,23 @@ class Groupe(SQLModel, table=True):
     actif: bool = Field(default=True)
     date_creation: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
     date_modification: Optional[datetime] = Field(default=None)
+
+class EmargementRDV(SQLModel, table=True):
+    """Émargement pour les rendez-vous"""
+    id: Optional[int] = Field(default=None, primary_key=True)
+    rdv_id: int = Field(foreign_key="rendezvous.id", index=True)
+    type_signataire: str = Field(index=True)  # "conseiller" ou "candidat"
+    signataire_id: Optional[int] = Field(foreign_key="user.id", index=True)  # Pour le conseiller
+    candidat_id: Optional[int] = Field(foreign_key="candidat.id", index=True)  # Pour le candidat
+    signature_conseiller: Optional[str] = None  # Signature du conseiller (base64 ou hash)
+    signature_candidat: Optional[str] = None    # Signature du candidat (base64 ou hash)
+    date_signature_conseiller: Optional[datetime] = None
+    date_signature_candidat: Optional[datetime] = None
+    ip_address: Optional[str] = None  # Adresse IP pour traçabilité
+    user_agent: Optional[str] = None  # User agent pour traçabilité
+    cree_le: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
     
     # Relations
-    decisions_jury: List["DecisionJuryCandidat"] = Relationship(back_populates="groupe")
+    rdv: "RendezVous" = Relationship()
+    signataire: Optional["User"] = Relationship()
+    candidat: Optional["Candidat"] = Relationship()

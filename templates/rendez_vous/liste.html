@@ -113,7 +113,6 @@
                                     <th style="width: 15%;">Candidat</th>
                                     <th style="width: 8%;">Type</th>
                                     <th style="width: 8%;">Statut</th>
-                                    <th style="width: 8%;">Lieu</th>
                                     <th style="width: 13%;">Actions</th>
                                 </tr>
                             </thead>
@@ -160,7 +159,6 @@
                                             </span>
                                         {% endif %}
                                     </td>
-                                    <td>{{ rdv.lieu or '-' }}</td>
                                     <td>
                                         <div class="btn-group btn-group-sm">
                                             <a href="/rendez-vous/{{ rdv.id }}" class="btn btn-outline-primary" title="Voir">
@@ -170,17 +168,21 @@
                                                 <i class="fas fa-edit"></i>
                                             </a>
                         {% if rdv.statut == 'planifie' %}
-                        <a href="/video-rdv/{{ rdv.id }}/commencer" class="btn btn-success" title="Commencer RDV vidéo" target="_blank">
+                        <a href="/emargement/{{ rdv.id }}" class="btn btn-outline-warning btn-emargement" title="Émargement" data-rdv-id="{{ rdv.id }}">
+                            <i class="fas fa-signature"></i>
+                            <span class="badge bg-secondary ms-1 signature-status" style="font-size: 0.6rem;">...</span>
+                        </a>
+                        <a href="/video-rdv/{{ rdv.id }}/commencer" class="btn btn-success btn-commencer-rdv" title="Commencer RDV vidéo" target="_blank" data-rdv-id="{{ rdv.id }}" style="display: none;">
                             <i class="fas fa-video"></i>
                         </a>
-                        <a href="/video-rdv/{{ rdv.id }}/invitation/candidat" class="btn btn-info" title="Lien candidat" target="_blank">
+                        <a href="/video-rdv/{{ rdv.id }}/invitation/candidat" class="btn btn-info btn-lien-candidat" title="Lien candidat" target="_blank" data-rdv-id="{{ rdv.id }}" style="display: none;">
                             <i class="fas fa-link"></i>
                         </a>
-                        <button type="button" class="btn btn-primary" title="Envoyer invitation par email" onclick="envoyerInvitationEmail({{ rdv.id }})">
+                        <button type="button" class="btn btn-primary btn-envoyer-email" title="Envoyer invitation par email" onclick="envoyerInvitationEmail({{ rdv.id }})" data-rdv-id="{{ rdv.id }}" style="display: none;">
                             <i class="fas fa-envelope"></i>
                         </button>
                         {% elif rdv.statut == 'en_cours' %}
-                        <a href="/video-rdv/{{ rdv.id }}/rejoindre" class="btn btn-warning" title="Rejoindre RDV en cours" target="_blank">
+                        <a href="/video-rdv/{{ rdv.id }}/rejoindre" class="btn btn-warning" title="Continuer le rendez-vous vidéo en cours" target="_blank">
                             <i class="fas fa-video"></i>
                         </a>
                         <a href="/video-rdv/{{ rdv.id }}/invitation/candidat" class="btn btn-info" title="Lien candidat" target="_blank">
@@ -574,6 +576,94 @@ function voirNotes(rdvId) {
             `;
         });
 }
+
+// Fonction pour vérifier le statut des signatures et afficher les boutons appropriés
+function verifierStatutSignatures() {
+    const rdvIds = new Set();
+    
+    // Collecter tous les IDs de RDV (planifiés ET en cours)
+    document.querySelectorAll('.btn-commencer-rdv[data-rdv-id], .btn-emargement[data-rdv-id]').forEach(btn => {
+        rdvIds.add(btn.getAttribute('data-rdv-id'));
+    });
+    
+    // Vérifier le statut de chaque RDV
+    rdvIds.forEach(rdvId => {
+        fetch(`/emargement/${rdvId}/statut`)
+            .then(response => response.json())
+            .then(data => {
+                if (data.status === 'found') {
+                    const commencerBtn = document.querySelector(`.btn-commencer-rdv[data-rdv-id="${rdvId}"]`);
+                    const lienBtn = document.querySelector(`.btn-lien-candidat[data-rdv-id="${rdvId}"]`);
+                    const emailBtn = document.querySelector(`.btn-envoyer-email[data-rdv-id="${rdvId}"]`);
+                    const emargementBtn = document.querySelector(`.btn-emargement[data-rdv-id="${rdvId}"]`);
+                    const statusBadge = document.querySelector(`.btn-emargement[data-rdv-id="${rdvId}"] .signature-status`);
+                    
+                    // Mettre à jour le badge de statut
+                    if (statusBadge) {
+                        if (data.peut_commencer) {
+                            statusBadge.textContent = '✓';
+                            statusBadge.className = 'badge bg-success ms-1 signature-status';
+                            statusBadge.style.fontSize = '0.6rem';
+                        } else {
+                            const conseillerSigne = data.conseiller_signe ? 'C' : '';
+                            const candidatSigne = data.candidat_signe ? 'c' : '';
+                            statusBadge.textContent = conseillerSigne + candidatSigne || '0';
+                            statusBadge.className = 'badge bg-warning ms-1 signature-status';
+                            statusBadge.style.fontSize = '0.6rem';
+                        }
+                    }
+                    
+                    // Pour les RDV planifiés, afficher/masquer les boutons selon les signatures
+                    if (commencerBtn) {
+                        if (data.peut_commencer) {
+                            commencerBtn.style.display = 'inline-block';
+                        } else {
+                            commencerBtn.style.display = 'none';
+                        }
+                    }
+                    
+                    if (lienBtn) {
+                        if (data.peut_commencer) {
+                            lienBtn.style.display = 'inline-block';
+                        } else {
+                            lienBtn.style.display = 'none';
+                        }
+                    }
+                    
+                    if (emailBtn) {
+                        if (data.peut_commencer) {
+                            emailBtn.style.display = 'inline-block';
+                        } else {
+                            emailBtn.style.display = 'none';
+                        }
+                    }
+                }
+            })
+            .catch(error => {
+                console.error(`Erreur lors de la vérification du statut pour RDV ${rdvId}:`, error);
+            });
+    });
+}
+
+// Vérifier le statut des signatures au chargement de la page
+document.addEventListener('DOMContentLoaded', function() {
+    verifierStatutSignatures();
+    
+    // Ajouter un listener pour rafraîchir la page après avoir cliqué sur "Commencer"
+    document.querySelectorAll('.btn-commencer-rdv').forEach(btn => {
+        btn.addEventListener('click', function() {
+            // Attendre un peu pour que le serveur mette à jour le statut
+            setTimeout(() => {
+                window.location.reload();
+            }, 2000);
+        });
+    });
+    
+    // Vérifier périodiquement le statut des RDV pour mettre à jour les boutons
+    setInterval(() => {
+        verifierStatutSignatures();
+    }, 5000); // Vérifier toutes les 5 secondes
+});
 
 function envoyerInvitationEmail(rdvId) {
     if (confirm('Êtes-vous sûr de vouloir envoyer l\'invitation par email au candidat ?')) {
