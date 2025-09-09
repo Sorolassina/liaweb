@@ -348,8 +348,22 @@
             </div>
                       <div class="col-md-6">
                         <label class="form-label">Email</label>
-                        <input type="email" class="form-control" value="{{ cand.email }}" readonly>
-                        <div class="form-text">L'email ne peut pas être modifié</div>
+                        <div class="input-group">
+                          <input type="email" class="form-control" value="{{ cand.email }}" readonly>
+                          {% if utilisateur.role in ['administrateur', 'coordinateur'] %}
+                          <button type="button" class="btn btn-outline-warning" 
+                                  onclick="ouvrirChangerEmailModal({{ cand.id }}, '{{ cand.email }}')"
+                                  title="Changer l'email (Admin uniquement)">
+                            <i class="fas fa-edit"></i>
+                          </button>
+                          {% endif %}
+                        </div>
+                        <div class="form-text">
+                          L'email ne peut pas être modifié directement
+                          {% if utilisateur.role in ['administrateur', 'coordinateur'] %}
+                          <br><small class="text-muted">Les administrateurs peuvent changer l'email via le bouton ci-dessus</small>
+                          {% endif %}
+                        </div>
                       </div>
                       <div class="col-12">
               <label class="form-label">Adresse personnelle</label>
@@ -1851,5 +1865,8 @@
     </div>
   </div>
 </div>
+
+<!-- Modal pour changer l'email -->
+{% include 'candidats/changer_email_modal.html' %}
 
 {% endblock %}

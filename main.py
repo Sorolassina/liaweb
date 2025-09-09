@@ -392,10 +392,12 @@ async def admin_dashboard(
         }
     )
 
-@router.get("/logout")
+@app.get("/auth/logout")
 async def logout(request: Request):
-    """Déconnexion"""
-    return RedirectResponse(url="/", status_code=302)
+    """Déconnexion - supprime le cookie d'authentification"""
+    response = RedirectResponse(url="/", status_code=302)
+    response.delete_cookie(key="access_token")
+    return response
 
 from .models.base import Programme, Preinscription, Inscription, Jury
 from sqlmodel import func

@@ -25,6 +25,9 @@ from .ACD.admin import router as ACD_admin_router
 from .ACD.jury_decisions import router as ACD_jury_decisions_router
 from .ACD.route_qpv import router as ACD_qpv_router
 from .ACD.route_siret_pappers import router as ACD_siret_router
+from .rendez_vous import router as rendez_vous_router
+from .video_router import router as video_router
+from .candidat_email_update import router as candidat_email_router
 
 # Configuration des routers avec préfixes et tags
 router_configs = [
@@ -39,6 +42,9 @@ router_configs = [
     (ACD_jury_decisions_router, "/ACD", ["ACD_jury_decisions"]),
     (ACD_qpv_router, "/ACD", ["ACD_qpv"]),
     (ACD_siret_router, "/ACD", ["ACD_siret"]),
+    (rendez_vous_router, "", ["rendez_vous"]),
+    (video_router, "", ["video_rdv"]),
+    (candidat_email_router, "", ["candidat_email"]),
 
     
     # Gestion des données principales
@@ -69,5 +75,8 @@ __all__ = [
     "pipelines_router",
     "ACD_qpv_router",
     "ACD_siret_router",
+    "rendez_vous_router",
+    "video_router",
+    "candidat_email_router",
     "router_configs",
 ]

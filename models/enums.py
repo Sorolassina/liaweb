@@ -63,6 +63,7 @@ class TypeRDV(str, Enum):
 
 class StatutRDV(str, Enum):
     PLANIFIE = "planifie"
+    EN_COURS = "en_cours"
     TERMINE = "termine"
     ANNULE = "annule"
 

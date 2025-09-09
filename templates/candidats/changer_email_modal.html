@@ -1,0 +1,142 @@
+<!-- Modal pour changer l'email d'un candidat -->
+<div class="modal fade" id="changerEmailModal" tabindex="-1" aria-labelledby="changerEmailModalLabel" aria-hidden="true">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="changerEmailModalLabel">
+                    <i class="fas fa-envelope me-2"></i>Changer l'email du candidat
+                </h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <form id="changerEmailForm">
+                <div class="modal-body">
+                    <div class="alert alert-warning">
+                        <i class="fas fa-exclamation-triangle me-2"></i>
+                        <strong>Attention :</strong> Cette action modifiera l'email du candidat dans tout le système.
+                        Assurez-vous que le nouvel email est correct.
+                    </div>
+                    
+                    <div class="mb-3">
+                        <label class="form-label">Email actuel</label>
+                        <input type="email" class="form-control" id="emailActuel" readonly>
+                    </div>
+                    
+                    <div class="mb-3">
+                        <label class="form-label">Nouvel email <span class="text-danger">*</span></label>
+                        <input type="email" class="form-control" name="nouvel_email" required 
+                               pattern="[a-z0-9._%+-]+@[a-z0-9.-]+\.[a-z]{2,}$"
+                               title="Veuillez entrer une adresse email valide">
+                    </div>
+                    
+                    <div class="mb-3">
+                        <label class="form-label">Confirmer le nouvel email <span class="text-danger">*</span></label>
+                        <input type="email" class="form-control" name="confirmation_email" required 
+                               pattern="[a-z0-9._%+-]+@[a-z0-9.-]+\.[a-z]{2,}$"
+                               title="Veuillez confirmer l'adresse email">
+                    </div>
+                    
+                    <div class="mb-3">
+                        <label class="form-label">Raison du changement <span class="text-danger">*</span></label>
+                        <textarea class="form-control" name="raison" rows="3" required 
+                                  placeholder="Expliquez pourquoi l'email doit être changé..."></textarea>
+                    </div>
+                    
+                    <div class="form-check">
+                        <input class="form-check-input" type="checkbox" id="confirmationCheck" required>
+                        <label class="form-check-label" for="confirmationCheck">
+                            Je confirme vouloir changer l'email de ce candidat
+                        </label>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Annuler</button>
+                    <button type="submit" class="btn btn-warning">
+                        <i class="fas fa-envelope me-2"></i>Changer l'email
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+<script>
+// Fonction pour ouvrir le modal de changement d'email
+function ouvrirChangerEmailModal(candidatId, emailActuel) {
+    document.getElementById('emailActuel').value = emailActuel;
+    document.getElementById('changerEmailForm').setAttribute('data-candidat-id', candidatId);
+    
+    // Réinitialiser le formulaire
+    document.getElementById('changerEmailForm').reset();
+    document.getElementById('emailActuel').value = emailActuel;
+    
+    // Ouvrir le modal
+    const modal = new bootstrap.Modal(document.getElementById('changerEmailModal'));
+    modal.show();
+}
+
+// Gestion de la soumission du formulaire
+document.getElementById('changerEmailForm').addEventListener('submit', function(e) {
+    e.preventDefault();
+    
+    const candidatId = this.getAttribute('data-candidat-id');
+    const formData = new FormData(this);
+    
+    // Vérifier que les emails correspondent
+    if (formData.get('nouvel_email') !== formData.get('confirmation_email')) {
+        alert('Les emails ne correspondent pas !');
+        return;
+    }
+    
+    // Confirmation finale
+    if (!confirm('Êtes-vous sûr de vouloir changer l\'email de ce candidat ? Cette action est irréversible.')) {
+        return;
+    }
+    
+    // Désactiver le bouton de soumission
+    const submitBtn = this.querySelector('button[type="submit"]');
+    const originalText = submitBtn.innerHTML;
+    submitBtn.disabled = true;
+    submitBtn.innerHTML = '<i class="fas fa-spinner fa-spin me-2"></i>Changement en cours...';
+    
+    // Envoyer la requête
+    fetch(`/candidats/${candidatId}/changer-email`, {
+        method: 'POST',
+        body: formData
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.status === 'success') {
+            alert(`✅ ${data.message}`);
+            // Fermer le modal
+            bootstrap.Modal.getInstance(document.getElementById('changerEmailModal')).hide();
+            // Recharger la page pour voir les changements
+            location.reload();
+        } else {
+            alert(`❌ Erreur: ${data.detail || 'Erreur inconnue'}`);
+        }
+    })
+    .catch(error => {
+        console.error('Erreur:', error);
+        alert('❌ Erreur lors du changement d\'email');
+    })
+    .finally(() => {
+        // Réactiver le bouton
+        submitBtn.disabled = false;
+        submitBtn.innerHTML = originalText;
+    });
+});
+
+// Validation en temps réel des emails
+document.querySelectorAll('input[name="nouvel_email"], input[name="confirmation_email"]').forEach(input => {
+    input.addEventListener('input', function() {
+        const nouvelEmail = document.querySelector('input[name="nouvel_email"]').value;
+        const confirmationEmail = document.querySelector('input[name="confirmation_email"]').value;
+        
+        if (nouvelEmail && confirmationEmail && nouvelEmail !== confirmationEmail) {
+            this.setCustomValidity('Les emails ne correspondent pas');
+        } else {
+            this.setCustomValidity('');
+        }
+    });
+});
+</script>

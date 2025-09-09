@@ -314,6 +314,7 @@ class RendezVous(SQLModel, table=True):
     fin: Optional[datetime] = None
     lieu: Optional[str] = None
     notes: Optional[str] = None
+    meet_link: Optional[str] = None  # Lien Google Meet unique
 
     # Relations
     inscription: "Inscription" = Relationship()

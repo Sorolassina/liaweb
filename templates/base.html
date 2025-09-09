@@ -9,251 +9,14 @@
   <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet"/>
   <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.2/css/all.min.css" rel="stylesheet"/>
 
-  <!-- Thème centralisé (variables, typographies, utilitaires) -->
-  <link href="/static/css/theme.css" rel="stylesheet"/>
-
-  <!-- Ton CSS (peut surcharger le thème si besoin) -->
+  <!-- CSS consolidé -->
   <link href="/static/css/styles.css" rel="stylesheet"/>
 
-  <!-- Bridge (facultatif) : mappe settings backend -> variables du thème -->
+  <!-- Variables dynamiques depuis le backend -->
   <style>
-    :root{
-      {% if settings and settings.THEME_PRIMARY %}  --primary-color: {{ settings.THEME_PRIMARY }}; {% endif %}
-      {% if settings and settings.THEME_SECONDARY %}--secondary-color: {{ settings.THEME_SECONDARY }}; {% endif %}
-
-      /* Dérivées utiles */
-      --primary-dark: color-mix(in srgb, var(--primary-color, #ffd300) 85%, black);
-      --primary-light: color-mix(in srgb, var(--primary-color, #ffd300) 85%, white);
-
-      /* Gris & fond — peuvent déjà exister dans theme.css */
-      --white-color: var(--surface, #ffffff);
-      --gray-light: var(--muted-100, #f0f2f5);
-      --gray-medium: var(--muted-400, #9aa3b2);
-      --gray-dark: var(--muted-600, #6b7280);
-
-      /* Ombres utilitaires */
-      --shadow-sm: 3px 3px 6px rgba(0,0,0,.08), -3px -3px 6px rgba(255,255,255,.8);
-      --shadow: 5px 5px 12px rgba(0,0,0,.10), -5px -5px 12px rgba(255,255,255,.85);
-      --shadow-lg: 10px 10px 28px rgba(0,0,0,.14), -10px -10px 28px rgba(255,255,255,.85);
-
-      /* Largeurs de sidebar paramétrables */
-      --sidebar-width: 280px;
-      --sidebar-width-collapsed: 60px;
-    }
-  </style>
-
-  <style>
-    /* ====== Base pilotée par theme.css ====== */
-    html, body{
-      height:100%;
-      overflow: hidden; /* on gère le scroll dans #content */
-    }
-
-    body{
-      margin:0; padding:0;
-      font-family: var(--font-family-primary, 'Segoe UI', system-ui, -apple-system, Arial, sans-serif);
-      background: var(--white-color);
-      color: var(--secondary-color);
-    }
-
-    .modal-backdrop {
-      background-color: transparent;
-      display: none;
-    }
-    
-    .modal-dialog {
-      top: 10%;
-      height: 90%;
-      display: flex !important;
-      justify-content: center;
-      align-items: center;
-      max-width: 90% !important;
-      width: 90% !important;
-      margin: 0 auto !important;
-    }
-    
-    .modal.fade {
-      background: rgba(0, 0, 0, 0.5);
-      height: 90% !important;
-    }
-    
-    .modal-content {
-      top: 0 !important;
-      width: 80% !important;
-      max-width: 80% !important;
-      max-height: 100% !important;
-    }
-
-    /* ===== SIDEBAR ===== */
-    .sidebar{
-      width: var(--sidebar-width);
-      height: 100vh;
-      position: fixed; left:0; top:0;
-      z-index:1000;
-      background: var(--white-color);
-      box-shadow: none;
-      overflow-y: auto;
-      transition: width .25s ease;
-      display:flex; flex-direction:column;
-      padding:20px 0;
-    }
-    .sidebar.hide-scrollbars::-webkit-scrollbar{ width:0; height:0; }
-    .sidebar{ -ms-overflow-style: none; scrollbar-width: none; }
-
-    .sidebar.collapsed{ width: var(--sidebar-width-collapsed); }
-
-    .profile{ display:flex; flex-direction:column; align-items:center; gap:8px; padding: 0 12px; }
-    .profile .icon-button{
-      width: 44px; height:44px; border-radius:12px;
-      border:0; background: var(--white-color); cursor:pointer;
-      display:flex; align-items:center; justify-content:center;
-      box-shadow: var(--shadow-sm);
-    }
-    .avatar{
-      width:60px; height:60px; border-radius:50%;
-      background: var(--white-color) center/cover no-repeat;
-      box-shadow: var(--shadow);
-    }
-    .username{ font-weight:600; color: var(--secondary-color); text-align:center; word-break:break-word; }
-    .user-function{ font-size:12px; color: var(--secondary-color); }
-
-    .menu{ padding:0 15px; display:flex; flex-direction:column; gap:6px; flex:1; overflow-y:auto;}
-    .accordion-menu{ margin-bottom:6px; }
-    .accordion-header{
-      display:flex; align-items:center; gap:8px;
-      padding:8px 12px; border-radius:8px; cursor:pointer;
-      background: var(--white-color);
-      box-shadow: var(--shadow-sm);
-      font-size:13px; color: var(--secondary-color); font-weight:500;
-    }
-    .accordion-header:hover{ background: var(--gray-light); }
-    .accordion-arrow{ margin-left:auto; transition: transform .25s ease; }
-    .accordion-menu.open .accordion-arrow{ transform: rotate(180deg); }
-    .accordion-content{ max-height:0; overflow:hidden; transition:max-height .25s ease; margin-top:5px; }
-    .accordion-menu.open .accordion-content{ max-height: 360px; }
-
-    .submenu-item{
-      display:flex; align-items:center; gap:8px;
-      background: var(--gray-light); color: var(--gray-dark); text-decoration:none;
-      padding:6px 12px 6px 18px; border-radius:6px;
-      box-shadow: var(--shadow-sm);
-      font-size:12px;
-    }
-    .submenu-item:hover{ background: color-mix(in srgb, var(--gray-light) 80%, var(--primary-light) 20%); color: var(--secondary-color); }
-    .submenu-item.active{ background: var(--primary-color); color: var(--secondary-color); }
-    .submenu-item .icon{ width:14px; text-align:center; }
-
-    .more-button{
-      display:flex; align-items:center; justify-content:center; gap:8px;
-      padding:6px 12px; border-radius:8px; border:0; cursor:pointer;
-      background: var(--white-color); color: var(--gray-dark); width:100%;
-      box-shadow: var(--shadow-sm);
-    }
-    .more-button:hover{ background: var(--gray-light); }
-
-    /* Menu réduit */
-    .top-icons, .menu-icons, .bottom-icon{ display:none; }
-    .sidebar.collapsed .profile,
-    .sidebar.collapsed .menu,
-    .sidebar.collapsed .footer{ display:none !important; }
-
-    .sidebar.collapsed .top-icons,
-    .sidebar.collapsed .menu-icons,
-    .sidebar.collapsed .bottom-icon{
-      display:flex; flex-direction:column; gap:18px; align-items:center;
-    }
-    .menu-icons{ padding-top: 8px; flex:1; }
-
-    .icon-button{
-      width:40px; height:40px; border-radius:10px;
-      display:flex; align-items:center; justify-content:center;
-      background: var(--white-color); color: var(--secondary-color); text-decoration:none; cursor:pointer;
-      border:0; box-shadow: var(--shadow-sm);
-    }
-    .icon-button:hover{ background: var(--gray-light); }
-
-    /* ===== HEADER & FOOTER ===== */
-    .header-neumorphism{
-      position: fixed; top:0; right:0; left: var(--sidebar-width);
-      z-index: 999; background: var(--white-color); padding:6px 12px;
-      display:flex; align-items:center; justify-content:space-between;
-      transition: left .25s ease; box-shadow: var(--shadow);
-    }
-    .footer-neumorphism{
-      position: fixed; bottom:0; right:0; left: var(--sidebar-width);
-      z-index: 999; background: var(--white-color); padding:6px 12px;
-      transition: left .25s ease; box-shadow: var(--shadow);
-    }
-
-    .sidebar.collapsed ~ .header-neumorphism{ left: var(--sidebar-width-collapsed); }
-    .sidebar.collapsed ~ #content{ left: var(--sidebar-width-collapsed); }
-    .sidebar.collapsed ~ .footer-neumorphism{ left: var(--sidebar-width-collapsed); }
-
-    .header-neumorphism .logo img{ height: 24px; }
-    .header-neumorphism .username-title{
-      font-weight:600; font-size:20px; color: var(--gray-medium);
-      text-shadow: 1px 1px 2px var(--white-color), -1px -1px 2px var(--gray-light);
-    }
-    .header-neumorphism .user-info{ display:flex; align-items:center; gap:8px; }
-    .header-neumorphism .user-role{ color: var(--secondary-color); font-weight:500; font-size:14px; }
-    .header-neumorphism .avatar{
-      width:30px; height:30px; border-radius:50%;
-      background: var(--white-color) center/cover no-repeat;
-      box-shadow: var(--shadow-sm);
-    }
-    .logout-button{
-      background: var(--white-color); border:none; padding:4px 10px; font-size:14px; border-radius:14px; cursor:pointer;
-      box-shadow: var(--shadow-sm); color: var(--secondary-color); font-weight:500;
-    }
-    .logout-button:hover{ background: var(--gray-light); }
-
-    /* ===== CONTENU ===== */
-    #content{
-      position: fixed;
-      top:0; right:0; bottom:0; left: var(--sidebar-width);
-      background: var(--white-color);
-      overflow-y:auto; /* scroll interne */
-      padding-top:60px; padding-bottom:60px;
-      transition: left .25s ease;
-    }
-    #content.hide-scrollbars::-webkit-scrollbar{ width:0; height:0; }
-    #content{ -ms-overflow-style: none; scrollbar-width: none; }
-
-    /* ===== FOOTER étendu ===== */
-    .footer{
-      text-align:center; font-size:11px; color: var(--gray-dark); padding:10px;
-      border-top:1px solid var(--gray-light); background: var(--gray-light); width:100%;
-    }
-    .footer .dropdown-toggle{ color: var(--gray-dark) !important; }
-    .footer .dropdown-toggle:hover{ background: color-mix(in srgb, var(--gray-light) 80%, var(--primary-light) 20%); color: var(--secondary-color) !important; }
-
-    /* ===== OVERLAYS ===== */
-    .more-menu-overlay{
-      position: fixed; z-index: 3000 !important;
-      background: var(--white-color);
-      border-radius: 10px;
-      box-shadow: var(--shadow-lg);
-      padding: 12px; min-width: 180px;
-      border: 1px solid color-mix(in srgb, var(--secondary-color) 10%, transparent);
-    }
-    .more-menu-overlay a{
-      display:flex; align-items:center; gap:10px;
-      padding:8px 12px; color: var(--secondary-color); text-decoration:none; border-radius:8px;
-      transition:background .2s;
-    }
-    .more-menu-overlay a:hover{ background: var(--gray-light); }
-    .more-menu-title{
-      font-weight: 700; color: var(--primary-color); margin-bottom:8px; text-align:center;
-    }
-
-    /* ===== Responsive ===== */
-    @media (max-width: 768px){
-      .sidebar{
-        width: 100%; height:auto; position: fixed; top:0; transform: translateY(-100%);
-        left:0; right:0; background: var(--white-color);
-      }
-      .sidebar.active{ transform: translateY(0); }
-      .header-neumorphism, #content, .footer-neumorphism{ left:0 !important; }
+    :root {
+      {% if settings and settings.THEME_PRIMARY %}--primary-color: {{ settings.THEME_PRIMARY }};{% endif %}
+      {% if settings and settings.THEME_SECONDARY %}--secondary-color: {{ settings.THEME_SECONDARY }};{% endif %}
     }
   </style>
 
@@ -303,8 +66,8 @@
           <a href="/ACD/inscriptions/form?programme=ACD" class="submenu-item {% if '/ACD/inscriptions' in request.url.path %}active{% endif %}">
             <div class="icon"><i class="fas fa-project-diagram"></i></div><div>Inscriptions</div>
           </a>
-           <a href="" class="submenu-item {% if '/audit-points' in request.url.path %}active{% endif %}">
-            <div class="icon"><i class="fas fa-tasks"></i></div><div>Rendez-vous</div>
+          <a href="/rendez-vous" class="submenu-item {% if '/rendez-vous' in request.url.path %}active{% endif %}">
+            <div class="icon"><i class="fas fa-calendar-alt"></i></div><div>Rendez-vous</div>
           </a>
           <a href="" class="submenu-item {% if '/financial' in request.url.path %}active{% endif %}">
             <div class="icon"><i class="fas fa-chart-line"></i></div><div>Séminaires</div>
@@ -338,8 +101,8 @@
           <a href="" class="submenu-item {% if '/engagements' in request.url.path %}active{% endif %}">
             <div class="icon"><i class="fas fa-project-diagram"></i></div><div>Inscriptions</div>
           </a>
-           <a href="" class="submenu-item {% if '/audit-points' in request.url.path %}active{% endif %}">
-            <div class="icon"><i class="fas fa-tasks"></i></div><div>Rendez-vous</div>
+          <a href="/rendez-vous" class="submenu-item {% if '/rendez-vous' in request.url.path %}active{% endif %}">
+            <div class="icon"><i class="fas fa-calendar-alt"></i></div><div>Rendez-vous</div>
           </a>
           <a href="" class="submenu-item {% if '/financial' in request.url.path %}active{% endif %}">
             <div class="icon"><i class="fas fa-chart-line"></i></div><div>Séminaires</div>
@@ -603,7 +366,7 @@
         <a href="/ACD/dashboard"><i class="fas fa-tachometer-alt"></i><span>Tableau de bord</span></a>
         <a href="/ACD/preinscriptions/form?programme=ACD"><i class="fas fa-building"></i><span>Préinscriptions</span></a>
         <a href="/ACD/inscriptions/form?programme=ACD"><i class="fas fa-project-diagram"></i><span>Inscriptions</span></a>
-        <a href="#"><i class="fas fa-tasks"></i><span>Rendez-vous</span></a>
+        <a href="/rendez-vous"><i class="fas fa-calendar-alt"></i><span>Rendez-vous</span></a>
         <a href="#"><i class="fas fa-chart-line"></i><span>Séminaires</span></a>
         <a href="#"><i class="fas fa-file-alt"></i><span>Codev</span></a>
         <a href="#"><i class="fas fa-file-alt"></i><span>Webinaire</span></a>
@@ -616,7 +379,7 @@
         <a href="#"><i class="fas fa-tachometer-alt"></i><span>Tableau de bord</span></a>
         <a href="#"><i class="fas fa-building"></i><span>Préinscriptions</span></a>
         <a href="#"><i class="fas fa-project-diagram"></i><span>Inscriptions</span></a>
-        <a href="#"><i class="fas fa-tasks"></i><span>Rendez-vous</span></a>
+        <a href="/rendez-vous"><i class="fas fa-calendar-alt"></i><span>Rendez-vous</span></a>
         <a href="#"><i class="fas fa-chart-line"></i><span>Séminaires</span></a>
         <a href="#"><i class="fas fa-file-alt"></i><span>Codev</span></a>
         <a href="#"><i class="fas fa-file-alt"></i><span>Webinaire</span></a>

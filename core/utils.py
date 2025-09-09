@@ -5,8 +5,10 @@ import os
 import json
 import logging
 import shutil
+import base64
 from typing import Optional, Dict, Any, List
 from datetime import datetime, date
+from pathlib import Path
 import requests
 from fastapi import UploadFile
 from ..core.config import settings
@@ -184,22 +186,376 @@ class EligibilityUtils:
             }
 
 
+class MediaUtils:
+    """Utilitaires pour la gestion des médias (images, vidéos, etc.)"""
+    
+    @staticmethod
+    def encode_image_base64(image_path: str) -> str:
+        """Encode une image en base64 pour l'email ou l'affichage web"""
+        try:
+            image_file_path = Path(image_path)
+            if image_file_path.exists():
+                # Vérifier la taille du fichier
+                file_size = image_file_path.stat().st_size
+                logger.info(f"🔍 Taille du fichier: {file_size} bytes ({file_size/1024:.1f} KB)")
+                
+                with open(image_file_path, "rb") as image_file:
+                    image_data = image_file.read()
+                    encoded_string = base64.b64encode(image_data).decode('utf-8')
+                    
+                    # Détecter le type MIME basé sur l'extension
+                    extension = image_file_path.suffix.lower()
+                    mime_type = {
+                        '.png': 'image/png',
+                        '.jpg': 'image/jpeg',
+                        '.jpeg': 'image/jpeg',
+                        '.gif': 'image/gif',
+                        '.webp': 'image/webp',
+                        '.svg': 'image/svg+xml',
+                        '.bmp': 'image/bmp',
+                        '.tiff': 'image/tiff'
+                    }.get(extension, 'image/png')
+                    
+                    result = f"data:{mime_type};base64,{encoded_string}"
+                    logger.info(f"🔍 Base64 final: {len(result)} caractères")
+                    return result
+            else:
+                logger.warning(f"Image non trouvée à {image_path}")
+                return ""
+        except Exception as e:
+            logger.error(f"Erreur lors de l'encodage de l'image {image_path}: {e}")
+            return ""
+    
+    @staticmethod
+    def encode_logo_base64() -> str:
+        """Encode le logo de l'entreprise en base64 pour l'email (redimensionné)"""
+        logo_path = Path(__file__).parent.parent / "static" / "images" / "logo.png"
+        logger.info(f"🔍 Chemin du logo: {logo_path}")
+        logger.info(f"🔍 Logo existe: {logo_path.exists()}")
+        
+        # Redimensionner le logo pour l'email (max 200px de largeur)
+        try:
+            from PIL import Image
+            import io
+            
+            with Image.open(logo_path) as img:
+                # Calculer les nouvelles dimensions (max 100px de largeur pour email)
+                max_width = 100
+                if img.width > max_width:
+                    ratio = max_width / img.width
+                    new_height = int(img.height * ratio)
+                    img = img.resize((max_width, new_height), Image.Resampling.LANCZOS)
+                    logger.info(f"🔍 Logo redimensionné: {img.width}x{img.height}")
+                
+                # Convertir en PNG optimisé pour l'email
+                buffer = io.BytesIO()
+                img.save(buffer, format='PNG', optimize=True)
+                image_data = buffer.getvalue()
+                
+                # Encoder en base64
+                encoded_string = base64.b64encode(image_data).decode('utf-8')
+                result = f"data:image/png;base64,{encoded_string}"
+                
+                logger.info(f"🔍 Base64 final (redimensionné): {len(result)} caractères")
+                return result
+                
+        except ImportError:
+            logger.warning("PIL/Pillow non installé - utilisation du logo original")
+            return MediaUtils.encode_image_base64(str(logo_path))
+        except Exception as e:
+            logger.error(f"Erreur lors du redimensionnement du logo: {e}")
+            return MediaUtils.encode_image_base64(str(logo_path))
+    
+    @staticmethod
+    def get_image_dimensions(image_path: str) -> tuple[int, int]:
+        """Retourne les dimensions d'une image (largeur, hauteur)"""
+        try:
+            from PIL import Image
+            with Image.open(image_path) as img:
+                return img.size
+        except ImportError:
+            logger.warning("PIL/Pillow non installé - impossible de récupérer les dimensions")
+            return (0, 0)
+        except Exception as e:
+            logger.error(f"Erreur lors de la récupération des dimensions de {image_path}: {e}")
+            return (0, 0)
+    
+    @staticmethod
+    def resize_image_base64(image_base64: str, max_width: int = 800, max_height: int = 600) -> str:
+        """Redimensionne une image encodée en base64"""
+        try:
+            from PIL import Image
+            import io
+            
+            # Décoder le base64
+            header, data = image_base64.split(',', 1)
+            image_data = base64.b64decode(data)
+            
+            # Ouvrir l'image
+            with Image.open(io.BytesIO(image_data)) as img:
+                # Calculer les nouvelles dimensions
+                img.thumbnail((max_width, max_height), Image.Resampling.LANCZOS)
+                
+                # Réencoder en base64
+                buffer = io.BytesIO()
+                img.save(buffer, format='PNG')
+                resized_data = base64.b64encode(buffer.getvalue()).decode('utf-8')
+                
+                return f"data:image/png;base64,{resized_data}"
+        except ImportError:
+            logger.warning("PIL/Pillow non installé - retour de l'image originale")
+            return image_base64
+        except Exception as e:
+            logger.error(f"Erreur lors du redimensionnement de l'image: {e}")
+            return image_base64
+
+
 class EmailUtils:
     """Utilitaires pour l'envoi d'emails"""
     
     @staticmethod
+    def envoyer_mail(to_email: str, objet: str, corps_html: str, corps_texte: str = None) -> bool:
+        """Méthode générique pour envoyer un email"""
+        try:
+            import smtplib
+            from email.mime.text import MIMEText
+            from email.mime.multipart import MIMEMultipart
+            
+            # Créer le message
+            msg = MIMEMultipart('alternative')
+            msg['Subject'] = objet
+            msg['From'] = settings.MAIL_FROM
+            msg['To'] = to_email
+            
+            # Ajouter la partie texte si fournie
+            if corps_texte:
+                part1 = MIMEText(corps_texte, 'plain', 'utf-8')
+                msg.attach(part1)
+            
+            # Ajouter la partie HTML
+            part2 = MIMEText(corps_html, 'html', 'utf-8')
+            msg.attach(part2)
+            
+            # Debug du contenu HTML
+            logger.info(f"🔍 HTML contient 'data:image': {'data:image' in corps_html}")
+            logger.info(f"🔍 HTML contient 'base64': {'base64' in corps_html}")
+            
+            # Envoyer l'email
+            if not settings.SMTP_USER or not settings.SMTP_PASSWORD:
+                logger.warning("Configuration SMTP manquante - simulation d'envoi d'email")
+                logger.info(f"📧 EMAIL SIMULÉ - {objet} pour {to_email}")
+                logger.info(f"🔍 Extrait HTML (premiers 200 chars): {corps_html[:200]}")
+                return True
+            
+            # Connexion SMTP
+            with smtplib.SMTP(settings.SMTP_HOST, settings.SMTP_PORT) as server:
+                server.starttls()
+                server.login(settings.SMTP_USER, settings.SMTP_PASSWORD)
+                server.send_message(msg)
+            
+            logger.info(f"✅ Email envoyé à {to_email}: {objet}")
+            return True
+            
+        except Exception as e:
+            logger.error(f"❌ Erreur lors de l'envoi de l'email: {e}")
+            return False
+    
+    @staticmethod
+    def send_rdv_invitation(to_email: str, 
+                           candidat_nom: str, 
+                           candidat_prenom: str,
+                           rdv_id: int,
+                           rdv_date: str,
+                           rdv_type: str,
+                           programme_nom: str,
+                           conseiller_nom: str = "Conseiller non assigné") -> bool:
+        """Envoie un email d'invitation pour un rendez-vous vidéo"""
+        
+        # Générer le lien d'invitation
+        base_url_clean = settings.get_base_url_for_email()
+        invitation_link = f"{base_url_clean}/video-rdv/{rdv_id}/invitation/candidat"
+        
+        # Encoder le logo en base64 pour l'email
+        logo_base64 = MediaUtils.encode_logo_base64()
+        
+        # Fabriquer l'objet
+        objet = f"Invitation à votre rendez-vous vidéo - {programme_nom}"
+        
+        # Fabriquer le corps HTML
+        corps_html = f"""
+        <!DOCTYPE html>
+        <html>
+        <head>
+            <meta charset="UTF-8">
+            <title>Invitation à votre rendez-vous vidéo</title>
+            <style>
+                body {{
+                    font-family: Arial, sans-serif;
+                    background-color: {settings.THEME_SECONDARY};
+                    line-height: 1.6;
+                    color: {settings.THEME_WHITE};
+                    max-width: 600px;
+                    margin: 0 auto;
+                    padding: 20px;
+                }}
+                .header {{
+                    background-color: {settings.THEME_PRIMARY};
+                    color: {settings.THEME_SECONDARY};
+                    padding: 20px;
+                    text-align: center;
+                    border-radius: 10px 10px 0 0;
+                }}
+                .header img {{
+                    height: 60px;
+                    margin-bottom: 10px;
+                }}
+                .content {{
+                    background-color: {settings.THEME_WHITE};
+                    color: #333;
+                    padding: 30px;
+                    border-radius: 0 0 10px 10px;
+                }}
+                .info-box {{
+                    background-color: #f8f9fa;
+                    border-left: 4px solid {settings.THEME_PRIMARY};
+                    padding: 15px;
+                    margin: 20px 0;
+                    border-radius: 5px;
+                }}
+                .btn {{
+                    display: inline-block;
+                    background-color: {settings.THEME_PRIMARY};
+                    color: {settings.THEME_SECONDARY};
+                    padding: 15px 30px;
+                    text-decoration: none;
+                    border-radius: 5px;
+                    font-weight: bold;
+                    margin: 20px 0;
+                }}
+                .btn:hover {{
+                    background-color: {settings.THEME_SECONDARY};
+                    color: {settings.THEME_PRIMARY};
+                }}
+                .footer {{
+                    text-align: center;
+                    margin-top: 30px;
+                    color: #666;
+                    font-size: 12px;
+                }}
+            </style>
+        </head>
+        <body>
+            <div class="header">
+                <img src="https://cdn.jaimelesstartups.fr/wp-content/uploads/2022/12/logo-my-creo-academy-1500x928.png" alt="LIA Coaching">
+                <h2>Invitation Rendez-vous Vidéo</h2>
+            </div>
+            
+            <div class="content">
+                <p>Bonjour <strong>{candidat_prenom} {candidat_nom}</strong>,</p>
+                
+                <p>Vous êtes invité(e) à participer à votre rendez-vous vidéo de coaching via <strong>Visioconférence</strong>.</p>
+                
+                <div class="info-box">
+                    <h3>📋 Détails du rendez-vous</h3>
+                    <p><strong>Programme :</strong> {programme_nom}</p>
+                    <p><strong>Type :</strong> {rdv_type}</p>
+                    <p><strong>Date :</strong> {rdv_date}</p>
+                    <p><strong>Conseiller :</strong> {conseiller_nom}</p>
+                </div>
+                
+                <p>Pour rejoindre votre rendez-vous vidéo, cliquez simplement sur le bouton ci-dessous :</p>
+                
+                <div style="text-align: center;">
+                    <a href="{invitation_link}" class="btn">🎬 Rejoindre LIA Coaching</a>
+                </div>
+                
+                <div class="info-box">
+                    <h3>💡 Instructions</h3>
+                    <ul>
+                        <li>Cliquez sur le bouton "Rejoindre LIA Coaching" ci-dessus</li>
+                        <li>Autorisez l'accès à votre caméra et microphone</li>
+                        <li>Vous pouvez utiliser LIA Coaching depuis votre navigateur</li>
+                        <li>Assurez-vous d'avoir une connexion internet stable</li>
+                        <li>Testez votre équipement avant le rendez-vous</li>
+                    </ul>
+                </div>
+                
+                <p><strong>Lien direct :</strong> <a href="{invitation_link}">{invitation_link}</a></p>
+            </div>
+            
+            <div class="footer">
+                <p>Cet email a été envoyé automatiquement par le système LIA Coaching.</p>
+                <p>Si vous avez des questions, n'hésitez pas à contacter votre conseiller.</p>
+            </div>
+        </body>
+        </html>
+        """
+        
+        # Fabriquer le corps texte
+        corps_texte = f"""
+        Bonjour {candidat_prenom} {candidat_nom},
+        
+        Vous êtes invité(e) à participer à votre rendez-vous vidéo de coaching.
+        
+        Détails du rendez-vous :
+        - Programme : {programme_nom}
+        - Type : {rdv_type}
+        - Date : {rdv_date}
+        - Conseiller : {conseiller_nom}
+        
+        Pour rejoindre votre rendez-vous vidéo, cliquez sur ce lien :
+        {invitation_link}
+        
+        Instructions :
+        - Cliquez sur le lien ci-dessus pour rejoindre la visioconférence
+        - Assurez-vous que votre micro et votre caméra fonctionnent
+        - Rejoignez quelques minutes avant l'heure prévue
+        - En cas de problème technique, contactez votre conseiller
+        
+        Cet email a été envoyé automatiquement par le système LIA Coaching.
+        Si vous avez des questions, n'hésitez pas à contacter votre conseiller.
+        """
+        
+        # Appeler la méthode générique
+        return EmailUtils.envoyer_mail(to_email, objet, corps_html, corps_texte)
+    
+    @staticmethod
     def send_welcome_email(email: str, nom: str, programme: str) -> bool:
         """Envoie un email de bienvenue"""
-        # TODO: Implémenter l'envoi d'email
-        logger.info(f"Email de bienvenue envoyé à {email} pour le programme {programme}")
-        return True
+        objet = f"Bienvenue dans le programme {programme}"
+        
+        corps_html = f"""
+        <html>
+        <body>
+            <h1>Bienvenue {nom} !</h1>
+            <p>Vous êtes maintenant inscrit au programme {programme}.</p>
+        </body>
+        </html>
+        """
+        
+        corps_texte = f"Bienvenue {nom} ! Vous êtes maintenant inscrit au programme {programme}."
+        
+        return EmailUtils.envoyer_mail(email, objet, corps_html, corps_texte)
     
     @staticmethod
     def send_inscription_confirmation(email: str, nom: str, programme: str, conseiller: str) -> bool:
         """Envoie un email de confirmation d'inscription"""
-        # TODO: Implémenter l'envoi d'email
-        logger.info(f"Email de confirmation d'inscription envoyé à {email}")
-        return True
+        objet = f"Confirmation d'inscription - {programme}"
+        
+        corps_html = f"""
+        <html>
+        <body>
+            <h1>Confirmation d'inscription</h1>
+            <p>Bonjour {nom},</p>
+            <p>Votre inscription au programme {programme} a été confirmée.</p>
+            <p>Votre conseiller : {conseiller}</p>
+        </body>
+        </html>
+        """
+        
+        corps_texte = f"Bonjour {nom}, votre inscription au programme {programme} a été confirmée. Votre conseiller : {conseiller}"
+        
+        return EmailUtils.envoyer_mail(email, objet, corps_html, corps_texte)
 
 
 class JsonUtils:

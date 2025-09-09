@@ -180,6 +180,16 @@ class Settings(BaseSettings):
         return f"{base_url}/media/{path.lstrip('/')}"
 
     @staticmethod
+    def get_base_url_for_email() -> str:
+        """Génère l'URL de base pour les emails selon l'environnement"""
+        environnement = os.environ.get('ENVIRONNEMENT', 'development').lower()
+        
+        if environnement == 'production':
+            return "https://mca-services.onrender.com"
+        else:
+            return "http://localhost:8000"
+
+    @staticmethod
     def get_static_url(path: str) -> str:
         """Génère une URL pour les ressources statiques selon l'environnement"""
         # Détecter l'environnement

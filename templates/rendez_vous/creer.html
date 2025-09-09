@@ -1,0 +1,221 @@
+{% extends "base.html" %}
+
+{% block title %}Créer un Rendez-vous{% endblock %}
+
+{% block content %}
+<div class="container-fluid">
+    <div class="row">
+        <div class="col-12">
+            <div class="card">
+                <div class="card-header">
+                    <h3 class="card-title mb-0">
+                        <i class="fas fa-plus me-2"></i>
+                        Créer un Nouveau Rendez-vous
+                    </h3>
+                </div>
+                
+                <div class="card-body">
+                    <form method="post" action="/rendez-vous/creer">
+                        <div class="row">
+                            <div class="col-md-6">
+                                <div class="mb-3">
+                                    <label for="inscription_id" class="form-label">Candidat *</label>
+                                    <select name="inscription_id" id="inscription_id" class="form-select" required>
+                                        <option value="">Sélectionner un candidat</option>
+                                        {% if inscription %}
+                                        <option value="{{ inscription.id }}" selected>
+                                            {{ candidat.prenom }} {{ candidat.nom }} - {{ inscription.programme.nom }}
+                                        </option>
+                                        {% endif %}
+                                        {% for candidat_item in candidats %}
+                                        <option value="{{ candidat_item.inscription_id }}" 
+                                                data-candidat-id="{{ candidat_item.candidat_id }}"
+                                                data-programme-nom="{{ candidat_item.programme_nom }}"
+                                                data-entreprise-nom="{{ candidat_item.entreprise_nom }}"
+                                                {% if inscription and candidat_item.inscription_id == inscription.id %}selected{% endif %}>
+                                            {{ candidat_item.nom_complet }} - {{ candidat_item.programme_nom }}
+                                        </option>
+                                        {% endfor %}
+                                    </select>
+                                    <div class="form-text">
+                                        <i class="fas fa-info-circle me-1"></i>
+                                        {{ candidats|length }} candidat(s) validé(s) disponible(s)
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="col-md-6">
+                                <div class="mb-3">
+                                    <label for="conseiller_id" class="form-label">Conseiller</label>
+                                    <select name="conseiller_id" id="conseiller_id" class="form-select">
+                                        <option value="">Aucun conseiller assigné</option>
+                                        {% for conseiller in conseillers %}
+                                        <option value="{{ conseiller.id }}">{{ conseiller.nom_complet }}</option>
+                                        {% endfor %}
+                                    </select>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="row">
+                            <div class="col-md-4">
+                                <div class="mb-3">
+                                    <label for="type_rdv" class="form-label">Type de rendez-vous *</label>
+                                    <select name="type_rdv" id="type_rdv" class="form-select" required>
+                                        {% for type_rdv in types_rdv %}
+                                        <option value="{{ type_rdv }}">
+                                            {% if type_rdv == 'entretien' %}
+                                                <i class="fas fa-comments"></i> Entretien
+                                            {% elif type_rdv == 'suivi' %}
+                                                <i class="fas fa-chart-line"></i> Suivi
+                                            {% elif type_rdv == 'coaching' %}
+                                                <i class="fas fa-user-tie"></i> Coaching
+                                            {% else %}
+                                                <i class="fas fa-question"></i> Autre
+                                            {% endif %}
+                                        </option>
+                                        {% endfor %}
+                                    </select>
+                                </div>
+                            </div>
+                            <div class="col-md-4">
+                                <div class="mb-3">
+                                    <label for="statut" class="form-label">Statut *</label>
+                                    <select name="statut" id="statut" class="form-select" required>
+                                        {% for statut in statuts_rdv %}
+                                        <option value="{{ statut }}" {% if statut == 'planifie' %}selected{% endif %}>
+                                            {% if statut == 'planifie' %}
+                                                <i class="fas fa-clock"></i> Planifié
+                                            {% elif statut == 'termine' %}
+                                                <i class="fas fa-check"></i> Terminé
+                                            {% elif statut == 'annule' %}
+                                                <i class="fas fa-times"></i> Annulé
+                                            {% endif %}
+                                        </option>
+                                        {% endfor %}
+                                    </select>
+                                </div>
+                            </div>
+                            <div class="col-md-4">
+                                <div class="mb-3">
+                                    <label for="lieu" class="form-label">Lieu</label>
+                                    <input type="text" name="lieu" id="lieu" class="form-control" placeholder="Ex: Bureau 101, Salle de réunion...">
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="row">
+                            <div class="col-md-6">
+                                <div class="mb-3">
+                                    <label for="debut" class="form-label">Date et heure de début *</label>
+                                    <input type="datetime-local" name="debut" id="debut" class="form-control" required>
+                                </div>
+                            </div>
+                            <div class="col-md-6">
+                                <div class="mb-3">
+                                    <label for="fin" class="form-label">Date et heure de fin</label>
+                                    <input type="datetime-local" name="fin" id="fin" class="form-control">
+                                    <div class="form-text">Laisser vide pour une durée par défaut</div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="row">
+                            <div class="col-12">
+                                <div class="mb-3">
+                                    <label for="notes" class="form-label">Notes</label>
+                                    <textarea name="notes" id="notes" class="form-control" rows="4" placeholder="Notes sur le rendez-vous, objectifs, points à aborder..."></textarea>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Informations du candidat sélectionné -->
+                        {% if candidat %}
+                        <div class="alert alert-info" id="candidat-info">
+                            <h6><i class="fas fa-user me-2"></i>Informations du candidat</h6>
+                            <div class="row">
+                                <div class="col-md-6">
+                                    <strong>Nom complet:</strong> {{ candidat.prenom }} {{ candidat.nom }}<br>
+                                    <strong>Email:</strong> {{ candidat.email }}<br>
+                                    <strong>Téléphone:</strong> {{ candidat.telephone or '-' }}
+                                </div>
+                                <div class="col-md-6">
+                                    <strong>Programme:</strong> {{ inscription.programme.nom }}<br>
+                                    <strong>Entreprise:</strong> {{ candidat.entreprise.nom if candidat.entreprise else '-' }}<br>
+                                    <strong>Date d'inscription:</strong> {{ inscription.cree_le.strftime('%d/%m/%Y') }}
+                                </div>
+                            </div>
+                        </div>
+                        {% else %}
+                        <div class="alert alert-info" id="candidat-info" style="display: none;">
+                            <h6><i class="fas fa-user me-2"></i>Informations du candidat</h6>
+                            <div class="row">
+                                <div class="col-md-6">
+                                    <strong>Nom complet:</strong> <span id="candidat-nom">-</span><br>
+                                    <strong>Programme:</strong> <span id="candidat-programme">-</span>
+                                </div>
+                                <div class="col-md-6">
+                                    <strong>Entreprise:</strong> <span id="candidat-entreprise">-</span>
+                                </div>
+                            </div>
+                        </div>
+                        {% endif %}
+
+                        <div class="d-flex justify-content-between">
+                            <a href="/rendez-vous" class="btn btn-secondary">
+                                <i class="fas fa-arrow-left me-1"></i>
+                                Retour à la liste
+                            </a>
+                            <button type="submit" class="btn btn-primary">
+                                <i class="fas fa-save me-1"></i>
+                                Créer le rendez-vous
+                            </button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+// Gestion de la sélection des candidats
+document.addEventListener('DOMContentLoaded', function() {
+    const inscriptionSelect = document.getElementById('inscription_id');
+    const candidatInfo = document.getElementById('candidat-info');
+    
+    // Gérer le changement de sélection
+    inscriptionSelect.addEventListener('change', function() {
+        const selectedOption = this.options[this.selectedIndex];
+        
+        if (selectedOption.value && selectedOption.dataset.programmeNom) {
+            // Afficher les informations du candidat sélectionné
+            document.getElementById('candidat-nom').textContent = selectedOption.textContent.split(' - ')[0];
+            document.getElementById('candidat-programme').textContent = selectedOption.dataset.programmeNom;
+            document.getElementById('candidat-entreprise').textContent = selectedOption.dataset.entrepriseNom;
+            
+            candidatInfo.style.display = 'block';
+        } else {
+            // Masquer les informations si aucun candidat sélectionné
+            candidatInfo.style.display = 'none';
+        }
+    });
+    
+    // Calcul automatique de l'heure de fin
+    const debutInput = document.getElementById('debut');
+    const finInput = document.getElementById('fin');
+    
+    debutInput.addEventListener('change', function() {
+        if (this.value && !finInput.value) {
+            const debut = new Date(this.value);
+            const fin = new Date(debut.getTime() + 60 * 60 * 1000); // +1 heure par défaut
+            finInput.value = fin.toISOString().slice(0, 16);
+        }
+    });
+    
+    // Déclencher l'événement change au chargement si un candidat est déjà sélectionné
+    if (inscriptionSelect.value) {
+        inscriptionSelect.dispatchEvent(new Event('change'));
+    }
+});
+</script>
+{% endblock %}

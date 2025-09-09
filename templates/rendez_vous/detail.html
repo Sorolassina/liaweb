@@ -1,0 +1,312 @@
+{% extends "base.html" %}
+
+{% block title %}Rendez-vous - {{ rdv.candidat_prenom }} {{ rdv.candidat_nom }}{% endblock %}
+
+{% block content %}
+<div class="container-fluid">
+    <div class="row">
+        <div class="col-12">
+            <div class="card">
+                <div class="card-header d-flex justify-content-between align-items-center">
+                    <h3 class="card-title mb-0">
+                        <i class="fas fa-calendar-alt me-2"></i>
+                        Rendez-vous - {{ rdv.candidat_prenom }} {{ rdv.candidat_nom }}
+                    </h3>
+                    <div class="btn-group">
+                        <a href="/rendez-vous" class="btn btn-secondary">
+                            <i class="fas fa-arrow-left me-1"></i>
+                            Retour à la liste
+                        </a>
+                        <button type="button" class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#editModal">
+                            <i class="fas fa-edit me-1"></i>
+                            Modifier
+                        </button>
+                    </div>
+                </div>
+                
+                <div class="card-body">
+                    <div class="row">
+                        <!-- Informations principales -->
+                        <div class="col-md-8">
+                            <div class="card">
+                                <div class="card-header">
+                                    <h5 class="card-title mb-0">
+                                        <i class="fas fa-info-circle me-2"></i>
+                                        Informations du rendez-vous
+                                    </h5>
+                                </div>
+                                <div class="card-body">
+                                    <div class="row">
+                                        <div class="col-md-6">
+                                            <div class="mb-3">
+                                                <label class="form-label fw-bold">Date et heure</label>
+                                                <p class="mb-0">
+                                                    <i class="fas fa-calendar me-2"></i>
+                                                    {{ rdv.debut.strftime('%d/%m/%Y à %H:%M') }}
+                                                    {% if rdv.fin %}
+                                                        - {{ rdv.fin.strftime('%H:%M') }}
+                                                    {% endif %}
+                                                </p>
+                                            </div>
+                                        </div>
+                                        <div class="col-md-6">
+                                            <div class="mb-3">
+                                                <label class="form-label fw-bold">Type</label>
+                                                <p class="mb-0">
+                                                    {% if rdv.type_rdv == 'entretien' %}
+                                                        <span class="badge bg-info">
+                                                            <i class="fas fa-comments me-1"></i>Entretien
+                                                        </span>
+                                                    {% elif rdv.type_rdv == 'suivi' %}
+                                                        <span class="badge bg-info">
+                                                            <i class="fas fa-chart-line me-1"></i>Suivi
+                                                        </span>
+                                                    {% elif rdv.type_rdv == 'coaching' %}
+                                                        <span class="badge bg-info">
+                                                            <i class="fas fa-user-tie me-1"></i>Coaching
+                                                        </span>
+                                                    {% else %}
+                                                        <span class="badge bg-info">
+                                                            <i class="fas fa-question me-1"></i>Autre
+                                                        </span>
+                                                    {% endif %}
+                                                </p>
+                                            </div>
+                                        </div>
+                                    </div>
+                                    
+                                    <div class="row">
+                                        <div class="col-md-6">
+                                            <div class="mb-3">
+                                                <label class="form-label fw-bold">Statut</label>
+                                                <p class="mb-0">
+                                                    {% if rdv.statut == 'planifie' %}
+                                                        <span class="badge bg-warning">
+                                                            <i class="fas fa-clock me-1"></i>Planifié
+                                                        </span>
+                                                    {% elif rdv.statut == 'termine' %}
+                                                        <span class="badge bg-success">
+                                                            <i class="fas fa-check me-1"></i>Terminé
+                                                        </span>
+                                                    {% elif rdv.statut == 'annule' %}
+                                                        <span class="badge bg-danger">
+                                                            <i class="fas fa-times me-1"></i>Annulé
+                                                        </span>
+                                                    {% endif %}
+                                                </p>
+                                            </div>
+                                        </div>
+                                        <div class="col-md-6">
+                                            <div class="mb-3">
+                                                <label class="form-label fw-bold">Lieu</label>
+                                                <p class="mb-0">
+                                                    <i class="fas fa-map-marker-alt me-2"></i>
+                                                    {{ rdv.lieu or 'Non spécifié' }}
+                                                </p>
+                                            </div>
+                                        </div>
+                                    </div>
+                                    
+                                    {% if rdv.notes %}
+                                    <div class="mb-3">
+                                        <label class="form-label fw-bold">Notes</label>
+                                        <div class="border rounded p-3 bg-light">
+                                            <div style="white-space: pre-wrap; font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; line-height: 1.6;">
+                                                {{ rdv.notes }}
+                                            </div>
+                                        </div>
+                                    </div>
+                                    {% endif %}
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <!-- Informations du candidat -->
+                        <div class="col-md-4">
+                            <div class="card">
+                                <div class="card-header">
+                                    <h5 class="card-title mb-0">
+                                        <i class="fas fa-user me-2"></i>
+                                        Informations du candidat
+                                    </h5>
+                                </div>
+                                <div class="card-body">
+                                    <div class="mb-3">
+                                        <label class="form-label fw-bold">Nom complet</label>
+                                        <p class="mb-0">{{ rdv.candidat_prenom }} {{ rdv.candidat_nom }}</p>
+                                    </div>
+                                    
+                                    <div class="mb-3">
+                                        <label class="form-label fw-bold">Email</label>
+                                        <p class="mb-0">
+                                            <a href="mailto:{{ rdv.candidat_email }}">
+                                                <i class="fas fa-envelope me-1"></i>
+                                                {{ rdv.candidat_email }}
+                                            </a>
+                                        </p>
+                                    </div>
+                                    
+                                    {% if rdv.candidat_telephone %}
+                                    <div class="mb-3">
+                                        <label class="form-label fw-bold">Téléphone</label>
+                                        <p class="mb-0">
+                                            <a href="tel:{{ rdv.candidat_telephone }}">
+                                                <i class="fas fa-phone me-1"></i>
+                                                {{ rdv.candidat_telephone }}
+                                            </a>
+                                        </p>
+                                    </div>
+                                    {% endif %}
+                                    
+                                    <div class="mb-3">
+                                        <label class="form-label fw-bold">Programme</label>
+                                        <p class="mb-0">{{ rdv.programme_nom }}</p>
+                                    </div>
+                                    
+                                    {% if rdv.entreprise_nom %}
+                                    <div class="mb-3">
+                                        <label class="form-label fw-bold">Entreprise</label>
+                                        <p class="mb-0">{{ rdv.entreprise_nom }}</p>
+                                    </div>
+                                    {% endif %}
+                                    
+                                    {% if rdv.conseiller_nom %}
+                                    <div class="mb-3">
+                                        <label class="form-label fw-bold">Conseiller assigné</label>
+                                        <p class="mb-0">{{ rdv.conseiller_nom }}</p>
+                                    </div>
+                                    {% endif %}
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Modal de modification -->
+<div class="modal fade" id="editModal" tabindex="-1" aria-labelledby="editModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-lg">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="editModalLabel">
+                    <i class="fas fa-edit me-2"></i>
+                    Modifier le rendez-vous
+                </h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <form method="post" action="/rendez-vous/{{ rdv.id }}/modifier">
+                <div class="modal-body">
+                    <div class="row">
+                        <div class="col-md-6">
+                            <div class="mb-3">
+                                <label for="conseiller_id" class="form-label">Conseiller</label>
+                                <select name="conseiller_id" id="conseiller_id" class="form-select">
+                                    <option value="">Aucun conseiller assigné</option>
+                                    {% for conseiller in conseillers %}
+                                    <option value="{{ conseiller.id }}" {% if rdv.conseiller_id == conseiller.id %}selected{% endif %}>
+                                        {{ conseiller.nom_complet }}
+                                    </option>
+                                    {% endfor %}
+                                </select>
+                            </div>
+                        </div>
+                        <div class="col-md-6">
+                            <div class="mb-3">
+                                <label for="type_rdv" class="form-label">Type de rendez-vous</label>
+                                <select name="type_rdv" id="type_rdv" class="form-select">
+                                    {% for type_rdv in types_rdv %}
+                                    <option value="{{ type_rdv }}" {% if rdv.type_rdv == type_rdv %}selected{% endif %}>
+                                        {% if type_rdv == 'entretien' %}
+                                            Entretien
+                                        {% elif type_rdv == 'suivi' %}
+                                            Suivi
+                                        {% elif type_rdv == 'coaching' %}
+                                            Coaching
+                                        {% else %}
+                                            Autre
+                                        {% endif %}
+                                    </option>
+                                    {% endfor %}
+                                </select>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div class="row">
+                        <div class="col-md-6">
+                            <div class="mb-3">
+                                <label for="statut" class="form-label">Statut</label>
+                                <select name="statut" id="statut" class="form-select">
+                                    {% for statut in statuts_rdv %}
+                                    <option value="{{ statut }}" {% if rdv.statut == statut %}selected{% endif %}>
+                                        {% if statut == 'planifie' %}
+                                            Planifié
+                                        {% elif statut == 'termine' %}
+                                            Terminé
+                                        {% elif statut == 'annule' %}
+                                            Annulé
+                                        {% endif %}
+                                    </option>
+                                    {% endfor %}
+                                </select>
+                            </div>
+                        </div>
+                        <div class="col-md-6">
+                            <div class="mb-3">
+                                <label for="lieu" class="form-label">Lieu</label>
+                                <input type="text" name="lieu" id="lieu" class="form-control" value="{{ rdv.lieu or '' }}">
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div class="row">
+                        <div class="col-md-6">
+                            <div class="mb-3">
+                                <label for="debut" class="form-label">Date et heure de début</label>
+                                <input type="datetime-local" name="debut" id="debut" class="form-control" value="{{ rdv.debut.strftime('%Y-%m-%dT%H:%M') }}" required>
+                            </div>
+                        </div>
+                        <div class="col-md-6">
+                            <div class="mb-3">
+                                <label for="fin" class="form-label">Date et heure de fin</label>
+                                <input type="datetime-local" name="fin" id="fin" class="form-control" value="{{ rdv.fin.strftime('%Y-%m-%dT%H:%M') if rdv.fin else '' }}">
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div class="mb-3">
+                        <label for="notes" class="form-label">Notes</label>
+                        <textarea name="notes" id="notes" class="form-control" rows="4">{{ rdv.notes or '' }}</textarea>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Annuler</button>
+                    <button type="submit" class="btn btn-primary">
+                        <i class="fas fa-save me-1"></i>
+                        Sauvegarder
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+<script>
+// Calcul automatique de l'heure de fin
+document.addEventListener('DOMContentLoaded', function() {
+    const debutInput = document.getElementById('debut');
+    const finInput = document.getElementById('fin');
+    
+    debutInput.addEventListener('change', function() {
+        if (this.value && !finInput.value) {
+            const debut = new Date(this.value);
+            const fin = new Date(debut.getTime() + 60 * 60 * 1000); // +1 heure par défaut
+            finInput.value = fin.toISOString().slice(0, 16);
+        }
+    });
+});
+</script>
+{% endblock %}
