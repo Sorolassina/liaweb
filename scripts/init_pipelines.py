@@ -6,8 +6,8 @@ import os
 sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 from sqlmodel import Session, select
-from app.core.database import engine
-from app.models.base import Programme, EtapePipeline
+from app_lia_web.core.database import engine
+from app_lia_web.app.models.base import Programme, EtapePipeline
 
 # Pipelines par défaut pour chaque programme
 PIPELINES_DEFAUT = {

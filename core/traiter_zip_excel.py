@@ -5,11 +5,11 @@ import shutil
 import re
 from datetime import datetime
 import html
-from app.utils.Excel_functions import modifier_contenu_excel
-from app.utils.Word_functions import modifier_contenu_word
-from app.utils.Text_functions import modifier_contenu_texte
-from app.utils.Powerpoint_functions import modifier_contenu_powerpoint
-from app.utils.temp_dir import create_temp_file
+from app_lia_web.core.Excel_functions import modifier_contenu_excel
+from app_lia_web.core.Word_functions import modifier_contenu_word
+from app_lia_web.core.Text_functions import modifier_contenu_texte
+from app_lia_web.core.Powerpoint_functions import modifier_contenu_powerpoint
+from app_lia_web.core.temp_dir import create_temp_file
 
 IGNORED_EXTENSIONS = [".pdf", ".zip", ".png", ".jpg", ".jpeg"]
 TEXT_EXTENSIONS = [".txt", ".html", ".csv", ".json"]

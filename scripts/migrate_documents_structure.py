@@ -13,8 +13,8 @@ from pathlib import Path
 sys.path.append(str(Path(__file__).parent.parent))
 
 from sqlmodel import create_engine, Session, select
-from models.base import Document
-from core.config import settings
+from app_lia_web.app.models.base import Document
+from app_lia_web.core.config import settings
 
 def migrate_documents_structure():
     """Migre les documents vers la nouvelle structure par candidat."""

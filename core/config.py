@@ -79,7 +79,7 @@ class Settings(BaseSettings):
     MAIL_PORT: Optional[int] = 587
     MAIL_USE_TLS: Optional[bool] = True
     MAIL_ADMIN: Optional[str] = "sorolassina58@gmail.com"
-    PASSWORD_ADMIN: Optional[str] = "ChangeMoi#2025"
+    PASSWORD_ADMIN: Optional[str] = "2311"
 
     # === Upload et fichiers ===
     MAX_UPLOAD_SIZE_MB: int = 10  # Taille maximale des fichiers uploadés
@@ -103,7 +103,7 @@ class Settings(BaseSettings):
     
     @property
     def TEMPLATE_DIR(self) -> Path:
-        return BASE_DIR / "templates"
+        return BASE_DIR / "app/templates"
     
     @property
     def FICHIERS_DIR(self) -> Path:

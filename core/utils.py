@@ -11,7 +11,7 @@ from datetime import datetime, date
 from pathlib import Path
 import requests
 from fastapi import UploadFile
-from ..core.config import settings
+from app_lia_web.core.config import settings
 
 logger = logging.getLogger(__name__)
 

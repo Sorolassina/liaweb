@@ -4,10 +4,10 @@ from typing import Callable, Any
 from fastapi import HTTPException, Request
 from sqlmodel import Session
 
-from ..models.base import User
-from ..models.ACD.permissions import TypeRessource, NiveauPermission
-from ..services.ACD.permissions import PermissionService
-from ..core.database import get_session
+from app_lia_web.app.models.base import User
+from app_lia_web.app.models.ACD.permissions import TypeRessource, NiveauPermission
+from app_lia_web.app.services.ACD.permissions import PermissionService
+from app_lia_web.core.database import get_session
 
 def require_permission(resource: TypeRessource, permission_level: NiveauPermission):
     """

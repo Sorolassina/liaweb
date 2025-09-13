@@ -9,7 +9,7 @@ from pathlib import Path
 # Ajouter le répertoire parent au path pour les imports
 sys.path.append(str(Path(__file__).parent.parent))
 
-from core.database import engine
+from app_lia_web.core.database import engine
 from sqlmodel import text
 
 def create_rendez_vous_table():

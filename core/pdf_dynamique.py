@@ -1,7 +1,7 @@
 
 import os
 import base64
-from app.config import FICHIERS_DIR
+from app_lia_web.core.config import FICHIERS_DIR
 
 
 # 🔧 Exemple de fonction à adapter à ton projet

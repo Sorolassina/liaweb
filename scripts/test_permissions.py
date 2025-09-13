@@ -9,10 +9,10 @@ from pathlib import Path
 sys.path.append(str(Path(__file__).parent.parent))
 
 from sqlmodel import Session, select
-from core.database import engine
-from models.base import User
-from models.ACD.permissions import TypeRessource, NiveauPermission
-from services.ACD.permissions import PermissionService
+from app_lia_web.core.database import engine
+from app_lia_web.app.models.base import User
+from app_lia_web.app.models.ACD.permissions import TypeRessource, NiveauPermission
+from app_lia_web.app.services.ACD.permissions import PermissionService
 import logging
 
 logging.basicConfig(level=logging.INFO)

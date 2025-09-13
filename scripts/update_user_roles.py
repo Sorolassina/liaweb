@@ -9,9 +9,9 @@ import os
 sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 from sqlmodel import Session, select
-from app.core.database import engine
-from app.models.base import User
-from app.models.enums import UserRole
+from app_lia_web.core.database import engine
+from app_lia_web.app.models.base import User
+from app_lia_web.app.models.enums import UserRole
 
 def update_user_roles():
     """Met à jour les rôles des utilisateurs existants"""

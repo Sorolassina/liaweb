@@ -5,10 +5,10 @@ from sqlmodel import Session, select
 from datetime import date, datetime
 import json
 
-from app.core.database import engine
-from app.core.security import get_password_hash
-from app.models.base import *
-from app.models.enums import *
+from app_lia_web.core.database import engine
+from app_lia_web.core.security import get_password_hash
+from app_lia_web.app.models.base import *
+from app_lia_web.app.models.enums import *
 
 def create_test_data():
     """Crée des données de test pour l'application"""

@@ -1,0 +1,341 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Vérification du code - {{ app_name }}</title>
+    
+    <!-- Favicon -->
+    <link rel="icon" type="image/x-icon" href="/static/favicon.ico">
+    
+    <!-- CSS de base -->
+    <link rel="stylesheet" href="/static/css/base.css">
+    <link rel="stylesheet" href="/static/css/theme.css">
+    
+    <style>
+        /* ========================================
+           STYLES SPÉCIFIQUES À LA PAGE DE VÉRIFICATION
+           ======================================== */
+        
+        .recovery-container {
+            min-height: 100vh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            background: linear-gradient(135deg, var(--primary-color) 0%, #e6b800 100%);
+            padding: 20px;
+        }
+        
+        .recovery-card {
+            background: white;
+            border-radius: 15px;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.2);
+            padding: 40px;
+            width: 100%;
+            max-width: 450px;
+            text-align: center;
+        }
+        
+        .recovery-header {
+            margin-bottom: 30px;
+        }
+        
+        .recovery-logo {
+            color: var(--primary-color);
+            font-size: 28px;
+            font-weight: bold;
+            margin-bottom: 10px;
+        }
+        
+        .recovery-title {
+            color: var(--secondary-color);
+            font-size: 24px;
+            margin-bottom: 10px;
+        }
+        
+        .recovery-subtitle {
+            color: #666;
+            font-size: 14px;
+            margin-bottom: 30px;
+        }
+        
+        .email-display {
+            background: #f8f9fa;
+            padding: 10px 15px;
+            border-radius: 8px;
+            margin-bottom: 20px;
+            font-weight: 500;
+            color: var(--secondary-color);
+        }
+        
+        .form-group {
+            margin-bottom: 20px;
+            text-align: left;
+        }
+        
+        .form-label {
+            display: block;
+            margin-bottom: 8px;
+            color: var(--secondary-color);
+            font-weight: 500;
+        }
+        
+        .code-input {
+            width: 100%;
+            padding: 15px;
+            border: 2px solid #e0e0e0;
+            border-radius: 8px;
+            font-size: 24px;
+            text-align: center;
+            letter-spacing: 5px;
+            transition: border-color 0.3s ease;
+            box-sizing: border-box;
+        }
+        
+        .code-input:focus {
+            outline: none;
+            border-color: var(--primary-color);
+            box-shadow: 0 0 0 3px rgba(255, 211, 0, 0.1);
+        }
+        
+        .btn-verify {
+            width: 100%;
+            padding: 15px;
+            background: var(--primary-color);
+            color: var(--secondary-color);
+            border: none;
+            border-radius: 8px;
+            font-size: 16px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            margin-top: 10px;
+        }
+        
+        .btn-verify:hover {
+            background: #e6b800;
+            transform: translateY(-2px);
+            box-shadow: 0 5px 15px rgba(0,0,0,0.2);
+        }
+        
+        .btn-verify:disabled {
+            background: #ccc;
+            cursor: not-allowed;
+            transform: none;
+            box-shadow: none;
+        }
+        
+        .alert {
+            padding: 15px;
+            border-radius: 8px;
+            margin-bottom: 20px;
+            font-size: 14px;
+        }
+        
+        .alert-success {
+            background: #d4edda;
+            color: #155724;
+            border: 1px solid #c3e6cb;
+        }
+        
+        .alert-error {
+            background: #f8d7da;
+            color: #721c24;
+            border: 1px solid #f5c6cb;
+        }
+        
+        .alert-info {
+            background: #d1ecf1;
+            color: #0c5460;
+            border: 1px solid #bee5eb;
+        }
+        
+        .back-links {
+            margin-top: 20px;
+            text-align: center;
+        }
+        
+        .back-links a {
+            color: var(--primary-color);
+            text-decoration: none;
+            font-weight: 500;
+            margin: 0 10px;
+        }
+        
+        .back-links a:hover {
+            text-decoration: underline;
+        }
+        
+        .help-text {
+            font-size: 12px;
+            color: #666;
+            margin-top: 10px;
+            text-align: center;
+        }
+        
+        .timer {
+            font-size: 14px;
+            color: #666;
+            margin-top: 10px;
+        }
+        
+        .timer.warning {
+            color: #dc3545;
+            font-weight: bold;
+        }
+        
+        @media (max-width: 480px) {
+            .recovery-card {
+                padding: 30px 20px;
+                margin: 10px;
+            }
+            
+            .recovery-title {
+                font-size: 20px;
+            }
+            
+            .code-input {
+                font-size: 20px;
+                letter-spacing: 3px;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="recovery-container">
+        <div class="recovery-card">
+            <div class="recovery-header">
+                <div class="recovery-logo">{{ app_name }}</div>
+                <h1 class="recovery-title">Vérification du code</h1>
+                <p class="recovery-subtitle">Saisissez le code reçu par email</p>
+            </div>
+            
+            {% if email %}
+            <div class="email-display">
+                <i class="fas fa-envelope"></i> {{ email }}
+            </div>
+            {% endif %}
+            
+            {% if success %}
+            <div class="alert alert-success">
+                <i class="fas fa-check-circle"></i> Code de récupération envoyé avec succès !
+            </div>
+            {% endif %}
+            
+            {% if error %}
+            <div class="alert alert-error">
+                <i class="fas fa-exclamation-triangle"></i> {{ error }}
+            </div>
+            {% endif %}
+            
+            <form method="POST" action="/verification-code">
+                <input type="hidden" name="email" value="{{ email or '' }}">
+                
+                <div class="form-group">
+                    <label for="code" class="form-label">
+                        <i class="fas fa-key"></i> Code de récupération
+                    </label>
+                    <input 
+                        type="text" 
+                        id="code" 
+                        name="code" 
+                        class="code-input" 
+                        placeholder="123456"
+                        maxlength="6"
+                        pattern="[0-9]{6}"
+                        required
+                        autocomplete="one-time-code"
+                    >
+                    <div class="help-text">
+                        Code à 6 chiffres reçu par email (valide 15 minutes)
+                    </div>
+                    <div class="timer" id="timer">
+                        <i class="fas fa-clock"></i> Temps restant : <span id="timeLeft">15:00</span>
+                    </div>
+                </div>
+                
+                <button type="submit" class="btn-verify">
+                    <i class="fas fa-check"></i> Vérifier le code
+                </button>
+            </form>
+            
+            <div class="back-links">
+                <a href="/mot-de-passe-oublie">
+                    <i class="fas fa-arrow-left"></i> Nouveau code
+                </a>
+                <a href="/">
+                    <i class="fas fa-home"></i> Connexion
+                </a>
+            </div>
+        </div>
+    </div>
+    
+    <!-- Font Awesome pour les icônes -->
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
+    
+    <script>
+        document.addEventListener('DOMContentLoaded', function() {
+            const form = document.querySelector('form');
+            const submitBtn = document.querySelector('.btn-verify');
+            const codeInput = document.querySelector('#code');
+            const timerElement = document.querySelector('#timer');
+            const timeLeftElement = document.querySelector('#timeLeft');
+            
+            // Timer de 15 minutes
+            let timeLeft = 15 * 60; // 15 minutes en secondes
+            
+            function updateTimer() {
+                const minutes = Math.floor(timeLeft / 60);
+                const seconds = timeLeft % 60;
+                timeLeftElement.textContent = `${minutes.toString().padStart(2, '0')}:${seconds.toString().padStart(2, '0')}`;
+                
+                if (timeLeft <= 300) { // 5 minutes restantes
+                    timerElement.classList.add('warning');
+                }
+                
+                if (timeLeft <= 0) {
+                    timerElement.innerHTML = '<i class="fas fa-exclamation-triangle"></i> Code expiré';
+                    timerElement.classList.add('warning');
+                    codeInput.disabled = true;
+                    submitBtn.disabled = true;
+                    submitBtn.innerHTML = '<i class="fas fa-times"></i> Code expiré';
+                    return;
+                }
+                
+                timeLeft--;
+            }
+            
+            // Mettre à jour le timer toutes les secondes
+            const timerInterval = setInterval(updateTimer, 1000);
+            
+            // Auto-submit quand 6 chiffres sont saisis
+            codeInput.addEventListener('input', function() {
+                // Ne garder que les chiffres
+                this.value = this.value.replace(/[^0-9]/g, '');
+                
+                // Auto-submit si 6 chiffres
+                if (this.value.length === 6) {
+                    setTimeout(() => {
+                        form.submit();
+                    }, 500);
+                }
+            });
+            
+            // Empêcher la soumission si le code n'est pas complet
+            form.addEventListener('submit', function(e) {
+                if (codeInput.value.length !== 6) {
+                    e.preventDefault();
+                    alert('Veuillez saisir le code complet à 6 chiffres');
+                    return;
+                }
+                
+                submitBtn.disabled = true;
+                submitBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Vérification...';
+            });
+            
+            // Focus automatique sur le champ code
+            codeInput.focus();
+        });
+    </script>
+</body>
+</html>

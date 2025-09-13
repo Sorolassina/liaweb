@@ -9,9 +9,9 @@ from datetime import datetime, timedelta
 # Ajouter le répertoire parent au path pour les imports
 sys.path.append(str(Path(__file__).parent))
 
-from core.database import get_session
-from models.base import RendezVous, Inscription, User
-from models.enums import TypeRDV, StatutRDV, UserRole
+from app_lia_web.core.database import get_session
+from app_lia_web.app.models.base import RendezVous, Inscription, User
+from app_lia_web.app.models.enums import TypeRDV, StatutRDV, UserRole
 from sqlmodel import Session, select
 
 def create_test_rendez_vous():

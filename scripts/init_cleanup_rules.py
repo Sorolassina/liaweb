@@ -9,9 +9,9 @@ from pathlib import Path
 sys.path.append(str(Path(__file__).parent.parent))
 
 from sqlmodel import Session, select
-from core.database import engine
-from models.ACD.archive import RegleNettoyage
-from models.base import User
+from app_lia_web.core.database import engine
+from app_lia_web.app.models.ACD.archive import RegleNettoyage
+from app_lia_web.app.models.base import User
 import logging
 
 logging.basicConfig(level=logging.INFO)

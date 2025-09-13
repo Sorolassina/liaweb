@@ -14,7 +14,7 @@ from pathlib import Path
 sys.path.append(str(Path(__file__).parent.parent))
 
 from sqlalchemy import create_engine, text
-from core.config import settings
+from app_lia_web.core.config import settings
 
 def fix_qpv_cache():
     """Corrige les données QPV en cache malformées"""

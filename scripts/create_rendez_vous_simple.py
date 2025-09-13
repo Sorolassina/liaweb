@@ -8,8 +8,8 @@ from pathlib import Path
 # Ajouter le répertoire parent au path pour les imports
 sys.path.append(str(Path(__file__).parent))
 
-from core.database import create_db_and_tables
-from models.base import RendezVous
+from app_lia_web.core.database import create_db_and_tables
+from app_lia_web.app.models.base import RendezVous
 
 def create_rendez_vous_table():
     """Créer la table des rendez-vous"""

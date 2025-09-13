@@ -9,22 +9,22 @@ les sessions de base de données pour l'application.
 from typing import Generator
 from sqlmodel import SQLModel, Session, create_engine
 from sqlalchemy import text
-from ..core.config import settings
+from app_lia_web.core.config import settings
 import logging
 from fastapi import Request, Depends
 from typing import Optional
 #from app.core.security import verify_token, get_password_hash,_extract_token_from_request, _credentials_exception, _forbidden_exception
 
 # Importer tous les modèles pour que SQLModel.metadata.create_all() fonctionne
-from ..models.base import (
+from app_lia_web.app.models.base import (
     User, Programme, Promotion, Candidat, Entreprise,
     Preinscription, Document, Eligibilite, Inscription, Jury,
     MembreJury, DecisionJuryTable, EtapePipeline, AvancementEtape,
-    ActionHandicap
+    ActionHandicap, PasswordRecoveryCode
 )
 
 from sqlmodel import select
-from ..core.config import settings
+from app_lia_web.core.config import settings
 from fastapi.security import OAuth2PasswordBearer
 
 

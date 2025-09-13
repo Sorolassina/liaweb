@@ -6,8 +6,8 @@ Middleware de validation des enums au démarrage de l'application
 from fastapi import FastAPI, Request
 from fastapi.responses import JSONResponse
 from sqlmodel import Session
-from ..core.database import get_session
-from ..services.enum_validation import EnumValidationService
+from app_lia_web.core.database import get_session
+from app_lia_web.app.services.enum_validation import EnumValidationService
 import logging
 from typing import Dict, Any
 

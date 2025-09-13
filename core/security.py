@@ -17,9 +17,9 @@ from jose import JWTError, jwt
 from passlib.context import CryptContext
 from sqlmodel import Session, select
 
-from ..models.base import User
-from ..core.config import settings
-from ..core.database import get_session
+from app_lia_web.app.models.base import User
+from app_lia_web.core.config import settings
+from app_lia_web.core.database import get_session
 import logging
 
 # Configuration du logging  

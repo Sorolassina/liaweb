@@ -11,9 +11,9 @@ from pathlib import Path
 sys.path.insert(0, str(Path(__file__).parent.parent))
 
 from sqlmodel import Session, select
-from app.core.database import engine
-from app.models.base import User
-from app.core.security import get_password_hash, verify_password
+from app_lia_web.core.database import engine
+from app_lia_web.app.models.base import User
+from app_lia_web.core.security import get_password_hash, verify_password
 
 def update_admin_user():
     """Met à jour les paramètres de l'administrateur"""

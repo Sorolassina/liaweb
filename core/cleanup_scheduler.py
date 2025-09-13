@@ -1,7 +1,7 @@
 import os
 import time
 from apscheduler.schedulers.background import BackgroundScheduler
-from app.config import STATIC_IMAGES_DIR, STATIC_MAPS_DIR, FICHIERS_DIR
+from app_lia_web.core.config import STATIC_IMAGES_DIR, STATIC_MAPS_DIR, FICHIERS_DIR
 
 # === Paramètres === 10080=Une semaine
 CLEANUP_CONFIG = [
