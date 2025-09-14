@@ -1,0 +1,398 @@
+{% extends "base_public.html" %}
+
+{% block title %}Émargement Direct - {{ session.titre }}{% endblock %}
+
+{% block content %}
+<div class="container-fluid p-4">
+    <div class="row mb-4">
+        <div class="col-12">
+            <div class="text-center">
+                <h1 class="mb-0">
+                    <i class="fas fa-signature me-2"></i>Émargement Direct
+                </h1>
+                <p class="text-muted mb-0">{{ session.titre }} - {{ session.date_session.strftime('%d/%m/%Y') }}</p>
+            </div>
+        </div>
+    </div>
+
+    <!-- Interface d'émargement -->
+    <div class="row">
+        <!-- Liste des candidats (gauche) -->
+        <div class="col-lg-6">
+            <div class="card h-100">
+                <div class="card-header">
+                    <h5 class="mb-0">
+                        <i class="fas fa-users me-2"></i>
+                        Liste des Participants
+                    </h5>
+                </div>
+                <div class="card-body p-0">
+                    <div class="list-group list-group-flush">
+                        {% for presence in presences %}
+                        <div class="list-group-item list-group-item-action candidat-item {% if presence.presence == 'present' %}list-group-item-success{% endif %}" 
+                             onclick="selectCandidat({{ presence.inscription.id }}, '{{ presence.inscription.candidat.prenom }} {{ presence.inscription.candidat.nom }}', '{{ presence.inscription.candidat.email }}', '{% if presence.inscription.candidat.photo_profil %}/media/{{ presence.inscription.candidat.photo_profil.replace('\\', '/') }}{% else %}/static/images/utilisateur.png{% endif %}', {{ presence.presence == 'present'|lower }})"
+                             data-presence="{{ presence.presence }}">
+                            <div class="d-flex align-items-center">
+                                <div class="avatar me-3" style="background-image:url('{% if presence.inscription.candidat.photo_profil %}/media/{{ presence.inscription.candidat.photo_profil.replace('\\', '/') }}{% else %}/static/images/utilisateur.png{% endif %}')"></div>
+                                <div class="flex-grow-1">
+                                    <h6 class="mb-1">{{ presence.inscription.candidat.prenom }} {{ presence.inscription.candidat.nom }}</h6>
+                                    <small class="text-muted">{{ presence.inscription.candidat.email }}</small>
+                                </div>
+                                <div class="text-end">
+                                    {% if presence.presence == 'present' %}
+                                        <span class="badge bg-success">
+                                            <i class="fas fa-check me-1"></i>Présent
+                                        </span>
+                                        {% if presence.heure_arrivee %}
+                                            <br><small class="text-muted">{{ presence.heure_arrivee.strftime('%H:%M') }}</small>
+                                        {% endif %}
+                                    {% else %}
+                                        <span class="badge bg-warning">
+                                            <i class="fas fa-clock me-1"></i>En attente
+                                        </span>
+                                    {% endif %}
+                                </div>
+                            </div>
+                        </div>
+                        {% endfor %}
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Zone d'émargement (droite) -->
+        <div class="col-lg-6">
+            <div class="card h-100">
+                <div class="card-header">
+                    <h5 class="mb-0">
+                        <i class="fas fa-signature me-2"></i>
+                        Zone d'Émargement
+                    </h5>
+                </div>
+                <div class="card-body">
+                    <!-- Sélection du candidat -->
+                    <div id="candidat-selection" class="text-center py-5">
+                        <i class="fas fa-hand-pointer fa-3x text-muted mb-3"></i>
+                        <h5 class="text-muted">Sélectionnez un candidat</h5>
+                        <p class="text-muted">Cliquez sur un candidat dans la liste pour commencer l'émargement</p>
+                    </div>
+
+                    <!-- Formulaire d'émargement -->
+                    <div id="emargement-form" style="display: none;">
+                        <div class="text-center mb-4">
+                            <div class="avatar mx-auto mb-3" id="candidat-photo" style="width: 80px; height: 80px;"></div>
+                            <h5 id="candidat-nom"></h5>
+                            <p class="text-muted" id="candidat-email"></p>
+                            <span id="candidat-statut" class="badge"></span>
+                        </div>
+
+                        <form id="signature-form" method="POST" action="{{ url_for('marquer_presence_session', seminaire_id=seminaire.id, session_id=session.id) }}">
+                            <input type="hidden" id="inscription_id" name="inscription_id" value="">
+                            <input type="hidden" id="presence" name="presence" value="present">
+                            <input type="hidden" id="methode_signature" name="methode_signature" value="manuel">
+                            <input type="hidden" id="signature_data" name="signature_data" value="">
+
+                            <!-- Méthode de signature -->
+                            <div class="mb-4">
+                                <label class="form-label">Méthode de signature</label>
+                                <select class="form-select" id="methode-select" onchange="toggleSignatureMethod()">
+                                    <option value="manuel">Signature manuelle</option>
+                                    <option value="digital">Signature digitale</option>
+                                </select>
+                            </div>
+
+                            <!-- Zone de signature manuelle -->
+                            <div id="signature-manuelle" class="mb-4">
+                                <label class="form-label">Nom complet</label>
+                                <input type="text" class="form-control" id="nom_signature" name="nom_signature" placeholder="Saisissez votre nom complet" required>
+                            </div>
+
+                            <!-- Zone de signature digitale -->
+                            <div id="signature-digitale" class="mb-4" style="display: none;">
+                                <label class="form-label">Signature digitale</label>
+                                <div class="border rounded p-3">
+                                    <canvas id="signature_canvas" width="400" height="200" style="border: 1px solid #ddd; width: 100%; max-width: 400px;"></canvas>
+                                    <div class="mt-2">
+                                        <button type="button" class="btn btn-sm btn-outline-secondary" onclick="clearSignature()">
+                                            <i class="fas fa-eraser me-1"></i>Effacer
+                                        </button>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <!-- Note -->
+                            <div class="mb-4">
+                                <label class="form-label">Note (optionnel)</label>
+                                <textarea class="form-control" id="note" name="note" rows="2" placeholder="Commentaire..."></textarea>
+                            </div>
+
+                            <!-- Boutons d'action -->
+                            <div class="d-grid gap-2">
+                                <button type="submit" class="btn btn-success btn-lg">
+                                    <i class="fas fa-check me-2"></i>Valider la Présence
+                                </button>
+                                <button type="button" class="btn btn-outline-secondary" onclick="resetForm()">
+                                    <i class="fas fa-times me-2"></i>Annuler
+                                </button>
+                            </div>
+                        </form>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<style>
+.card {
+    box-shadow: 0 0.125rem 0.25rem rgba(0, 0, 0, 0.075);
+    border: 1px solid rgba(0, 0, 0, 0.125);
+}
+
+#signature_canvas {
+    cursor: crosshair;
+    touch-action: none;
+}
+
+.avatar {
+    width: 60px;
+    height: 60px;
+    background-size: cover;
+    background-position: center;
+    border-radius: 50%;
+    background-color: #f8f9fa;
+}
+
+.candidat-item {
+    cursor: pointer;
+    transition: all 0.3s ease;
+}
+
+.candidat-item:hover {
+    background-color: #f8f9fa;
+    transform: translateX(5px);
+}
+
+.candidat-item.active {
+    background-color: #e3f2fd;
+    border-left: 4px solid #2196f3;
+}
+
+.candidat-item.list-group-item-success {
+    background-color: #d4edda;
+}
+
+.list-group-item-action:focus {
+    background-color: #f8f9fa;
+    border-color: #dee2e6;
+}
+
+@media (max-width: 768px) {
+    .avatar {
+        width: 80px;
+        height: 80px;
+    }
+    
+    .btn {
+        padding: 12px 24px;
+        font-size: 16px;
+    }
+    
+    .form-control, .form-select {
+        padding: 12px;
+        font-size: 16px;
+    }
+}
+</style>
+
+<script>
+    // Variables globales
+    let signatureCanvas = null;
+    let isDrawing = false;
+    let selectedCandidat = null;
+
+    // Fonctions pour l'interface
+    function selectCandidat(inscriptionId, nom, email, photo, isPresent) {
+        selectedCandidat = {
+            inscriptionId: inscriptionId,
+            nom: nom,
+            email: email,
+            photo: photo,
+            isPresent: isPresent
+        };
+        
+        // Masquer la sélection et afficher le formulaire
+        document.getElementById('candidat-selection').style.display = 'none';
+        document.getElementById('emargement-form').style.display = 'block';
+        
+        // Remplir les informations du candidat
+        document.getElementById('candidat-photo').style.backgroundImage = `url('${photo}')`;
+        document.getElementById('candidat-nom').textContent = nom;
+        document.getElementById('candidat-email').textContent = email;
+        
+        const statutBadge = document.getElementById('candidat-statut');
+        if (isPresent) {
+            statutBadge.textContent = 'Déjà présent';
+            statutBadge.className = 'badge bg-success';
+        } else {
+            statutBadge.textContent = 'En attente';
+            statutBadge.className = 'badge bg-warning';
+        }
+        
+        // Remplir le formulaire
+        document.getElementById('inscription_id').value = inscriptionId;
+        document.getElementById('nom_signature').value = nom;
+        
+        // Initialiser le canvas de signature
+        initSignatureCanvas();
+        
+        // Mettre en surbrillance le candidat sélectionné
+        document.querySelectorAll('.candidat-item').forEach(item => {
+            item.classList.remove('active');
+        });
+        event.currentTarget.classList.add('active');
+    }
+    
+    function resetForm() {
+        selectedCandidat = null;
+        document.getElementById('candidat-selection').style.display = 'block';
+        document.getElementById('emargement-form').style.display = 'none';
+        
+        // Réinitialiser le formulaire
+        document.getElementById('signature-form').reset();
+        document.getElementById('inscription_id').value = '';
+        
+        // Effacer la signature
+        if (signatureCanvas) {
+            const ctx = signatureCanvas.getContext('2d');
+            ctx.clearRect(0, 0, signatureCanvas.width, signatureCanvas.height);
+        }
+        
+        // Retirer la surbrillance
+        document.querySelectorAll('.candidat-item').forEach(item => {
+            item.classList.remove('active');
+        });
+    }
+    
+    function toggleSignatureMethod() {
+        const method = document.getElementById('methode-select').value;
+        const manuelleDiv = document.getElementById('signature-manuelle');
+        const digitaleDiv = document.getElementById('signature-digitale');
+        const methodeInput = document.getElementById('methode_signature');
+        
+        if (method === 'manuel') {
+            manuelleDiv.style.display = 'block';
+            digitaleDiv.style.display = 'none';
+            methodeInput.value = 'manuel';
+            document.getElementById('nom_signature').required = true;
+        } else {
+            manuelleDiv.style.display = 'none';
+            digitaleDiv.style.display = 'block';
+            methodeInput.value = 'digital';
+            document.getElementById('nom_signature').required = false;
+        }
+    }
+    
+    function initSignatureCanvas() {
+        signatureCanvas = document.getElementById('signature_canvas');
+        if (!signatureCanvas) return;
+        
+        const ctx = signatureCanvas.getContext('2d');
+        ctx.strokeStyle = '#000';
+        ctx.lineWidth = 2;
+        ctx.lineCap = 'round';
+        
+        // Événements de dessin
+        signatureCanvas.addEventListener('mousedown', startDrawing);
+        signatureCanvas.addEventListener('mousemove', draw);
+        signatureCanvas.addEventListener('mouseup', stopDrawing);
+        signatureCanvas.addEventListener('mouseout', stopDrawing);
+        
+        // Événements tactiles
+        signatureCanvas.addEventListener('touchstart', handleTouch);
+        signatureCanvas.addEventListener('touchmove', handleTouch);
+        signatureCanvas.addEventListener('touchend', stopDrawing);
+    }
+    
+    function startDrawing(e) {
+        isDrawing = true;
+        const rect = signatureCanvas.getBoundingClientRect();
+        const ctx = signatureCanvas.getContext('2d');
+        ctx.beginPath();
+        ctx.moveTo(e.clientX - rect.left, e.clientY - rect.top);
+    }
+    
+    function draw(e) {
+        if (!isDrawing) return;
+        const rect = signatureCanvas.getBoundingClientRect();
+        const ctx = signatureCanvas.getContext('2d');
+        ctx.lineTo(e.clientX - rect.left, e.clientY - rect.top);
+        ctx.stroke();
+    }
+    
+    function stopDrawing() {
+        isDrawing = false;
+    }
+    
+    function handleTouch(e) {
+        e.preventDefault();
+        const touch = e.touches[0];
+        const mouseEvent = new MouseEvent(e.type === 'touchstart' ? 'mousedown' : 
+                                        e.type === 'touchmove' ? 'mousemove' : 'mouseup', {
+            clientX: touch.clientX,
+            clientY: touch.clientY
+        });
+        signatureCanvas.dispatchEvent(mouseEvent);
+    }
+    
+    function clearSignature() {
+        if (signatureCanvas) {
+            const ctx = signatureCanvas.getContext('2d');
+            ctx.clearRect(0, 0, signatureCanvas.width, signatureCanvas.height);
+        }
+    }
+    
+    // Gestion de la soumission du formulaire
+    document.getElementById('signature-form').addEventListener('submit', function(e) {
+        const method = document.getElementById('methode-select').value;
+        
+        if (method === 'digital') {
+            // Capturer la signature digitale
+            if (signatureCanvas) {
+                const signatureData = signatureCanvas.toDataURL();
+                document.getElementById('signature_data').value = signatureData;
+            }
+        } else {
+            // Utiliser le nom pour la signature manuelle
+            const nomSignature = document.getElementById('nom_signature').value.trim();
+            if (!nomSignature) {
+                e.preventDefault();
+                alert('Veuillez saisir le nom complet');
+                return;
+            }
+            document.getElementById('signature_data').value = nomSignature;
+        }
+        
+        // Confirmation
+        if (!confirm(`Confirmer la présence de ${selectedCandidat.nom} ?`)) {
+            e.preventDefault();
+        }
+    });
+    
+    // Initialisation
+    document.addEventListener('DOMContentLoaded', function() {
+        // Optimiser l'interface pour les tablettes
+        if (window.innerWidth <= 1024) {
+            document.querySelectorAll('.btn').forEach(btn => {
+                btn.style.padding = '12px 24px';
+                btn.style.fontSize = '16px';
+            });
+            
+            document.querySelectorAll('.form-control, .form-select').forEach(input => {
+                input.style.padding = '12px';
+                input.style.fontSize = '16px';
+            });
+        }
+    });
+</script>
+{% endblock %}

@@ -1,0 +1,245 @@
+{% extends "base.html" %}
+
+{% block title %}Générer Liens d'Émargement - {{ session.titre }}{% endblock %}
+
+{% block content %}
+<div class="container-fluid">
+    <!-- En-tête -->
+    <div class="row mb-4">
+        <div class="col-12">
+            <nav aria-label="breadcrumb">
+                <ol class="breadcrumb">
+                    <li class="breadcrumb-item"><a href="{{ url_for('liste_seminaires') }}">Séminaires</a></li>
+                    <li class="breadcrumb-item"><a href="{{ url_for('detail_seminaire', seminaire_id=seminaire.id) }}">{{ seminaire.titre }}</a></li>
+                    <li class="breadcrumb-item"><a href="{{ url_for('emargement_session', seminaire_id=seminaire.id, session_id=session.id) }}">Émargement</a></li>
+                    <li class="breadcrumb-item active">Liens d'émargement</li>
+                </ol>
+            </nav>
+            
+            <div class="d-flex justify-content-between align-items-center">
+                <div>
+                    <h2 class="mb-1">
+                        <i class="fas fa-link text-primary me-2"></i>
+                        Générer Liens d'Émargement
+                    </h2>
+                    <p class="text-muted mb-0">{{ session.titre }} - {{ session.date_session.strftime('%d/%m/%Y') }}</p>
+                </div>
+                <div class="text-end">
+                    <span class="badge bg-primary fs-6">{{ invitations|length }} candidat(s)</span>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Instructions -->
+    <div class="row mb-4">
+        <div class="col-12">
+            <div class="alert alert-info">
+                <h5 class="alert-heading">
+                    <i class="fas fa-info-circle me-2"></i>
+                    Comment ça fonctionne ?
+                </h5>
+                <p class="mb-0">
+                    Sélectionnez les candidats pour qui vous souhaitez générer des liens d'émargement. 
+                    Chaque candidat recevra un email avec un lien unique pour signer sa présence.
+                </p>
+            </div>
+        </div>
+    </div>
+
+    <!-- Formulaire de sélection -->
+    <form method="POST" action="{{ url_for('envoyer_liens_emargement', seminaire_id=seminaire.id, session_id=session.id) }}">
+        <div class="row">
+            <div class="col-12">
+                <div class="card">
+                    <div class="card-header d-flex justify-content-between align-items-center">
+                        <h5 class="mb-0">
+                            <i class="fas fa-users me-2"></i>
+                            Sélectionner les Candidats
+                        </h5>
+                        <div>
+                            <button type="button" class="btn btn-sm btn-outline-primary" onclick="selectAll()">
+                                <i class="fas fa-check-square me-1"></i>Tout sélectionner
+                            </button>
+                            <button type="button" class="btn btn-sm btn-outline-secondary" onclick="selectNone()">
+                                <i class="fas fa-square me-1"></i>Tout désélectionner
+                            </button>
+                        </div>
+                    </div>
+                    <div class="card-body">
+                        {% if invitations %}
+                        <div class="row">
+                            {% for invitation in invitations %}
+                            <div class="col-md-6 col-lg-4 mb-3">
+                                <div class="card candidat-card">
+                                    <div class="card-body p-3">
+                                        <div class="form-check">
+                                            <input class="form-check-input candidat-checkbox" 
+                                                   type="checkbox" 
+                                                   name="invitation_ids" 
+                                                   value="{{ invitation.id }}" 
+                                                   id="invitation_{{ invitation.id }}">
+                                            <label class="form-check-label w-100" for="invitation_{{ invitation.id }}">
+                                                <div class="d-flex align-items-center">
+                                                    <div class="avatar me-3" style="background-image:url('{% if invitation.inscription.candidat.photo_profil %}/media/{{ invitation.inscription.candidat.photo_profil.replace('\\', '/') }}{% else %}/static/images/utilisateur.png{% endif %}')"></div>
+                                                    <div class="flex-grow-1">
+                                                        <div class="fw-bold text-dark" style="font-size: 14px;">
+                                                            {{ invitation.inscription.candidat.prenom }} {{ invitation.inscription.candidat.nom }}
+                                                        </div>
+                                                        <div class="small text-muted" style="font-size: 12px;">
+                                                            {{ invitation.inscription.candidat.email }}
+                                                        </div>
+                                                        {% if invitation.inscription.promotion %}
+                                                        <div class="small text-muted" style="font-size: 11px;">
+                                                            <i class="fas fa-graduation-cap me-1"></i>{{ invitation.inscription.promotion.libelle }}
+                                                        </div>
+                                                        {% endif %}
+                                                    </div>
+                                                </div>
+                                            </label>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                            {% endfor %}
+                        </div>
+                        {% else %}
+                        <div class="text-center py-5">
+                            <i class="fas fa-users text-muted" style="font-size: 4rem;"></i>
+                            <h4 class="text-muted mt-3">Aucune invitation trouvée</h4>
+                            <p class="text-muted">Il n'y a pas encore d'invitations envoyées pour ce séminaire.</p>
+                            <a href="{{ url_for('invitations_seminaire', seminaire_id=seminaire.id) }}" class="btn btn-primary">
+                                <i class="fas fa-envelope me-2"></i>Envoyer des invitations
+                            </a>
+                        </div>
+                        {% endif %}
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Actions -->
+        {% if invitations %}
+        <div class="row mt-4">
+            <div class="col-12">
+                <div class="card">
+                    <div class="card-body text-center">
+                        <div class="mb-3">
+                            <span class="badge bg-info fs-6" id="selection-count">0 candidat(s) sélectionné(s)</span>
+                        </div>
+                        <div class="d-grid gap-2 d-md-flex justify-content-md-center">
+                            <a href="{{ url_for('emargement_session', seminaire_id=seminaire.id, session_id=session.id) }}" class="btn btn-outline-secondary btn-lg">
+                                <i class="fas fa-arrow-left me-2"></i>Retour à l'émargement
+                            </a>
+                            <button type="submit" class="btn btn-primary btn-lg" id="envoyer-btn" disabled>
+                                <i class="fas fa-paper-plane me-2"></i>
+                                Envoyer les liens d'émargement
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        {% endif %}
+    </form>
+</div>
+
+<style>
+.card {
+    border: none;
+    box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+    transition: transform 0.2s ease-in-out;
+}
+
+.card:hover {
+    transform: translateY(-2px);
+}
+
+.candidat-card {
+    border: 2px solid transparent;
+    transition: all 0.3s ease;
+}
+
+.candidat-card:hover {
+    border-color: #ffd300;
+}
+
+.form-check-input:checked + .form-check-label .candidat-card {
+    border-color: #1cc88a;
+    background-color: #f8fff8;
+}
+
+.avatar {
+    width: 50px;
+    height: 50px;
+    border-radius: 50%;
+    background-size: cover;
+    background-position: center;
+    border: 2px solid #fff;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+}
+
+.btn-primary {
+    background-color: #ffd300;
+    border-color: #ffd300;
+    color: #000000;
+}
+
+.btn-primary:hover {
+    background-color: #e6be00;
+    border-color: #e6be00;
+    color: #000000;
+}
+
+.btn-primary:disabled {
+    background-color: #6c757d;
+    border-color: #6c757d;
+    color: #fff;
+}
+
+.text-primary {
+    color: #ffd300 !important;
+}
+</style>
+
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    updateSelectionCount();
+    
+    // Écouter les changements de sélection
+    document.querySelectorAll('.candidat-checkbox').forEach(checkbox => {
+        checkbox.addEventListener('change', updateSelectionCount);
+    });
+});
+
+function selectAll() {
+    document.querySelectorAll('.candidat-checkbox').forEach(checkbox => {
+        checkbox.checked = true;
+    });
+    updateSelectionCount();
+}
+
+function selectNone() {
+    document.querySelectorAll('.candidat-checkbox').forEach(checkbox => {
+        checkbox.checked = false;
+    });
+    updateSelectionCount();
+}
+
+function updateSelectionCount() {
+    const checkedBoxes = document.querySelectorAll('.candidat-checkbox:checked');
+    const count = checkedBoxes.length;
+    
+    document.getElementById('selection-count').textContent = `${count} candidat(s) sélectionné(s)`;
+    
+    const envoyerBtn = document.getElementById('envoyer-btn');
+    if (count > 0) {
+        envoyerBtn.disabled = false;
+        envoyerBtn.innerHTML = `<i class="fas fa-paper-plane me-2"></i>Envoyer les liens (${count})`;
+    } else {
+        envoyerBtn.disabled = true;
+        envoyerBtn.innerHTML = `<i class="fas fa-paper-plane me-2"></i>Envoyer les liens d'émargement`;
+    }
+}
+</script>
+{% endblock %}

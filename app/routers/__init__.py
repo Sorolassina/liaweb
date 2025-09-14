@@ -30,6 +30,8 @@ from .video_router import router as video_router
 from .emargement_router import router as emargement_router
 from .candidat_email_update import router as candidat_email_router
 from .password_recovery import router as password_recovery_router
+from .seminaire import router as seminaire_router
+from .event import router as event_router
 
 # Configuration des routers avec préfixes et tags
 router_configs = [
@@ -48,6 +50,8 @@ router_configs = [
     (video_router, "", ["video_rdv"]),
     (candidat_email_router, "", ["candidat_email"]),
     (password_recovery_router, "", ["password_recovery"]),
+    (seminaire_router, "/seminaires", ["seminaires"]),
+    (event_router, "/events", ["events"]),
 
     
     # Gestion des données principales
@@ -87,6 +91,7 @@ __all__ = [
     "video_router",
     "emargement_router",
     "password_recovery_router",
+    "seminaire_router",
+    "event_router",
     "router_configs",
-    "password_recovery_router",
 ]

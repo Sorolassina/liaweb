@@ -1,0 +1,280 @@
+{% extends "base.html" %}
+
+{% block title %}Livrables à Rendre - {{ seminaire.titre }}{% endblock %}
+
+{% block content %}
+<div class="container-fluid">
+    <!-- En-tête -->
+    <div class="row mb-4">
+        <div class="col-12">
+            <nav aria-label="breadcrumb">
+                <ol class="breadcrumb">
+                    <li class="breadcrumb-item"><a href="{{ url_for('liste_seminaires') }}">Séminaires</a></li>
+                    <li class="breadcrumb-item"><a href="{{ url_for('detail_seminaire', seminaire_id=seminaire.id) }}">{{ seminaire.titre }}</a></li>
+                    <li class="breadcrumb-item active">Mes Livrables</li>
+                </ol>
+            </nav>
+            
+            <div class="d-flex justify-content-between align-items-center">
+                <div>
+                    <h2 class="mb-1">
+                        <i class="fas fa-file-upload text-primary me-2"></i>
+                        Livrables à Rendre
+                    </h2>
+                    <p class="text-muted mb-0">{{ seminaire.titre }}</p>
+                </div>
+                <div class="text-end">
+                    <span class="badge bg-primary fs-6">{{ livrables|length }} livrable(s)</span>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Liste des livrables -->
+    <div class="row">
+        {% if livrables %}
+            {% for livrable in livrables %}
+            <div class="col-lg-6 mb-4">
+                <div class="card h-100">
+                    <div class="card-header d-flex justify-content-between align-items-center">
+                        <h5 class="mb-0">
+                            <i class="fas fa-file-alt me-2"></i>
+                            {{ livrable.titre }}
+                        </h5>
+                        {% if livrable.obligatoire %}
+                        <span class="badge bg-danger">Obligatoire</span>
+                        {% else %}
+                        <span class="badge bg-secondary">Optionnel</span>
+                        {% endif %}
+                    </div>
+                    
+                    <div class="card-body">
+                        {% if livrable.description %}
+                        <p class="card-text">{{ livrable.description }}</p>
+                        {% endif %}
+                        
+                        <!-- Informations du livrable -->
+                        <div class="row mb-3">
+                            <div class="col-md-6">
+                                <small class="text-muted">
+                                    <i class="fas fa-tag me-1"></i>
+                                    <strong>Type :</strong> {{ livrable.type_livrable }}
+                                </small>
+                            </div>
+                            {% if livrable.date_limite %}
+                            <div class="col-md-6">
+                                <small class="text-muted">
+                                    <i class="fas fa-calendar-alt me-1"></i>
+                                    <strong>Date limite :</strong> {{ livrable.date_limite.strftime('%d/%m/%Y à %H:%M') }}
+                                </small>
+                            </div>
+                            {% endif %}
+                        </div>
+                        
+                        {% if livrable.format_accepte %}
+                        <div class="mb-3">
+                            <small class="text-muted">
+                                <i class="fas fa-file me-1"></i>
+                                <strong>Formats acceptés :</strong> {{ livrable.format_accepte }}
+                            </small>
+                        </div>
+                        {% endif %}
+                        
+                        {% if livrable.taille_max_mb %}
+                        <div class="mb-3">
+                            <small class="text-muted">
+                                <i class="fas fa-weight me-1"></i>
+                                <strong>Taille max :</strong> {{ livrable.taille_max_mb }} MB
+                            </small>
+                        </div>
+                        {% endif %}
+                        
+                        {% if livrable.consignes %}
+                        <div class="alert alert-info mb-3">
+                            <h6 class="alert-heading">
+                                <i class="fas fa-info-circle me-1"></i>
+                                Consignes
+                            </h6>
+                            <p class="mb-0">{{ livrable.consignes }}</p>
+                        </div>
+                        {% endif %}
+                        
+                        <!-- Statut du rendu -->
+                        {% set rendu = rendus|selectattr('livrable_id', 'equalto', livrable.id)|first %}
+                        {% if rendu %}
+                        <div class="alert alert-success mb-3">
+                            <div class="d-flex justify-content-between align-items-center">
+                                <div>
+                                    <i class="fas fa-check-circle me-2"></i>
+                                    <strong>Rendu déposé</strong>
+                                    <br>
+                                    <small class="text-muted">
+                                        {{ rendu.nom_fichier }} - {{ rendu.depose_le.strftime('%d/%m/%Y à %H:%M') }}
+                                    </small>
+                                </div>
+                                <div class="text-end">
+                                    {% if rendu.statut == "VALIDE" %}
+                                    <span class="badge bg-success">Validé</span>
+                                    {% elif rendu.statut == "REJETE" %}
+                                    <span class="badge bg-danger">Rejeté</span>
+                                    {% elif rendu.statut == "EN_ATTENTE" %}
+                                    <span class="badge bg-warning">En attente</span>
+                                    {% else %}
+                                    <span class="badge bg-primary">Déposé</span>
+                                    {% endif %}
+                                </div>
+                            </div>
+                            
+                            {% if rendu.commentaire_evaluateur %}
+                            <div class="mt-2">
+                                <small class="text-muted">
+                                    <strong>Commentaire de l'évaluateur :</strong><br>
+                                    {{ rendu.commentaire_evaluateur }}
+                                </small>
+                            </div>
+                            {% endif %}
+                        </div>
+                        {% else %}
+                        <!-- Formulaire de rendu -->
+                        <form method="POST" action="{{ url_for('rendre_livrable_seminaire', seminaire_id=seminaire.id, livrable_id=livrable.id) }}" 
+                              enctype="multipart/form-data" class="rendre-form">
+                            <input type="hidden" name="inscription_id" value="{{ inscription.id }}">
+                            
+                            <div class="mb-3">
+                                <label for="fichier_{{ livrable.id }}" class="form-label">
+                                    <i class="fas fa-upload me-1"></i>
+                                    Sélectionner un fichier
+                                </label>
+                                <input type="file" 
+                                       class="form-control" 
+                                       id="fichier_{{ livrable.id }}" 
+                                       name="fichier" 
+                                       required
+                                       accept="{% if livrable.format_accepte %}{{ livrable.format_accepte|lower|replace(' ', '') }}{% endif %}">
+                                <div class="form-text">
+                                    {% if livrable.taille_max_mb %}
+                                    Taille maximale : {{ livrable.taille_max_mb }} MB
+                                    {% endif %}
+                                </div>
+                            </div>
+                            
+                            <div class="mb-3">
+                                <label for="commentaire_{{ livrable.id }}" class="form-label">
+                                    <i class="fas fa-comment me-1"></i>
+                                    Commentaire (optionnel)
+                                </label>
+                                <textarea class="form-control" 
+                                          id="commentaire_{{ livrable.id }}" 
+                                          name="commentaire" 
+                                          rows="3" 
+                                          placeholder="Ajoutez un commentaire sur votre rendu..."></textarea>
+                            </div>
+                            
+                            <div class="d-grid">
+                                <button type="submit" class="btn btn-primary">
+                                    <i class="fas fa-upload me-2"></i>
+                                    Rendre le livrable
+                                </button>
+                            </div>
+                        </form>
+                        {% endif %}
+                    </div>
+                </div>
+            </div>
+            {% endfor %}
+        {% else %}
+        <div class="col-12">
+            <div class="text-center py-5">
+                <i class="fas fa-file-alt text-muted" style="font-size: 4rem;"></i>
+                <h4 class="text-muted mt-3">Aucun livrable défini</h4>
+                <p class="text-muted">L'organisateur n'a pas encore défini de livrables pour ce séminaire.</p>
+            </div>
+        </div>
+        {% endif %}
+    </div>
+</div>
+
+<style>
+.card {
+    border: none;
+    box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+    transition: transform 0.2s ease-in-out;
+}
+
+.card:hover {
+    transform: translateY(-2px);
+}
+
+.alert-info {
+    background-color: #e3f2fd;
+    border-color: #bbdefb;
+    color: #1565c0;
+}
+
+.alert-success {
+    background-color: #e8f5e8;
+    border-color: #c3e6c3;
+    color: #155724;
+}
+
+.badge {
+    font-size: 0.75rem;
+}
+
+.form-control:focus {
+    border-color: #ffd300;
+    box-shadow: 0 0 0 0.2rem rgba(255, 211, 0, 0.25);
+}
+
+.btn-primary {
+    background-color: #ffd300;
+    border-color: #ffd300;
+    color: #000000;
+}
+
+.btn-primary:hover {
+    background-color: #e6be00;
+    border-color: #e6be00;
+    color: #000000;
+}
+</style>
+
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    // Validation des fichiers
+    const fileInputs = document.querySelectorAll('input[type="file"]');
+    fileInputs.forEach(input => {
+        input.addEventListener('change', function() {
+            const file = this.files[0];
+            if (file) {
+                // Vérifier la taille (si spécifiée)
+                const maxSizeText = this.parentElement.querySelector('.form-text');
+                if (maxSizeText && maxSizeText.textContent.includes('MB')) {
+                    const maxSizeMB = parseInt(maxSizeText.textContent.match(/(\d+)/)[1]);
+                    const maxSizeBytes = maxSizeMB * 1024 * 1024;
+                    
+                    if (file.size > maxSizeBytes) {
+                        alert(`Le fichier est trop volumineux. Taille maximale : ${maxSizeMB} MB`);
+                        this.value = '';
+                        return;
+                    }
+                }
+                
+                // Afficher le nom du fichier
+                const fileName = document.createElement('small');
+                fileName.className = 'text-success d-block mt-1';
+                fileName.innerHTML = `<i class="fas fa-check me-1"></i>${file.name} (${(file.size / 1024 / 1024).toFixed(2)} MB)`;
+                
+                // Supprimer l'ancien message s'il existe
+                const oldMessage = this.parentElement.querySelector('.text-success');
+                if (oldMessage) {
+                    oldMessage.remove();
+                }
+                
+                this.parentElement.appendChild(fileName);
+            }
+        });
+    });
+});
+</script>
+{% endblock %}

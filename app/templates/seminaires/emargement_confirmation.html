@@ -1,0 +1,193 @@
+{% extends "base_public.html" %}
+
+{% block title %}Signature Confirmée - {{ session.titre }}{% endblock %}
+
+{% block content %}
+<div class="container mt-5">
+    <!-- Zone de messages dynamiques -->
+    <div id="message-container" class="mb-4" style="display: none;">
+        <div id="message-alert" class="alert" role="alert">
+            <div class="d-flex align-items-center">
+                <i id="message-icon" class="me-2"></i>
+                <span id="message-text"></span>
+            </div>
+        </div>
+    </div>
+    
+    <div class="row justify-content-center">
+        <div class="col-md-8 col-lg-6">
+            <div class="card shadow">
+                <div class="card-body p-5 text-center">
+                    <!-- Succès -->
+                    <div class="mb-4">
+                        <i class="fas fa-check-circle text-success" style="font-size: 4rem;"></i>
+                    </div>
+                    
+                    <h2 class="text-success mb-3">✅ Signature Confirmée !</h2>
+                    
+                    <p class="lead text-muted mb-4">
+                        Merci <strong>{{ candidat.prenom }} {{ candidat.nom }}</strong> !
+                    </p>
+                    
+                    <!-- Informations de la signature -->
+                    <div class="alert alert-success mb-4">
+                        <h5 class="alert-heading">
+                            <i class="fas fa-signature me-2"></i>
+                            Détails de votre signature
+                        </h5>
+                        <div class="row text-start">
+                            <div class="col-md-6">
+                                <p class="mb-2">
+                                    <i class="fas fa-calendar-alt me-2 text-primary"></i>
+                                    <strong>Date :</strong> {{ presence.heure_arrivee.strftime('%d/%m/%Y') }}
+                                </p>
+                                <p class="mb-2">
+                                    <i class="fas fa-clock me-2 text-primary"></i>
+                                    <strong>Heure :</strong> {{ presence.heure_arrivee.strftime('%H:%M') }}
+                                </p>
+                            </div>
+                            <div class="col-md-6">
+                                {% if presence.methode_signature %}
+                                <p class="mb-2">
+                                    <i class="fas fa-pen me-2 text-primary"></i>
+                                    <strong>Méthode :</strong> {{ presence.methode_signature.value|title }}
+                                </p>
+                                {% endif %}
+                                {% if presence.ip_signature %}
+                                <p class="mb-2">
+                                    <i class="fas fa-globe me-2 text-primary"></i>
+                                    <strong>IP :</strong> {{ presence.ip_signature }}
+                                </p>
+                                {% endif %}
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <!-- Informations du séminaire -->
+                    <div class="alert alert-info mb-4">
+                        <h5 class="alert-heading">
+                            <i class="fas fa-chalkboard-teacher me-2"></i>
+                            {{ seminaire.titre }}
+                        </h5>
+                        <hr>
+                        <div class="row text-start">
+                            <div class="col-md-6">
+                                <p class="mb-2">
+                                    <i class="fas fa-calendar-alt me-2 text-primary"></i>
+                                    <strong>Session :</strong> {{ session.titre }}
+                                </p>
+                                <p class="mb-2">
+                                    <i class="fas fa-calendar-check me-2 text-primary"></i>
+                                    <strong>Date :</strong> {{ session.date_session.strftime('%d/%m/%Y') }}
+                                </p>
+                            </div>
+                            <div class="col-md-6">
+                                {% if session.heure_debut %}
+                                <p class="mb-2">
+                                    <i class="fas fa-clock me-2 text-primary"></i>
+                                    <strong>Début :</strong> {{ session.heure_debut.strftime('%H:%M') }}
+                                </p>
+                                {% endif %}
+                                {% if session.lieu %}
+                                <p class="mb-2">
+                                    <i class="fas fa-map-marker-alt me-2 text-primary"></i>
+                                    <strong>Lieu :</strong> {{ session.lieu }}
+                                </p>
+                                {% endif %}
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <!-- Message de confirmation -->
+                    <div class="mb-4">
+                        <p class="text-success">
+                            <i class="fas fa-info-circle me-2"></i>
+                            Votre présence a été enregistrée avec succès. 
+                            Vous pouvez maintenant fermer cette page.
+                        </p>
+                    </div>
+                    
+                    <!-- Footer -->
+                    <hr class="my-4">
+                    <p class="text-muted small mb-0">
+                        <i class="fas fa-shield-alt me-1"></i>
+                        Cette signature est sécurisée et enregistrée dans notre système.
+                    </p>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<style>
+.card {
+    border: none;
+    border-radius: 15px;
+}
+
+.alert-info {
+    background-color: #e3f2fd;
+    border-color: #bbdefb;
+    color: #1565c0;
+}
+
+.alert-success {
+    background-color: #e8f5e8;
+    border-color: #c3e6c3;
+    color: #155724;
+}
+
+.text-success {
+    color: #1cc88a !important;
+}
+
+.text-primary {
+    color: #ffd300 !important;
+}
+</style>
+
+<script>
+// Fonctions pour afficher les messages
+function showMessage(message, type = 'info') {
+    const container = document.getElementById('message-container');
+    const alert = document.getElementById('message-alert');
+    const icon = document.getElementById('message-icon');
+    const text = document.getElementById('message-text');
+    
+    // Définir les classes et icônes selon le type
+    const messageTypes = {
+        'success': { class: 'alert-success', icon: 'fas fa-check-circle' },
+        'error': { class: 'alert-danger', icon: 'fas fa-exclamation-triangle' },
+        'warning': { class: 'alert-warning', icon: 'fas fa-exclamation-circle' },
+        'info': { class: 'alert-info', icon: 'fas fa-info-circle' }
+    };
+    
+    const messageType = messageTypes[type] || messageTypes['info'];
+    
+    // Mettre à jour le contenu
+    alert.className = `alert ${messageType.class}`;
+    icon.className = `${messageType.icon} me-2`;
+    text.textContent = message;
+    
+    // Afficher le message
+    container.style.display = 'block';
+    
+    // Auto-masquer après 5 secondes pour les messages de succès/info
+    if (type === 'success' || type === 'info') {
+        setTimeout(() => {
+            hideMessage();
+        }, 5000);
+    }
+}
+
+function hideMessage() {
+    const container = document.getElementById('message-container');
+    container.style.display = 'none';
+}
+
+// Afficher un message de succès au chargement de la page
+document.addEventListener('DOMContentLoaded', function() {
+    showMessage('Votre émargement a été enregistré avec succès !', 'success');
+});
+</script>
+{% endblock %}

@@ -3,7 +3,7 @@ Routeur pour la récupération de mot de passe
 """
 from fastapi import APIRouter, Depends, HTTPException, status, Request, Form
 from fastapi.responses import HTMLResponse, RedirectResponse
-from fastapi.templating import Jinja2Templates
+from app_lia_web.app.templates import templates
 from sqlmodel import Session
 from typing import Optional
 import logging
@@ -21,7 +21,6 @@ from app_lia_web.app.schemas.password_recovery_schemas import (
 logger = logging.getLogger(__name__)
 
 router = APIRouter()
-templates = Jinja2Templates(directory=str(settings.TEMPLATE_DIR))
 recovery_service = PasswordRecoveryService()
 
 

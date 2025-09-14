@@ -122,3 +122,22 @@ class TypeDocument(str, Enum):
     STATUTS = "STATUTS"                # Statuts de l'entreprise
     EXTRACT_KBIS = "EXTRACT_KBIS"     # Extrait d'immatriculation
     PUBLICATION_BODACC = "PUBLICATION_BODACC"  # Publications BODACC
+
+# Enums pour les séminaires
+class StatutSeminaire(str, Enum):
+    PLANIFIE = "planifie"
+    EN_COURS = "en_cours"
+    TERMINE = "termine"
+    ANNULE = "annule"
+    REPORTE = "reporte"
+
+class TypeInvitation(str, Enum):
+    INDIVIDUELLE = "individuelle"      # Invitation à un candidat spécifique
+    PROMOTION = "promotion"            # Invitation à toute une promotion
+    PROGRAMME = "programme"            # Invitation à tous les candidats du programme
+
+class MethodeSignature(str, Enum):
+    MANUEL = "manuel"                  # Signature sur papier/liste
+    DIGITAL = "digital"                # Signature digitale sur écran
+    QR_CODE = "qr_code"                # Signature via QR code
+    EMAIL = "email"                    # Confirmation par email

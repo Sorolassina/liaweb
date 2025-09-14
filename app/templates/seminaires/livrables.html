@@ -1,0 +1,273 @@
+{% extends "base.html" %}
+
+{% block title %}Livrables - {{ seminaire.titre }}{% endblock %}
+
+{% block content %}
+<div class="container-fluid p-4">
+    <div class="row mb-4">
+        <div class="col-12">
+            <nav aria-label="breadcrumb">
+                <ol class="breadcrumb">
+                    <li class="breadcrumb-item"><a href="{{ url_for('liste_seminaires') }}">Séminaires</a></li>
+                    <li class="breadcrumb-item"><a href="{{ url_for('detail_seminaire', seminaire_id=seminaire.id) }}">{{ seminaire.titre }}</a></li>
+                    <li class="breadcrumb-item active">Livrables</li>
+                </ol>
+            </nav>
+            <div class="d-flex justify-content-between align-items-center">
+                <div>
+                    <h1 class="mb-0">
+                        <i class="fas fa-file-alt me-2"></i>Livrables
+                    </h1>
+                    <p class="text-muted mb-0">{{ seminaire.titre }}</p>
+                </div>
+                <button class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#livrableModal">
+                    <i class="fas fa-plus me-2"></i>Nouveau Livrable
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Liste des livrables -->
+    <div class="row">
+        <div class="col-12">
+            <div class="card">
+                <div class="card-header">
+                    <h5 class="mb-0">Livrables à Rendre ({{ livrables|length }})</h5>
+                </div>
+                <div class="card-body">
+                    {% if livrables %}
+                        <div class="table-responsive">
+                            <table class="table table-hover">
+                                <thead>
+                                    <tr>
+                                        <th>Titre</th>
+                                        <th>Type</th>
+                                        <th>Obligatoire</th>
+                                        <th>Date Limite</th>
+                                        <th>Format</th>
+                                        <th>Taille Max</th>
+                                        <th>Actions</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    {% for livrable in livrables %}
+                                    <tr>
+                                        <td>
+                                            <strong>{{ livrable.titre }}</strong>
+                                            {% if livrable.description %}
+                                                <br><small class="text-muted">{{ livrable.description[:100] }}{% if livrable.description|length > 100 %}...{% endif %}</small>
+                                            {% endif %}
+                                        </td>
+                                        <td>
+                                            <span class="badge bg-info">{{ livrable.type_livrable }}</span>
+                                        </td>
+                                        <td>
+                                            {% if livrable.obligatoire %}
+                                                <span class="badge bg-warning">Obligatoire</span>
+                                            {% else %}
+                                                <span class="badge bg-secondary">Optionnel</span>
+                                            {% endif %}
+                                        </td>
+                                        <td>
+                                            {% if livrable.date_limite %}
+                                                {{ livrable.date_limite.strftime('%d/%m/%Y %H:%M') }}
+                                            {% else %}
+                                                <span class="text-muted">Aucune limite</span>
+                                            {% endif %}
+                                        </td>
+                                        <td>
+                                            {% if livrable.format_accepte %}
+                                                {{ livrable.format_accepte }}
+                                            {% else %}
+                                                <span class="text-muted">Tous formats</span>
+                                            {% endif %}
+                                        </td>
+                                        <td>
+                                            {% if livrable.taille_max_mb %}
+                                                {{ livrable.taille_max_mb }} MB
+                                            {% else %}
+                                                <span class="text-muted">Aucune limite</span>
+                                            {% endif %}
+                                        </td>
+                                        <td>
+                                            <div class="btn-group" role="group">
+                                                <button class="btn btn-sm btn-outline-primary" onclick="editLivrable({{ livrable.id }})">
+                                                    <i class="fas fa-edit"></i>
+                                                </button>
+                                                <button class="btn btn-sm btn-outline-danger" onclick="deleteLivrable({{ livrable.id }})">
+                                                    <i class="fas fa-trash"></i>
+                                                </button>
+                                            </div>
+                                        </td>
+                                    </tr>
+                                    {% endfor %}
+                                </tbody>
+                            </table>
+                        </div>
+                    {% else %}
+                        <div class="text-center py-5">
+                            <i class="fas fa-file-alt fa-3x text-muted mb-3"></i>
+                            <h4 class="text-muted">Aucun livrable défini</h4>
+                            <p class="text-muted">Commencez par définir les livrables à rendre pour ce séminaire.</p>
+                            <button class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#livrableModal">
+                                <i class="fas fa-plus me-2"></i>Créer un Livrable
+                            </button>
+                        </div>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Modal de création de livrable -->
+<div class="modal fade" id="livrableModal" tabindex="-1" aria-labelledby="livrableModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-lg">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="livrableModalLabel">
+                    <i class="fas fa-file-alt me-2"></i>Nouveau Livrable
+                </h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <form method="POST" action="/seminaires/{{ seminaire.id }}/livrables/nouveau">
+                <div class="modal-body">
+                    <div class="row">
+                        <div class="col-md-6">
+                            <div class="mb-3">
+                                <label for="titre" class="form-label">Titre du Livrable *</label>
+                                <input type="text" class="form-control" id="titre" name="titre" required>
+                            </div>
+                        </div>
+                        <div class="col-md-6">
+                            <div class="mb-3">
+                                <label for="type_livrable" class="form-label">Type *</label>
+                                <select class="form-select" id="type_livrable" name="type_livrable" required>
+                                    <option value="">Sélectionner le type</option>
+                                    <option value="DOCUMENT">Document</option>
+                                    <option value="PRESENTATION">Présentation</option>
+                                    <option value="RAPPORT">Rapport</option>
+                                    <option value="VIDEO">Vidéo</option>
+                                    <option value="AUTRE">Autre</option>
+                                </select>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="mb-3">
+                        <label for="description" class="form-label">Description</label>
+                        <textarea class="form-control" id="description" name="description" rows="3" 
+                                  placeholder="Décrivez ce qui est attendu dans ce livrable..."></textarea>
+                    </div>
+
+                    <div class="row">
+                        <div class="col-md-6">
+                            <div class="mb-3">
+                                <label for="date_limite" class="form-label">Date Limite</label>
+                                <input type="datetime-local" class="form-control" id="date_limite" name="date_limite">
+                            </div>
+                        </div>
+                        <div class="col-md-6">
+                            <div class="form-check mt-4">
+                                <input class="form-check-input" type="checkbox" id="obligatoire" name="obligatoire" value="true" checked>
+                                <label class="form-check-label" for="obligatoire">
+                                    Livrable obligatoire
+                                </label>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="mb-3">
+                        <label for="consignes" class="form-label">Consignes</label>
+                        <textarea class="form-control" id="consignes" name="consignes" rows="3" 
+                                  placeholder="Instructions spécifiques pour ce livrable..."></textarea>
+                    </div>
+
+                    <div class="row">
+                        <div class="col-md-6">
+                            <div class="mb-3">
+                                <label for="format_accepte" class="form-label">Formats Acceptés</label>
+                                <input type="text" class="form-control" id="format_accepte" name="format_accepte" 
+                                       placeholder="Ex: PDF, DOCX, PPTX">
+                            </div>
+                        </div>
+                        <div class="col-md-6">
+                            <div class="mb-3">
+                                <label for="taille_max_mb" class="form-label">Taille Maximale (MB)</label>
+                                <input type="number" class="form-control" id="taille_max_mb" name="taille_max_mb" 
+                                       min="1" placeholder="Ex: 10">
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Annuler</button>
+                    <button type="submit" class="btn btn-primary">
+                        <i class="fas fa-save me-2"></i>Créer le Livrable
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+<script>
+function editLivrable(livrableId) {
+    // Implémenter l'édition du livrable
+    console.log('Éditer livrable:', livrableId);
+}
+
+function deleteLivrable(livrableId) {
+    if (confirm('Êtes-vous sûr de vouloir supprimer ce livrable ?')) {
+        // Implémenter la suppression
+        console.log('Supprimer livrable:', livrableId);
+    }
+}
+
+// Définir la date limite minimale à aujourd'hui
+document.addEventListener('DOMContentLoaded', function() {
+    const dateLimite = document.getElementById('date_limite');
+    const today = new Date().toISOString().slice(0, 16);
+    dateLimite.min = today;
+});
+</script>
+
+<style>
+.card {
+    box-shadow: 0 0.125rem 0.25rem rgba(0, 0, 0, 0.075);
+    border: 1px solid rgba(0, 0, 0, 0.125);
+}
+
+.table th {
+    border-top: none;
+    font-weight: 600;
+    color: #495057;
+}
+
+.btn-group .btn {
+    border-radius: 0.25rem;
+}
+
+.btn-group .btn:not(:last-child) {
+    margin-right: 0.25rem;
+}
+
+.badge {
+    font-size: 0.75em;
+}
+
+.breadcrumb {
+    background-color: transparent;
+    padding: 0;
+}
+
+.breadcrumb-item + .breadcrumb-item::before {
+    content: ">";
+}
+
+.form-label {
+    font-weight: 600;
+    color: #495057;
+}
+</style>
+{% endblock %}

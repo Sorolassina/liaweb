@@ -308,17 +308,17 @@
             // Mettre à jour le timer toutes les secondes
             const timerInterval = setInterval(updateTimer, 1000);
             
-            // Auto-submit quand 6 chiffres sont saisis
+            // Auto-submit quand 6 chiffres sont saisis (désactivé pour debug)
             codeInput.addEventListener('input', function() {
                 // Ne garder que les chiffres
                 this.value = this.value.replace(/[^0-9]/g, '');
                 
-                // Auto-submit si 6 chiffres
-                if (this.value.length === 6) {
-                    setTimeout(() => {
-                        form.submit();
-                    }, 500);
-                }
+                // Auto-submit désactivé pour debug
+                // if (this.value.length === 6) {
+                //     setTimeout(() => {
+                //         form.submit();
+                //     }, 500);
+                // }
             });
             
             // Empêcher la soumission si le code n'est pas complet

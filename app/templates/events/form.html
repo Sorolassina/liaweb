@@ -1,0 +1,123 @@
+{% extends "base.html" %}
+
+{% block title %}Nouvel Événement{% endblock %}
+
+{% block content %}
+<div class="container-fluid p-4">
+    <!-- En-tête -->
+    <div class="row mb-4">
+        <div class="col-12">
+            <nav aria-label="breadcrumb">
+                <ol class="breadcrumb">
+                    <li class="breadcrumb-item"><a href="{{ url_for('liste_events') }}">Événements</a></li>
+                    <li class="breadcrumb-item active">Nouvel Événement</li>
+                </ol>
+            </nav>
+            <h1 class="mb-0">Créer un Nouvel Événement</h1>
+        </div>
+    </div>
+
+    <!-- Formulaire -->
+    <div class="row justify-content-center">
+        <div class="col-md-8">
+            <div class="card">
+                <div class="card-body">
+                    <form action="{{ url_for('creer_event') }}" method="post">
+                        <!-- Titre -->
+                        <div class="mb-3">
+                            <label for="titre" class="form-label">Titre de l'événement *</label>
+                            <input type="text" class="form-control" id="titre" name="titre" required>
+                        </div>
+
+                        <!-- Description -->
+                        <div class="mb-3">
+                            <label for="description" class="form-label">Description</label>
+                            <textarea class="form-control" id="description" name="description" rows="3" placeholder="Décrivez l'événement..."></textarea>
+                        </div>
+
+                        <!-- Programme -->
+                        <div class="mb-3">
+                            <label for="programme_id" class="form-label">Programme *</label>
+                            <select class="form-select" id="programme_id" name="programme_id" required>
+                                <option value="">Sélectionnez un programme</option>
+                                {% for programme in programmes %}
+                                <option value="{{ programme.id }}">{{ programme.nom }}</option>
+                                {% endfor %}
+                            </select>
+                        </div>
+
+                        <!-- Dates -->
+                        <div class="row mb-3">
+                            <div class="col-md-6">
+                                <label for="date_debut" class="form-label">Date de début *</label>
+                                <input type="date" class="form-control" id="date_debut" name="date_debut" required>
+                            </div>
+                            <div class="col-md-6">
+                                <label for="date_fin" class="form-label">Date de fin *</label>
+                                <input type="date" class="form-control" id="date_fin" name="date_fin" required>
+                            </div>
+                        </div>
+
+                        <!-- Heures -->
+                        <div class="row mb-3">
+                            <div class="col-md-6">
+                                <label for="heure_debut" class="form-label">Heure de début</label>
+                                <input type="time" class="form-control" id="heure_debut" name="heure_debut">
+                            </div>
+                            <div class="col-md-6">
+                                <label for="heure_fin" class="form-label">Heure de fin</label>
+                                <input type="time" class="form-control" id="heure_fin" name="heure_fin">
+                            </div>
+                        </div>
+
+                        <!-- Lieu -->
+                        <div class="mb-3">
+                            <label for="lieu" class="form-label">Lieu</label>
+                            <input type="text" class="form-control" id="lieu" name="lieu" placeholder="Salle, adresse...">
+                        </div>
+
+                        <!-- Statut -->
+                        <div class="mb-3">
+                            <label for="statut" class="form-label">Statut</label>
+                            <select class="form-select" id="statut" name="statut">
+                                <option value="planifie">Planifié</option>
+                                <option value="en_cours">En cours</option>
+                                <option value="termine">Terminé</option>
+                                <option value="annule">Annulé</option>
+                            </select>
+                        </div>
+
+                        <!-- Boutons -->
+                        <div class="d-flex justify-content-between">
+                            <a href="{{ url_for('liste_events') }}" class="btn btn-outline-secondary">
+                                <i class="fas fa-arrow-left me-2"></i>Annuler
+                            </a>
+                            <button type="submit" class="btn btn-primary">
+                                <i class="fas fa-save me-2"></i>Créer l'Événement
+                            </button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+// Validation des dates
+document.getElementById('date_debut').addEventListener('change', function() {
+    const dateFin = document.getElementById('date_fin');
+    if (dateFin.value && this.value > dateFin.value) {
+        dateFin.value = this.value;
+    }
+});
+
+document.getElementById('date_fin').addEventListener('change', function() {
+    const dateDebut = document.getElementById('date_debut');
+    if (dateDebut.value && this.value < dateDebut.value) {
+        alert('La date de fin ne peut pas être antérieure à la date de début');
+        this.value = dateDebut.value;
+    }
+});
+</script>
+{% endblock %}

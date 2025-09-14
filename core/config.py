@@ -99,7 +99,7 @@ class Settings(BaseSettings):
     # === Propriétés calculées (s'exécutent seulement quand appelées) ===
     @property
     def STATIC_DIR(self) -> Path:
-        return BASE_DIR / "static"
+        return BASE_DIR / "app" / "static"
     
     @property
     def TEMPLATE_DIR(self) -> Path:

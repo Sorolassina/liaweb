@@ -1,0 +1,364 @@
+{% extends "base.html" %}
+
+{% block title %}{{ seminaire.titre }}{% endblock %}
+
+{% block content %}
+<div class="container-fluid p-4">
+    <div class="row mb-4">
+        <div class="col-12">
+            <nav aria-label="breadcrumb">
+                <ol class="breadcrumb">
+                    <li class="breadcrumb-item"><a href="{{ url_for('liste_seminaires') }}">Séminaires</a></li>
+                    <li class="breadcrumb-item active">{{ seminaire.titre }}</li>
+                </ol>
+            </nav>
+            <div class="d-flex justify-content-between align-items-center">
+                <div>
+                    <h1 class="mb-0">{{ seminaire.titre }}</h1>
+                    <p class="text-muted mb-0">
+                        <i class="fas fa-calendar me-1"></i>
+                        {{ seminaire.date_debut.strftime('%d/%m/%Y') }} - {{ seminaire.date_fin.strftime('%d/%m/%Y') }}
+                        {% if seminaire.lieu %}
+                            | <i class="fas fa-map-marker-alt me-1"></i>{{ seminaire.lieu }}
+                        {% endif %}
+                    </p>
+                </div>
+                <div class="btn-group">
+                    <a href="{{ url_for('nouvelle_session_seminaire', seminaire_id=seminaire.id) }}" class="btn btn-primary">
+                        <i class="fas fa-plus me-2"></i>Nouvelle Session
+                    </a>
+                    <a href="{{ url_for('invitations_seminaire', seminaire_id=seminaire.id) }}" class="btn btn-info">
+                        <i class="fas fa-envelope me-2"></i>Invitations
+                    </a>
+                    <a href="{{ url_for('livrables_seminaire', seminaire_id=seminaire.id) }}" class="btn btn-success">
+                        <i class="fas fa-file-alt me-2"></i>Livrables
+                    </a>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Informations générales -->
+    <div class="row mb-4">
+        <div class="col-lg-8">
+            <div class="card">
+                <div class="card-header">
+                    <h5 class="mb-0">Informations Générales</h5>
+                </div>
+                <div class="card-body">
+                    <div class="row">
+                        <div class="col-md-6">
+                            <h6>Description</h6>
+                            <p>{{ seminaire.description or 'Aucune description' }}</p>
+                            
+                            <h6>Programme</h6>
+                            <span class="badge bg-secondary">{{ seminaire.programme.code }}</span>
+                            
+                            <h6>Organisateur</h6>
+                            <div class="d-flex align-items-center">
+                                {% if seminaire.organisateur.photo_profil %}
+                                    <img src="{{ seminaire.organisateur.photo_profil }}" 
+                                         class="rounded-circle me-2" width="30" height="30" 
+                                         alt="{{ seminaire.organisateur.nom_complet }}">
+                                {% else %}
+                                    <div class="bg-secondary rounded-circle me-2 d-flex align-items-center justify-content-center" 
+                                         style="width: 30px; height: 30px;">
+                                        <i class="fas fa-user text-white"></i>
+                                    </div>
+                                {% endif %}
+                                <span>{{ seminaire.organisateur.nom_complet }}</span>
+                            </div>
+                        </div>
+                        <div class="col-md-6">
+                            <h6>Dates</h6>
+                            <p>
+                                <strong>Début:</strong> {{ seminaire.date_debut.strftime('%d/%m/%Y') }}<br>
+                                <strong>Fin:</strong> {{ seminaire.date_fin.strftime('%d/%m/%Y') }}
+                            </p>
+                            
+                            {% if seminaire.adresse_complete %}
+                                <h6>Adresse</h6>
+                                <p>{{ seminaire.adresse_complete }}</p>
+                            {% endif %}
+                            
+                            {% if seminaire.capacite_max %}
+                                <h6>Capacité</h6>
+                                <p>{{ seminaire.capacite_max }} participants maximum</p>
+                            {% endif %}
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        
+        <div class="col-lg-4">
+            <div class="card">
+                <div class="card-header">
+                    <h5 class="mb-0">Statut</h5>
+                </div>
+                <div class="card-body text-center">
+                    {% if seminaire.statut == 'planifie' %}
+                        <div class="badge bg-warning fs-6 mb-3">Planifié</div>
+                    {% elif seminaire.statut == 'en_cours' %}
+                        <div class="badge bg-info fs-6 mb-3">En Cours</div>
+                    {% elif seminaire.statut == 'termine' %}
+                        <div class="badge bg-success fs-6 mb-3">Terminé</div>
+                    {% elif seminaire.statut == 'annule' %}
+                        <div class="badge bg-danger fs-6 mb-3">Annulé</div>
+                    {% endif %}
+                    
+                    <div class="mt-3">
+                        <small class="text-muted">
+                            Créé le {{ seminaire.cree_le.strftime('%d/%m/%Y à %H:%M') }}
+                        </small>
+                    </div>
+                </div>
+            </div>
+            
+            <div class="card mt-3">
+                <div class="card-header">
+                    <h5 class="mb-0">Actions Rapides</h5>
+                </div>
+                <div class="card-body">
+                    <div class="d-grid gap-2">
+                        <a href="{{ url_for('nouvelle_session_seminaire', seminaire_id=seminaire.id) }}" class="btn btn-outline-primary btn-sm">
+                            <i class="fas fa-plus me-1"></i>Ajouter Session
+                        </a>
+                        <a href="{{ url_for('invitations_seminaire', seminaire_id=seminaire.id) }}" class="btn btn-outline-info btn-sm">
+                            <i class="fas fa-envelope me-1"></i>Gérer Invitations
+                        </a>
+                        <a href="{{ url_for('livrables_seminaire', seminaire_id=seminaire.id) }}" class="btn btn-outline-success btn-sm">
+                            <i class="fas fa-file-alt me-1"></i>Gérer Livrables
+                        </a>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Sessions -->
+    <div class="row mb-4">
+        <div class="col-12">
+            <div class="card">
+                <div class="card-header">
+                    <div class="d-flex justify-content-between align-items-center">
+                        <h5 class="mb-0">Sessions ({{ sessions|length }})</h5>
+                        <a href="{{ url_for('nouvelle_session_seminaire', seminaire_id=seminaire.id) }}" class="btn btn-sm btn-primary">
+                            <i class="fas fa-plus me-1"></i>Nouvelle Session
+                        </a>
+                    </div>
+                </div>
+                <div class="card-body">
+                    {% if sessions %}
+                        <div class="table-responsive">
+                            <table class="table table-hover">
+                                <thead>
+                                    <tr>
+                                        <th>Titre</th>
+                                        <th>Date</th>
+                                        <th>Horaires</th>
+                                        <th>Lieu</th>
+                                        <th>Obligatoire</th>
+                                        <th>Actions</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    {% for session in sessions %}
+                                    <tr>
+                                        <td>
+                                            <strong>{{ session.titre }}</strong>
+                                            {% if session.description %}
+                                                <br><small class="text-muted">{{ session.description[:100] }}{% if session.description|length > 100 %}...{% endif %}</small>
+                                            {% endif %}
+                                        </td>
+                                        <td>{{ session.date_session.strftime('%d/%m/%Y') }}</td>
+                                        <td>
+                                            {{ session.heure_debut.strftime('%H:%M') }}
+                                            {% if session.heure_fin %}
+                                                - {{ session.heure_fin.strftime('%H:%M') }}
+                                            {% endif %}
+                                        </td>
+                                        <td>
+                                            {% if session.lieu %}
+                                                {{ session.lieu }}
+                                            {% else %}
+                                                <span class="text-muted">Non défini</span>
+                                            {% endif %}
+                                        </td>
+                                        <td>
+                                            {% if session.obligatoire %}
+                                                <span class="badge bg-warning">Obligatoire</span>
+                                            {% else %}
+                                                <span class="badge bg-secondary">Optionnel</span>
+                                            {% endif %}
+                                        </td>
+                                        <td>
+                                            <div class="btn-group" role="group">
+                                                <a href="{{ url_for('emargement_session', seminaire_id=seminaire.id, session_id=session.id) }}" 
+                                                   class="btn btn-sm btn-outline-primary">
+                                                    <i class="fas fa-signature"></i>
+                                                </a>
+                                                {% if session.visioconf_url %}
+                                                    <a href="{{ session.visioconf_url }}" target="_blank" 
+                                                       class="btn btn-sm btn-outline-info">
+                                                        <i class="fas fa-video"></i>
+                                                    </a>
+                                                {% endif %}
+                                            </div>
+                                        </td>
+                                    </tr>
+                                    {% endfor %}
+                                </tbody>
+                            </table>
+                        </div>
+                    {% else %}
+                        <div class="text-center py-4">
+                            <i class="fas fa-calendar-day fa-3x text-muted mb-3"></i>
+                            <h5 class="text-muted">Aucune session créée</h5>
+                            <p class="text-muted">Commencez par créer la première session du séminaire.</p>
+                            <a href="{{ url_for('nouvelle_session_seminaire', seminaire_id=seminaire.id) }}" class="btn btn-primary">
+                                <i class="fas fa-plus me-2"></i>Créer une Session
+                            </a>
+                        </div>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Invitations et Livrables -->
+    <div class="row">
+        <div class="col-md-6">
+            <div class="card">
+                <div class="card-header">
+                    <div class="d-flex justify-content-between align-items-center">
+                        <h5 class="mb-0">Invitations ({{ invitations|length }})</h5>
+                        <a href="{{ url_for('invitations_seminaire', seminaire_id=seminaire.id) }}" class="btn btn-sm btn-info">
+                            <i class="fas fa-envelope me-1"></i>Gérer
+                        </a>
+                    </div>
+                </div>
+                <div class="card-body">
+                    {% if invitations %}
+                        <div class="list-group list-group-flush">
+                            {% for invitation in invitations[:5] %}
+                            <div class="list-group-item d-flex justify-content-between align-items-center">
+                                <div>
+                                    <strong>{{ invitation.type_invitation.title() }}</strong>
+                                    <br><small class="text-muted">{{ invitation.statut }}</small>
+                                </div>
+                                <span class="badge bg-info">{{ invitation.statut }}</span>
+                            </div>
+                            {% endfor %}
+                            {% if invitations|length > 5 %}
+                                <div class="list-group-item text-center">
+                                    <small class="text-muted">... et {{ invitations|length - 5 }} autres</small>
+                                </div>
+                            {% endif %}
+                        </div>
+                    {% else %}
+                        <div class="text-center py-3">
+                            <i class="fas fa-envelope fa-2x text-muted mb-2"></i>
+                            <p class="text-muted mb-0">Aucune invitation envoyée</p>
+                        </div>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+        
+        <div class="col-md-6">
+            <div class="card">
+                <div class="card-header">
+                    <div class="d-flex justify-content-between align-items-center">
+                        <h5 class="mb-0">Livrables ({{ livrables|length }})</h5>
+                        <div>
+                            <a href="{{ url_for('livrables_candidat', seminaire_id=seminaire.id) }}" class="btn btn-sm btn-primary me-2">
+                                <i class="fas fa-upload me-1"></i>Mes livrables
+                            </a>
+                            <a href="{{ url_for('livrables_seminaire', seminaire_id=seminaire.id) }}" class="btn btn-sm btn-success">
+                                <i class="fas fa-file-alt me-1"></i>Gérer
+                            </a>
+                        </div>
+                    </div>
+                </div>
+                <div class="card-body">
+                    {% if livrables %}
+                        <div class="list-group list-group-flush">
+                            {% for livrable in livrables[:5] %}
+                            <div class="list-group-item d-flex justify-content-between align-items-center">
+                                <div>
+                                    <strong>{{ livrable.titre }}</strong>
+                                    <br><small class="text-muted">{{ livrable.type_livrable }}</small>
+                                </div>
+                                {% if livrable.obligatoire %}
+                                    <span class="badge bg-warning">Obligatoire</span>
+                                {% else %}
+                                    <span class="badge bg-secondary">Optionnel</span>
+                                {% endif %}
+                            </div>
+                            {% endfor %}
+                            {% if livrables|length > 5 %}
+                                <div class="list-group-item text-center">
+                                    <small class="text-muted">... et {{ livrables|length - 5 }} autres</small>
+                                </div>
+                            {% endif %}
+                        </div>
+                    {% else %}
+                        <div class="text-center py-3">
+                            <i class="fas fa-file-alt fa-2x text-muted mb-2"></i>
+                            <p class="text-muted mb-0">Aucun livrable défini</p>
+                        </div>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<style>
+.card {
+    box-shadow: 0 0.125rem 0.25rem rgba(0, 0, 0, 0.075);
+    border: 1px solid rgba(0, 0, 0, 0.125);
+}
+
+.table th {
+    border-top: none;
+    font-weight: 600;
+    color: #495057;
+}
+
+.btn-group .btn {
+    border-radius: 0.25rem;
+}
+
+.btn-group .btn:not(:last-child) {
+    margin-right: 0.25rem;
+}
+
+.badge {
+    font-size: 0.75em;
+}
+
+.breadcrumb {
+    background-color: transparent;
+    padding: 0;
+}
+
+.breadcrumb-item + .breadcrumb-item::before {
+    content: ">";
+}
+
+.list-group-item {
+    border-left: none;
+    border-right: none;
+}
+
+.list-group-item:first-child {
+    border-top: none;
+}
+
+.list-group-item:last-child {
+    border-bottom: none;
+}
+</style>
+{% endblock %}

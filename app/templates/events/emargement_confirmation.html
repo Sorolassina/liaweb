@@ -1,0 +1,83 @@
+{% extends "base.html" %}
+
+{% block title %}Confirmation d'Émargement{% endblock %}
+
+{% block content %}
+<div class="container-fluid p-4">
+    <div class="row justify-content-center">
+        <div class="col-md-8">
+            <div class="card">
+                <div class="card-body text-center py-5">
+                    <div class="mb-4">
+                        <i class="fas fa-check-circle fa-5x text-success"></i>
+                    </div>
+                    
+                    <h2 class="text-success mb-3">Émargement Validé !</h2>
+                    
+                    <p class="lead mb-4">
+                        L'émargement pour <strong>{{ event.titre }}</strong> a été enregistré avec succès.
+                    </p>
+                    
+                    <div class="row mb-4">
+                        <div class="col-md-6">
+                            <div class="card bg-light">
+                                <div class="card-body">
+                                    <h6 class="card-title">Candidat</h6>
+                                    <p class="card-text">
+                                        {% if presence.inscription.candidat %}
+                                            {{ presence.inscription.candidat.prenom }} {{ presence.inscription.candidat.nom }}
+                                        {% else %}
+                                            Candidat non trouvé
+                                        {% endif %}
+                                    </p>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="col-md-6">
+                            <div class="card bg-light">
+                                <div class="card-body">
+                                    <h6 class="card-title">Statut</h6>
+                                    <p class="card-text">
+                                        {% if presence.presence == 'present' %}
+                                            <span class="badge bg-success">Présent</span>
+                                        {% elif presence.presence == 'absent' %}
+                                            <span class="badge bg-danger">Absent</span>
+                                        {% elif presence.presence == 'excuse' %}
+                                            <span class="badge bg-warning">Excusé</span>
+                                        {% else %}
+                                            <span class="badge bg-secondary">{{ presence.presence }}</span>
+                                        {% endif %}
+                                    </p>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    {% if presence.heure_arrivee %}
+                    <div class="alert alert-info">
+                        <i class="fas fa-clock me-2"></i>
+                        Heure d'arrivée : {{ presence.heure_arrivee.strftime('%H:%M') }}
+                    </div>
+                    {% endif %}
+                    
+                    {% if presence.commentaire %}
+                    <div class="alert alert-light">
+                        <i class="fas fa-comment me-2"></i>
+                        Commentaire : {{ presence.commentaire }}
+                    </div>
+                    {% endif %}
+                    
+                    <div class="mt-4">
+                        <a href="{{ url_for('emargement_event', event_id=event.id) }}" class="btn btn-primary me-2">
+                            <i class="fas fa-arrow-left me-2"></i>Retour à l'Émargement
+                        </a>
+                        <a href="{{ url_for('detail_event', event_id=event.id) }}" class="btn btn-outline-primary">
+                            <i class="fas fa-eye me-2"></i>Voir l'Événement
+                        </a>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

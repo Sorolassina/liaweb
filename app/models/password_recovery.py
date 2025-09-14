@@ -39,9 +39,16 @@ class PasswordRecoveryCode(SQLModel, table=True):
     
     def is_valid(self) -> bool:
         """Vérifie si le code est encore valide"""
+        # S'assurer que expires_at est timezone-aware
+        if self.expires_at.tzinfo is None:
+            # Si expires_at est naive, on suppose qu'il est en UTC
+            expires_at = self.expires_at.replace(tzinfo=timezone.utc)
+        else:
+            expires_at = self.expires_at
+        
         return (
             not self.used and 
-            datetime.now(timezone.utc) < self.expires_at
+            datetime.now(timezone.utc) < expires_at
         )
     
     def mark_as_used(self):

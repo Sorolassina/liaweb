@@ -1,0 +1,312 @@
+{% extends "base.html" %}
+
+{% block title %}Gestion des Séminaires{% endblock %}
+
+{% block content %}
+<!--<div class="container-fluid p-4">-->
+    <div class="row mb-4">
+        <div class="col-12">
+            <div class="d-flex justify-content-between align-items-center">
+                <h1 class="mb-0">
+                    <i class="fas fa-calendar-alt me-2"></i>
+                    Gestion des Séminaires
+                </h1>
+                <a href="{{ url_for('form_seminaire') }}" class="btn btn-primary">
+                    <i class="fas fa-plus me-2"></i>Nouveau Séminaire
+                </a>
+            </div>
+        </div>
+    </div>
+
+    <!-- Statistiques -->
+    <div class="row mb-4">
+        <div class="col-md-3">
+            <div class="card bg-primary text-white">
+                <div class="card-body">
+                    <div class="d-flex justify-content-between">
+                        <div>
+                            <h4 class="mb-0">{{ stats.total_seminaires }}</h4>
+                            <p class="mb-0">Total Séminaires</p>
+                        </div>
+                        <div class="align-self-center">
+                            <i class="fas fa-calendar-alt fa-2x"></i>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-3">
+            <div class="card bg-warning text-white">
+                <div class="card-body">
+                    <div class="d-flex justify-content-between">
+                        <div>
+                            <h4 class="mb-0">{{ stats.seminaires_planifies }}</h4>
+                            <p class="mb-0">Planifiés</p>
+                        </div>
+                        <div class="align-self-center">
+                            <i class="fas fa-clock fa-2x"></i>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-3">
+            <div class="card bg-info text-white">
+                <div class="card-body">
+                    <div class="d-flex justify-content-between">
+                        <div>
+                            <h4 class="mb-0">{{ stats.seminaires_en_cours }}</h4>
+                            <p class="mb-0">En Cours</p>
+                        </div>
+                        <div class="align-self-center">
+                            <i class="fas fa-play fa-2x"></i>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-3">
+            <div class="card bg-success text-white">
+                <div class="card-body">
+                    <div class="d-flex justify-content-between">
+                        <div>
+                            <h4 class="mb-0">{{ stats.seminaires_termines }}</h4>
+                            <p class="mb-0">Terminés</p>
+                        </div>
+                        <div class="align-self-center">
+                            <i class="fas fa-check fa-2x"></i>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Filtres -->
+    <div class="row mb-4">
+        <div class="col-12">
+            <div class="card">
+                <div class="card-body">
+                    <form method="GET" class="row g-3">
+                        <div class="col-md-3">
+                            <label for="statut" class="form-label">Statut</label>
+                            <select class="form-select" id="statut" name="statut">
+                                <option value="">Tous les statuts</option>
+                                <option value="planifie">Planifié</option>
+                                <option value="en_cours">En Cours</option>
+                                <option value="termine">Terminé</option>
+                                <option value="annule">Annulé</option>
+                            </select>
+                        </div>
+                        <div class="col-md-3">
+                            <label for="date_from" class="form-label">Date de début (à partir de)</label>
+                            <input type="date" class="form-control" id="date_from" name="date_from">
+                        </div>
+                        <div class="col-md-3">
+                            <label for="date_to" class="form-label">Date de début (jusqu'à)</label>
+                            <input type="date" class="form-control" id="date_to" name="date_to">
+                        </div>
+                        <div class="col-md-3">
+                            <label class="form-label">&nbsp;</label>
+                            <div class="d-grid">
+                                <button type="submit" class="btn btn-outline-primary">
+                                    <i class="fas fa-filter me-2"></i>Filtrer
+                                </button>
+                            </div>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Liste des séminaires -->
+    <div class="row" style="height: 100%;">
+        <div class="col-12"style="height: 100%;">
+            <div class="card"style="height: 100%;">
+                <div class="card-header">
+                    <h5 class="mb-0">Liste des Séminaires</h5>
+                </div>
+                <div class="card-body"style="height: 100%;">
+                    {% if seminaires %}
+                        <div class="table-responsive" style="height: 100%;">
+                            <table class="table table-hover">
+                                <thead>
+                                    <tr>
+                                        <th>Titre</th>
+                                        <th>Programme</th>
+                                        <th>Dates</th>
+                                        <th>Lieu</th>
+                                        <th>Statut</th>
+                                        <th>Organisateur</th>
+                                        <th>Actions</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    {% for seminaire in seminaires %}
+                                    <tr>
+                                        <td>
+                                            <strong>{{ seminaire.titre }}</strong>
+                                            {% if seminaire.description %}
+                                                <br><small class="text-muted">{{ seminaire.description[:100] }}{% if seminaire.description|length > 100 %}...{% endif %}</small>
+                                            {% endif %}
+                                        </td>
+                                        <td>
+                                            <span class="badge bg-secondary">{{ seminaire.programme.code }}</span>
+                                        </td>
+                                        <td>
+                                            <div>
+                                                <strong>Début:</strong> {{ seminaire.date_debut.strftime('%d/%m/%Y') }}
+                                            </div>
+                                            <div>
+                                                <strong>Fin:</strong> {{ seminaire.date_fin.strftime('%d/%m/%Y') }}
+                                            </div>
+                                        </td>
+                                        <td>
+                                            {% if seminaire.lieu %}
+                                                <i class="fas fa-map-marker-alt me-1"></i>{{ seminaire.lieu }}
+                                            {% else %}
+                                                <span class="text-muted">Non défini</span>
+                                            {% endif %}
+                                        </td>
+                                        <td>
+                                            {% if seminaire.statut == 'planifie' %}
+                                                <span class="badge bg-warning">Planifié</span>
+                                            {% elif seminaire.statut == 'en_cours' %}
+                                                <span class="badge bg-info">En Cours</span>
+                                            {% elif seminaire.statut == 'termine' %}
+                                                <span class="badge bg-success">Terminé</span>
+                                            {% elif seminaire.statut == 'annule' %}
+                                                <span class="badge bg-danger">Annulé</span>
+                                            {% else %}
+                                                <span class="badge bg-secondary">{{ seminaire.statut }}</span>
+                                            {% endif %}
+                                        </td>
+                                        <td>
+                                            <div class="d-flex align-items-center">
+                                                {% if seminaire.organisateur.photo_profil %}
+                                                    <img src="{{ seminaire.organisateur.photo_profil }}" 
+                                                         class="rounded-circle me-2" width="30" height="30" 
+                                                         alt="{{ seminaire.organisateur.nom_complet }}">
+                                                {% else %}
+                                                    <div class="bg-secondary rounded-circle me-2 d-flex align-items-center justify-content-center" 
+                                                         style="width: 30px; height: 30px;">
+                                                        <i class="fas fa-user text-white"></i>
+                                                    </div>
+                                                {% endif %}
+                                                <span>{{ seminaire.organisateur.nom_complet }}</span>
+                                            </div>
+                                        </td>
+                                        <td>
+                                            <div class="btn-group" role="group">
+                                                <a href="{{ url_for('detail_seminaire', seminaire_id=seminaire.id) }}" class="btn btn-sm btn-outline-primary">
+                                                    <i class="fas fa-eye"></i>
+                                                </a>
+                                                <a href="{{ url_for('invitations_seminaire', seminaire_id=seminaire.id) }}" class="btn btn-sm btn-outline-info">
+                                                    <i class="fas fa-envelope"></i>
+                                                </a>
+                                                <a href="{{ url_for('livrables_seminaire', seminaire_id=seminaire.id) }}" class="btn btn-sm btn-outline-success">
+                                                    <i class="fas fa-file-alt"></i>
+                                                </a>
+                                            </div>
+                                        </td>
+                                    </tr>
+                                    {% endfor %}
+                                </tbody>
+                            </table>
+                        </div>
+                    {% else %}
+                        <div class="text-center py-5" style="height: 100%;">
+                            <i class="fas fa-calendar-alt fa-3x text-muted mb-3"></i>
+                            <h4 class="text-muted">Aucun séminaire trouvé</h4>
+                            <p class="text-muted">Commencez par créer votre premier séminaire.</p>
+                            <a href="{{ url_for('form_seminaire') }}" class="btn btn-primary">
+                                <i class="fas fa-plus me-2"></i>Créer un Séminaire
+                            </a>
+                        </div>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+    </div>
+<!--</div>-->
+
+<style>
+/* Réduction des espaces entre les éléments */
+.row {
+   padding:0px 0px 0px 0px;
+   
+}
+
+.row.mb-4 {
+    margin-bottom: 0.5rem !important; /* Force la réduction */
+}
+
+.card {
+    box-shadow: 0 0.125rem 0.25rem rgba(0, 0, 0, 0.075);
+    border: 1px solid rgba(0, 0, 0, 0.125);
+    margin-bottom: 0.25rem; /* Espace encore plus réduit entre les cartes */
+}
+
+/* Réduction de la hauteur uniquement des cartes de statistiques KPI */
+.card.bg-primary, .card.bg-warning, .card.bg-info, .card.bg-success {
+    height: 80px;
+}
+
+.card.bg-primary .card-body, .card.bg-warning .card-body, 
+.card.bg-info .card-body, .card.bg-success .card-body {
+    padding: 0.75rem;
+    display: flex;
+    align-items: center;
+    height: 100%;
+}
+
+.card.bg-primary h4, .card.bg-warning h4, 
+.card.bg-info h4, .card.bg-success h4 {
+    font-size: 1.5rem;
+    margin-bottom: 0.25rem;
+}
+
+.card.bg-primary p, .card.bg-warning p, 
+.card.bg-info p, .card.bg-success p {
+    font-size: 0.875rem;
+    margin-bottom: 0;
+}
+
+.card.bg-primary .fa-2x, .card.bg-warning .fa-2x, 
+.card.bg-info .fa-2x, .card.bg-success .fa-2x {
+    font-size: 1.5rem !important;
+}
+
+.table th {
+    border-top: none;
+    font-weight: 600;
+    color: #495057;
+}
+
+.btn-group .btn {
+    border-radius: 0.25rem;
+}
+
+.btn-group .btn:not(:last-child) {
+    margin-right: 0.25rem;
+}
+
+.badge {
+    font-size: 0.75em;
+}
+
+.table-responsive {
+    border-radius: 0.375rem;
+}
+
+/* Réduction des paddings généraux */
+.card-body {
+    padding: 0.75rem; /* Réduit encore plus de 1rem à 0.75rem */
+}
+
+.card-header {
+    padding: 0.5rem 0.75rem; /* Réduit encore plus le padding du header */
+}
+</style>
+{% endblock %}

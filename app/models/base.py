@@ -60,6 +60,8 @@ class Programme(SQLModel, table=True):
     preinscriptions: List["Preinscription"] = Relationship(back_populates="programme")
     inscriptions: List["Inscription"] = Relationship(back_populates="programme")
     etapes_pipeline: List["EtapePipeline"] = Relationship(back_populates="programme")
+    seminaires: List["Seminaire"] = Relationship(back_populates="programme")
+    events: List["Event"] = Relationship(back_populates="programme")
 
 class ProgrammeUtilisateur(SQLModel, table=True):
     """Affectation d'un utilisateur à un programme avec un rôle spécifique"""

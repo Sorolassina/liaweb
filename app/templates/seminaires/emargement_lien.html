@@ -1,0 +1,741 @@
+{% extends "base_public.html" %}
+
+{% block title %}Émargement - {{ session.titre }}{% endblock %}
+
+{% block content %}
+<div class="container mt-5">
+    <div class="row justify-content-center">
+        <div class="col-md-8 col-lg-6">
+            <div class="card shadow">
+                <div class="card-body p-5">
+                    <!-- En-tête -->
+                    <div class="text-center mb-4">
+                        <i class="fas fa-signature text-primary" style="font-size: 3rem;"></i>
+                        <h2 class="mt-3 mb-1">Émargement</h2>
+                        <p class="text-muted">{{ seminaire.titre }}</p>
+                        <h4 class="text-primary">{{ session.titre }}</h4>
+                        <p class="text-muted">
+                            <i class="fas fa-calendar-alt me-1"></i>
+                            {{ session.date_session.strftime('%d/%m/%Y') }}
+                            {% if session.heure_debut %}
+                            à {{ session.heure_debut.strftime('%H:%M') }}
+                            {% endif %}
+                        </p>
+                    </div>
+                    
+                    <!-- Informations candidat -->
+                    <div class="alert alert-info mb-4">
+                        <h5 class="alert-heading">
+                            <i class="fas fa-user me-2"></i>
+                            {{ invitation.inscription.candidat.prenom }} {{ invitation.inscription.candidat.nom }}
+                        </h5>
+                        <p class="mb-0">{{ invitation.inscription.candidat.email }}</p>
+                    </div>
+                    
+                    {% if presence %}
+                    <!-- Déjà présent -->
+                    <div class="alert alert-success text-center">
+                        <i class="fas fa-check-circle me-2" style="font-size: 2rem;"></i>
+                        <h4 class="alert-heading">Déjà émargé !</h4>
+                        <p class="mb-0">
+                            Vous avez déjà signé votre présence le 
+                            {{ presence.heure_arrivee.strftime('%d/%m/%Y à %H:%M') }}
+                        </p>
+                        {% if presence.methode_signature %}
+                        <small class="text-muted">
+                            Méthode : {{ presence.methode_signature.value|title }}
+                        </small>
+                        {% endif %}
+                    </div>
+                    {% else %}
+                    <!-- Zone d'affichage des messages -->
+                    <div id="message-container" class="mb-4" style="display: none;">
+                        <div id="message-alert" class="alert" role="alert">
+                            <div class="d-flex align-items-center">
+                                <i id="message-icon" class="me-2"></i>
+                                <span id="message-text"></span>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <!-- Formulaire de signature -->
+                    <form method="POST" action="{{ url_for('signer_emargement_lien', seminaire_id=seminaire.id, session_id=session.id, token=invitation.token_invitation) }}">
+                        <div class="mb-4">
+                            <label for="methode_signature" class="form-label">
+                                <i class="fas fa-pen me-1"></i>
+                                Méthode de Signature
+                            </label>
+                            <select class="form-select" id="methode_signature" name="methode_signature" required onchange="toggleSignatureMethod()">
+                                <option value="digital">Signature digitale</option>
+                                <option value="manuel">Signature manuelle</option>
+                            </select>
+                        </div>
+                        
+                        <!-- Zone de signature digitale -->
+                        <div class="mb-4" id="signature_digitale_zone">
+                            <div class="alert alert-info">
+                                <i class="fas fa-info-circle me-2"></i>
+                                <strong>Signature digitale :</strong> Signez dans la zone ci-dessous, puis prenez une photo pour vérification d'identité.
+                            </div>
+                            
+                            <!-- Zone de signature -->
+                            <div class="mb-3">
+                                <label class="form-label">
+                                    <i class="fas fa-mouse-pointer me-1"></i>
+                                    Signez dans la zone ci-dessous
+                                </label>
+                                <div class="border rounded p-3 bg-light">
+                                    <canvas id="signature_canvas" width="400" height="200" 
+                                            style="border: 1px solid #ddd; background: white; cursor: crosshair;"></canvas>
+                                </div>
+                                <div class="mt-2">
+                                    <button type="button" class="btn btn-outline-secondary btn-sm" onclick="clearSignature()">
+                                        <i class="fas fa-eraser me-1"></i>Effacer
+                                    </button>
+                                </div>
+                            </div>
+                            
+                            <!-- Zone de prise de photo pour signature digitale -->
+                            <div class="mb-3">
+                                <label class="form-label">
+                                    <i class="fas fa-camera me-1"></i>
+                                    Photo de vérification d'identité
+                                </label>
+                                <div class="border rounded p-3 bg-light text-center">
+                                    <video id="camera_video_digital" width="400" height="300" style="display: none;"></video>
+                                    <canvas id="photo_canvas_digital" width="400" height="300" style="display: none;"></canvas>
+                                    <div id="camera_placeholder_digital" class="py-5">
+                                        <i class="fas fa-camera fa-3x text-muted mb-3"></i>
+                                        <p class="text-muted">Cliquez pour activer la caméra</p>
+                                        <button type="button" class="btn btn-primary" onclick="startCameraDigital()">
+                                            <i class="fas fa-camera me-1"></i>Activer la caméra
+                                        </button>
+                                    </div>
+                                    <div id="camera_loading_digital" class="py-5 text-center" style="display: none;">
+                                        <div class="spinner-border text-primary mb-3" role="status">
+                                            <span class="visually-hidden">Chargement...</span>
+                                        </div>
+                                        <p class="text-muted">Activation de la caméra...</p>
+                                    </div>
+                                    <div id="camera_controls_digital" style="display: none;" class="mt-3">
+                                        <button type="button" class="btn btn-success me-2" onclick="capturePhotoDigital()">
+                                            <i class="fas fa-camera me-1"></i>Prendre la photo
+                                        </button>
+                                        <button type="button" class="btn btn-outline-secondary" onclick="stopCameraDigital()">
+                                            <i class="fas fa-stop me-1"></i>Arrêter
+                                        </button>
+                                    </div>
+                                </div>
+                                <small class="text-muted">
+                                    <i class="fas fa-shield-alt me-1"></i>
+                                    Cette photo sert à vérifier votre identité lors de la signature digitale.
+                                </small>
+                            </div>
+                        </div>
+                        
+                        <!-- Zone de signature manuelle -->
+                        <div class="mb-4" id="signature_manuelle_zone" style="display: none;">
+                            <div class="alert alert-info">
+                                <i class="fas fa-info-circle me-2"></i>
+                                <strong>Signature manuelle :</strong> Veuillez signer sur papier et prendre une photo de votre signature pour vérification.
+                            </div>
+                            
+                            <!-- Zone de saisie du nom -->
+                            <div class="mb-3">
+                                <label for="nom_signature" class="form-label">
+                                    <i class="fas fa-signature me-1"></i>
+                                    Votre nom complet
+                                </label>
+                                <input type="text" class="form-control" id="nom_signature" name="nom_signature" 
+                                       placeholder="Saisissez votre nom complet">
+                            </div>
+                            
+                            <!-- Zone de prise de photo -->
+                            <div class="mb-3">
+                                <label class="form-label">
+                                    <i class="fas fa-camera me-1"></i>
+                                    Photo de votre signature
+                                </label>
+                                <div class="border rounded p-3 bg-light text-center">
+                                    <video id="camera_video_manuel" width="400" height="300" style="display: none;"></video>
+                                    <canvas id="photo_canvas_manuel" width="400" height="300" style="display: none;"></canvas>
+                                    <div id="camera_placeholder_manuel" class="py-5">
+                                        <i class="fas fa-camera fa-3x text-muted mb-3"></i>
+                                        <p class="text-muted">Cliquez pour activer la caméra</p>
+                                        <button type="button" class="btn btn-primary" onclick="startCameraManuel()">
+                                            <i class="fas fa-camera me-1"></i>Activer la caméra
+                                        </button>
+                                    </div>
+                                    <div id="camera_loading_manuel" class="py-5 text-center" style="display: none;">
+                                        <div class="spinner-border text-primary mb-3" role="status">
+                                            <span class="visually-hidden">Chargement...</span>
+                                        </div>
+                                        <p class="text-muted">Activation de la caméra...</p>
+                                    </div>
+                                    <div id="camera_controls_manuel" style="display: none;" class="mt-3">
+                                        <button type="button" class="btn btn-success me-2" onclick="capturePhotoManuel()">
+                                            <i class="fas fa-camera me-1"></i>Prendre la photo
+                                        </button>
+                                        <button type="button" class="btn btn-outline-secondary" onclick="stopCameraManuel()">
+                                            <i class="fas fa-stop me-1"></i>Arrêter
+                                        </button>
+                                    </div>
+                                </div>
+                                <small class="text-muted">
+                                    <i class="fas fa-shield-alt me-1"></i>
+                                    Cette photo sert uniquement à vérifier votre identité lors de la signature.
+                                </small>
+                            </div>
+                        </div>
+                        
+                        <!-- Commentaire -->
+                        <div class="mb-4">
+                            <label for="commentaire" class="form-label">
+                                <i class="fas fa-comment me-1"></i>
+                                Commentaire (optionnel)
+                            </label>
+                            <textarea class="form-control" id="commentaire" name="commentaire" 
+                                      rows="3" placeholder="Ajoutez un commentaire..."></textarea>
+                        </div>
+                        
+                        <!-- Bouton de signature -->
+                        <div class="d-grid">
+                            <button type="submit" class="btn btn-primary btn-lg" id="signer_btn">
+                                <i class="fas fa-signature me-2"></i>
+                                Signer ma présence
+                            </button>
+                        </div>
+                        
+                        <input type="hidden" id="signature_data" name="signature_data" value="">
+                        <input type="hidden" id="photo_data" name="photo_data" value="">
+                    </form>
+                    {% endif %}
+                    
+                    <!-- Footer -->
+                    <hr class="my-4">
+                    <div class="text-center">
+                        <small class="text-muted">
+                            <i class="fas fa-shield-alt me-1"></i>
+                            Votre signature est sécurisée et enregistrée
+                        </small>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<style>
+.card {
+    border: none;
+    border-radius: 15px;
+}
+
+.alert-info {
+    background-color: #e3f2fd;
+    border-color: #bbdefb;
+    color: #1565c0;
+}
+
+.alert-success {
+    background-color: #e8f5e8;
+    border-color: #c3e6c3;
+    color: #155724;
+}
+
+#signature_canvas {
+    border-radius: 8px;
+}
+
+.btn-primary {
+    background-color: #ffd300;
+    border-color: #ffd300;
+    color: #000000;
+}
+
+.btn-primary:hover {
+    background-color: #e6be00;
+    border-color: #e6be00;
+    color: #000000;
+}
+
+.text-primary {
+    color: #ffd300 !important;
+}
+</style>
+
+<script>
+// Variables globales
+let signatureCanvas = null;
+let isDrawing = false;
+let hasSignature = false;
+let hasPhotoDigital = false;
+let hasPhotoManuel = false;
+let streamDigital = null;
+let streamManuel = null;
+
+// Fonctions pour afficher les messages
+function showMessage(message, type = 'info') {
+    const container = document.getElementById('message-container');
+    const alert = document.getElementById('message-alert');
+    const icon = document.getElementById('message-icon');
+    const text = document.getElementById('message-text');
+    
+    // Définir les classes et icônes selon le type
+    const messageTypes = {
+        'success': { class: 'alert-success', icon: 'fas fa-check-circle' },
+        'error': { class: 'alert-danger', icon: 'fas fa-exclamation-triangle' },
+        'warning': { class: 'alert-warning', icon: 'fas fa-exclamation-circle' },
+        'info': { class: 'alert-info', icon: 'fas fa-info-circle' }
+    };
+    
+    const messageType = messageTypes[type] || messageTypes['info'];
+    
+    // Mettre à jour le contenu
+    alert.className = `alert ${messageType.class}`;
+    icon.className = `${messageType.icon} me-2`;
+    text.textContent = message;
+    
+    // Afficher le message
+    container.style.display = 'block';
+    
+    // Auto-masquer après 5 secondes pour les messages de succès/info
+    if (type === 'success' || type === 'info') {
+        setTimeout(() => {
+            hideMessage();
+        }, 5000);
+    }
+}
+
+function hideMessage() {
+    const container = document.getElementById('message-container');
+    container.style.display = 'none';
+}
+
+// Fonction pour réattacher les événements de dessin
+function attachDrawingEvents() {
+    if (!signatureCanvas) {
+        console.error('Canvas de signature non disponible pour attacher les événements');
+        return;
+    }
+    
+    console.log('Attachement des événements de dessin...');
+    
+    // Supprimer les anciens événements pour éviter les doublons
+    signatureCanvas.removeEventListener('mousedown', startDrawing);
+    signatureCanvas.removeEventListener('mousemove', draw);
+    signatureCanvas.removeEventListener('mouseup', stopDrawing);
+    signatureCanvas.removeEventListener('mouseout', stopDrawing);
+    signatureCanvas.removeEventListener('touchstart', handleTouch);
+    signatureCanvas.removeEventListener('touchmove', handleTouch);
+    signatureCanvas.removeEventListener('touchend', stopDrawing);
+    
+    // Réattacher les événements
+    signatureCanvas.addEventListener('mousedown', startDrawing);
+    signatureCanvas.addEventListener('mousemove', draw);
+    signatureCanvas.addEventListener('mouseup', stopDrawing);
+    signatureCanvas.addEventListener('mouseout', stopDrawing);
+    
+    // Support tactile
+    signatureCanvas.addEventListener('touchstart', handleTouch);
+    signatureCanvas.addEventListener('touchmove', handleTouch);
+    signatureCanvas.addEventListener('touchend', stopDrawing);
+    
+    console.log('Événements de dessin attachés');
+}
+
+document.addEventListener('DOMContentLoaded', function() {
+    // Initialiser le canvas de signature
+    signatureCanvas = document.getElementById('signature_canvas');
+    if (!signatureCanvas) {
+        console.error('Canvas de signature non trouvé');
+        return;
+    }
+    
+    const ctx = signatureCanvas.getContext('2d');
+    if (!ctx) {
+        console.error('Contexte 2D non disponible');
+        return;
+    }
+    
+    // Configuration du canvas
+    ctx.strokeStyle = '#000000';
+    ctx.lineWidth = 2;
+    ctx.lineCap = 'round';
+    ctx.lineJoin = 'round';
+    
+    console.log('Canvas de signature initialisé:', signatureCanvas);
+    
+    // Attacher les événements initialement
+    attachDrawingEvents();
+    
+    // Initialiser la méthode par défaut
+    toggleSignatureMethod();
+    
+    // Validation du formulaire
+    document.querySelector('form').addEventListener('submit', function(e) {
+        const method = document.getElementById('methode_signature').value;
+        
+        if (method === 'digital') {
+            if (!hasSignature) {
+                showMessage('Veuillez signer dans la zone de signature', 'warning');
+                e.preventDefault();
+                return;
+            }
+            if (!hasPhotoDigital) {
+                showMessage('Veuillez prendre une photo de vérification d\'identité', 'warning');
+                e.preventDefault();
+                return;
+            }
+            // Sauvegarder la signature digitale
+            const signatureData = signatureCanvas.toDataURL();
+            document.getElementById('signature_data').value = signatureData;
+            
+        } else if (method === 'manuel') {
+            const nomSignature = document.getElementById('nom_signature').value.trim();
+            if (!nomSignature) {
+                showMessage('Veuillez saisir votre nom complet', 'warning');
+                e.preventDefault();
+                return;
+            }
+            if (!hasPhotoManuel) {
+                showMessage('Veuillez prendre une photo de votre signature', 'warning');
+                e.preventDefault();
+                return;
+            }
+            // Pour la signature manuelle, on utilise le nom comme signature
+            document.getElementById('signature_data').value = nomSignature;
+        }
+        
+        // Afficher le message de succès avant la soumission
+        showMessage('Émargement en cours de traitement...', 'info');
+        
+        // Désactiver le bouton pour éviter les double-soumissions
+        const submitBtn = document.querySelector('button[type="submit"]');
+        submitBtn.disabled = true;
+        submitBtn.innerHTML = '<i class="fas fa-spinner fa-spin me-2"></i>Traitement en cours...';
+    });
+});
+
+// Fonction pour basculer entre les méthodes de signature
+function toggleSignatureMethod() {
+    const method = document.getElementById('methode_signature').value;
+    const digitalZone = document.getElementById('signature_digitale_zone');
+    const manuelleZone = document.getElementById('signature_manuelle_zone');
+    const nomSignatureField = document.getElementById('nom_signature');
+    
+    if (method === 'digital') {
+        digitalZone.style.display = 'block';
+        manuelleZone.style.display = 'none';
+        // Arrêter la caméra manuelle si elle est active
+        stopCameraManuel();
+        // Réinitialiser les flags
+        hasSignature = false;
+        hasPhotoDigital = false;
+        // Rendre le champ nom non requis
+        nomSignatureField.removeAttribute('required');
+        
+        // Réattacher les événements de dessin après un court délai
+        setTimeout(() => {
+            if (signatureCanvas) {
+                console.log('Réattachement des événements pour signature digitale');
+                attachDrawingEvents();
+            }
+        }, 100);
+        
+    } else {
+        digitalZone.style.display = 'none';
+        manuelleZone.style.display = 'block';
+        // Arrêter la caméra digitale si elle est active
+        stopCameraDigital();
+        // Réinitialiser les flags
+        hasSignature = false;
+        hasPhotoManuel = false;
+        // Rendre le champ nom requis pour la signature manuelle
+        nomSignatureField.setAttribute('required', 'required');
+    }
+}
+
+// Fonctions pour la signature digitale
+function startDrawing(e) {
+    isDrawing = true;
+    const rect = signatureCanvas.getBoundingClientRect();
+    const x = e.clientX - rect.left;
+    const y = e.clientY - rect.top;
+    
+    const ctx = signatureCanvas.getContext('2d');
+    ctx.beginPath();
+    ctx.moveTo(x, y);
+}
+
+function draw(e) {
+    if (!isDrawing) return;
+    
+    const rect = signatureCanvas.getBoundingClientRect();
+    const x = e.clientX - rect.left;
+    const y = e.clientY - rect.top;
+    
+    const ctx = signatureCanvas.getContext('2d');
+    ctx.lineTo(x, y);
+    ctx.stroke();
+    
+    // Marquer qu'une signature a été faite
+    hasSignature = true;
+}
+
+function stopDrawing() {
+    isDrawing = false;
+}
+
+function handleTouch(e) {
+    e.preventDefault();
+    const touch = e.touches[0];
+    const mouseEvent = new MouseEvent(e.type === 'touchstart' ? 'mousedown' : 
+                                     e.type === 'touchmove' ? 'mousemove' : 'mouseup', {
+        clientX: touch.clientX,
+        clientY: touch.clientY
+    });
+    signatureCanvas.dispatchEvent(mouseEvent);
+}
+
+function clearSignature() {
+    if (!signatureCanvas) return;
+    const ctx = signatureCanvas.getContext('2d');
+    ctx.clearRect(0, 0, signatureCanvas.width, signatureCanvas.height);
+    document.getElementById('signature_data').value = '';
+    hasSignature = false; // Réinitialiser le flag
+}
+
+// Fonctions pour la caméra digitale
+async function startCameraDigital() {
+    try {
+        console.log('Tentative d\'accès à la caméra digitale...');
+        showMessage('Activation de la caméra en cours...', 'info');
+        
+        // Afficher l'indicateur de chargement
+        document.getElementById('camera_placeholder_digital').style.display = 'none';
+        document.getElementById('camera_loading_digital').style.display = 'block';
+        
+        // Vérifier si getUserMedia est supporté
+        if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
+            throw new Error('getUserMedia n\'est pas supporté par ce navigateur');
+        }
+        
+        // Essayer d'abord la caméra arrière, puis la caméra frontale
+        let constraints = { 
+            video: { 
+                width: { ideal: 400 }, 
+                height: { ideal: 300 },
+                facingMode: 'environment' // Caméra arrière si disponible
+            } 
+        };
+        
+        try {
+            streamDigital = await navigator.mediaDevices.getUserMedia(constraints);
+        } catch (error) {
+            console.log('Caméra arrière non disponible, essai avec la caméra frontale...');
+            constraints.video.facingMode = 'user'; // Caméra frontale
+            streamDigital = await navigator.mediaDevices.getUserMedia(constraints);
+        }
+        
+        console.log('Caméra digitale activée:', streamDigital);
+        
+        const video = document.getElementById('camera_video_digital');
+        if (!video) {
+            throw new Error('Élément video non trouvé');
+        }
+        
+        video.srcObject = streamDigital;
+        video.style.display = 'block';
+        
+        // Attendre que la vidéo soit chargée
+        video.onloadedmetadata = function() {
+            console.log('Métadonnées vidéo chargées');
+            video.play().catch(e => console.error('Erreur lecture vidéo:', e));
+        };
+        
+        document.getElementById('camera_loading_digital').style.display = 'none';
+        document.getElementById('camera_controls_digital').style.display = 'block';
+        
+        console.log('Interface caméra digitale mise à jour');
+        showMessage('Caméra activée avec succès ! Vous pouvez maintenant prendre une photo.', 'success');
+        
+    } catch (error) {
+        console.error('Erreur lors de l\'accès à la caméra digitale:', error);
+        
+        // Masquer l'indicateur de chargement et réafficher le placeholder
+        document.getElementById('camera_loading_digital').style.display = 'none';
+        document.getElementById('camera_placeholder_digital').style.display = 'block';
+        
+        // Messages d'erreur plus spécifiques
+        let errorMessage = 'Impossible d\'accéder à la caméra. ';
+        if (error.name === 'NotAllowedError') {
+            errorMessage += 'Veuillez autoriser l\'accès à la caméra dans les paramètres de votre navigateur.';
+        } else if (error.name === 'NotFoundError') {
+            errorMessage += 'Aucune caméra trouvée sur cet appareil.';
+        } else if (error.name === 'NotSupportedError') {
+            errorMessage += 'Votre navigateur ne supporte pas l\'accès à la caméra.';
+        } else {
+            errorMessage += 'Erreur: ' + error.message;
+        }
+        
+        showMessage(errorMessage, 'error');
+    }
+}
+
+function capturePhotoDigital() {
+    const video = document.getElementById('camera_video_digital');
+    const canvas = document.getElementById('photo_canvas_digital');
+    const ctx = canvas.getContext('2d');
+    
+    // Dessiner l'image de la vidéo sur le canvas
+    ctx.drawImage(video, 0, 0, 400, 300);
+    
+    // Convertir en base64
+    const photoData = canvas.toDataURL('image/jpeg', 0.8);
+    document.getElementById('photo_data').value = photoData;
+    
+    // Masquer la vidéo et afficher la photo
+    video.style.display = 'none';
+    canvas.style.display = 'block';
+    
+    // Arrêter la caméra
+    stopCameraDigital();
+    
+    hasPhotoDigital = true; // Marquer qu'une photo a été prise
+    
+    // Afficher un message de confirmation
+    const controls = document.getElementById('camera_controls_digital');
+    controls.innerHTML = '<div class="alert alert-success"><i class="fas fa-check me-2"></i>Photo prise avec succès !</div>';
+    showMessage('Photo de vérification prise avec succès !', 'success');
+}
+
+function stopCameraDigital() {
+    if (streamDigital) {
+        streamDigital.getTracks().forEach(track => track.stop());
+        streamDigital = null;
+    }
+    
+    const video = document.getElementById('camera_video_digital');
+    video.style.display = 'none';
+    document.getElementById('camera_placeholder_digital').style.display = 'block';
+    document.getElementById('camera_controls_digital').style.display = 'none';
+}
+
+// Fonctions pour la caméra manuelle
+async function startCameraManuel() {
+    try {
+        console.log('Tentative d\'accès à la caméra manuelle...');
+        showMessage('Activation de la caméra en cours...', 'info');
+        
+        // Afficher l'indicateur de chargement
+        document.getElementById('camera_placeholder_manuel').style.display = 'none';
+        document.getElementById('camera_loading_manuel').style.display = 'block';
+        
+        // Vérifier si getUserMedia est supporté
+        if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
+            throw new Error('getUserMedia n\'est pas supporté par ce navigateur');
+        }
+        
+        // Essayer d'abord la caméra arrière, puis la caméra frontale
+        let constraints = { 
+            video: { 
+                width: { ideal: 400 }, 
+                height: { ideal: 300 },
+                facingMode: 'environment' // Caméra arrière si disponible
+            } 
+        };
+        
+        try {
+            streamManuel = await navigator.mediaDevices.getUserMedia(constraints);
+        } catch (error) {
+            console.log('Caméra arrière non disponible, essai avec la caméra frontale...');
+            constraints.video.facingMode = 'user'; // Caméra frontale
+            streamManuel = await navigator.mediaDevices.getUserMedia(constraints);
+        }
+        
+        console.log('Caméra manuelle activée:', streamManuel);
+        
+        const video = document.getElementById('camera_video_manuel');
+        if (!video) {
+            throw new Error('Élément video non trouvé');
+        }
+        
+        video.srcObject = streamManuel;
+        video.style.display = 'block';
+        
+        // Attendre que la vidéo soit chargée
+        video.onloadedmetadata = function() {
+            console.log('Métadonnées vidéo chargées');
+            video.play().catch(e => console.error('Erreur lecture vidéo:', e));
+        };
+        
+        document.getElementById('camera_loading_manuel').style.display = 'none';
+        document.getElementById('camera_controls_manuel').style.display = 'block';
+        
+        console.log('Interface caméra manuelle mise à jour');
+        showMessage('Caméra activée avec succès ! Vous pouvez maintenant prendre une photo de votre signature.', 'success');
+        
+    } catch (error) {
+        console.error('Erreur lors de l\'accès à la caméra manuelle:', error);
+        
+        // Masquer l'indicateur de chargement et réafficher le placeholder
+        document.getElementById('camera_loading_manuel').style.display = 'none';
+        document.getElementById('camera_placeholder_manuel').style.display = 'block';
+        
+        // Messages d'erreur plus spécifiques
+        let errorMessage = 'Impossible d\'accéder à la caméra. ';
+        if (error.name === 'NotAllowedError') {
+            errorMessage += 'Veuillez autoriser l\'accès à la caméra dans les paramètres de votre navigateur.';
+        } else if (error.name === 'NotFoundError') {
+            errorMessage += 'Aucune caméra trouvée sur cet appareil.';
+        } else if (error.name === 'NotSupportedError') {
+            errorMessage += 'Votre navigateur ne supporte pas l\'accès à la caméra.';
+        } else {
+            errorMessage += 'Erreur: ' + error.message;
+        }
+        
+        showMessage(errorMessage, 'error');
+    }
+}
+
+function capturePhotoManuel() {
+    const video = document.getElementById('camera_video_manuel');
+    const canvas = document.getElementById('photo_canvas_manuel');
+    const ctx = canvas.getContext('2d');
+    
+    // Dessiner l'image de la vidéo sur le canvas
+    ctx.drawImage(video, 0, 0, 400, 300);
+    
+    // Convertir en base64
+    const photoData = canvas.toDataURL('image/jpeg', 0.8);
+    document.getElementById('photo_data').value = photoData;
+    
+    // Masquer la vidéo et afficher la photo
+    video.style.display = 'none';
+    canvas.style.display = 'block';
+    
+    // Arrêter la caméra
+    stopCameraManuel();
+    
+    hasPhotoManuel = true; // Marquer qu'une photo a été prise
+    
+    // Afficher un message de confirmation
+    const controls = document.getElementById('camera_controls_manuel');
+    controls.innerHTML = '<div class="alert alert-success"><i class="fas fa-check me-2"></i>Photo prise avec succès !</div>';
+    showMessage('Photo de votre signature prise avec succès !', 'success');
+}
+
+function stopCameraManuel() {
+    if (streamManuel) {
+        streamManuel.getTracks().forEach(track => track.stop());
+        streamManuel = null;
+    }
+    
+    const video = document.getElementById('camera_video_manuel');
+    video.style.display = 'none';
+    document.getElementById('camera_placeholder_manuel').style.display = 'block';
+    document.getElementById('camera_controls_manuel').style.display = 'none';
+}
+</script>
+{% endblock %}

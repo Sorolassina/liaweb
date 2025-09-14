@@ -3,7 +3,7 @@ Script d'initialisation des pipelines par défaut
 """
 import sys
 import os
-sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 from sqlmodel import Session, select
 from app_lia_web.core.database import engine
@@ -12,30 +12,30 @@ from app_lia_web.app.models.base import Programme, EtapePipeline
 # Pipelines par défaut pour chaque programme
 PIPELINES_DEFAUT = {
     "ACD": [
-        {"nom": "Accueil et présentation", "description": "Présentation du programme et des objectifs", "duree_estimee": 1, "ordre": 1},
-        {"nom": "Évaluation des besoins", "description": "Analyse des besoins spécifiques du candidat", "duree_estimee": 2, "ordre": 2},
-        {"nom": "Plan d'action personnalisé", "description": "Élaboration du plan d'action", "duree_estimee": 3, "ordre": 3},
-        {"nom": "Accompagnement individuel", "description": "Sessions de coaching individuelles", "duree_estimee": 30, "ordre": 4},
-        {"nom": "Évaluation intermédiaire", "description": "Bilan à mi-parcours", "duree_estimee": 2, "ordre": 5},
-        {"nom": "Finalisation", "description": "Préparation de la présentation finale", "duree_estimee": 5, "ordre": 6},
-        {"nom": "Présentation finale", "description": "Présentation devant le jury", "duree_estimee": 1, "ordre": 7},
-        {"nom": "Suivi post-formation", "description": "Accompagnement post-formation", "duree_estimee": 90, "ordre": 8}
+        {"code": "accueil", "libelle": "Accueil et présentation", "type_etape": "formation", "ordre": 1},
+        {"code": "evaluation_besoins", "libelle": "Évaluation des besoins", "type_etape": "evaluation", "ordre": 2},
+        {"code": "plan_action", "libelle": "Plan d'action personnalisé", "type_etape": "accompagnement", "ordre": 3},
+        {"code": "accompagnement", "libelle": "Accompagnement individuel", "type_etape": "accompagnement", "ordre": 4},
+        {"code": "evaluation_intermediaire", "libelle": "Évaluation intermédiaire", "type_etape": "evaluation", "ordre": 5},
+        {"code": "finalisation", "libelle": "Finalisation", "type_etape": "formation", "ordre": 6},
+        {"code": "presentation_finale", "libelle": "Présentation finale", "type_etape": "evaluation", "ordre": 7},
+        {"code": "suivi_post", "libelle": "Suivi post-formation", "type_etape": "accompagnement", "ordre": 8}
     ],
     "ACI": [
-        {"nom": "Accueil et intégration", "description": "Présentation du programme ACI", "duree_estimee": 1, "ordre": 1},
-        {"nom": "Diagnostic initial", "description": "Évaluation des compétences actuelles", "duree_estimee": 2, "ordre": 2},
-        {"nom": "Formation théorique", "description": "Modules de formation théorique", "duree_estimee": 20, "ordre": 3},
-        {"nom": "Ateliers pratiques", "description": "Mise en pratique des concepts", "duree_estimee": 15, "ordre": 4},
-        {"nom": "Projet personnel", "description": "Développement du projet personnel", "duree_estimee": 30, "ordre": 5},
-        {"nom": "Présentation du projet", "description": "Présentation devant le jury", "duree_estimee": 1, "ordre": 6},
-        {"nom": "Certification", "description": "Obtention de la certification", "duree_estimee": 1, "ordre": 7}
+        {"code": "accueil_aci", "libelle": "Accueil et intégration", "type_etape": "formation", "ordre": 1},
+        {"code": "diagnostic", "libelle": "Diagnostic initial", "type_etape": "evaluation", "ordre": 2},
+        {"code": "formation_theorique", "libelle": "Formation théorique", "type_etape": "formation", "ordre": 3},
+        {"code": "ateliers", "libelle": "Ateliers pratiques", "type_etape": "formation", "ordre": 4},
+        {"code": "projet_personnel", "libelle": "Projet personnel", "type_etape": "accompagnement", "ordre": 5},
+        {"code": "presentation_projet", "libelle": "Présentation du projet", "type_etape": "evaluation", "ordre": 6},
+        {"code": "certification", "libelle": "Certification", "type_etape": "evaluation", "ordre": 7}
     ],
     "ACT": [
-        {"nom": "Sélection et admission", "description": "Processus de sélection", "duree_estimee": 5, "ordre": 1},
-        {"nom": "Formation intensive", "description": "Formation accélérée", "duree_estimee": 60, "ordre": 2},
-        {"nom": "Projet d'entreprise", "description": "Développement du projet d'entreprise", "duree_estimee": 45, "ordre": 3},
-        {"nom": "Pitch final", "description": "Présentation du projet d'entreprise", "duree_estimee": 1, "ordre": 4},
-        {"nom": "Accompagnement post-formation", "description": "Suivi et accompagnement", "duree_estimee": 180, "ordre": 5}
+        {"code": "selection", "libelle": "Sélection et admission", "type_etape": "evaluation", "ordre": 1},
+        {"code": "formation_intensive", "libelle": "Formation intensive", "type_etape": "formation", "ordre": 2},
+        {"code": "projet_entreprise", "libelle": "Projet d'entreprise", "type_etape": "accompagnement", "ordre": 3},
+        {"code": "pitch_final", "libelle": "Pitch final", "type_etape": "evaluation", "ordre": 4},
+        {"code": "suivi_post_act", "libelle": "Accompagnement post-formation", "type_etape": "accompagnement", "ordre": 5}
     ]
 }
 
@@ -68,12 +68,11 @@ def init_pipelines():
             for etape_data in etapes_defaut:
                 etape = EtapePipeline(
                     programme_id=programme.id,
-                    nom=etape_data["nom"],
-                    description=etape_data["description"],
-                    duree_estimee=etape_data["duree_estimee"],
+                    code=etape_data["code"],
+                    libelle=etape_data["libelle"],
+                    type_etape=etape_data["type_etape"],
                     ordre=etape_data["ordre"],
-                    active=True,
-                    conditions=None
+                    active=True
                 )
                 session.add(etape)
             
@@ -100,9 +99,9 @@ def afficher_pipelines():
             
             for etape in etapes:
                 statut = "✅" if etape.active else "❌"
-                print(f"  {statut} {etape.ordre}. {etape.nom} ({etape.duree_estimee} jours)")
-                if etape.description:
-                    print(f"      {etape.description}")
+                print(f"  {statut} {etape.ordre}. {etape.libelle} ({etape.code})")
+                if etape.type_etape:
+                    print(f"      Type: {etape.type_etape}")
 
 if __name__ == "__main__":
     print("🚀 Initialisation des pipelines par défaut")

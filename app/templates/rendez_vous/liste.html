@@ -279,10 +279,27 @@
 
 {% block scripts %}
 <style>
-/* Layout principal */
-.container-fluid.h-100 {
-    height: calc(100vh - 100px) !important; /* Réduit la marge pour plus d'espace */
-    overflow: hidden; /* Empêche le débordement */
+/* Conteneur parent venant de base.html - doit être transparent 
+#content .container-fluid.p-4 {
+    background: transparent !important;
+    padding: 0 !important;
+    position: static !important;
+    min-height: auto !important;
+}*/
+
+
+
+/* Fix pour les rows avec flex-shrink-0 */
+.row.flex-shrink-0 {
+    flex-shrink: 0 !important;
+    min-height: auto;
+}
+
+/* Réduction de la hauteur des statistiques */
+.card-body.border-bottom.flex-shrink-0 {
+    padding: 0.5rem !important; /* Réduit le padding */
+    min-height: auto !important;
+    height: auto !important;
 }
 
 /* Conteneur principal */
@@ -645,9 +662,54 @@ function verifierStatutSignatures() {
     });
 }
 
+// Fonction pour ajuster la position du conteneur selon l'état du sidebar
+function adjustContainerPosition() {
+    const sidebar = document.getElementById('sidebar');
+    const container = document.querySelector('.container-fluid.h-100.d-flex.flex-column');
+    
+    if (sidebar && container) {
+        const isCollapsed = sidebar.classList.contains('collapsed');
+        const isMobile = window.innerWidth <= 768;
+        
+        // Sur mobile, pas de sidebar
+        if (isMobile) {
+            container.style.left = '0';
+            container.style.right = '20px';
+        } else {
+            // Sur desktop, ajuster selon l'état du sidebar
+            const sidebarWidth = isCollapsed ? 'var(--sidebar-width-collapsed)' : 'var(--sidebar-width)';
+            container.style.left = sidebarWidth;
+            container.style.right = '20px'; // Plus d'espace à droite pour éviter le débordement
+        }
+    }
+}
+
 // Vérifier le statut des signatures au chargement de la page
 document.addEventListener('DOMContentLoaded', function() {
     verifierStatutSignatures();
+    
+    // Ajuster la position du conteneur au chargement initial
+    adjustContainerPosition();
+    
+    // Observer les changements de classe du sidebar
+    const sidebar = document.getElementById('sidebar');
+    if (sidebar) {
+        const observer = new MutationObserver(function(mutations) {
+            mutations.forEach(function(mutation) {
+                if (mutation.type === 'attributes' && mutation.attributeName === 'class') {
+                    adjustContainerPosition();
+                }
+            });
+        });
+        
+        observer.observe(sidebar, {
+            attributes: true,
+            attributeFilter: ['class']
+        });
+    }
+    
+    // Ajuster lors du redimensionnement de la fenêtre
+    window.addEventListener('resize', adjustContainerPosition);
     
     // Ajouter un listener pour rafraîchir la page après avoir cliqué sur "Commencer"
     document.querySelectorAll('.btn-commencer-rdv').forEach(btn => {

@@ -1,0 +1,319 @@
+{% extends "base.html" %}
+
+{% block title %}Invitations - {{ seminaire.titre }}{% endblock %}
+
+{% block content %}
+<div class="container-fluid p-4">
+    <div class="row mb-4">
+        <div class="col-12">
+            <nav aria-label="breadcrumb">
+                <ol class="breadcrumb">
+                    <li class="breadcrumb-item"><a href="{{ url_for('liste_seminaires') }}">Séminaires</a></li>
+                    <li class="breadcrumb-item"><a href="{{ url_for('detail_seminaire', seminaire_id=seminaire.id) }}">{{ seminaire.titre }}</a></li>
+                    <li class="breadcrumb-item active">Invitations</li>
+                </ol>
+            </nav>
+            <h1 class="mb-0">
+                <i class="fas fa-envelope me-2"></i>Gestion des Invitations
+            </h1>
+            <p class="text-muted">Inviter des candidats au séminaire "{{ seminaire.titre }}"</p>
+        </div>
+    </div>
+
+    <div class="row">
+        <div class="col-lg-8">
+            <!-- Candidats disponibles pour invitation -->
+            <div class="card mb-4">
+                <div class="card-header">
+                    <h5 class="mb-0">Candidats Disponibles</h5>
+                    <small class="text-muted">Candidats du programme {{ seminaire.programme.code }} pouvant être invités</small>
+                </div>
+                <div class="card-body">
+                    {% if inscriptions %}
+                        <form method="POST" action="{{ url_for('envoyer_invitations_seminaire', seminaire_id=seminaire.id) }}">
+                            <!-- Champ caché pour le type d'invitation -->
+                            <input type="hidden" name="type_invitation" value="individuelle">
+                            
+                            <!-- En-tête avec sélection -->
+                            <div class="d-flex justify-content-between align-items-center mb-3">
+                                <div class="d-flex align-items-center gap-3">
+                                    <div class="form-check">
+                                        <input type="checkbox" id="selectAll" class="form-check-input">
+                                        <label for="selectAll" class="form-check-label">Tout sélectionner</label>
+                                    </div>
+                                    <div class="dropdown">
+                                        <button class="btn btn-outline-secondary btn-sm dropdown-toggle" type="button" id="promotionFilter" data-bs-toggle="dropdown" aria-expanded="false">
+                                            <i class="fas fa-filter me-1"></i>Filtrer par promotion
+                                        </button>
+                                        <ul class="dropdown-menu" aria-labelledby="promotionFilter">
+                                            <li><a class="dropdown-item" href="#" onclick="filterByPromotion('all')">Toutes les promotions</a></li>
+                                            <li><hr class="dropdown-divider"></li>
+                                            <li><a class="dropdown-item" href="#" onclick="showAllPromotions()">Chargement des promotions...</a></li>
+                                        </ul>
+                                    </div>
+                                </div>
+                                <span class="text-muted small" id="selectionCount">0 candidat(s) sélectionné(s)</span>
+                            </div>
+                            
+                            <!-- Liste des candidats en style carte -->
+                            <div class="row g-3">
+                                {% for inscription in inscriptions %}
+                                <div class="col-md-6 col-lg-6">
+                                    <div class="card h-100 candidat-card" style="cursor: pointer;" onclick="toggleCandidat({{ inscription.candidat.id }})">
+                                        <div class="card-body d-flex align-items-center p-3">
+                                            <div class="form-check me-3">
+                                                <input type="checkbox" name="candidats_ids" value="{{ inscription.id }}" 
+                                                       class="form-check-input candidat-checkbox" id="candidat_{{ inscription.candidat.id }}">
+                                            </div>
+                                            
+                                            <div class="avatar me-3" style="background-image:url('{% if inscription.candidat.photo_profil %}/media/{{ inscription.candidat.photo_profil.replace('\\', '/') }}{% else %}/static/images/utilisateur.png{% endif %}')"></div>
+                                            
+                                            <div class="flex-grow-1">
+                                                <div class="fw-bold text-dark" style="font-size: 14px;">
+                                                    {{ format_candidat_name(inscription.candidat.nom, inscription.candidat.prenom) }}
+                                                </div>
+                                                <div class="small text-muted" style="font-size: 12px;">
+                                                    {{ format_email(inscription.candidat.email) }}
+                                                </div>
+                                                {% if inscription.promotion %}
+                                                <div class="small text-muted" style="font-size: 11px;">
+                                                    <i class="fas fa-graduation-cap me-1"></i>{{ inscription.promotion.libelle }}
+                                                </div>
+                                                {% endif %}
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                                {% endfor %}
+                            </div>
+                            
+                            <div class="d-flex justify-content-between mt-3">
+                                <a href="{{ url_for('detail_seminaire', seminaire_id=seminaire.id) }}" class="btn btn-secondary">
+                                    <i class="fas fa-arrow-left me-2"></i>Retour
+                                </a>
+                                <button type="submit" class="btn btn-primary" id="sendInvitationsBtn" disabled>
+                                    <i class="fas fa-paper-plane me-2"></i>Envoyer les Invitations
+                                </button>
+                            </div>
+                        </form>
+                    {% else %}
+                        <div class="text-center py-4">
+                            <i class="fas fa-users fa-3x text-muted mb-3"></i>
+                            <h5 class="text-muted">Aucun candidat disponible</h5>
+                            <p class="text-muted">Aucun candidat du programme {{ seminaire.programme.code }} n'est disponible pour invitation.</p>
+                            <a href="{{ url_for('detail_seminaire', seminaire_id=seminaire.id) }}" class="btn btn-secondary">
+                                <i class="fas fa-arrow-left me-2"></i>Retour
+                            </a>
+                        </div>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+
+        <div class="col-lg-4">
+            <!-- Informations du séminaire -->
+            <div class="card mb-3">
+                <div class="card-header">
+                    <h5 class="mb-0">Informations du Séminaire</h5>
+                </div>
+                <div class="card-body">
+                    <h6>{{ seminaire.titre }}</h6>
+                    <p class="text-muted small">{{ seminaire.description[:100] }}{% if seminaire.description|length > 100 %}...{% endif %}</p>
+                    
+                    <div class="mb-2">
+                        <strong>Programme:</strong> {{ seminaire.programme.code }}
+                    </div>
+                    
+                    {% if seminaire.lieu %}
+                    <div class="mb-2">
+                        <strong>Lieu:</strong> {{ seminaire.lieu }}
+                    </div>
+                    {% endif %}
+                    
+                    <div class="mb-2">
+                        <strong>Organisateur:</strong> {{ seminaire.organisateur.nom_complet }}
+                    </div>
+                    
+                    <div class="mb-2">
+                        <strong>Statut:</strong> 
+                        <span class="badge bg-{% if seminaire.statut == 'PLANIFIE' %}primary{% elif seminaire.statut == 'EN_COURS' %}success{% elif seminaire.statut == 'TERMINE' %}secondary{% else %}warning{% endif %}">
+                            {{ seminaire.statut.value }}
+                        </span>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Invitations déjà envoyées -->
+            {% if invitations %}
+            <div class="card">
+                <div class="card-header">
+                    <h5 class="mb-0">Invitations Envoyées</h5>
+                    <small class="text-muted">{{ invitations|length }} invitation(s)</small>
+                </div>
+                <div class="card-body">
+                    <div class="list-group list-group-flush">
+                        {% for invitation in invitations %}
+                        <div class="list-group-item d-flex justify-content-between align-items-center">
+                            <div>
+                                <strong>{{ invitation.inscription.candidat.nom }} {{ invitation.inscription.candidat.prenom }}</strong>
+                                <br>
+                                <small class="text-muted">{{ invitation.inscription.candidat.email }}</small>
+                            </div>
+                            <div>
+                                <span class="badge bg-{% if invitation.statut == 'ENVOYEE' %}info{% elif invitation.statut == 'ACCEPTEE' %}success{% elif invitation.statut == 'REFUSEE' %}danger{% else %}secondary{% endif %}">
+                                    {{ invitation.statut }}
+                                </span>
+                            </div>
+                        </div>
+                        {% endfor %}
+                    </div>
+                </div>
+            </div>
+            {% endif %}
+        </div>
+    </div>
+</div>
+
+<script>
+// Générer la liste des promotions uniques au chargement de la page
+document.addEventListener('DOMContentLoaded', function() {
+    generatePromotionList();
+});
+
+function generatePromotionList() {
+    const cards = document.querySelectorAll('.candidat-card');
+    const promotions = new Set();
+    
+    // Collecter toutes les promotions uniques
+    cards.forEach(card => {
+        const promotionElement = card.querySelector('.small.text-muted:last-child');
+        if (promotionElement) {
+            const promotionText = promotionElement.textContent.trim();
+            if (promotionText && promotionText !== '') {
+                promotions.add(promotionText);
+            }
+        }
+    });
+    
+    // Mettre à jour le dropdown
+    const dropdownMenu = document.querySelector('#promotionFilter').nextElementSibling;
+    const separator = dropdownMenu.querySelector('.dropdown-divider');
+    
+    // Supprimer l'ancien contenu après le séparateur
+    let nextElement = separator.nextElementSibling;
+    while (nextElement) {
+        const toRemove = nextElement;
+        nextElement = nextElement.nextElementSibling;
+        toRemove.remove();
+    }
+    
+    // Ajouter les promotions uniques
+    promotions.forEach(promotion => {
+        const li = document.createElement('li');
+        li.innerHTML = `<a class="dropdown-item" href="#" onclick="filterByPromotion('${promotion}')">${promotion}</a>`;
+        dropdownMenu.appendChild(li);
+    });
+}
+
+function showAllPromotions() {
+    // Cette fonction peut être utilisée pour afficher toutes les promotions si nécessaire
+    generatePromotionList();
+}
+document.getElementById('selectAll').addEventListener('change', function() {
+    const checkboxes = document.querySelectorAll('.candidat-checkbox');
+    checkboxes.forEach(checkbox => {
+        checkbox.checked = this.checked;
+    });
+    updateSelectionCount();
+    updateCardStyles();
+});
+
+document.querySelectorAll('.candidat-checkbox').forEach(checkbox => {
+    checkbox.addEventListener('change', function() {
+        updateSelectionCount();
+        updateSelectAll();
+        updateCardStyles();
+    });
+});
+
+function toggleCandidat(candidatId) {
+    const checkbox = document.getElementById(`candidat_${candidatId}`);
+    checkbox.checked = !checkbox.checked;
+    checkbox.dispatchEvent(new Event('change'));
+}
+
+function updateSelectionCount() {
+    const checkedBoxes = document.querySelectorAll('.candidat-checkbox:checked');
+    const countElement = document.getElementById('selectionCount');
+    const sendBtn = document.getElementById('sendInvitationsBtn');
+    
+    countElement.textContent = `${checkedBoxes.length} candidat(s) sélectionné(s)`;
+    sendBtn.disabled = checkedBoxes.length === 0;
+    sendBtn.innerHTML = checkedBoxes.length > 0 ? 
+        `<i class="fas fa-paper-plane me-2"></i>Envoyer les Invitations (${checkedBoxes.length})` : 
+        '<i class="fas fa-paper-plane me-2"></i>Envoyer les Invitations';
+}
+
+function updateSelectAll() {
+    const checkboxes = document.querySelectorAll('.candidat-checkbox');
+    const selectAll = document.getElementById('selectAll');
+    const checkedCount = document.querySelectorAll('.candidat-checkbox:checked').length;
+    
+    if (checkedCount === 0) {
+        selectAll.indeterminate = false;
+        selectAll.checked = false;
+    } else if (checkedCount === checkboxes.length) {
+        selectAll.indeterminate = false;
+        selectAll.checked = true;
+    } else {
+        selectAll.indeterminate = true;
+    }
+}
+
+function updateCardStyles() {
+    document.querySelectorAll('.candidat-card').forEach(card => {
+        const checkbox = card.querySelector('.candidat-checkbox');
+        if (checkbox.checked) {
+            card.style.borderColor = '#0d6efd';
+            card.style.backgroundColor = '#f8f9ff';
+        } else {
+            card.style.borderColor = '';
+            card.style.backgroundColor = '';
+        }
+    });
+}
+
+function filterByPromotion(promotionCode) {
+    const cards = document.querySelectorAll('.candidat-card');
+    const dropdownButton = document.getElementById('promotionFilter');
+    
+    // Mettre à jour le texte du bouton
+    if (promotionCode === 'all') {
+        dropdownButton.innerHTML = '<i class="fas fa-filter me-1"></i>Filtrer par promotion';
+    } else {
+        dropdownButton.innerHTML = `<i class="fas fa-filter me-1"></i>${promotionCode}`;
+    }
+    
+    // Filtrer les cartes
+    cards.forEach(card => {
+        const promotionElement = card.querySelector('.small.text-muted:last-child');
+        const cardContainer = card.closest('.col-md-6');
+        
+        if (promotionCode === 'all') {
+            cardContainer.style.display = '';
+        } else {
+            const cardPromotion = promotionElement ? promotionElement.textContent.trim() : '';
+            if (cardPromotion.includes(promotionCode)) {
+                cardContainer.style.display = '';
+            } else {
+                cardContainer.style.display = 'none';
+            }
+        }
+    });
+    
+    // Réinitialiser la sélection après filtrage
+    updateSelectionCount();
+    updateSelectAll();
+}
+</script>
+{% endblock %}

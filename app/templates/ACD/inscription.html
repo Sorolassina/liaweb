@@ -2,11 +2,28 @@
 {% set roles = roles or [] %}
 {% block head_extra %}
 <style>
+  /* Variables CSS dynamiques pour les hauteurs */
+  :root {
+    --header-height: 60px;
+    --kpi-bandeau-height: 40px;
+    --content-margin: 0px;
+    --total-fixed-height: calc(var(--header-height) + var(--kpi-bandeau-height) + var(--content-margin));
+    --mobile-content-margin: 20px;
+    --mobile-total-height: calc(var(--header-height) + var(--kpi-bandeau-height) + var(--mobile-content-margin));
+  }
+  
+  
   .board {
     display: grid;
     grid-template-columns: 340px 1fr;
     gap: 18px;
+    height: calc(100vh - var(--total-fixed-height) - 130px); /* Hauteur totale moins header, bandeau KPI et footer */
+    position: fixed;
+    left: var(--sidebar-width);
+    right: 0;
+    padding: 10px 10px 10px 10px;
   }
+  
   @media (max-width: 992px){
     .board { grid-template-columns: 1fr; }
   }
@@ -16,35 +33,61 @@
     box-shadow: var(--shadow);
     border: 1px solid color-mix(in srgb, var(--secondary-color) 10%, transparent);
   }
-  .pane-left {
+  
+  .board .card-neumo:first-child {
     display: flex; flex-direction: column; gap: 12px;
-    height: calc(100vh - 160px); /* entre header et footer */
+    height: 100%; /* Prend toute la hauteur du parent */
     overflow: auto; padding: 10px;
   }
+  
   .pane-right {
     display: flex; flex-direction: column; gap: 16px;
-    min-height: calc(100vh - 160px);
-    overflow: auto; padding-bottom: 8px;
+    height: 100%; /* Prend toute la hauteur du parent */
+    padding-bottom: 8px;
+    overflow-y: auto;
+    overflow-x: hidden;
+    
+  }
+  
+  /* Personnalisation des accordéons */
+  .accordion-button {
+    background-color: var(--primary-color) !important;
+    color: var(--secondary-color) !important;
+    border-color: var(--primary-color) !important;
+  }
+  
+  .accordion-button:focus {
+    box-shadow: 0 0 0 0.25rem rgba(14, 13, 13, 0.25) !important;
+    border-color: var(--secondary-color) !important;
+  }
+  
+  .accordion-button:not(.collapsed) {
+    background-color: var(--primary-color) !important;
+    color: var(--secondary-color) !important;
   }
   .search-box { padding: 10px; }
   .pre-card{
     padding: 10px; border-radius: 12px; display:flex; gap:10px; align-items:center;
-    border: 1px solid #eef1f5; cursor:pointer; transition: .15s;
+    border: 1px solid #eef1f5; cursor:pointer; transition: .15s; overflow: hidden;
   }
   .pre-card:hover{ background: #fafbfc; }
   .pre-card.active{ background: color-mix(in srgb, var(--primary-light) 25%, white); border-color: var(--primary-color); }
   .avatar{
-    width:40px; height:40px; border-radius:10px; background:#f1f2f6 center/cover no-repeat;
-    box-shadow: var(--shadow-sm);
+    width: 30px; height: 30px; border-radius: 50%; background: #f1f2f6 center/cover no-repeat;
+    box-shadow: var(--shadow-sm); flex-shrink: 0;
   }
   .tag { font-size:.75rem; padding:.2rem .5rem; border-radius:999px; background:#f0f3f7; color:#445; }
-  .kpi-row{ display:grid; grid-template-columns: repeat(4, 1fr); gap: 12px; }
+  .pre-card .badge { 
+    font-size: 0.7rem; padding: 0.2rem 0.4rem; white-space: nowrap; 
+    flex-shrink: 0; max-width: 120px; overflow: hidden; text-overflow: ellipsis;
+  }
+  .kpi-row{ display:grid; grid-template-columns: repeat(4, 1fr); gap: 8px; }
   @media (max-width:992px){ .kpi-row{ grid-template-columns: 1fr 1fr; } }
   .kpi-tile{
-    padding:14px; border-radius:14px; text-align:center; border:1px solid #eef1f5;
+    padding:8px; border-radius:8px; text-align:center; border:1px solid #eef1f5;
   }
-  .kpi-tile .value{ font-weight:900; font-size:1.6rem; color: var(--primary-dark); }
-  .kpi-tile .label{ font-size:.8rem; color:#6b7280; text-transform:uppercase; letter-spacing:.3px; }
+  .kpi-tile .value{ font-weight:700; font-size:1.2rem; color: var(--primary-dark); }
+  .kpi-tile .label{ font-size:.7rem; color:#6b7280; text-transform:uppercase; letter-spacing:.2px; }
 
   /* Tabs pour le panneau de droite */
   .tab-head{
@@ -85,34 +128,39 @@
   
   /* Bandeau KPI fixe */
   .kpi-bandeau-fixe {
-    position: fixed;
+    
     top: 60px; /* Hauteur du header */
-    left: var(--sidebar-width);
+    left: var(--sidebar-width)-20px;
     right: 0;
     z-index: 1000;
     background: var(--white-color);
     border-bottom: 1px solid #eef1f5;
     box-shadow: var(--shadow-sm);
     transition: left 0.3s ease;
+    background: var(--primary-color);
+    padding-left: 10px;
+    padding-right: 10px;
+    padding-top: 10px;
+    padding-bottom: 10px;
   }
   
-  /* Quand le sidebar est réduit */
-  .sidebar-collapsed .kpi-bandeau-fixe {
-    left: var(--sidebar-width-collapsed);
-  }
+  /* Les positions sont maintenant gérées dynamiquement par JavaScript */
   
   /* Ajuster le contenu principal pour éviter le chevauchement */
   .content-with-fixed-kpi {
-    margin-top: 160px; /* Hauteur du header + bandeau KPI + marge */
+    display: flex;
+    flex-direction: row;
+    margin-top: var(--total-fixed-height)-10px;
+    gap: 10px;
+    overflow: hidden;
+    height: 100%;
   }
-  
-  /* Responsive pour le bandeau fixe */
+
+  /* Responsive pour le contenu principal */
   @media (max-width: 768px) {
-    .kpi-bandeau-fixe {
-      left: 0; /* Sur mobile, pas de sidebar */
-    }
     .content-with-fixed-kpi {
-      margin-top: 180px; /* Plus d'espace sur mobile */
+      margin-top: var(--mobile-total-height);
+      height: 100%;
     }
   }
   
@@ -136,9 +184,8 @@
 {% block content %}
 <!-- ========== Bandeau KPI fixe tout en haut ========== -->
 
-<div class="kpi-bandeau-fixe">
-  <h5>{{ current_programme }}</h5>
-  <div class="card-neumo p-3">
+<!--<div class="kpi-bandeau-fixe" style="background: transparent;">-->
+  <div class="card-neumo p-2">
     <div class="kpi-row">
       <div class="kpi-tile">
         <div class="value">{{ kpi.total_pre }}</div>
@@ -158,12 +205,12 @@
       </div>
     </div>
   </div>
-</div>
+<!--</div>-->
 
-<div class="content-with-fixed-kpi">
-<div class="board">
+<div class="content-with-fixed-kpi" style="padding:10px 10px 10px 10px;">
+<!--<div class="board" style="background: transparent;">-->
   <!-- ========== Liste gauche ========== -->
-  <div class="card-neumo">
+  <div class="card-neumo"style="width: 30%;Height: 100%;">
     <div class="search-box">
       <form method="get" action="/ACD/inscriptions" class="d-flex gap-2">
         <input type="hidden" name="programme" value="{{ current_programme or 'ACD' }}">
@@ -178,31 +225,31 @@
         <div class="pre-card {% if selected and selected.id==p.id %}active{% endif %}">
           <div class="avatar" style="background-image:url('{% if c.photo_profil %}/media/{{ c.photo_profil.replace('\\', '/') }}{% else %}/static/images/utilisateur.png{% endif %}')"></div>
           <div class="flex-grow-1">
-            <div class="fw-bold" style="color: black;">{{ c.prenom }} {{ c.nom }}</div>
-            <div class="small text-muted">{{ c.email }}</div>
+            <div class="fw-bold" style="color: black;font-size: 12px;">{{ format_candidat_name(c.nom, c.prenom) }}</div>
+            <div class="small text-muted" style="font-size: 10px;">{{ format_email(c.email) }}</div>
           </div>
           {% if c.statut %}
             {% if c.statut == "EN_ATTENTE" %}
-              <span class="badge bg-warning text-dark">
+              <span class="badge bg-warning text-dark" style="font-size: 8px;">
                 <i class="fas fa-clock"></i> En attente
               </span>
             {% elif c.statut == "VALIDE" %}
-              <span class="badge bg-success">
+              <span class="badge bg-success" style="font-size: 8px;">
                 <i class="fas fa-check-circle"></i> Validé
               </span>
             {% elif c.statut == "REORIENTE" %}
-              <span class="badge bg-info">
+              <span class="badge bg-info" style="font-size: 8px;">
                 <i class="fas fa-exchange-alt"></i> Réorienté
               </span>
             {% elif c.statut == "REJETE" %}
-              <span class="badge bg-danger">
+              <span class="badge bg-danger" style="font-size: 8px;">
                 <i class="fas fa-times-circle"></i> Rejeté
               </span>
           {% else %}
-              <span class="badge bg-secondary">{{ c.statut }}</span>
+              <span class="badge bg-secondary" style="font-size: 8px;">{{ c.statut }}</span>
             {% endif %}
           {% else %}
-            <span class="badge bg-warning text-dark">
+            <span class="badge bg-warning text-dark" style="font-size: 8px;">
               <i class="fas fa-clock"></i> En attente
             </span>
           {% endif %}
@@ -215,7 +262,7 @@
   </div>
 
   <!-- ========== Panneau droit ========== -->
-  <div class="pane-right">
+  <div class="pane-right"style="width: 70%;Height: 100%;overflow-y: hidden;">
     {% if not selected %}
       <div class="card-neumo p-4 text-center text-muted">
         Sélectionnez un préinscrit dans la liste de gauche pour ouvrir le pipeline d'inscription.
@@ -223,10 +270,10 @@
     {% else %}
 
     <div class="card-neumo">
-      <div class="d-flex align-items-center justify-content-between p-3">
+      <div class="d-flex align-items-center justify-content-between p-3" >
         <div>
-          <div class="fw-bold fs-5">{{ cand.prenom }} {{ cand.nom }} — {{ programme.code }}</div>
-          <div class="text-muted small">{{ cand.email }} · {{ cand.telephone or '—' }}</div>
+          <div class="fw-bold fs-5" style="font-size: 14px;">{{ cand.prenom }} {{ cand.nom }} — {{ programme.code }}</div>
+          <div class="text-muted small" style="font-size: 12px;">{{ cand.email }} · {{ cand.telephone or '—' }}</div>
         </div>
         <div class="d-flex gap-2">
           {% if not inscription %}
@@ -235,7 +282,7 @@
               <button class="btn btn-primary"><i class="fa fa-user-plus me-1"></i>Démarrer l'inscription</button>
             </form>
           {% else %}
-            <span class="tag">Inscription #{{ inscription.id }}</span>
+            <!--<span class="tag" style="font-size: 10px;">Inscription #{{ inscription.id }}</span>-->
           {% endif %}
           
           <!-- Boutons QPV et SIRET -->
@@ -250,7 +297,7 @@
         </div>
       </div>
 
-      <div class="tab-head">
+      <div class="tab-head" >
         <button class="tab-btn active" data-tab="#tab-pipeline">Pipeline</button>
         <button class="tab-btn" data-tab="#tab-infos">Infos & mise à jour</button>
         <button class="tab-btn" data-tab="#tab-docs">Documentation</button>
@@ -258,9 +305,9 @@
         <button class="tab-btn" data-tab="#tab-jury">Jury</button>
       </div>
 
-      <div class="p-3">
+      <div class="p-3" style=" overflow-y: auto; max-height: 300px;">
         <!-- ========== Pipeline ========== -->
-        <div id="tab-pipeline" class="tab-pane active">
+        <div id="tab-pipeline" class="tab-pane active" style="height: 100%;width: 100%;">
           {% if not inscription %}
             <div class="text-muted">Créez l'inscription pour activer le pipeline.</div>
           {% else %}
@@ -290,7 +337,7 @@
         </div>
 
         <!-- ========== Infos & Mise à jour ========== -->
-        <div id="tab-infos" class="tab-pane">
+        <div id="tab-infos" class="tab-pane" style="height: 100%;width: 100%;">
           <form method="post" action="/ACD/inscriptions/update-infos" class="needs-validation" novalidate enctype="multipart/form-data">
             <input type="hidden" name="pre_id" value="{{ selected.id }}">
             
@@ -538,7 +585,7 @@
         </div>
 
         <!-- ========== Documentation ========== -->
-        <div id="tab-docs" class="tab-pane">
+        <div id="tab-docs" class="tab-pane" style="height: 100%;width: 100%;">
           <div class="d-flex justify-content-between align-items-center mb-3">
             <h5><i class="fas fa-file-alt me-2"></i>Documents du candidat</h5>
             <button type="button" class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#addDocumentModal">
@@ -596,7 +643,7 @@
         </div>
 
         <!-- ========== Éligibilité ========== -->
-        <div id="tab-elig" class="tab-pane">
+        <div id="tab-elig" class="tab-pane" style="height: 100%;width: 100%;">
           <div class="elig-row">
             <div class="elig-card">
               <div class="fw-bold mb-1">Récap</div>
@@ -646,7 +693,7 @@
         </div>
 
         <!-- ========== Jury ========== -->
-        <div id="tab-jury" class="tab-pane">
+        <div id="tab-jury" class="tab-pane" style="height: 100%;width: 100%;">
           {% if not inscription %}
             <div class="text-muted">Créez l'inscription pour voter en jury.</div>
           {% else %}
@@ -882,11 +929,9 @@
     </div>
     {% endif %}
   </div>
+<!--</div>-->
 </div>
 
-
-
-</div>
 {% endblock %}
 
 {% block scripts %}
@@ -902,15 +947,27 @@
     });
   });
 
-  // Ajuster le bandeau KPI selon l'état du sidebar
+  // Ajuster le bandeau KPI et le board selon l'état du sidebar
   function adjustKpiBandeau() {
     const sidebar = document.getElementById('sidebar');
     const kpiBandeau = document.querySelector('.kpi-bandeau-fixe');
+    const board = document.querySelector('.board');
     
-    if (sidebar && kpiBandeau) {
+    if (sidebar) {
       const isCollapsed = sidebar.classList.contains('collapsed');
-      const sidebarWidth = isCollapsed ? 'var(--sidebar-width-collapsed)' : 'var(--sidebar-width)';
-      kpiBandeau.style.left = sidebarWidth;
+      const isMobile = window.innerWidth <= 768;
+      
+      // Sur mobile, pas de sidebar
+      if (isMobile) {
+        if (kpiBandeau) kpiBandeau.style.left = '0';
+        if (board) board.style.left = '0';
+      } else {
+        // Sur desktop, ajuster selon l'état du sidebar
+        const sidebarWidth = isCollapsed ? 'var(--sidebar-width-collapsed)' : 'var(--sidebar-width)';
+        
+        if (kpiBandeau) kpiBandeau.style.left = sidebarWidth;
+        if (board) board.style.left = sidebarWidth;
+      }
     }
   }
 
@@ -1739,6 +1796,9 @@
       // Ajuster au chargement initial
       adjustKpiBandeau();
     }
+    
+    // Ajuster lors du redimensionnement de la fenêtre
+    window.addEventListener('resize', adjustKpiBandeau);
   });
 
   // Fonction pour supprimer un document

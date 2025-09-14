@@ -1,0 +1,126 @@
+{% extends "base_public.html" %}
+
+{% block title %}
+{% if success %}Invitation Acceptée{% else %}Invitation Refusée{% endif %} - LIA WEB
+{% endblock %}
+
+{% block content %}
+<div class="container mt-5">
+    <div class="row justify-content-center">
+        <div class="col-md-8 col-lg-6">
+            <div class="card shadow">
+                <div class="card-body text-center p-5">
+                    {% if success %}
+                    <!-- Succès -->
+                    <div class="mb-4">
+                        <i class="fas fa-check-circle text-success" style="font-size: 4rem;"></i>
+                    </div>
+                    <h2 class="card-title text-success mb-3">✅ Invitation Acceptée !</h2>
+                    <p class="lead text-muted mb-4">
+                        Merci <strong>{{ candidat.prenom }} {{ candidat.nom }}</strong> !
+                    </p>
+                    {% else %}
+                    <!-- Refus -->
+                    <div class="mb-4">
+                        <i class="fas fa-times-circle text-danger" style="font-size: 4rem;"></i>
+                    </div>
+                    <h2 class="card-title text-danger mb-3">❌ Invitation Refusée</h2>
+                    <p class="lead text-muted mb-4">
+                        Nous avons bien pris note de votre réponse, <strong>{{ candidat.prenom }} {{ candidat.nom }}</strong>.
+                    </p>
+                    {% endif %}
+                    
+                    <!-- Informations du séminaire -->
+                    <div class="alert alert-info mb-4">
+                        <h5 class="alert-heading">
+                            <i class="fas fa-chalkboard-teacher me-2"></i>
+                            {{ seminaire.titre }}
+                        </h5>
+                        <hr>
+                        <div class="row text-start">
+                            <div class="col-md-6">
+                                <p class="mb-2">
+                                    <i class="fas fa-calendar-alt me-2 text-primary"></i>
+                                    <strong>Du :</strong> {{ seminaire.date_debut.strftime('%d/%m/%Y') }}
+                                </p>
+                                <p class="mb-2">
+                                    <i class="fas fa-calendar-check me-2 text-primary"></i>
+                                    <strong>Au :</strong> {{ seminaire.date_fin.strftime('%d/%m/%Y') }}
+                                </p>
+                            </div>
+                            <div class="col-md-6">
+                                {% if seminaire.lieu %}
+                                <p class="mb-2">
+                                    <i class="fas fa-map-marker-alt me-2 text-primary"></i>
+                                    <strong>Lieu :</strong> {{ seminaire.lieu }}
+                                </p>
+                                {% endif %}
+                                {% if seminaire.organisateur %}
+                                <p class="mb-2">
+                                    <i class="fas fa-user-tie me-2 text-primary"></i>
+                                    <strong>Organisateur :</strong> {{ seminaire.organisateur.nom_complet }}
+                                </p>
+                                {% endif %}
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <!-- Message de confirmation -->
+                    <div class="mb-4">
+                        {% if success %}
+                        <p class="text-success">
+                            <i class="fas fa-info-circle me-2"></i>
+                            Votre participation au séminaire a été confirmée. 
+                            Vous recevrez prochainement toutes les informations pratiques par email.
+                        </p>
+                        {% else %}
+                        <p class="text-muted">
+                            <i class="fas fa-info-circle me-2"></i>
+                            Nous comprenons votre choix. Si vous changez d'avis, 
+                            n'hésitez pas à contacter l'organisateur.
+                        </p>
+                        {% endif %}
+                    </div>
+                    
+                    <!-- Footer -->
+                    <hr class="my-4">
+                    <p class="text-muted small mb-0">
+                        <i class="fas fa-shield-alt me-1"></i>
+                        Cette page est sécurisée et votre réponse a été enregistrée.
+                    </p>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<style>
+.card {
+    border: none;
+    border-radius: 15px;
+}
+
+.alert-info {
+    background-color: #e3f2fd;
+    border-color: #bbdefb;
+    color: #1565c0;
+}
+
+.btn-lg {
+    padding: 12px 30px;
+    font-size: 1.1rem;
+}
+
+.text-success {
+    color: #1cc88a !important;
+}
+
+.text-danger {
+    color: #e74a3b !important;
+}
+
+.text-primary {
+    color: #ffd300 !important;
+}
+</style>
+{% endblock %}

@@ -1,0 +1,183 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Invitation au Séminaire</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            line-height: 1.6;
+            color: #333;
+            max-width: 600px;
+            margin: 0 auto;
+            padding: 20px;
+            background-color: #f4f4f4;
+        }
+        .email-container {
+            background-color: #ffffff;
+            padding: 30px;
+            border-radius: 10px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+        }
+        .header {
+            text-align: center;
+            border-bottom: 3px solid #ffd300;
+            padding-bottom: 20px;
+            margin-bottom: 30px;
+        }
+        .logo {
+            font-size: 24px;
+            font-weight: bold;
+            color: #ffd300;
+            margin-bottom: 10px;
+        }
+        .title {
+            font-size: 28px;
+            color: #333;
+            margin-bottom: 20px;
+        }
+        .greeting {
+            font-size: 18px;
+            margin-bottom: 20px;
+        }
+        .seminaire-info {
+            background-color: #f8f9fa;
+            padding: 20px;
+            border-radius: 8px;
+            margin: 20px 0;
+            border-left: 4px solid #ffd300;
+        }
+        .seminaire-title {
+            font-size: 20px;
+            font-weight: bold;
+            color: #ffd300;
+            margin-bottom: 15px;
+        }
+        .info-row {
+            margin-bottom: 10px;
+            display: flex;
+            align-items: center;
+        }
+        .info-label {
+            font-weight: bold;
+            min-width: 100px;
+            color: #555;
+        }
+        .info-value {
+            margin-left: 10px;
+        }
+        .description {
+            margin: 20px 0;
+            padding: 15px;
+            background-color: #e9ecef;
+            border-radius: 5px;
+            font-style: italic;
+        }
+        .cta-section {
+            text-align: center;
+            margin: 30px 0;
+            padding: 20px;
+            background-color: #ffd300;
+            color: #000000;
+            border-radius: 8px;
+        }
+        .cta-button {
+            display: inline-block;
+            background-color: #1cc88a;
+            color: white;
+            padding: 12px 30px;
+            text-decoration: none;
+            border-radius: 5px;
+            font-weight: bold;
+            margin: 10px;
+        }
+        .cta-button:hover {
+            background-color: #17a673;
+        }
+        .footer {
+            margin-top: 30px;
+            padding-top: 20px;
+            border-top: 1px solid #ddd;
+            text-align: center;
+            color: #666;
+            font-size: 14px;
+        }
+        .token-info {
+            background-color: #fff3cd;
+            border: 1px solid #ffeaa7;
+            padding: 15px;
+            border-radius: 5px;
+            margin: 20px 0;
+            font-family: monospace;
+            font-size: 14px;
+        }
+    </style>
+</head>
+<body>
+    <div class="email-container">
+        <div class="header">
+            <div class="logo">🎓 LIA WEB</div>
+            <h1 class="title">Invitation au Séminaire</h1>
+        </div>
+        
+        <div class="greeting">
+            Bonjour <strong>{{ nom }}</strong>,
+        </div>
+        
+        <p>Nous avons le plaisir de vous inviter à participer à notre séminaire de formation.</p>
+        
+        <div class="seminaire-info">
+            <div class="seminaire-title">{{ seminaire_titre }}</div>
+            
+            <div class="info-row">
+                <span class="info-label">📅 Dates :</span>
+                <span class="info-value">Du {{ date_debut }} au {{ date_fin }}</span>
+            </div>
+            
+            {% if lieu %}
+            <div class="info-row">
+                <span class="info-label">📍 Lieu :</span>
+                <span class="info-value">{{ lieu }}</span>
+            </div>
+            {% endif %}
+            
+            {% if token %}
+            <div class="info-row">
+                <span class="info-label">🔑 Code :</span>
+                <span class="info-value">{{ token }}</span>
+            </div>
+            {% endif %}
+        </div>
+        
+        {% if seminaire_description %}
+        <div class="description">
+            <strong>Description :</strong><br>
+            {{ seminaire_description }}
+        </div>
+        {% endif %}
+        
+        <div class="cta-section">
+            <h3 style="margin-top: 0;">Répondez à cette invitation</h3>
+            <p>Cliquez sur le bouton ci-dessous pour accepter ou refuser cette invitation :</p>
+            
+            <a href="{{ accept_url }}" class="cta-button" style="background-color: #1cc88a;">✅ Accepter l'invitation</a>
+            <a href="{{ reject_url }}" class="cta-button" style="background-color: #e74a3b;">❌ Refuser l'invitation</a>
+        </div>
+        
+        {% if token %}
+        <div class="token-info">
+            <strong>ℹ️ Information importante :</strong><br>
+            Votre code d'invitation unique est : <strong>{{ token }}</strong><br>
+            Conservez ce code pour votre référence.
+        </div>
+        {% endif %}
+        
+        <div class="footer">
+            <p>Cet email a été envoyé automatiquement par le système LIA WEB.</p>
+            <p>Si vous avez des questions, n'hésitez pas à nous contacter.</p>
+            <p><strong>L'équipe LIA WEB</strong></p>
+        </div>
+    </div>
+</body>
+</html>

@@ -1,0 +1,227 @@
+{% extends "base.html" %}
+
+{% block title %}Nouveau Séminaire{% endblock %}
+
+{% block content %}
+<div class="container-fluid p-4">
+    <div class="row mb-4">
+        <div class="col-12">
+            <nav aria-label="breadcrumb">
+                <ol class="breadcrumb">
+                    <li class="breadcrumb-item"><a href="{{ url_for('liste_seminaires') }}">Séminaires</a></li>
+                    <li class="breadcrumb-item active">Nouveau Séminaire</li>
+                </ol>
+            </nav>
+            <h1 class="mb-0">
+                <i class="fas fa-plus me-2"></i>Nouveau Séminaire
+            </h1>
+        </div>
+    </div>
+
+    <div class="row">
+        <div class="col-lg-8">
+            <div class="card">
+                <div class="card-header">
+                    <h5 class="mb-0">Informations Générales</h5>
+                </div>
+                <div class="card-body">
+                    <form method="POST" action="/seminaires/nouveau">
+                        <div class="row">
+                            <div class="col-md-6">
+                                <div class="mb-3">
+                                    <label for="titre" class="form-label">Titre du Séminaire *</label>
+                                    <input type="text" class="form-control" id="titre" name="titre" required>
+                                </div>
+                            </div>
+                            <div class="col-md-6">
+                                <div class="mb-3">
+                                    <label for="programme_id" class="form-label">Programme *</label>
+                                    <select class="form-select" id="programme_id" name="programme_id" required>
+                                        <option value="">Sélectionner un programme</option>
+                                        {% for programme in programmes %}
+                                            <option value="{{ programme.id }}">{{ programme.code }} - {{ programme.nom }}</option>
+                                        {% endfor %}
+                                    </select>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="mb-3">
+                            <label for="description" class="form-label">Description</label>
+                            <textarea class="form-control" id="description" name="description" rows="3" 
+                                      placeholder="Décrivez le contenu et les objectifs du séminaire..."></textarea>
+                        </div>
+
+                        <div class="row">
+                            <div class="col-md-6">
+                                <div class="mb-3">
+                                    <label for="date_debut" class="form-label">Date de Début *</label>
+                                    <input type="date" class="form-control" id="date_debut" name="date_debut" required>
+                                </div>
+                            </div>
+                            <div class="col-md-6">
+                                <div class="mb-3">
+                                    <label for="date_fin" class="form-label">Date de Fin *</label>
+                                    <input type="date" class="form-control" id="date_fin" name="date_fin" required>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="mb-3">
+                            <label for="lieu" class="form-label">Lieu</label>
+                            <input type="text" class="form-control" id="lieu" name="lieu" 
+                                   placeholder="Ex: Salle de conférence, Centre de formation...">
+                        </div>
+
+                        <div class="mb-3">
+                            <label for="adresse_complete" class="form-label">Adresse Complète</label>
+                            <textarea class="form-control" id="adresse_complete" name="adresse_complete" rows="2" 
+                                      placeholder="Adresse complète du lieu..."></textarea>
+                        </div>
+
+                        <div class="row">
+                            <div class="col-md-6">
+                                <div class="mb-3">
+                                    <label for="capacite_max" class="form-label">Capacité Maximale</label>
+                                    <input type="number" class="form-control" id="capacite_max" name="capacite_max" 
+                                           min="1" placeholder="Nombre maximum de participants">
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="row">
+                            <div class="col-md-6">
+                                <div class="form-check">
+                                    <input class="form-check-input" type="checkbox" id="invitation_auto" name="invitation_auto" value="true">
+                                    <label class="form-check-label" for="invitation_auto">
+                                        Invitation automatique à tous les candidats du programme
+                                    </label>
+                                </div>
+                            </div>
+                            <div class="col-md-6">
+                                <div class="form-check">
+                                    <input class="form-check-input" type="checkbox" id="invitation_promos" name="invitation_promos" value="true">
+                                    <label class="form-check-label" for="invitation_promos">
+                                        Invitation par promotions
+                                    </label>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="d-flex justify-content-between mt-4">
+                            <a href="{{ url_for('liste_seminaires') }}" class="btn btn-secondary">
+                                <i class="fas fa-arrow-left me-2"></i>Annuler
+                            </a>
+                            <button type="submit" class="btn btn-primary">
+                                <i class="fas fa-save me-2"></i>Créer le Séminaire
+                            </button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+
+        <div class="col-lg-4">
+            <div class="card">
+                <div class="card-header">
+                    <h5 class="mb-0">Conseils</h5>
+                </div>
+                <div class="card-body">
+                    <div class="alert alert-info">
+                        <h6><i class="fas fa-lightbulb me-2"></i>Conseils pour créer un séminaire</h6>
+                        <ul class="mb-0">
+                            <li>Choisissez un titre clair et descriptif</li>
+                            <li>Définissez des dates réalistes</li>
+                            <li>Précisez le lieu pour faciliter l'organisation</li>
+                            <li>Activez les invitations automatiques si nécessaire</li>
+                        </ul>
+                    </div>
+                </div>
+            </div>
+
+            <div class="card mt-3">
+                <div class="card-header">
+                    <h5 class="mb-0">Prochaines Étapes</h5>
+                </div>
+                <div class="card-body">
+                    <ol class="mb-0">
+                        <li>Créer les sessions (matin/soir)</li>
+                        <li>Envoyer les invitations</li>
+                        <li>Configurer les livrables</li>
+                        <li>Organiser l'émargement</li>
+                    </ol>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    const dateDebut = document.getElementById('date_debut');
+    const dateFin = document.getElementById('date_fin');
+    
+    // Définir la date de début minimale à aujourd'hui
+    const today = new Date().toISOString().split('T')[0];
+    dateDebut.min = today;
+    
+    // Mettre à jour la date de fin minimale quand la date de début change
+    dateDebut.addEventListener('change', function() {
+        dateFin.min = this.value;
+        if (dateFin.value && dateFin.value < this.value) {
+            dateFin.value = this.value;
+        }
+    });
+    
+    // Validation côté client
+    const form = document.querySelector('form');
+    form.addEventListener('submit', function(e) {
+        const titre = document.getElementById('titre').value.trim();
+        const programme = document.getElementById('programme_id').value;
+        const dateDebut = document.getElementById('date_debut').value;
+        const dateFin = document.getElementById('date_fin').value;
+        
+        if (!titre || !programme || !dateDebut || !dateFin) {
+            e.preventDefault();
+            alert('Veuillez remplir tous les champs obligatoires.');
+            return;
+        }
+        
+        if (dateFin < dateDebut) {
+            e.preventDefault();
+            alert('La date de fin doit être postérieure à la date de début.');
+            return;
+        }
+    });
+});
+</script>
+
+<style>
+.card {
+    box-shadow: 0 0.125rem 0.25rem rgba(0, 0, 0, 0.075);
+    border: 1px solid rgba(0, 0, 0, 0.125);
+}
+
+.form-label {
+    font-weight: 600;
+    color: #495057;
+}
+
+.alert ul {
+    padding-left: 1.2rem;
+}
+
+.alert li {
+    margin-bottom: 0.25rem;
+}
+
+.breadcrumb {
+    background-color: transparent;
+    padding: 0;
+}
+
+.breadcrumb-item + .breadcrumb-item::before {
+    content: ">";
+}
+</style>
+{% endblock %}
