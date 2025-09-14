@@ -1,0 +1,501 @@
+{% extends "base.html" %}
+
+{% block title %}Invitations - {{ event.titre }}{% endblock %}
+
+{% block content %}
+<div class="container-fluid p-4">
+    <div class="row mb-4 sticky-main-header">
+        <div class="col-12">
+            <nav aria-label="breadcrumb">
+                <ol class="breadcrumb">
+                    <li class="breadcrumb-item"><a href="{{ url_for('liste_events') }}">Événements</a></li>
+                    <li class="breadcrumb-item"><a href="{{ url_for('detail_event', event_id=event.id) }}">{{ event.titre }}</a></li>
+                    <li class="breadcrumb-item active">Invitations</li>
+                </ol>
+            </nav>
+            <h2 class="mb-1" style="font-size: 1.4rem;">
+                <i class="fas fa-envelope me-2"></i>Gestion des Invitations
+            </h2>
+            <p class="text-muted small mb-0">Inviter des candidats à l'événement "{{ event.titre }}"</p>
+        </div>
+    </div>
+
+    <div class="row">
+        <div class="col-lg-8">
+            <!-- Candidats disponibles pour invitation -->
+            <div class="card mb-4">
+                <div class="card-header sticky-header">
+                    <h5 class="mb-0">Candidats Disponibles</h5>
+                    <small class="text-muted">Candidats du programme {{ event.programme.nom }} pouvant être invités</small>
+                </div>
+                <div class="card-body p-0">
+                    {% if inscriptions %}
+                        <form method="POST" action="{{ url_for('envoyer_invitations_event', event_id=event.id) }}">
+                            <!-- Champ caché pour le type d'invitation -->
+                            <input type="hidden" name="type_invitation" value="individuelle">
+                            
+                            <!-- En-tête avec sélection - FIXÉ -->
+                            <div class="d-flex justify-content-between align-items-center p-3 sticky-header">
+                                <div class="d-flex align-items-center gap-3">
+                                    <div class="form-check">
+                                        <input type="checkbox" id="selectAll" class="form-check-input">
+                                        <label for="selectAll" class="form-check-label">Tout sélectionner</label>
+                                    </div>
+                                    <div class="dropdown">
+                                        <button class="btn btn-outline-secondary btn-sm dropdown-toggle" type="button" id="promotionFilter" data-bs-toggle="dropdown" aria-expanded="false">
+                                            <i class="fas fa-filter me-1"></i>Filtrer par promotion
+                                        </button>
+                                        <ul class="dropdown-menu" aria-labelledby="promotionFilter">
+                                            <li><a class="dropdown-item" href="#" onclick="filterByPromotion('all')">Toutes les promotions</a></li>
+                                            <li><hr class="dropdown-divider"></li>
+                                            <li><a class="dropdown-item" href="#" onclick="showAllPromotions()">Chargement des promotions...</a></li>
+                                        </ul>
+                                    </div>
+                                </div>
+                                <span class="text-muted small" id="selectionCount">0 candidat(s) sélectionné(s)</span>
+                            </div>
+                            
+                            <!-- Liste des candidats en style carte - AVEC SCROLL -->
+                            <div class="p-3 candidates-scroll-area">
+                                <div class="row g-2">
+                                {% for inscription in inscriptions %}
+                                <div class="col-md-6 col-lg-6">
+                                    <div class="card candidat-card" style="cursor: pointer;" onclick="toggleCandidat({{ inscription.candidat.id }})">
+                                        <div class="card-body d-flex align-items-center p-2">
+                                            <div class="form-check me-3">
+                                                <input type="checkbox" name="candidats_ids" value="{{ inscription.id }}" 
+                                                       class="form-check-input candidat-checkbox" id="candidat_{{ inscription.candidat.id }}">
+                                            </div>
+                                            
+                                            <div class="avatar me-2" style="background-image:url('{% if inscription.candidat.photo_profil %}/media/{{ inscription.candidat.photo_profil.replace('\\', '/') }}{% else %}/static/images/utilisateur.png{% endif %}'); width: 32px; height: 32px;"></div>
+                                            
+                                            <div class="flex-grow-1">
+                                                <div class="fw-bold text-dark" style="font-size: 13px; line-height: 1.2;">
+                                                    {{ inscription.candidat.prenom }} {{ inscription.candidat.nom }}
+                                                </div>
+                                                <div class="small text-muted" style="font-size: 11px; line-height: 1.1;">
+                                                    {{ inscription.candidat.email }}
+                                                </div>
+                                                {% if inscription.promotion %}
+                                                <div class="small text-muted" style="font-size: 10px; line-height: 1.1;">
+                                                    <i class="fas fa-graduation-cap me-1"></i>{{ inscription.promotion.libelle }}
+                                                </div>
+                                                {% endif %}
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                                {% endfor %}
+                                </div>
+                            </div>
+                            
+                            <!-- Boutons - EN DEHORS DU SCROLL -->
+                            <div class="d-flex justify-content-between p-3 border-top bg-light">
+                                <a href="{{ url_for('detail_event', event_id=event.id) }}" class="btn btn-secondary">
+                                    <i class="fas fa-arrow-left me-2"></i>Retour
+                                </a>
+                                <button type="submit" class="btn btn-primary" id="sendInvitationsBtn" disabled>
+                                    <i class="fas fa-paper-plane me-2"></i>Envoyer les Invitations
+                                </button>
+                            </div>
+                        </form>
+                    {% else %}
+                        <div class="text-center py-4">
+                            <i class="fas fa-users fa-3x text-muted mb-3"></i>
+                            <h5 class="text-muted">Aucun candidat disponible</h5>
+                            <p class="text-muted">Aucun candidat du programme {{ event.programme.nom }} n'est disponible pour invitation.</p>
+                            <a href="{{ url_for('detail_event', event_id=event.id) }}" class="btn btn-secondary">
+                                <i class="fas fa-arrow-left me-2"></i>Retour
+                            </a>
+                        </div>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+
+        <div class="col-lg-4">
+            <!-- Accordéon pour Informations et Invitations -->
+            <div class="accordion" id="infoAccordion">
+                <!-- Informations de l'événement -->
+                <div class="accordion-item">
+                    <h2 class="accordion-header" id="headingInfo">
+                        <button class="accordion-button" type="button" data-bs-toggle="collapse" data-bs-target="#collapseInfo" aria-expanded="true" aria-controls="collapseInfo">
+                            <i class="fas fa-info-circle me-2"></i>Informations de l'Événement
+                        </button>
+                    </h2>
+                    <div id="collapseInfo" class="accordion-collapse collapse show" aria-labelledby="headingInfo" data-bs-parent="#infoAccordion">
+                        <div class="accordion-body info-scroll-area">
+                            <h6>{{ event.titre }}</h6>
+                            <p class="text-muted small">{{ event.description[:100] }}{% if event.description|length > 100 %}...{% endif %}</p>
+                            
+                            <div class="mb-2">
+                                <strong>Programme:</strong> {{ event.programme.nom }}
+                            </div>
+                            
+                            {% if event.lieu %}
+                            <div class="mb-2">
+                                <strong>Lieu:</strong> {{ event.lieu }}
+                            </div>
+                            {% endif %}
+                            
+                            <div class="mb-2">
+                                <strong>Organisateur:</strong> {{ event.organisateur.nom_complet }}
+                            </div>
+                            
+                            <div class="mb-2">
+                                <strong>Date:</strong> {{ event.date_debut.strftime('%d/%m/%Y') }} au {{ event.date_fin.strftime('%d/%m/%Y') }}
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Invitations déjà envoyées -->
+                {% if invitations %}
+                <div class="accordion-item">
+                    <h2 class="accordion-header" id="headingInvitations">
+                        <button class="accordion-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#collapseInvitations" aria-expanded="false" aria-controls="collapseInvitations">
+                            <i class="fas fa-envelope me-2"></i>Invitations Envoyées ({{ invitations|length }})
+                        </button>
+                    </h2>
+                    <div id="collapseInvitations" class="accordion-collapse collapse" aria-labelledby="headingInvitations" data-bs-parent="#infoAccordion">
+                        <div class="accordion-body invitations-scroll-area">
+                            <div class="list-group list-group-flush">
+                                {% for invitation in invitations %}
+                                <div class="list-group-item d-flex justify-content-between align-items-center">
+                                    <div>
+                                        <strong>{{ invitation.inscription.candidat.nom }} {{ invitation.inscription.candidat.prenom }}</strong>
+                                        <br>
+                                        <small class="text-muted">{{ invitation.inscription.candidat.email }}</small>
+                                    </div>
+                                    <div>
+                                        <span class="badge invitation-status invitation-status-{{ invitation.statut.value.lower() }}">
+                                            <i class="fas fa-{% if invitation.statut == 'EN_ATTENTE' %}clock{% elif invitation.statut == 'ACCEPTEE' %}check-circle{% elif invitation.statut == 'REFUSEE' %}times-circle{% else %}question-circle{% endif %} me-1"></i>
+                                            {{ invitation.statut.value }}
+                                        </span>
+                                    </div>
+                                </div>
+                                {% endfor %}
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+// Générer la liste des promotions uniques au chargement de la page
+document.addEventListener('DOMContentLoaded', function() {
+    generatePromotionList();
+});
+
+function generatePromotionList() {
+    const cards = document.querySelectorAll('.candidat-card');
+    const promotions = new Set();
+    
+    // Collecter toutes les promotions uniques
+    cards.forEach(card => {
+        const promotionElement = card.querySelector('.small.text-muted:last-child');
+        if (promotionElement) {
+            const promotionText = promotionElement.textContent.trim();
+            if (promotionText && promotionText !== '') {
+                promotions.add(promotionText);
+            }
+        }
+    });
+    
+    // Mettre à jour le dropdown
+    const dropdownMenu = document.querySelector('#promotionFilter').nextElementSibling;
+    const separator = dropdownMenu.querySelector('.dropdown-divider');
+    
+    // Supprimer l'ancien contenu après le séparateur
+    let nextElement = separator.nextElementSibling;
+    while (nextElement) {
+        const toRemove = nextElement;
+        nextElement = nextElement.nextElementSibling;
+        toRemove.remove();
+    }
+    
+    // Ajouter les promotions uniques
+    promotions.forEach(promotion => {
+        const li = document.createElement('li');
+        li.innerHTML = `<a class="dropdown-item" href="#" onclick="filterByPromotion('${promotion}')">${promotion}</a>`;
+        dropdownMenu.appendChild(li);
+    });
+}
+
+function showAllPromotions() {
+    // Cette fonction peut être utilisée pour afficher toutes les promotions si nécessaire
+    generatePromotionList();
+}
+
+document.getElementById('selectAll').addEventListener('change', function() {
+    const checkboxes = document.querySelectorAll('.candidat-checkbox');
+    checkboxes.forEach(checkbox => {
+        checkbox.checked = this.checked;
+    });
+    updateSelectionCount();
+    updateCardStyles();
+});
+
+document.querySelectorAll('.candidat-checkbox').forEach(checkbox => {
+    checkbox.addEventListener('change', function() {
+        updateSelectionCount();
+        updateSelectAll();
+        updateCardStyles();
+    });
+});
+
+function toggleCandidat(candidatId) {
+    const checkbox = document.getElementById(`candidat_${candidatId}`);
+    checkbox.checked = !checkbox.checked;
+    checkbox.dispatchEvent(new Event('change'));
+}
+
+function updateSelectionCount() {
+    const checkedBoxes = document.querySelectorAll('.candidat-checkbox:checked');
+    const countElement = document.getElementById('selectionCount');
+    const sendBtn = document.getElementById('sendInvitationsBtn');
+    
+    countElement.textContent = `${checkedBoxes.length} candidat(s) sélectionné(s)`;
+    sendBtn.disabled = checkedBoxes.length === 0;
+    sendBtn.innerHTML = checkedBoxes.length > 0 ? 
+        `<i class="fas fa-paper-plane me-2"></i>Envoyer les Invitations (${checkedBoxes.length})` : 
+        '<i class="fas fa-paper-plane me-2"></i>Envoyer les Invitations';
+}
+
+function updateSelectAll() {
+    const checkboxes = document.querySelectorAll('.candidat-checkbox');
+    const selectAll = document.getElementById('selectAll');
+    const checkedCount = document.querySelectorAll('.candidat-checkbox:checked').length;
+    
+    if (checkedCount === 0) {
+        selectAll.indeterminate = false;
+        selectAll.checked = false;
+    } else if (checkedCount === checkboxes.length) {
+        selectAll.indeterminate = false;
+        selectAll.checked = true;
+    } else {
+        selectAll.indeterminate = true;
+    }
+}
+
+function updateCardStyles() {
+    document.querySelectorAll('.candidat-card').forEach(card => {
+        const checkbox = card.querySelector('.candidat-checkbox');
+        if (checkbox.checked) {
+            card.classList.add('selected');
+        } else {
+            card.classList.remove('selected');
+        }
+    });
+}
+
+function filterByPromotion(promotionCode) {
+    const cards = document.querySelectorAll('.candidat-card');
+    const dropdownButton = document.getElementById('promotionFilter');
+    
+    // Mettre à jour le texte du bouton
+    if (promotionCode === 'all') {
+        dropdownButton.innerHTML = '<i class="fas fa-filter me-1"></i>Filtrer par promotion';
+    } else {
+        dropdownButton.innerHTML = `<i class="fas fa-filter me-1"></i>${promotionCode}`;
+    }
+    
+    // Filtrer les cartes
+    cards.forEach(card => {
+        const promotionElement = card.querySelector('.small.text-muted:last-child');
+        const cardContainer = card.closest('.col-md-6');
+        
+        if (promotionCode === 'all') {
+            cardContainer.style.display = '';
+        } else {
+            const cardPromotion = promotionElement ? promotionElement.textContent.trim() : '';
+            if (cardPromotion.includes(promotionCode)) {
+                cardContainer.style.display = '';
+            } else {
+                cardContainer.style.display = 'none';
+            }
+        }
+    });
+    
+    // Réinitialiser la sélection après filtrage
+    updateSelectionCount();
+    updateSelectAll();
+}
+</script>
+
+<style>
+/* Styles pour les cartes de candidats compactes */
+.candidat-card {
+    transition: all 0.2s ease;
+    border: 1px solid #dee2e6;
+}
+
+.candidat-card:hover {
+    border-color: #0d6efd;
+    box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+}
+
+.candidat-card.selected {
+    border-color: #0d6efd;
+    background-color: #f8f9ff;
+}
+
+/* En-tête principal fixe */
+.sticky-main-header {
+    position: sticky;
+    top: 0;
+    z-index: 15;
+    background-color: white;
+    border-bottom: 1px solid #dee2e6;
+    margin-bottom: 0.5rem !important;
+    padding-bottom: 0.5rem;
+}
+
+.sticky-main-header .breadcrumb {
+    margin-bottom: 0.25rem;
+    font-size: 0.85rem;
+}
+
+.sticky-main-header h2 {
+    line-height: 1.2;
+}
+
+.sticky-main-header p {
+    line-height: 1.1;
+}
+
+/* En-tête fixe */
+.sticky-header {
+    position: sticky;
+    top: 0;
+    z-index: 10;
+    background-color: #f8f9fa;
+    border-bottom: 1px solid #dee2e6;
+}
+
+/* Zone de scroll avec hauteur fixe */
+.candidates-scroll-area {
+    max-height: 60vh;
+    overflow-y: auto;
+    scrollbar-width: thin;
+}
+
+.candidates-scroll-area::-webkit-scrollbar {
+    width: 6px;
+}
+
+.candidates-scroll-area::-webkit-scrollbar-track {
+    background: #f1f1f1;
+}
+
+.candidates-scroll-area::-webkit-scrollbar-thumb {
+    background: #c1c1c1;
+    border-radius: 3px;
+}
+
+.candidates-scroll-area::-webkit-scrollbar-thumb:hover {
+    background: #a8a8a8;
+}
+
+/* Zones de scroll pour l'accordéon */
+.info-scroll-area {
+    max-height: 40vh;
+    overflow-y: auto;
+    scrollbar-width: thin;
+}
+
+.info-scroll-area::-webkit-scrollbar {
+    width: 6px;
+}
+
+.info-scroll-area::-webkit-scrollbar-track {
+    background: #f1f1f1;
+}
+
+.info-scroll-area::-webkit-scrollbar-thumb {
+    background: #c1c1c1;
+    border-radius: 3px;
+}
+
+.info-scroll-area::-webkit-scrollbar-thumb:hover {
+    background: #a8a8a8;
+}
+
+.invitations-scroll-area {
+    max-height: 50vh;
+    overflow-y: auto;
+    scrollbar-width: thin;
+}
+
+.invitations-scroll-area::-webkit-scrollbar {
+    width: 6px;
+}
+
+.invitations-scroll-area::-webkit-scrollbar-track {
+    background: #f1f1f1;
+}
+
+.invitations-scroll-area::-webkit-scrollbar-thumb {
+    background: #c1c1c1;
+    border-radius: 3px;
+}
+
+.invitations-scroll-area::-webkit-scrollbar-thumb:hover {
+    background: #a8a8a8;
+}
+
+/* Accordéon personnalisé */
+.accordion-button {
+    font-size: 0.9rem;
+    padding: 0.75rem 1rem;
+}
+
+.accordion-button:not(.collapsed) {
+    background-color: #f8f9fa;
+    border-color: #dee2e6;
+}
+
+.accordion-body {
+    padding: 1rem;
+}
+
+/* Styles pour les statuts d'invitation */
+.invitation-status {
+    font-size: 0.55rem;
+    font-weight: 500;
+    padding: 0.2rem 0.35rem;
+    border-radius: 0.2rem;
+    text-transform: uppercase;
+    letter-spacing: 0.2px;
+    line-height: 1;
+}
+
+.invitation-status-en_attente {
+    background-color: #ffd300 !important;
+    color: #000000 !important;
+    border: 1px solid #e6c200;
+}
+
+.invitation-status-acceptee {
+    background-color: #1cc88a !important;
+    color: #ffffff !important;
+    border: 1px solid #17a673;
+}
+
+.invitation-status-refusee {
+    background-color: #e74a3b !important;
+    color: #ffffff !important;
+    border: 1px solid #d63031;
+}
+
+/* Animation au survol */
+.invitation-status:hover {
+    transform: scale(1.05);
+    transition: transform 0.2s ease;
+}
+</style>
+{% endblock %}

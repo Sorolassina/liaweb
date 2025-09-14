@@ -199,15 +199,27 @@ async def invitations_seminaire(
     
     invitations = seminaire_service.get_invitations_seminaire(seminaire_id, db)
     
-    # Récupérer les candidats disponibles pour invitation
+    # Récupérer les candidats disponibles pour invitation (exclure ceux déjà invités)
     from app_lia_web.app.models.base import Inscription, Candidat
     from sqlmodel import select
     
-    inscriptions = db.exec(
-        select(Inscription)
-        .join(Candidat)
-        .where(Inscription.programme_id == seminaire.programme_id)
-    ).all()
+    # Récupérer les IDs des inscriptions déjà invitées
+    invitations_query = select(InvitationSeminaire.inscription_id).where(
+        InvitationSeminaire.seminaire_id == seminaire_id
+    )
+    inscriptions_invitees = db.exec(invitations_query).all()
+    
+    # Récupérer toutes les inscriptions du programme sauf celles déjà invitées
+    inscriptions_query = select(Inscription).join(Candidat).where(
+        Inscription.programme_id == seminaire.programme_id
+    )
+    
+    if inscriptions_invitees:
+        inscriptions_query = inscriptions_query.where(
+            Inscription.id.notin_(inscriptions_invitees)
+        )
+    
+    inscriptions = db.exec(inscriptions_query).all()
     
     return templates.TemplateResponse("seminaires/invitations.html", {
         "request": request,
@@ -422,14 +434,14 @@ async def emargement_session(
     if not seminaire or not session:
         raise HTTPException(status_code=404, detail="Séminaire ou session non trouvé")
     
-    presences = seminaire_service.get_presences_with_invitations(seminaire_id, session_id, db)
+    presences_data = seminaire_service.get_presences_with_invitation_details(seminaire_id, session_id, db)
     stats = seminaire_service.get_presence_stats_with_invitations(seminaire_id, session_id, db)
     
     return templates.TemplateResponse("seminaires/emargement.html", {
         "request": request,
         "seminaire": seminaire,
         "session": session,
-        "presences": presences,
+        "presences_data": presences_data,
         "stats": stats,
         "current_user": current_user,
         "utilisateur": current_user
@@ -635,13 +647,78 @@ async def emargement_direct(
     if not session_obj:
         raise HTTPException(status_code=404, detail="Session non trouvée")
     
-    # Récupérer les présences avec les invitations
-    presences = seminaire_service.get_presences_with_invitations(seminaire_id, session_id, db)
+    # Récupérer les présences existantes pour l'émargement direct
+    presences = seminaire_service.get_presences_for_direct_emargement(seminaire_id, session_id, db)
+    
+    # Récupérer toutes les invitations pour afficher tous les candidats
+    from app_lia_web.app.models.seminaire import InvitationSeminaire
+    from app_lia_web.app.models.base import Inscription
+    from sqlmodel import select
+    from sqlalchemy.orm import selectinload
+    
+    invitations_query = select(InvitationSeminaire).options(
+        selectinload(InvitationSeminaire.inscription).selectinload(Inscription.candidat)
+    ).where(InvitationSeminaire.seminaire_id == seminaire_id)
+    invitations = db.exec(invitations_query).all()
     
     return templates.TemplateResponse("seminaires/emargement_direct.html", {
         "request": request, "seminaire": seminaire, "session": session_obj,
-        "presences": presences
+        "presences": presences,
+        "invitations": invitations
     })
+
+@router.post("/{seminaire_id}/supprimer", name="supprimer_seminaire")
+async def supprimer_seminaire(
+    seminaire_id: int,
+    request: Request,
+    db: Session = Depends(get_session),
+    current_user: User = Depends(get_current_user)
+):
+    """Supprimer un séminaire et toutes ses données associées"""
+    try:
+        # Vérifier que le séminaire existe
+        seminaire = seminaire_service.get_seminaire(seminaire_id, db)
+        if not seminaire:
+            raise HTTPException(status_code=404, detail="Séminaire non trouvé")
+        
+        # Supprimer le séminaire (cascade supprimera les sessions, invitations, présences, etc.)
+        success = seminaire_service.delete_seminaire(seminaire_id, db)
+        
+        if not success:
+            raise HTTPException(status_code=500, detail="Erreur lors de la suppression du séminaire")
+        
+        return {"message": "Séminaire supprimé avec succès"}
+        
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Erreur: {str(e)}")
+
+@router.post("/{seminaire_id}/sessions/{session_id}/supprimer", name="supprimer_session")
+async def supprimer_session(
+    seminaire_id: int,
+    session_id: int,
+    request: Request,
+    db: Session = Depends(get_session),
+    current_user: User = Depends(get_current_user)
+):
+    """Supprimer une session et toutes ses données associées"""
+    try:
+        # Vérifier que le séminaire et la session existent
+        seminaire = seminaire_service.get_seminaire(seminaire_id, db)
+        session = db.get(SessionSeminaire, session_id)
+        
+        if not seminaire or not session:
+            raise HTTPException(status_code=404, detail="Séminaire ou session non trouvé")
+        
+        # Supprimer la session (cascade supprimera les présences, livrables, etc.)
+        success = seminaire_service.delete_session(session_id, db)
+        
+        if not success:
+            raise HTTPException(status_code=500, detail="Erreur lors de la suppression de la session")
+        
+        return {"message": "Session supprimée avec succès"}
+        
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Erreur: {str(e)}")
 
 @router.get("/invitation/{token}",name="invitation_page", response_class=HTMLResponse)
 async def invitation_page(
@@ -708,3 +785,33 @@ async def refuser_invitation(
         "seminaire": invitation.seminaire,
         "candidat": invitation.inscription.candidat
     })
+
+@router.post("/{seminaire_id}/sessions/{session_id}/participant/{inscription_id}/supprimer", name="supprimer_participant_session")
+async def supprimer_participant_session(
+    seminaire_id: int,
+    session_id: int,
+    inscription_id: int,
+    request: Request,
+    db: Session = Depends(get_session),
+    current_user: User = Depends(get_current_user)
+):
+    """Supprimer un participant d'une session de séminaire"""
+    # Vérifier que le séminaire et la session existent
+    seminaire = seminaire_service.get_seminaire(seminaire_id, db)
+    session = db.get(SessionSeminaire, session_id)
+    
+    if not seminaire or not session:
+        raise HTTPException(status_code=404, detail="Séminaire ou session non trouvé")
+    
+    # Supprimer le participant
+    success = seminaire_service.remove_participant_from_session(seminaire_id, session_id, inscription_id, db)
+    
+    if not success:
+        raise HTTPException(status_code=500, detail="Erreur lors de la suppression du participant")
+    
+    # Rediriger vers la page d'origine (Referer) ou vers la page d'émargement par défaut
+    referer = request.headers.get("referer")
+    if referer and f"/seminaires/{seminaire_id}/sessions/{session_id}" in referer:
+        return RedirectResponse(url=referer, status_code=303)
+    else:
+        return RedirectResponse(url=f"/seminaires/{seminaire_id}/sessions/{session_id}/emargement", status_code=303)

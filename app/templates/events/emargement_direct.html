@@ -4,13 +4,25 @@
 
 {% block content %}
 <div class="container-fluid p-4">
-    <!-- En-tête -->
+    <!-- En-tête avec utilisateur connecté -->
     <div class="row mb-4">
         <div class="col-12">
+            <nav aria-label="breadcrumb" class="mb-2">
+                <ol class="breadcrumb">
+                    <li class="breadcrumb-item"><a href="{{ url_for('liste_events') }}">Événements</a></li>
+                    <li class="breadcrumb-item"><a href="{{ url_for('detail_event', event_id=event.id) }}">{{ event.titre }}</a></li>
+                    <li class="breadcrumb-item"><a href="{{ url_for('emargement_event', event_id=event.id) }}">Émargement</a></li>
+                    <li class="breadcrumb-item active">Mode Tablette</li>
+                </ol>
+            </nav>
             <div class="text-center">
                 <h1 class="mb-0">{{ event.titre }}</h1>
                 <p class="text-muted mb-0">{{ event.programme.nom }} - {{ event.date_debut.strftime('%d/%m/%Y') }}</p>
                 <p class="text-muted">Mode Tablette - Émargement Direct</p>
+                <small class="text-info">
+                    <i class="fas fa-user me-1"></i>
+                    Connecté en tant que : {{ utilisateur.nom_complet }}
+                </small>
             </div>
         </div>
     </div>
@@ -27,9 +39,11 @@
                     {% if presences %}
                         <div class="list-group list-group-flush">
                             {% for presence in presences %}
-                            <div class="list-group-item list-group-item-action candidate-item" 
+                            {% set is_already_signed = presence.presence == 'present' or presence.presence == 'absent' or presence.presence == 'excuse' %}
+                            <div class="list-group-item candidate-item {% if not is_already_signed %}list-group-item-action{% endif %}" 
                                  data-inscription-id="{{ presence.inscription_id }}"
-                                 onclick="selectCandidate({{ presence.inscription_id }}, '{{ presence.inscription.candidat.prenom }} {{ presence.inscription.candidat.nom }}')">
+                                 data-already-signed="{{ is_already_signed|lower }}"
+                                 onclick="{% if not is_already_signed %}selectCandidate({{ presence.inscription_id }}, '{{ presence.inscription.candidat.prenom }} {{ presence.inscription.candidat.nom }}'){% else %}showAlreadySignedMessage('{{ presence.inscription.candidat.prenom }} {{ presence.inscription.candidat.nom }}', '{{ presence.presence }}'){% endif %}">
                                 <div class="d-flex align-items-center">
                                     {% if presence.inscription.candidat.photo_profil %}
                                         <img src="/media/{{ presence.inscription.candidat.photo_profil.replace('\\', '/') }}" 
@@ -47,10 +61,19 @@
                                         <div class="mt-1">
                                             {% if presence.presence == 'present' %}
                                                 <span class="badge bg-success">Présent</span>
+                                                {% if is_already_signed %}
+                                                    <i class="fas fa-check-circle text-success ms-2" title="Déjà émargé"></i>
+                                                {% endif %}
                                             {% elif presence.presence == 'absent' %}
                                                 <span class="badge bg-danger">Absent</span>
+                                                {% if is_already_signed %}
+                                                    <i class="fas fa-times-circle text-danger ms-2" title="Déjà émargé"></i>
+                                                {% endif %}
                                             {% elif presence.presence == 'excuse' %}
                                                 <span class="badge bg-warning">Excusé</span>
+                                                {% if is_already_signed %}
+                                                    <i class="fas fa-user-clock text-warning ms-2" title="Déjà émargé"></i>
+                                                {% endif %}
                                             {% else %}
                                                 <span class="badge bg-secondary">{{ presence.presence }}</span>
                                             {% endif %}
@@ -83,7 +106,7 @@
                     </div>
 
                     <!-- Formulaire d'émargement -->
-                    <form id="emargement-form" action="{{ url_for('marquer_presence_event', event_id=event.id) }}" method="post" style="display: none;">
+                    <form id="emargement-form" action="{{ url_for('marquer_presence_event_direct', event_id=event.id) }}" method="post" style="display: none;">
                         <input type="hidden" id="inscription-id" name="inscription_id">
                         
                         <!-- Statut de présence -->
@@ -211,6 +234,33 @@ function selectCandidate(inscriptionId, candidateName) {
         item.classList.remove('active');
     });
     event.currentTarget.classList.add('active');
+}
+
+function showAlreadySignedMessage(candidateName, status) {
+    // Créer un message personnalisé selon le statut
+    let statusText = '';
+    let iconClass = '';
+    
+    switch(status) {
+        case 'present':
+            statusText = 'Présent';
+            iconClass = 'fas fa-check-circle text-success';
+            break;
+        case 'absent':
+            statusText = 'Absent';
+            iconClass = 'fas fa-times-circle text-danger';
+            break;
+        case 'excuse':
+            statusText = 'Excusé';
+            iconClass = 'fas fa-user-clock text-warning';
+            break;
+        default:
+            statusText = status;
+            iconClass = 'fas fa-info-circle text-info';
+    }
+    
+    // Afficher une alerte avec le message
+    alert(`${candidateName} a déjà été émargé(e) comme "${statusText}".\n\nIl n'est pas possible de modifier l'émargement une fois validé.`);
 }
 
 function toggleSignatureMethod() {
@@ -345,6 +395,25 @@ document.getElementById('emargement-form').addEventListener('submit', function(e
 
 .candidate-item:hover {
     background-color: #f5f5f5;
+}
+
+/* Style pour les candidats déjà émargés */
+.candidate-item[data-already-signed="true"] {
+    opacity: 0.7;
+    background-color: #f8f9fa !important;
+    cursor: not-allowed !important;
+}
+
+.candidate-item[data-already-signed="true"]:hover {
+    background-color: #f8f9fa !important;
+}
+
+.candidate-item[data-already-signed="true"] h6 {
+    color: #6c757d;
+}
+
+.candidate-item[data-already-signed="true"] small {
+    color: #adb5bd;
 }
 
 .btn-check:checked + .btn {

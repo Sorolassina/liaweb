@@ -1,0 +1,445 @@
+{% extends "base_public.html" %}
+
+{% block title %}Émargement - {{ event.titre }}{% endblock %}
+
+{% block content %}
+<div class="container mt-5">
+    <div class="row justify-content-center">
+        <div class="col-md-8 col-lg-6">
+            <div class="card shadow">
+                <div class="card-body p-5">
+                    <!-- En-tête -->
+                    <div class="text-center mb-4">
+                        <i class="fas fa-signature text-primary" style="font-size: 3rem;"></i>
+                        <h2 class="mt-3 mb-1">Émargement</h2>
+                        <p class="text-muted">{{ event.programme.nom }}</p>
+                        <h4 class="text-primary">{{ event.titre }}</h4>
+                        <p class="text-muted">
+                            <i class="fas fa-calendar-alt me-1"></i>
+                            {{ event.date_debut.strftime('%d/%m/%Y') }}
+                            {% if event.heure_debut %}
+                            à {{ event.heure_debut.strftime('%H:%M') }}
+                            {% endif %}
+                        </p>
+                        {% if event.lieu %}
+                        <p class="text-muted">
+                            <i class="fas fa-map-marker-alt me-1"></i>
+                            {{ event.lieu }}
+                        </p>
+                        {% endif %}
+                    </div>
+                    
+                    <!-- Informations candidat -->
+                    <div class="alert alert-info mb-4">
+                        <h5 class="alert-heading">
+                            <i class="fas fa-user me-2"></i>
+                            {{ invitation.inscription.candidat.prenom }} {{ invitation.inscription.candidat.nom }}
+                        </h5>
+                        <p class="mb-0">{{ invitation.inscription.candidat.email }}</p>
+                    </div>
+                    
+                    {% if presence %}
+                    <!-- Déjà présent -->
+                    <div class="alert alert-success text-center">
+                        <i class="fas fa-check-circle me-2" style="font-size: 2rem;"></i>
+                        <h4 class="alert-heading">Déjà émargé !</h4>
+                        <p class="mb-0">
+                            Vous avez déjà signé votre présence le 
+                            {% if presence.heure_arrivee %}
+                            {{ presence.heure_arrivee.strftime('%d/%m/%Y à %H:%M') }}
+                            {% else %}
+                            {{ presence.cree_le.strftime('%d/%m/%Y à %H:%M') }}
+                            {% endif %}
+                        </p>
+                        {% if presence.methode_signature %}
+                        <small class="text-muted">
+                            Méthode : {{ presence.methode_signature.value|title }}
+                        </small>
+                        {% endif %}
+                    </div>
+                    {% else %}
+                    <!-- Zone d'affichage des messages -->
+                    <div id="message-container" class="mb-4" style="display: none;">
+                        <div id="message-alert" class="alert" role="alert">
+                            <div class="d-flex align-items-center">
+                                <i id="message-icon" class="me-2"></i>
+                                <span id="message-text"></span>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <!-- Formulaire de signature -->
+                    <form method="POST" action="{{ url_for('signer_emargement_lien_event', event_id=event.id, token=invitation.token_invitation) }}">
+                        <div class="mb-4">
+                            <label for="methode_signature" class="form-label">
+                                <i class="fas fa-pen me-1"></i>
+                                Méthode de Signature
+                            </label>
+                            <select class="form-select" id="methode_signature" name="methode_signature" required onchange="toggleSignatureMethod()">
+                                <option value="digital">Signature digitale</option>
+                                <option value="manuel">Signature manuelle</option>
+                            </select>
+                        </div>
+                        
+                        <!-- Zone de signature digitale -->
+                        <div class="mb-4" id="signature_digitale_zone">
+                            <div class="alert alert-info">
+                                <i class="fas fa-info-circle me-2"></i>
+                                <strong>Signature digitale :</strong> Signez dans la zone ci-dessous, puis prenez une photo pour vérification d'identité.
+                            </div>
+                            
+                            <!-- Zone de signature -->
+                            <div class="mb-3">
+                                <label class="form-label">
+                                    <i class="fas fa-mouse-pointer me-1"></i>
+                                    Signez dans la zone ci-dessous
+                                </label>
+                                <div class="border rounded p-3 bg-light">
+                                    <canvas id="signature_canvas" width="400" height="200" 
+                                            style="border: 1px solid #ddd; background: white; cursor: crosshair;"></canvas>
+                                </div>
+                                <div class="mt-2">
+                                    <button type="button" class="btn btn-outline-secondary btn-sm" onclick="clearSignature()">
+                                        <i class="fas fa-eraser me-1"></i>Effacer
+                                    </button>
+                                </div>
+                            </div>
+                            
+                            <!-- Zone de prise de photo pour signature digitale -->
+                            <div class="mb-3">
+                                <label class="form-label">
+                                    <i class="fas fa-camera me-1"></i>
+                                    Photo de vérification d'identité
+                                </label>
+                                <div class="border rounded p-3 bg-light text-center">
+                                    <video id="video" width="300" height="200" style="display: none;"></video>
+                                    <canvas id="photo_canvas" width="300" height="200" style="display: none;"></canvas>
+                                    <div id="photo_placeholder" class="py-4">
+                                        <i class="fas fa-camera fa-3x text-muted mb-3"></i>
+                                        <p class="text-muted">Cliquez pour prendre une photo</p>
+                                        <button type="button" class="btn btn-outline-primary" onclick="startCamera()">
+                                            <i class="fas fa-camera me-2"></i>Prendre une Photo
+                                        </button>
+                                    </div>
+                                    <div id="photo_controls" style="display: none;" class="mt-2">
+                                        <button type="button" class="btn btn-success btn-sm" onclick="capturePhoto()">
+                                            <i class="fas fa-check me-1"></i>Valider
+                                        </button>
+                                        <button type="button" class="btn btn-outline-secondary btn-sm" onclick="retakePhoto()">
+                                            <i class="fas fa-redo me-1"></i>Reprendre
+                                        </button>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <!-- Zone de signature manuelle -->
+                        <div class="mb-4" id="signature_manuelle_zone" style="display: none;">
+                            <div class="alert alert-info">
+                                <i class="fas fa-info-circle me-2"></i>
+                                <strong>Signature manuelle :</strong> Saisissez votre nom complet et prenez une photo pour vérification d'identité.
+                            </div>
+                            
+                            <div class="mb-3">
+                                <label for="nom_signature" class="form-label">
+                                    <i class="fas fa-signature me-1"></i>
+                                    Nom complet
+                                </label>
+                                <input type="text" class="form-control" id="nom_signature" name="nom_signature" 
+                                       placeholder="Saisissez votre nom complet" required>
+                            </div>
+                            
+                            <!-- Zone de prise de photo pour signature manuelle -->
+                            <div class="mb-3">
+                                <label class="form-label">
+                                    <i class="fas fa-camera me-1"></i>
+                                    Photo de vérification d'identité
+                                </label>
+                                <div class="border rounded p-3 bg-light text-center">
+                                    <video id="video_manuel" width="300" height="200" style="display: none;"></video>
+                                    <canvas id="photo_canvas_manuel" width="300" height="200" style="display: none;"></canvas>
+                                    <div id="photo_placeholder_manuel" class="py-4">
+                                        <i class="fas fa-camera fa-3x text-muted mb-3"></i>
+                                        <p class="text-muted">Cliquez pour prendre une photo</p>
+                                        <button type="button" class="btn btn-outline-primary" onclick="startCameraManuel()">
+                                            <i class="fas fa-camera me-2"></i>Prendre une Photo
+                                        </button>
+                                    </div>
+                                    <div id="photo_controls_manuel" style="display: none;" class="mt-2">
+                                        <button type="button" class="btn btn-success btn-sm" onclick="capturePhotoManuel()">
+                                            <i class="fas fa-check me-1"></i>Valider
+                                        </button>
+                                        <button type="button" class="btn btn-outline-secondary btn-sm" onclick="retakePhotoManuel()">
+                                            <i class="fas fa-redo me-1"></i>Reprendre
+                                        </button>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <!-- Commentaire -->
+                        <div class="mb-4">
+                            <label for="commentaire" class="form-label">
+                                <i class="fas fa-comment me-1"></i>
+                                Commentaire (optionnel)
+                            </label>
+                            <textarea class="form-control" id="commentaire" name="commentaire" rows="2" 
+                                      placeholder="Ajoutez un commentaire..."></textarea>
+                        </div>
+                        
+                        <!-- Bouton de validation -->
+                        <div class="d-grid">
+                            <button type="submit" class="btn btn-success btn-lg" id="btn-valider" disabled>
+                                <i class="fas fa-check me-2"></i>Valider ma Présence
+                            </button>
+                        </div>
+                    </form>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+let signatureCanvas = null;
+let isDrawing = false;
+let currentStream = null;
+let photoTaken = false;
+let photoTakenManuel = false;
+
+// Initialisation
+document.addEventListener('DOMContentLoaded', function() {
+    signatureCanvas = document.getElementById('signature_canvas');
+    if (signatureCanvas) {
+        setupSignatureCanvas();
+    }
+    toggleSignatureMethod();
+});
+
+function setupSignatureCanvas() {
+    const ctx = signatureCanvas.getContext('2d');
+    ctx.strokeStyle = '#000';
+    ctx.lineWidth = 2;
+    ctx.lineCap = 'round';
+    
+    // Événements souris
+    signatureCanvas.addEventListener('mousedown', startDrawing);
+    signatureCanvas.addEventListener('mousemove', draw);
+    signatureCanvas.addEventListener('mouseup', stopDrawing);
+    signatureCanvas.addEventListener('mouseout', stopDrawing);
+    
+    // Événements tactiles
+    signatureCanvas.addEventListener('touchstart', handleTouch);
+    signatureCanvas.addEventListener('touchmove', handleTouch);
+    signatureCanvas.addEventListener('touchend', stopDrawing);
+}
+
+function startDrawing(e) {
+    isDrawing = true;
+    const rect = signatureCanvas.getBoundingClientRect();
+    const x = e.clientX - rect.left;
+    const y = e.clientY - rect.top;
+    const ctx = signatureCanvas.getContext('2d');
+    ctx.beginPath();
+    ctx.moveTo(x, y);
+}
+
+function draw(e) {
+    if (!isDrawing) return;
+    const rect = signatureCanvas.getBoundingClientRect();
+    const x = e.clientX - rect.left;
+    const y = e.clientY - rect.top;
+    const ctx = signatureCanvas.getContext('2d');
+    ctx.lineTo(x, y);
+    ctx.stroke();
+}
+
+function stopDrawing() {
+    isDrawing = false;
+}
+
+function handleTouch(e) {
+    e.preventDefault();
+    const touch = e.touches[0];
+    const mouseEvent = new MouseEvent(e.type === 'touchstart' ? 'mousedown' : 
+                                    e.type === 'touchmove' ? 'mousemove' : 'mouseup', {
+        clientX: touch.clientX,
+        clientY: touch.clientY
+    });
+    signatureCanvas.dispatchEvent(mouseEvent);
+}
+
+function clearSignature() {
+    const ctx = signatureCanvas.getContext('2d');
+    ctx.clearRect(0, 0, signatureCanvas.width, signatureCanvas.height);
+}
+
+function toggleSignatureMethod() {
+    const method = document.getElementById('methode_signature').value;
+    const digitalZone = document.getElementById('signature_digitale_zone');
+    const manuelZone = document.getElementById('signature_manuelle_zone');
+    
+    if (method === 'digital') {
+        digitalZone.style.display = 'block';
+        manuelZone.style.display = 'none';
+        updateValidationButton();
+    } else {
+        digitalZone.style.display = 'none';
+        manuelZone.style.display = 'block';
+        updateValidationButton();
+    }
+}
+
+function startCamera() {
+    navigator.mediaDevices.getUserMedia({ video: true })
+        .then(stream => {
+            currentStream = stream;
+            const video = document.getElementById('video');
+            video.srcObject = stream;
+            video.style.display = 'block';
+            document.getElementById('photo_placeholder').style.display = 'none';
+            document.getElementById('photo_controls').style.display = 'block';
+        })
+        .catch(err => {
+            showMessage('Erreur lors de l\'accès à la caméra: ' + err.message, 'error');
+        });
+}
+
+function capturePhoto() {
+    const video = document.getElementById('video');
+    const canvas = document.getElementById('photo_canvas');
+    const ctx = canvas.getContext('2d');
+    
+    ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
+    canvas.style.display = 'block';
+    video.style.display = 'none';
+    
+    photoTaken = true;
+    updateValidationButton();
+    
+    // Arrêter la caméra
+    if (currentStream) {
+        currentStream.getTracks().forEach(track => track.stop());
+        currentStream = null;
+    }
+}
+
+function retakePhoto() {
+    document.getElementById('photo_canvas').style.display = 'none';
+    document.getElementById('photo_placeholder').style.display = 'block';
+    document.getElementById('photo_controls').style.display = 'none';
+    photoTaken = false;
+    updateValidationButton();
+}
+
+function startCameraManuel() {
+    navigator.mediaDevices.getUserMedia({ video: true })
+        .then(stream => {
+            currentStream = stream;
+            const video = document.getElementById('video_manuel');
+            video.srcObject = stream;
+            video.style.display = 'block';
+            document.getElementById('photo_placeholder_manuel').style.display = 'none';
+            document.getElementById('photo_controls_manuel').style.display = 'block';
+        })
+        .catch(err => {
+            showMessage('Erreur lors de l\'accès à la caméra: ' + err.message, 'error');
+        });
+}
+
+function capturePhotoManuel() {
+    const video = document.getElementById('video_manuel');
+    const canvas = document.getElementById('photo_canvas_manuel');
+    const ctx = canvas.getContext('2d');
+    
+    ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
+    canvas.style.display = 'block';
+    video.style.display = 'none';
+    
+    photoTakenManuel = true;
+    updateValidationButton();
+    
+    // Arrêter la caméra
+    if (currentStream) {
+        currentStream.getTracks().forEach(track => track.stop());
+        currentStream = null;
+    }
+}
+
+function retakePhotoManuel() {
+    document.getElementById('photo_canvas_manuel').style.display = 'none';
+    document.getElementById('photo_placeholder_manuel').style.display = 'block';
+    document.getElementById('photo_controls_manuel').style.display = 'none';
+    photoTakenManuel = false;
+    updateValidationButton();
+}
+
+function updateValidationButton() {
+    const method = document.getElementById('methode_signature').value;
+    const btnValider = document.getElementById('btn-valider');
+    
+    let canValidate = false;
+    
+    if (method === 'digital') {
+        canValidate = photoTaken;
+    } else if (method === 'manuel') {
+        const nomSignature = document.getElementById('nom_signature').value.trim();
+        canValidate = nomSignature.length > 0 && photoTakenManuel;
+    }
+    
+    btnValider.disabled = !canValidate;
+}
+
+// Écouter les changements du nom pour la signature manuelle
+document.getElementById('nom_signature').addEventListener('input', updateValidationButton);
+
+// Gestion de la soumission du formulaire
+document.querySelector('form').addEventListener('submit', function(e) {
+    const method = document.getElementById('methode_signature').value;
+    
+    // Ajouter les données de signature et photo au formulaire
+    if (method === 'digital') {
+        const signatureData = signatureCanvas.toDataURL();
+        const photoData = document.getElementById('photo_canvas').toDataURL();
+        
+        const signatureInput = document.createElement('input');
+        signatureInput.type = 'hidden';
+        signatureInput.name = 'signature_data';
+        signatureInput.value = signatureData;
+        this.appendChild(signatureInput);
+        
+        const photoInput = document.createElement('input');
+        photoInput.type = 'hidden';
+        photoInput.name = 'photo_data';
+        photoInput.value = photoData;
+        this.appendChild(photoInput);
+    } else if (method === 'manuel') {
+        const photoData = document.getElementById('photo_canvas_manuel').toDataURL();
+        
+        const photoInput = document.createElement('input');
+        photoInput.type = 'hidden';
+        photoInput.name = 'photo_data';
+        photoInput.value = photoData;
+        this.appendChild(photoInput);
+    }
+});
+
+function showMessage(text, type) {
+    const container = document.getElementById('message-container');
+    const alert = document.getElementById('message-alert');
+    const icon = document.getElementById('message-icon');
+    const textEl = document.getElementById('message-text');
+    
+    alert.className = `alert alert-${type === 'error' ? 'danger' : 'success'}`;
+    icon.className = `fas fa-${type === 'error' ? 'exclamation-triangle' : 'check-circle'} me-2`;
+    textEl.textContent = text;
+    
+    container.style.display = 'block';
+    
+    setTimeout(() => {
+        container.style.display = 'none';
+    }, 5000);
+}
+</script>
+{% endblock %}

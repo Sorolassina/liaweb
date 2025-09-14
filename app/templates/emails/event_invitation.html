@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Invitation au Séminaire</title>
+    <title>Invitation à l'Événement</title>
     <style>
         body {
             font-family: Arial, sans-serif;
@@ -41,14 +41,14 @@
             font-size: 18px;
             margin-bottom: 20px;
         }
-        .seminaire-info {
+        .event-info {
             background-color: #f8f9fa;
             padding: 20px;
             border-radius: 8px;
             margin: 20px 0;
             border-left: 4px solid #ffd300;
         }
-        .seminaire-title {
+        .event-title {
             font-size: 20px;
             font-weight: bold;
             color: #ffd300;
@@ -123,17 +123,17 @@
                      style="width: 60px; height: 60px; border-radius: 50%; margin-bottom: 10px;">
                 <div style="font-size: 24px; font-weight: bold; color: #ffd300; margin-bottom: 10px;">LIA WEB</div>
             </div>
-            <h1 class="title">Invitation au Séminaire</h1>
+            <h1 class="title">Invitation à l'Événement</h1>
         </div>
         
         <div class="greeting">
             Bonjour <strong>{{ nom }}</strong>,
         </div>
         
-        <p>Nous avons le plaisir de vous inviter à participer à notre séminaire de formation.</p>
+        <p>Nous avons le plaisir de vous inviter à participer à notre événement de formation.</p>
         
-        <div class="seminaire-info">
-            <div class="seminaire-title">{{ seminaire_titre }}</div>
+        <div class="event-info">
+            <div class="event-title">{{ event_titre }}</div>
             
             <div class="info-row">
                 <span class="info-label">📅 Dates :</span>
@@ -155,10 +155,10 @@
             {% endif %}
         </div>
         
-        {% if seminaire_description %}
+        {% if event_description %}
         <div class="description">
             <strong>Description :</strong><br>
-            {{ seminaire_description }}
+            {{ event_description }}
         </div>
         {% endif %}
         

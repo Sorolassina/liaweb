@@ -1,6 +1,6 @@
 {% extends "base.html" %}
 
-{% block title %}Nouvel Événement{% endblock %}
+{% block title %}Modifier l'Événement{% endblock %}
 
 {% block content %}
 <!--<div class="container-fluid p-4">-->
@@ -10,10 +10,11 @@
             <nav aria-label="breadcrumb">
                 <ol class="breadcrumb">
                     <li class="breadcrumb-item"><a href="{{ url_for('liste_events') }}">Événements</a></li>
-                    <li class="breadcrumb-item active">Nouvel Événement</li>
+                    <li class="breadcrumb-item"><a href="{{ url_for('detail_event', event_id=event.id) }}">{{ event.titre }}</a></li>
+                    <li class="breadcrumb-item active">Modifier</li>
                 </ol>
             </nav>
-            <h4 class="mb-0">Créer un Nouvel Événement</h4>
+            <h4 class="mb-0">Modifier l'Événement</h4>
         </div>
     </div>
 
@@ -22,14 +23,14 @@
         <div class="col-lg-10 col-xl-8" style=" width: 100%;">
             <div class="card" >
                 <div class="card-body p-3" >
-                    <form action="{{ url_for('creer_event') }}" method="post">
+                    <form action="{{ url_for('update_event', event_id=event.id) }}" method="post">
                         <div class="row">
                             <!-- Colonne gauche -->
                             <div class="col-md-6">
                                 <!-- Titre -->
                                 <div class="mb-2">
                                     <label for="titre" class="form-label">Titre de l'événement *</label>
-                                    <input type="text" class="form-control" id="titre" name="titre" required>
+                                    <input type="text" class="form-control" id="titre" name="titre" value="{{ event.titre }}" required>
                                 </div>
 
                                 <!-- Programme -->
@@ -38,7 +39,7 @@
                                     <select class="form-select" id="programme_id" name="programme_id" required>
                                         <option value="">Sélectionnez un programme</option>
                                         {% for programme in programmes %}
-                                        <option value="{{ programme.id }}">{{ programme.nom }}</option>
+                                        <option value="{{ programme.id }}" {% if programme.id == event.programme_id %}selected{% endif %}>{{ programme.nom }}</option>
                                         {% endfor %}
                                     </select>
                                 </div>
@@ -46,17 +47,17 @@
                                 <!-- Dates -->
                                 <div class="mb-2">
                                     <label for="date_debut" class="form-label">Date de début *</label>
-                                    <input type="date" class="form-control" id="date_debut" name="date_debut" required>
+                                    <input type="date" class="form-control" id="date_debut" name="date_debut" value="{{ event.date_debut.strftime('%Y-%m-%d') }}" required>
                                 </div>
                                 <div class="mb-2">
                                     <label for="date_fin" class="form-label">Date de fin *</label>
-                                    <input type="date" class="form-control" id="date_fin" name="date_fin" required>
+                                    <input type="date" class="form-control" id="date_fin" name="date_fin" value="{{ event.date_fin.strftime('%Y-%m-%d') }}" required>
                                 </div>
 
                                 <!-- Lieu -->
                                 <div class="mb-2">
                                     <label for="lieu" class="form-label">Lieu</label>
-                                    <input type="text" class="form-control" id="lieu" name="lieu" placeholder="Salle, adresse...">
+                                    <input type="text" class="form-control" id="lieu" name="lieu" value="{{ event.lieu or '' }}" placeholder="Salle, adresse...">
                                 </div>
                             </div>
 
@@ -65,27 +66,29 @@
                                 <!-- Description -->
                                 <div class="mb-2">
                                     <label for="description" class="form-label">Description</label>
-                                    <textarea class="form-control" id="description" name="description" rows="3" placeholder="Décrivez l'événement..."></textarea>
+                                    <textarea class="form-control" id="description" name="description" rows="3" placeholder="Décrivez l'événement...">{{ event.description or '' }}</textarea>
                                 </div>
 
                                 <!-- Heures -->
                                 <div class="mb-2">
                                     <label for="heure_debut" class="form-label">Heure de début</label>
-                                    <input type="time" class="form-control" id="heure_debut" name="heure_debut">
+                                    <input type="time" class="form-control" id="heure_debut" name="heure_debut" 
+                                           value="{% if event.heure_debut %}{{ event.heure_debut.strftime('%H:%M') }}{% endif %}">
                                 </div>
                                 <div class="mb-2">
                                     <label for="heure_fin" class="form-label">Heure de fin</label>
-                                    <input type="time" class="form-control" id="heure_fin" name="heure_fin">
+                                    <input type="time" class="form-control" id="heure_fin" name="heure_fin" 
+                                           value="{% if event.heure_fin %}{{ event.heure_fin.strftime('%H:%M') }}{% endif %}">
                                 </div>
 
                                 <!-- Statut -->
                                 <div class="mb-2">
                                     <label for="statut" class="form-label">Statut</label>
                                     <select class="form-select" id="statut" name="statut">
-                                        <option value="planifie">Planifié</option>
-                                        <option value="en_cours">En cours</option>
-                                        <option value="termine">Terminé</option>
-                                        <option value="annule">Annulé</option>
+                                        <option value="planifie" {% if event.statut == 'planifie' %}selected{% endif %}>Planifié</option>
+                                        <option value="en_cours" {% if event.statut == 'en_cours' %}selected{% endif %}>En cours</option>
+                                        <option value="termine" {% if event.statut == 'termine' %}selected{% endif %}>Terminé</option>
+                                        <option value="annule" {% if event.statut == 'annule' %}selected{% endif %}>Annulé</option>
                                     </select>
                                 </div>
                             </div>
@@ -93,11 +96,11 @@
 
                         <!-- Boutons -->
                         <div class="d-flex justify-content-between mt-3 pt-2 border-top">
-                            <a href="{{ url_for('liste_events') }}" class="btn btn-outline-secondary">
+                            <a href="{{ url_for('detail_event', event_id=event.id) }}" class="btn btn-outline-secondary">
                                 <i class="fas fa-arrow-left me-2"></i>Annuler
                             </a>
                             <button type="submit" class="btn btn-primary">
-                                <i class="fas fa-save me-2"></i>Créer l'Événement
+                                <i class="fas fa-save me-2"></i>Enregistrer les Modifications
                             </button>
                         </div>
                     </form>

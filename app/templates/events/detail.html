@@ -3,8 +3,9 @@
 {% block title %}{{ event.titre }}{% endblock %}
 
 {% block content %}
-<div class="container-fluid p-4">
-    <div class="row mb-4">
+<!--<div class="container-fluid p-4">-->
+    <!-- En-tête fixe -->
+    <div class="row mb-0" style="position: sticky; top: 0; z-index: 1000; background-color: white; padding: 0.5rem 0; border-bottom: 1px solid #dee2e6;">
         <div class="col-12">
             <nav aria-label="breadcrumb">
                 <ol class="breadcrumb">
@@ -14,156 +15,208 @@
             </nav>
             <div class="d-flex justify-content-between align-items-center">
                 <div>
-                    <h1 class="mb-0">{{ event.titre }}</h1>
-                    <p class="text-muted mb-0">{{ event.programme.nom }} - {{ event.date_debut.strftime('%d/%m/%Y') }} au {{ event.date_fin.strftime('%d/%m/%Y') }}</p>
+                    <h3 class="mb-0" style="font-size: 1.5rem;">{{ event.titre }}</h3>
+                    <p class="text-muted mb-0" style="font-size: 0.9rem;">{{ event.programme.nom }} - {{ event.date_debut.strftime('%d/%m/%Y') }} au {{ event.date_fin.strftime('%d/%m/%Y') }}</p>
                 </div>
                 <div>
-                    <a href="{{ url_for('emargement_event', event_id=event.id) }}" class="btn btn-success">
+                    <a href="{{ url_for('emargement_event', event_id=event.id) }}" class="btn btn-success me-2">
                         <i class="fas fa-signature me-2"></i>Émargement
+                    </a>
+                    <a href="{{ url_for('invitations_event', event_id=event.id) }}" class="btn btn-primary me-2">
+                        <i class="fas fa-user-plus me-2"></i>Inviter des Candidats
+                    </a>
+                    <a href="{{ url_for('edit_event', event_id=event.id) }}" class="btn btn-warning">
+                        <i class="fas fa-edit me-2"></i>Modifier
                     </a>
                 </div>
             </div>
         </div>
     </div>
 
-    <!-- Informations générales -->
-    <div class="row mb-4">
-        <div class="col-lg-8">
-            <div class="card">
-                <div class="card-header">
-                    <h5 class="mb-0">Informations Générales</h5>
-                </div>
-                <div class="card-body">
-                    <div class="row">
-                        <div class="col-md-6">
-                            <h6>Description</h6>
-                            <p>{{ event.description or 'Aucune description' }}</p>
-                            
-                            <h6>Programme</h6>
-                            <span class="badge bg-secondary">{{ event.programme.code }}</span>
+    <!-- Statistiques fixes -->
+    <div class="row mb-0" style="position: sticky; top: 0; z-index: 999; background-color: white; padding: 0.25rem 0; border-bottom: 1px solid #dee2e6;">
+        <div class="col-md-3">
+            <div class="card bg-primary text-white" style="height: 60px;">
+                <div class="card-body py-1 px-3">
+                    <div class="d-flex justify-content-between align-items-center h-100">
+                        <div>
+                            <h6 class="mb-0">{{ stats.total }}</h6>
+                            <small class="mb-0" style="font-size: 0.7rem;">Total Invités</small>
                         </div>
-                        <div class="col-md-6">
-                            <h6>Dates</h6>
-                            <p>
-                                <strong>Début:</strong> {{ event.date_debut.strftime('%d/%m/%Y') }}
-                                {% if event.heure_debut %}<br><strong>Heure:</strong> {{ event.heure_debut.strftime('%H:%M') }}{% endif %}
-                            </p>
-                            <p>
-                                <strong>Fin:</strong> {{ event.date_fin.strftime('%d/%m/%Y') }}
-                                {% if event.heure_fin %}<br><strong>Heure:</strong> {{ event.heure_fin.strftime('%H:%M') }}{% endif %}
-                            </p>
-                            
+                        <div>
+                            <i class="fas fa-users"></i>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-3">
+            <div class="card bg-success text-white" style="height: 60px;">
+                <div class="card-body py-1 px-3">
+                    <div class="d-flex justify-content-between align-items-center h-100">
+                        <div>
+                            <h6 class="mb-0">{{ stats.present }}</h6>
+                            <small class="mb-0" style="font-size: 0.7rem;">Présents</small>
+                        </div>
+                        <div>
+                            <i class="fas fa-check"></i>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-3">
+            <div class="card bg-danger text-white" style="height: 60px;">
+                <div class="card-body py-1 px-3">
+                    <div class="d-flex justify-content-between align-items-center h-100">
+                        <div>
+                            <h6 class="mb-0">{{ stats.absent }}</h6>
+                            <small class="mb-0" style="font-size: 0.7rem;">Absents</small>
+                        </div>
+                        <div>
+                            <i class="fas fa-times"></i>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-3">
+            <div class="card bg-info text-white" style="height: 60px;">
+                <div class="card-body py-1 px-3">
+                    <div class="d-flex justify-content-between align-items-center h-100">
+                        <div>
+                            <h6 class="mb-0">{{ stats.excuse }}</h6>
+                            <small class="mb-0" style="font-size: 0.7rem;">Excusés</small>
+                        </div>
+                        <div>
+                            <i class="fas fa-user-clock"></i>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Zone scrollable -->
+    <div style="height: calc(100vh - 140px); overflow-y: auto; padding: 1rem;">
+        <!-- Informations générales en accordéon -->
+        <div class="row mb-1">
+        <div class="col-12">
+            <div class="accordion" id="eventInfoAccordion">
+                <div class="accordion-item">
+                    <h2 class="accordion-header" id="headingGeneral">
+                        <button class="accordion-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#collapseGeneral" aria-expanded="false" aria-controls="collapseGeneral">
+                            <i class="fas fa-info-circle me-2"></i>Informations Générales
+                        </button>
+                    </h2>
+                    <div id="collapseGeneral" class="accordion-collapse collapse" aria-labelledby="headingGeneral" data-bs-parent="#eventInfoAccordion">
+                        <div class="accordion-body">
+                            <div class="row">
+                                <div class="col-md-6">
+                                    <div class="card border-0 bg-light">
+                                        <div class="card-body">
+                                            <h6 class="card-title text-primary">
+                                                <i class="fas fa-calendar-alt me-2"></i>Dates et Heures
+                                            </h6>
+                                            <div class="row mb-2">
+                                                <div class="col-sm-4"><strong>Début:</strong></div>
+                                                <div class="col-sm-8">{{ event.date_debut.strftime('%d/%m/%Y') }}</div>
+                                            </div>
+                                            {% if event.heure_debut %}
+                                            <div class="row mb-2">
+                                                <div class="col-sm-4"><strong>Heure début:</strong></div>
+                                                <div class="col-sm-8">{{ event.heure_debut.strftime('%H:%M') }}</div>
+                                            </div>
+                                            {% endif %}
+                                            <div class="row mb-2">
+                                                <div class="col-sm-4"><strong>Fin:</strong></div>
+                                                <div class="col-sm-8">{{ event.date_fin.strftime('%d/%m/%Y') }}</div>
+                                            </div>
+                                            {% if event.heure_fin %}
+                                            <div class="row">
+                                                <div class="col-sm-4"><strong>Heure fin:</strong></div>
+                                                <div class="col-sm-8">{{ event.heure_fin.strftime('%H:%M') }}</div>
+                                            </div>
+                                            {% endif %}
+                                        </div>
+                                    </div>
+                                </div>
+                                <div class="col-md-6">
+                                    <div class="card border-0 bg-light">
+                                        <div class="card-body">
+                                            <h6 class="card-title text-primary">
+                                                <i class="fas fa-cog me-2"></i>Détails
+                                            </h6>
+                                            <div class="row mb-2">
+                                                <div class="col-sm-4"><strong>Programme:</strong></div>
+                                                <div class="col-sm-8">
+                                                    <span class="badge bg-info">{{ event.programme.nom if event.programme else 'Non défini' }}</span>
+                                                </div>
+                                            </div>
+                                            <div class="row mb-2">
+                                                <div class="col-sm-4"><strong>Organisateur:</strong></div>
+                                                <div class="col-sm-8">{{ event.organisateur.prenom }} {{ event.organisateur.nom }}</div>
+                                            </div>
+                                            <div class="row mb-2">
+                                                <div class="col-sm-4"><strong>Statut:</strong></div>
+                                                <div class="col-sm-8">
+                                                    {% if event.statut == 'planifie' %}
+                                                        <span class="badge bg-warning">Planifié</span>
+                                                    {% elif event.statut == 'en_cours' %}
+                                                        <span class="badge bg-info">En Cours</span>
+                                                    {% elif event.statut == 'termine' %}
+                                                        <span class="badge bg-success">Terminé</span>
+                                                    {% elif event.statut == 'annule' %}
+                                                        <span class="badge bg-danger">Annulé</span>
+                                                    {% else %}
+                                                        <span class="badge bg-secondary">{{ event.statut }}</span>
+                                                    {% endif %}
+                                                </div>
+                                            </div>
+                                            <div class="row">
+                                                <div class="col-sm-4"><strong>Créé le:</strong></div>
+                                                <div class="col-sm-8">{{ event.cree_le.strftime('%d/%m/%Y à %H:%M') }}</div>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
                             {% if event.lieu %}
-                            <h6>Lieu</h6>
-                            <p><i class="fas fa-map-marker-alt me-1"></i>{{ event.lieu }}</p>
+                            <div class="row mt-3">
+                                <div class="col-md-6">
+                                    <div class="card border-0 bg-light">
+                                        <div class="card-body">
+                                            <h6 class="card-title text-primary">
+                                                <i class="fas fa-map-marker-alt me-2"></i>Lieu
+                                            </h6>
+                                            <p class="mb-0">{{ event.lieu }}</p>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                            {% endif %}
+                            {% if event.description %}
+                            <div class="row mt-3">
+                                <div class="col-12">
+                                    <div class="card border-0 bg-light">
+                                        <div class="card-body">
+                                            <h6 class="card-title text-primary">
+                                                <i class="fas fa-align-left me-2"></i>Description
+                                            </h6>
+                                            <p class="mb-0">{{ event.description }}</p>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
                             {% endif %}
                         </div>
                     </div>
                 </div>
             </div>
         </div>
-        
-        <div class="col-lg-4">
-            <div class="card">
-                <div class="card-header">
-                    <h5 class="mb-0">Statut</h5>
-                </div>
-                <div class="card-body text-center">
-                    {% if event.statut == 'planifie' %}
-                        <span class="badge bg-warning fs-6">Planifié</span>
-                    {% elif event.statut == 'en_cours' %}
-                        <span class="badge bg-info fs-6">En Cours</span>
-                    {% elif event.statut == 'termine' %}
-                        <span class="badge bg-success fs-6">Terminé</span>
-                    {% elif event.statut == 'annule' %}
-                        <span class="badge bg-danger fs-6">Annulé</span>
-                    {% endif %}
-                    
-                    <hr>
-                    
-                    <h6>Organisateur</h6>
-                    <div class="d-flex align-items-center justify-content-center">
-                        {% if event.organisateur.photo_profil %}
-                            <img src="{{ event.organisateur.photo_profil }}" 
-                                 class="rounded-circle me-2" width="40" height="40" 
-                                 alt="{{ event.organisateur.nom_complet }}">
-                        {% else %}
-                            <div class="bg-secondary rounded-circle me-2 d-flex align-items-center justify-content-center" 
-                                 style="width: 40px; height: 40px;">
-                                <i class="fas fa-user text-white"></i>
-                            </div>
-                        {% endif %}
-                        <span>{{ event.organisateur.nom_complet }}</span>
-                    </div>
-                </div>
-            </div>
-        </div>
     </div>
 
-    <!-- Statistiques -->
-    <div class="row mb-4">
-        <div class="col-md-3">
-            <div class="card bg-primary text-white">
-                <div class="card-body">
-                    <div class="d-flex justify-content-between">
-                        <div>
-                            <h4 class="mb-0">{{ stats.total }}</h4>
-                            <p class="mb-0">Total Invités</p>
-                        </div>
-                        <div class="align-self-center">
-                            <i class="fas fa-users fa-2x"></i>
-                        </div>
-                    </div>
-                </div>
-            </div>
-        </div>
-        <div class="col-md-3">
-            <div class="card bg-success text-white">
-                <div class="card-body">
-                    <div class="d-flex justify-content-between">
-                        <div>
-                            <h4 class="mb-0">{{ stats.present }}</h4>
-                            <p class="mb-0">Présents</p>
-                        </div>
-                        <div class="align-self-center">
-                            <i class="fas fa-check fa-2x"></i>
-                        </div>
-                    </div>
-                </div>
-            </div>
-        </div>
-        <div class="col-md-3">
-            <div class="card bg-danger text-white">
-                <div class="card-body">
-                    <div class="d-flex justify-content-between">
-                        <div>
-                            <h4 class="mb-0">{{ stats.absent }}</h4>
-                            <p class="mb-0">Absents</p>
-                        </div>
-                        <div class="align-self-center">
-                            <i class="fas fa-times fa-2x"></i>
-                        </div>
-                    </div>
-                </div>
-            </div>
-        </div>
-        <div class="col-md-3">
-            <div class="card bg-info text-white">
-                <div class="card-body">
-                    <div class="d-flex justify-content-between">
-                        <div>
-                            <h4 class="mb-0">{{ stats.excuse }}</h4>
-                            <p class="mb-0">Excusés</p>
-                        </div>
-                        <div class="align-self-center">
-                            <i class="fas fa-user-clock fa-2x"></i>
-                        </div>
-                    </div>
-                </div>
-            </div>
-        </div>
-    </div>
-
+    
     <!-- Liste des participants -->
     <div class="row">
         <div class="col-12">
@@ -172,7 +225,7 @@
                     <h5 class="mb-0">Liste des Participants</h5>
                 </div>
                 <div class="card-body">
-                    {% if presences %}
+                    {% if presences_data %}
                         <div class="table-responsive">
                             <table class="table table-hover">
                                 <thead>
@@ -185,14 +238,14 @@
                                     </tr>
                                 </thead>
                                 <tbody>
-                                    {% for presence in presences %}
+                                    {% for presence_data in presences_data %}
                                     <tr>
                                         <td>
                                             <div class="d-flex align-items-center">
-                                                {% if presence.inscription.candidat.photo_profil %}
-                                                    <img src="/media/{{ presence.inscription.candidat.photo_profil.replace('\\', '/') }}" 
+                                                {% if presence_data.invitation.inscription.candidat.photo_profil %}
+                                                    <img src="/media/{{ presence_data.invitation.inscription.candidat.photo_profil.replace('\\', '/') }}" 
                                                          class="rounded-circle me-3" width="40" height="40" 
-                                                         alt="{{ presence.inscription.candidat.nom }}">
+                                                         alt="{{ presence_data.invitation.inscription.candidat.nom }}">
                                                 {% else %}
                                                     <div class="bg-secondary rounded-circle me-3 d-flex align-items-center justify-content-center" 
                                                          style="width: 40px; height: 40px;">
@@ -200,40 +253,45 @@
                                                     </div>
                                                 {% endif %}
                                                 <div>
-                                                    <strong>{{ presence.inscription.candidat.prenom }} {{ presence.inscription.candidat.nom }}</strong>
-                                                    <br><small class="text-muted">{{ presence.inscription.candidat.email }}</small>
+                                                    <strong>{{ presence_data.invitation.inscription.candidat.prenom }} {{ presence_data.invitation.inscription.candidat.nom }}</strong>
+                                                    <br><small class="text-muted">{{ presence_data.invitation.inscription.candidat.email }}</small>
                                                 </div>
                                             </div>
                                         </td>
                                         <td>
-                                            {% if presence.presence == 'present' %}
+                                            {% if presence_data.presence and presence_data.presence.presence == 'present' %}
                                                 <span class="badge bg-success">Présent</span>
-                                            {% elif presence.presence == 'absent' %}
+                                            {% elif presence_data.presence and presence_data.presence.presence == 'absent' %}
                                                 <span class="badge bg-danger">Absent</span>
-                                            {% elif presence.presence == 'excuse' %}
+                                            {% elif presence_data.presence and presence_data.presence.presence == 'excuse' %}
                                                 <span class="badge bg-warning">Excusé</span>
                                             {% else %}
-                                                <span class="badge bg-secondary">{{ presence.presence }}</span>
+                                                <span class="badge bg-secondary">{{ presence_data.combined_status }}</span>
                                             {% endif %}
                                         </td>
                                         <td>
-                                            {% if presence.methode_signature %}
-                                                <span class="badge bg-info">{{ presence.methode_signature }}</span>
+                                            {% if presence_data.presence and presence_data.presence.methode_signature %}
+                                                <span class="badge bg-info">{{ presence_data.presence.methode_signature.value|title }}</span>
                                             {% else %}
                                                 <span class="text-muted">-</span>
                                             {% endif %}
                                         </td>
                                         <td>
-                                            {% if presence.heure_arrivee %}
-                                                {{ presence.heure_arrivee.strftime('%H:%M') }}
+                                            {% if presence_data.presence and presence_data.presence.heure_arrivee %}
+                                                {{ presence_data.presence.heure_arrivee.strftime('%H:%M') }}
                                             {% else %}
                                                 <span class="text-muted">-</span>
                                             {% endif %}
                                         </td>
                                         <td>
                                             <div class="btn-group" role="group">
-                                                <button class="btn btn-sm btn-outline-primary" onclick="editPresence({{ presence.id }})">
-                                                    <i class="fas fa-edit"></i>
+                                                {% if presence_data.presence %}
+                                                    <button class="btn btn-sm btn-outline-primary" onclick="editPresence({{ presence_data.presence.id }})" title="Modifier">
+                                                        <i class="fas fa-edit"></i>
+                                                    </button>
+                                                {% endif %}
+                                                <button class="btn btn-sm btn-outline-danger" onclick="supprimerParticipant({{ event.id }}, {{ presence_data.inscription_id }}, '{{ presence_data.invitation.inscription.candidat.prenom }} {{ presence_data.invitation.inscription.candidat.nom }}')" title="Supprimer">
+                                                    <i class="fas fa-trash"></i>
                                                 </button>
                                             </div>
                                         </td>
@@ -253,13 +311,39 @@
             </div>
         </div>
     </div>
-</div>
+    </div>
+<!--</div>-->
 
 <script>
 function editPresence(presenceId) {
     // Fonction pour éditer une présence
     console.log('Édition de la présence:', presenceId);
     // TODO: Implémenter l'édition de présence
+}
+
+function supprimerParticipant(eventId, inscriptionId, nomParticipant) {
+    // Confirmation avant suppression
+    if (confirm(`Êtes-vous sûr de vouloir supprimer ${nomParticipant} de cet événement ?\n\nCette action supprimera définitivement l'invitation et la présence de ce participant.`)) {
+        // Utiliser fetch pour une suppression AJAX
+        fetch(`/events/${eventId}/participant/${inscriptionId}/supprimer`, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/x-www-form-urlencoded',
+            },
+        })
+        .then(response => {
+            if (response.ok) {
+                // Recharger la page pour actualiser la liste
+                window.location.reload();
+            } else {
+                alert('Erreur lors de la suppression du participant');
+            }
+        })
+        .catch(error => {
+            console.error('Erreur:', error);
+            alert('Erreur lors de la suppression du participant');
+        });
+    }
 }
 </script>
 {% endblock %}

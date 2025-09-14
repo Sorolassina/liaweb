@@ -1,0 +1,113 @@
+{% extends "base_public.html" %}
+
+{% block title %}
+{% if action == "acceptée" %}Invitation Acceptée{% else %}Invitation Refusée{% endif %} - LIA WEB
+{% endblock %}
+
+{% block content %}
+<div class="container mt-3">
+    <div class="row justify-content-center">
+        <div class="col-md-6 col-lg-5">
+            <div class="card shadow">
+                <div class="card-body text-center p-4">
+                    {% if action == "acceptée" %}
+                    <!-- Succès -->
+                    <div class="mb-3">
+                        <i class="fas fa-check-circle text-success" style="font-size: 3rem;"></i>
+                    </div>
+                    <h3 class="card-title text-success mb-2">✅ Invitation Acceptée !</h3>
+                    <p class="text-muted mb-3">
+                        Merci <strong>{{ invitation.inscription.candidat.prenom }} {{ invitation.inscription.candidat.nom }}</strong> !
+                    </p>
+                    {% else %}
+                    <!-- Refus -->
+                    <div class="mb-3">
+                        <i class="fas fa-times-circle text-danger" style="font-size: 3rem;"></i>
+                    </div>
+                    <h3 class="card-title text-danger mb-2">❌ Invitation Refusée</h3>
+                    <p class="text-muted mb-3">
+                        Réponse enregistrée, <strong>{{ invitation.inscription.candidat.prenom }} {{ invitation.inscription.candidat.nom }}</strong>.
+                    </p>
+                    {% endif %}
+                    
+                    <!-- Informations de l'événement -->
+                    <div class="alert alert-info mb-3 py-2">
+                        <h6 class="alert-heading mb-2">
+                            <i class="fas fa-calendar-alt me-1"></i>
+                            {{ invitation.event.titre }}
+                        </h6>
+                        <div class="row text-start small">
+                            <div class="col-6">
+                                <p class="mb-1">
+                                    <i class="fas fa-calendar-alt me-1 text-primary"></i>
+                                    {{ invitation.event.date_debut.strftime('%d/%m/%Y') }}
+                                </p>
+                            </div>
+                            <div class="col-6">
+                                {% if invitation.event.lieu %}
+                                <p class="mb-1">
+                                    <i class="fas fa-map-marker-alt me-1 text-primary"></i>
+                                    {{ invitation.event.lieu }}
+                                </p>
+                                {% endif %}
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <!-- Message de confirmation -->
+                    <div class="mb-3">
+                        {% if action == "acceptée" %}
+                        <p class="text-success small">
+                            <i class="fas fa-info-circle me-1"></i>
+                            Participation confirmée. Informations pratiques par email.
+                        </p>
+                        {% else %}
+                        <p class="text-muted small">
+                            <i class="fas fa-info-circle me-1"></i>
+                            Si vous changez d'avis, contactez l'organisateur.
+                        </p>
+                        {% endif %}
+                    </div>
+                    
+                    <!-- Footer -->
+                    <hr class="my-2">
+                    <p class="text-muted small mb-0">
+                        <i class="fas fa-shield-alt me-1"></i>
+                        Réponse sécurisée et enregistrée.
+                    </p>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<style>
+.card {
+    border: none;
+    border-radius: 15px;
+}
+
+.alert-info {
+    background-color: #e3f2fd;
+    border-color: #bbdefb;
+    color: #1565c0;
+}
+
+.btn-lg {
+    padding: 12px 30px;
+    font-size: 1.1rem;
+}
+
+.text-success {
+    color: #1cc88a !important;
+}
+
+.text-danger {
+    color: #e74a3b !important;
+}
+
+.text-primary {
+    color: #ffd300 !important;
+}
+</style>
+{% endblock %}

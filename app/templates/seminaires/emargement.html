@@ -194,21 +194,22 @@
                             <thead>
                                 <tr>
                                     <th>Candidat</th>
-                                    <th>Statut</th>
+                                    <th>Invitation</th>
+                                    <th>Présence</th>
                                     <th>Méthode</th>
                                     <th>Heure</th>
                                     <th>Actions</th>
                                 </tr>
                             </thead>
                             <tbody>
-                                {% for presence in presences %}
-                                <tr data-presence="{{ presence.presence }}">
+                                {% for presence_data in presences_data %}
+                                <tr data-presence="{{ presence_data.presence.presence }}">
                                     <td>
                                         <div class="d-flex align-items-center">
-                                            {% if presence.inscription.candidat.photo_profil %}
-                                                <img src="/media/{{ presence.inscription.candidat.photo_profil.replace('\\', '/') }}" 
+                                            {% if presence_data.presence.inscription.candidat.photo_profil %}
+                                                <img src="/media/{{ presence_data.presence.inscription.candidat.photo_profil.replace('\\', '/') }}" 
                                                      class="rounded-circle me-2" width="30" height="30" 
-                                                     alt="{{ presence.inscription.candidat.nom }}">
+                                                     alt="{{ presence_data.presence.inscription.candidat.nom }}">
                                             {% else %}
                                                 <div class="bg-secondary rounded-circle me-2 d-flex align-items-center justify-content-center" 
                                                      style="width: 30px; height: 30px;">
@@ -216,38 +217,59 @@
                                                 </div>
                                             {% endif %}
                                             <div>
-                                                <strong>{{ presence.inscription.candidat.prenom }} {{ presence.inscription.candidat.nom }}</strong>
-                                                <br><small class="text-muted">{{ presence.inscription.candidat.entreprise.nom if presence.inscription.candidat.entreprise else 'Sans entreprise' }}</small>
+                                                <strong>{{ presence_data.presence.inscription.candidat.prenom }} {{ presence_data.presence.inscription.candidat.nom }}</strong>
+                                                <br><small class="text-muted">{{ presence_data.presence.inscription.candidat.email }}</small>
+                                                <br><small class="text-muted">{{ presence_data.presence.inscription.candidat.entreprise.nom if presence_data.presence.inscription.candidat.entreprise else 'Sans entreprise' }}</small>
                                             </div>
                                         </div>
                                     </td>
                                     <td>
-                                        {% if presence.presence == 'present' %}
+                                        {% if presence_data.invitation_statut == 'ACCEPTEE' %}
+                                            <span class="badge bg-success">Acceptée</span>
+                                        {% elif presence_data.invitation_statut == 'REFUSEE' %}
+                                            <span class="badge bg-danger">Refusée</span>
+                                        {% elif presence_data.invitation_statut == 'ENVOYEE' %}
+                                            <span class="badge bg-warning">En attente</span>
+                                        {% else %}
+                                            <span class="badge bg-secondary">{{ presence_data.invitation_statut }}</span>
+                                        {% endif %}
+                                    </td>
+                                    <td>
+                                        {% if presence_data.presence.presence == 'present' %}
                                             <span class="badge bg-success">Présent</span>
-                                        {% elif presence.presence == 'absent' %}
+                                        {% elif presence_data.presence.presence == 'absent' %}
                                             <span class="badge bg-danger">Absent</span>
-                                        {% elif presence.presence == 'excuse' %}
+                                        {% elif presence_data.presence.presence == 'excuse' %}
                                             <span class="badge bg-warning">Excusé</span>
+                                        {% elif presence_data.presence.presence == 'en_attente' %}
+                                            <span class="badge bg-secondary">En attente</span>
+                                        {% else %}
+                                            <span class="badge bg-info">{{ presence_data.presence.presence }}</span>
                                         {% endif %}
                                     </td>
                                     <td>
-                                        {% if presence.methode_signature %}
-                                            <span class="badge bg-info">{{ presence.methode_signature }}</span>
+                                        {% if presence_data.presence.methode_signature %}
+                                            <span class="badge bg-info">{{ presence_data.presence.methode_signature }}</span>
                                         {% else %}
                                             <span class="text-muted">-</span>
                                         {% endif %}
                                     </td>
                                     <td>
-                                        {% if presence.heure_arrivee %}
-                                            {{ presence.heure_arrivee.strftime('%H:%M') }}
+                                        {% if presence_data.presence.heure_arrivee %}
+                                            {{ presence_data.presence.heure_arrivee.strftime('%H:%M') }}
                                         {% else %}
                                             <span class="text-muted">-</span>
                                         {% endif %}
                                     </td>
                                     <td>
-                                        <button class="btn btn-sm btn-outline-primary" onclick="editPresence({{ presence.id }})">
-                                            <i class="fas fa-edit"></i>
-                                        </button>
+                                        <div class="btn-group" role="group">
+                                            <button class="btn btn-sm btn-outline-primary" onclick="editPresence({{ presence_data.presence.id }})" title="Modifier">
+                                                <i class="fas fa-edit"></i>
+                                            </button>
+                                            <button class="btn btn-sm btn-outline-danger" onclick="supprimerParticipant({{ seminaire.id }}, {{ session.id }}, {{ presence_data.presence.inscription_id }}, '{{ presence_data.presence.inscription.candidat.prenom }} {{ presence_data.presence.inscription.candidat.nom }}')" title="Supprimer">
+                                                <i class="fas fa-trash"></i>
+                                            </button>
+                                        </div>
                                     </td>
                                 </tr>
                                 {% endfor %}
@@ -319,6 +341,31 @@ function editPresence(presenceId) {
     // Ouvrir un modal pour modifier la présence
     // À implémenter selon vos besoins
     console.log('Modifier présence:', presenceId);
+}
+
+function supprimerParticipant(seminaireId, sessionId, inscriptionId, nomParticipant) {
+    // Confirmation avant suppression
+    if (confirm(`Êtes-vous sûr de vouloir supprimer ${nomParticipant} de cette session ?\n\nCette action supprimera définitivement l'invitation et la présence de ce participant.`)) {
+        // Utiliser fetch pour une suppression AJAX
+        fetch(`/seminaires/${seminaireId}/sessions/${sessionId}/participant/${inscriptionId}/supprimer`, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/x-www-form-urlencoded',
+            },
+        })
+        .then(response => {
+            if (response.ok) {
+                // Recharger la page pour actualiser la liste
+                window.location.reload();
+            } else {
+                alert('Erreur lors de la suppression du participant');
+            }
+        })
+        .catch(error => {
+            console.error('Erreur:', error);
+            alert('Erreur lors de la suppression du participant');
+        });
+    }
 }
 </script>
 {% endblock %}

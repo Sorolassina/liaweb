@@ -1010,7 +1010,7 @@ body {
 #content {
   -ms-overflow-style: none;
   scrollbar-width: none;
-  background: var(--primary-color);
+ 
   border: 1px solid black;
   margin: 0px 0px 0px 0px;
   padding: 0px 0px 0px 0px;

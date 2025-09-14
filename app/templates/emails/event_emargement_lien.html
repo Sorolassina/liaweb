@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Lien d'Émargement</title>
+    <title>Lien d'Émargement - Événement</title>
     <style>
         body {
             font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
@@ -42,14 +42,14 @@
             font-size: 18px;
             margin-bottom: 20px;
         }
-        .session-info {
+        .event-info {
             background-color: #f8f9fa;
             padding: 20px;
             border-radius: 8px;
             margin: 20px 0;
             border-left: 4px solid #ffd300;
         }
-        .session-title {
+        .event-title {
             font-size: 20px;
             font-weight: bold;
             color: #ffd300;
@@ -68,54 +68,58 @@
         .cta-section {
             text-align: center;
             margin: 30px 0;
-            padding: 20px;
-            background-color: #ffd300;
-            color: #000000;
+            padding: 25px;
+            background-color: #f8f9fa;
             border-radius: 8px;
         }
         .cta-button {
             display: inline-block;
-            background-color: #1cc88a;
-            color: white;
-            padding: 15px 40px;
+            background-color: #ffd300;
+            color: #000000;
+            padding: 15px 30px;
             text-decoration: none;
-            border-radius: 8px;
+            border-radius: 25px;
             font-weight: bold;
             font-size: 18px;
             margin: 10px;
             transition: background-color 0.3s ease;
         }
         .cta-button:hover {
-            background-color: #17a673;
-            color: white;
-            text-decoration: none;
+            background-color: #e6c200;
         }
         .instructions {
-            background-color: #e3f2fd;
+            background-color: #e8f4fd;
             padding: 20px;
             border-radius: 8px;
             margin: 20px 0;
-            border-left: 4px solid #2196f3;
+            border-left: 4px solid #007bff;
         }
         .instructions h4 {
-            color: #1565c0;
+            color: #007bff;
             margin-top: 0;
         }
-        .footer {
-            margin-top: 30px;
-            padding-top: 20px;
-            border-top: 1px solid #ddd;
-            text-align: center;
-            font-size: 14px;
-            color: #666;
+        .instructions ol {
+            margin: 10px 0;
+            padding-left: 20px;
+        }
+        .instructions li {
+            margin-bottom: 8px;
         }
         .security-note {
             background-color: #fff3cd;
             border: 1px solid #ffeaa7;
             padding: 15px;
-            border-radius: 5px;
+            border-radius: 8px;
             margin: 20px 0;
-            font-style: italic;
+            color: #856404;
+        }
+        .footer {
+            text-align: center;
+            margin-top: 30px;
+            padding-top: 20px;
+            border-top: 1px solid #dee2e6;
+            color: #6c757d;
+            font-size: 14px;
         }
         @media (max-width: 600px) {
             .email-container {
@@ -125,7 +129,6 @@
             .cta-button {
                 display: block;
                 margin: 10px 0;
-                text-align: center;
             }
         }
     </style>
@@ -139,23 +142,23 @@
                      style="width: 60px; height: 60px; border-radius: 50%; margin-bottom: 10px;">
                 <div style="font-size: 24px; font-weight: bold; color: #ffd300; margin-bottom: 10px;">LIA WEB</div>
             </div>
-            <h1 class="title">Lien d'Émargement</h1>
+            <h1 class="title">Lien d'Émargement - Événement</h1>
         </div>
         
         <div class="content">
             <p class="greeting">Bonjour <strong>{{ nom }}</strong>,</p>
             
-            <p>Vous êtes invité à signer votre présence pour la session suivante :</p>
+            <p>Vous êtes invité à signer votre présence pour l'événement suivant :</p>
             
-            <div class="session-info">
-                <h2 class="session-title">{{ session_titre }}</h2>
+            <div class="event-info">
+                <h2 class="event-title">{{ event_titre }}</h2>
                 <div class="info-row">
                     <span class="info-icon">📅</span>
-                    <strong>Date :</strong> {{ date_session }}
+                    <strong>Date :</strong> {{ date_event }}
                 </div>
                 <div class="info-row">
-                    <span class="info-icon">🏢</span>
-                    <strong>Séminaire :</strong> {{ seminaire_titre }}
+                    <span class="info-icon">📍</span>
+                    <strong>Lieu :</strong> {{ lieu }}
                 </div>
             </div>
             
@@ -182,7 +185,7 @@
                 <strong>🔒 Sécurité :</strong> Ce lien est unique et sécurisé. Il ne peut être utilisé qu'une seule fois et uniquement par vous.
             </div>
             
-            <p><strong>Important :</strong> Veuillez signer votre présence avant le début de la session pour confirmer votre participation.</p>
+            <p><strong>Important :</strong> Veuillez signer votre présence avant le début de l'événement pour confirmer votre participation.</p>
             
             <p>Si vous rencontrez des difficultés, n'hésitez pas à contacter l'organisateur.</p>
             

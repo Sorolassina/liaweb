@@ -32,14 +32,14 @@
                         <p class="mb-0">{{ invitation.inscription.candidat.email }}</p>
                     </div>
                     
-                    {% if presence %}
+                    {% if presence and presence.presence == 'present' %}
                     <!-- Déjà présent -->
                     <div class="alert alert-success text-center">
                         <i class="fas fa-check-circle me-2" style="font-size: 2rem;"></i>
                         <h4 class="alert-heading">Déjà émargé !</h4>
                         <p class="mb-0">
-                            Vous avez déjà signé votre présence le 
-                            {{ presence.heure_arrivee.strftime('%d/%m/%Y à %H:%M') }}
+                            Vous avez déjà signé votre présence{% if presence.heure_arrivee %} le 
+                            {{ presence.heure_arrivee.strftime('%d/%m/%Y à %H:%M') }}{% endif %}
                         </p>
                         {% if presence.methode_signature %}
                         <small class="text-muted">

@@ -1,0 +1,214 @@
+{% extends "base.html" %}
+
+{% block title %}Générer Liens d'Émargement - {{ event.titre }}{% endblock %}
+
+{% block content %}
+<div class="container-fluid">
+    <!-- En-tête -->
+    <div class="row mb-4">
+        <div class="col-12">
+            <nav aria-label="breadcrumb">
+                <ol class="breadcrumb">
+                    <li class="breadcrumb-item"><a href="{{ url_for('liste_events') }}">Événements</a></li>
+                    <li class="breadcrumb-item"><a href="{{ url_for('detail_event', event_id=event.id) }}">{{ event.titre }}</a></li>
+                    <li class="breadcrumb-item"><a href="{{ url_for('emargement_event', event_id=event.id) }}">Émargement</a></li>
+                    <li class="breadcrumb-item active">Liens d'émargement</li>
+                </ol>
+            </nav>
+            
+            <div class="d-flex justify-content-between align-items-center">
+                <div>
+                    <h2 class="mb-1">
+                        <i class="fas fa-link text-primary me-2"></i>
+                        Générer Liens d'Émargement
+                    </h2>
+                    <p class="text-muted mb-0">{{ event.titre }} - {{ event.date_debut.strftime('%d/%m/%Y') }}</p>
+                </div>
+                <div class="text-end">
+                    <span class="badge bg-primary fs-6">{{ invitations|length }} candidat(s)</span>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Formulaire de sélection -->
+    <div class="row">
+        <div class="col-12">
+            <div class="card">
+                <div class="card-header">
+                    <h5 class="mb-0">
+                        <i class="fas fa-users me-2"></i>
+                        Sélectionner les Candidats
+                    </h5>
+                </div>
+                <div class="card-body">
+                    {% if invitations %}
+                        <form method="POST" action="{{ url_for('envoyer_liens_emargement_event', event_id=event.id) }}" id="form-liens">
+                            <div class="row mb-3">
+                                <div class="col-md-6">
+                                    <div class="form-check">
+                                        <input class="form-check-input" type="checkbox" id="select-all" onchange="toggleAll()">
+                                        <label class="form-check-label" for="select-all">
+                                            <strong>Sélectionner tout</strong>
+                                        </label>
+                                    </div>
+                                </div>
+                                <div class="col-md-6 text-end">
+                                    <span class="text-muted" id="selection-count">0 candidat(s) sélectionné(s)</span>
+                                </div>
+                            </div>
+
+                            <div class="table-responsive">
+                                <table class="table table-hover">
+                                    <thead>
+                                        <tr>
+                                            <th width="50">Sélection</th>
+                                            <th>Candidat</th>
+                                            <th>Email</th>
+                                            <th>Statut Invitation</th>
+                                            <th>Statut Présence</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        {% for invitation in invitations %}
+                                        <tr>
+                                            <td>
+                                                <div class="form-check">
+                                                    <input class="form-check-input candidat-checkbox" 
+                                                           type="checkbox" 
+                                                           name="invitation_ids" 
+                                                           value="{{ invitation.id }}"
+                                                           onchange="updateSelectionCount()">
+                                                </div>
+                                            </td>
+                                            <td>
+                                                <div class="d-flex align-items-center">
+                                                    {% if invitation.inscription.candidat.photo_profil %}
+                                                        <img src="/media/{{ invitation.inscription.candidat.photo_profil.replace('\\', '/') }}" 
+                                                             class="rounded-circle me-3" width="40" height="40" 
+                                                             alt="{{ invitation.inscription.candidat.nom }}">
+                                                    {% else %}
+                                                        <div class="bg-secondary rounded-circle me-3 d-flex align-items-center justify-content-center" 
+                                                             style="width: 40px; height: 40px;">
+                                                            <i class="fas fa-user text-white"></i>
+                                                        </div>
+                                                    {% endif %}
+                                                    <div>
+                                                        <strong>{{ invitation.inscription.candidat.prenom }} {{ invitation.inscription.candidat.nom }}</strong>
+                                                    </div>
+                                                </div>
+                                            </td>
+                                            <td>
+                                                <span class="text-muted">{{ invitation.inscription.candidat.email }}</span>
+                                            </td>
+                                            <td>
+                                                {% if invitation.statut == 'acceptee' %}
+                                                    <span class="badge bg-success">Acceptée</span>
+                                                {% elif invitation.statut == 'refusee' %}
+                                                    <span class="badge bg-danger">Refusée</span>
+                                                {% else %}
+                                                    <span class="badge bg-warning">En attente</span>
+                                                {% endif %}
+                                            </td>
+                                            <td>
+                                                {% set presence = invitation.presences[0] if invitation.presences else None %}
+                                                {% if presence %}
+                                                    {% if presence.presence == 'present' %}
+                                                        <span class="badge bg-success">Présent</span>
+                                                    {% elif presence.presence == 'absent' %}
+                                                        <span class="badge bg-danger">Absent</span>
+                                                    {% elif presence.presence == 'excuse' %}
+                                                        <span class="badge bg-warning">Excusé</span>
+                                                    {% else %}
+                                                        <span class="badge bg-secondary">{{ presence.presence }}</span>
+                                                    {% endif %}
+                                                {% else %}
+                                                    <span class="badge bg-light text-dark">Non défini</span>
+                                                {% endif %}
+                                            </td>
+                                        </tr>
+                                        {% endfor %}
+                                    </tbody>
+                                </table>
+                            </div>
+
+                            <div class="d-flex justify-content-between align-items-center mt-4">
+                                <a href="{{ url_for('emargement_event', event_id=event.id) }}" class="btn btn-outline-secondary">
+                                    <i class="fas fa-arrow-left me-2"></i>Retour à l'émargement
+                                </a>
+                                <button type="submit" class="btn btn-primary" id="btn-envoyer" disabled>
+                                    <i class="fas fa-paper-plane me-2"></i>Envoyer les Liens d'Émargement
+                                </button>
+                            </div>
+                        </form>
+                    {% else %}
+                        <div class="text-center py-5">
+                            <i class="fas fa-users fa-3x text-muted mb-3"></i>
+                            <h4 class="text-muted">Aucun candidat invité</h4>
+                            <p class="text-muted">Vous devez d'abord envoyer des invitations pour pouvoir générer des liens d'émargement.</p>
+                            <a href="{{ url_for('invitations_event', event_id=event.id) }}" class="btn btn-primary">
+                                <i class="fas fa-envelope me-2"></i>Envoyer des Invitations
+                            </a>
+                        </div>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+function toggleAll() {
+    const selectAll = document.getElementById('select-all');
+    const checkboxes = document.querySelectorAll('.candidat-checkbox');
+    
+    checkboxes.forEach(checkbox => {
+        checkbox.checked = selectAll.checked;
+    });
+    
+    updateSelectionCount();
+}
+
+function updateSelectionCount() {
+    const checkboxes = document.querySelectorAll('.candidat-checkbox:checked');
+    const count = checkboxes.length;
+    const countElement = document.getElementById('selection-count');
+    const btnEnvoyer = document.getElementById('btn-envoyer');
+    
+    countElement.textContent = `${count} candidat(s) sélectionné(s)`;
+    btnEnvoyer.disabled = count === 0;
+    
+    // Mettre à jour l'état du checkbox "Sélectionner tout"
+    const selectAll = document.getElementById('select-all');
+    const allCheckboxes = document.querySelectorAll('.candidat-checkbox');
+    
+    if (count === 0) {
+        selectAll.indeterminate = false;
+        selectAll.checked = false;
+    } else if (count === allCheckboxes.length) {
+        selectAll.indeterminate = false;
+        selectAll.checked = true;
+    } else {
+        selectAll.indeterminate = true;
+    }
+}
+
+// Confirmation avant envoi
+document.getElementById('form-liens').addEventListener('submit', function(e) {
+    const selectedCount = document.querySelectorAll('.candidat-checkbox:checked').length;
+    
+    if (selectedCount === 0) {
+        e.preventDefault();
+        alert('Veuillez sélectionner au moins un candidat.');
+        return;
+    }
+    
+    if (!confirm(`Êtes-vous sûr de vouloir envoyer ${selectedCount} lien(s) d'émargement ?`)) {
+        e.preventDefault();
+    }
+});
+
+// Initialiser le compteur
+updateSelectionCount();
+</script>
+{% endblock %}

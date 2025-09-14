@@ -3,12 +3,12 @@
 {% block title %}Émargement - {{ event.titre }}{% endblock %}
 
 {% block content %}
-<div class="container-fluid p-4">
-    <!-- En-tête -->
-    <div class="row mb-4">
+<div class="container-fluid p-3">
+    <!-- En-tête compact -->
+    <div class="row mb-2 sticky-header">
         <div class="col-12">
-            <nav aria-label="breadcrumb">
-                <ol class="breadcrumb">
+            <nav aria-label="breadcrumb" class="mb-1">
+                <ol class="breadcrumb mb-0" style="font-size: 0.8rem;">
                     <li class="breadcrumb-item"><a href="{{ url_for('liste_events') }}">Événements</a></li>
                     <li class="breadcrumb-item"><a href="{{ url_for('detail_event', event_id=event.id) }}">{{ event.titre }}</a></li>
                     <li class="breadcrumb-item active">Émargement</li>
@@ -16,75 +16,116 @@
             </nav>
             <div class="d-flex justify-content-between align-items-center">
                 <div>
-                    <h1 class="mb-0">Émargement - {{ event.titre }}</h1>
-                    <p class="text-muted mb-0">{{ event.programme.nom }} - {{ event.date_debut.strftime('%d/%m/%Y') }}</p>
-                </div>
-                <div>
-                    <a href="{{ url_for('emargement_direct_event', event_id=event.id) }}" class="btn btn-primary">
-                        <i class="fas fa-tablet-alt me-2"></i>Mode Tablette
-                    </a>
+                    <h3 class="mb-0" style="font-size: 1.3rem;">Émargement - {{ event.titre }}</h3>
+                    <p class="text-muted mb-0 small">{{ event.programme.nom }} - {{ event.date_debut.strftime('%d/%m/%Y') }}</p>
                 </div>
             </div>
         </div>
     </div>
 
-    <!-- Statistiques -->
-    <div class="row mb-4">
-        <div class="col-md-3">
-            <div class="card bg-primary text-white">
-                <div class="card-body">
-                    <div class="d-flex justify-content-between">
+    <!-- Statistiques ultra-compactes -->
+    <div class="row mb-2" style="justify-content: center;">
+        <div class="col-md-2">
+            <div class="card bg-primary text-white py-1">
+                <div class="card-body p-1">
+                    <div class="d-flex justify-content-between align-items-center">
                         <div>
-                            <h4 class="mb-0">{{ stats.total }}</h4>
-                            <p class="mb-0">Total Invités</p>
+                            <h6 class="mb-0">{{ stats.total }}</h6>
+                            <small style="font-size: 0.7rem;">Total</small>
                         </div>
-                        <div class="align-self-center">
-                            <i class="fas fa-users fa-2x"></i>
-                        </div>
+                        <i class="fas fa-users" style="font-size: 0.8rem;"></i>
                     </div>
                 </div>
             </div>
         </div>
-        <div class="col-md-3">
-            <div class="card bg-success text-white">
-                <div class="card-body">
-                    <div class="d-flex justify-content-between">
+        <div class="col-md-2">
+            <div class="card bg-success text-white py-1">
+                <div class="card-body p-1">
+                    <div class="d-flex justify-content-between align-items-center">
                         <div>
-                            <h4 class="mb-0">{{ stats.present }}</h4>
-                            <p class="mb-0">Présents</p>
+                            <h6 class="mb-0">{{ stats.present }}</h6>
+                            <small style="font-size: 0.7rem;">Présents</small>
                         </div>
-                        <div class="align-self-center">
-                            <i class="fas fa-check fa-2x"></i>
-                        </div>
+                        <i class="fas fa-check" style="font-size: 0.8rem;"></i>
                     </div>
                 </div>
             </div>
         </div>
-        <div class="col-md-3">
-            <div class="card bg-danger text-white">
-                <div class="card-body">
-                    <div class="d-flex justify-content-between">
+        <div class="col-md-2">
+            <div class="card bg-info text-white py-1">
+                <div class="card-body p-1">
+                    <div class="d-flex justify-content-between align-items-center">
                         <div>
-                            <h4 class="mb-0">{{ stats.absent }}</h4>
-                            <p class="mb-0">Absents</p>
+                            <h6 class="mb-0">{{ stats.en_attente }}</h6>
+                            <small style="font-size: 0.7rem;">En Attente</small>
                         </div>
-                        <div class="align-self-center">
-                            <i class="fas fa-times fa-2x"></i>
-                        </div>
+                        <i class="fas fa-clock" style="font-size: 0.8rem;"></i>
                     </div>
                 </div>
             </div>
         </div>
-        <div class="col-md-3">
-            <div class="card bg-info text-white">
-                <div class="card-body">
-                    <div class="d-flex justify-content-between">
+        <div class="col-md-2">
+            <div class="card bg-danger text-white py-1">
+                <div class="card-body p-1">
+                    <div class="d-flex justify-content-between align-items-center">
                         <div>
-                            <h4 class="mb-0">{{ stats.excuse }}</h4>
-                            <p class="mb-0">Excusés</p>
+                            <h6 class="mb-0">{{ stats.absent }}</h6>
+                            <small style="font-size: 0.7rem;">Absents</small>
                         </div>
-                        <div class="align-self-center">
-                            <i class="fas fa-user-clock fa-2x"></i>
+                        <i class="fas fa-times" style="font-size: 0.8rem;"></i>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-2">
+            <div class="card bg-warning text-white py-1">
+                <div class="card-body p-1">
+                    <div class="d-flex justify-content-between align-items-center">
+                        <div>
+                            <h6 class="mb-0">{{ stats.excuse }}</h6>
+                            <small style="font-size: 0.7rem;">Excusés</small>
+                        </div>
+                        <i class="fas fa-user-clock" style="font-size: 0.8rem;"></i>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+
+    <!-- Mode d'émargement -->
+    <div class="row mb-2">
+        <div class="col-12">
+            <div class="card">
+                <div class="card-header py-2">
+                    <h6 class="mb-0">
+                        <i class="fas fa-tablet-alt me-2"></i>
+                        Mode d'Émargement
+                    </h6>
+                </div>
+                <div class="card-body py-2">
+                    <div class="row">
+                        <div class="col-md-6">
+                            <div class="d-grid">
+                                <a href="{{ url_for('emargement_direct_event', event_id=event.id) }}" class="btn btn-primary btn-sm">
+                                    <i class="fas fa-tablet-alt me-2"></i>
+                                    Mode Tablette
+                                </a>
+                            </div>
+                            <p class="text-muted small mt-1 text-center mb-0">
+                                Interface optimisée pour les tablettes
+                            </p>
+                        </div>
+                        <div class="col-md-6">
+                            <div class="d-grid">
+                                <a href="{{ url_for('generer_liens_emargement_event', event_id=event.id) }}" class="btn btn-outline-primary btn-sm">
+                                    <i class="fas fa-link me-2"></i>
+                                    Générer Liens Email
+                                </a>
+                            </div>
+                            <p class="text-muted small mt-1 text-center mb-0">
+                                Envoyer des liens par email aux candidats
+                            </p>
                         </div>
                     </div>
                 </div>
@@ -92,24 +133,26 @@
         </div>
     </div>
 
-    <!-- Liste des participants -->
+    
+
+    <!-- Liste des participants compacte -->
     <div class="row">
         <div class="col-12">
             <div class="card">
-                <div class="card-header">
-                    <h5 class="mb-0">Liste des Participants</h5>
+                <div class="card-header py-1">
+                    <h6 class="mb-0">Liste des Participants</h6>
                 </div>
-                <div class="card-body">
+                <div class="card-body p-0">
                     {% if presences %}
-                        <div class="table-responsive">
-                            <table class="table table-hover">
-                                <thead>
+                        <div class="table-responsive participants-scroll-area">
+                            <table class="table table-hover table-sm mb-0">
+                                <thead class="table-light sticky-table-header">
                                     <tr>
-                                        <th>Candidat</th>
-                                        <th>Statut</th>
-                                        <th>Méthode</th>
-                                        <th>Heure</th>
-                                        <th>Actions</th>
+                                        <th style="font-size: 0.8rem;">Candidat</th>
+                                        <th style="font-size: 0.8rem;">Statut</th>
+                                        <th style="font-size: 0.8rem;">Méthode</th>
+                                        <th style="font-size: 0.8rem;">Heure</th>
+                                        <th style="font-size: 0.8rem;">Actions</th>
                                     </tr>
                                 </thead>
                                 <tbody>
@@ -119,49 +162,56 @@
                                             <div class="d-flex align-items-center">
                                                 {% if presence.inscription.candidat.photo_profil %}
                                                     <img src="/media/{{ presence.inscription.candidat.photo_profil.replace('\\', '/') }}" 
-                                                         class="rounded-circle me-3" width="40" height="40" 
+                                                         class="rounded-circle me-2" width="24" height="24" 
                                                          alt="{{ presence.inscription.candidat.nom }}">
                                                 {% else %}
-                                                    <div class="bg-secondary rounded-circle me-3 d-flex align-items-center justify-content-center" 
-                                                         style="width: 40px; height: 40px;">
-                                                        <i class="fas fa-user text-white"></i>
+                                                    <div class="bg-secondary rounded-circle me-2 d-flex align-items-center justify-content-center" 
+                                                         style="width: 24px; height: 24px;">
+                                                        <i class="fas fa-user text-white" style="font-size: 0.7rem;"></i>
                                                     </div>
                                                 {% endif %}
                                                 <div>
-                                                    <strong>{{ presence.inscription.candidat.prenom }} {{ presence.inscription.candidat.nom }}</strong>
-                                                    <br><small class="text-muted">{{ presence.inscription.candidat.email }}</small>
+                                                    <div class="fw-bold" style="font-size: 0.8rem; line-height: 1.1;">
+                                                        {{ presence.inscription.candidat.prenom }} {{ presence.inscription.candidat.nom }}
+                                                    </div>
+                                                    <small class="text-muted" style="font-size: 0.7rem;">{{ presence.inscription.candidat.email }}</small>
                                                 </div>
                                             </div>
                                         </td>
                                         <td>
                                             {% if presence.presence == 'present' %}
-                                                <span class="badge bg-success">Présent</span>
+                                                <span class="badge bg-success" style="font-size: 0.65rem;">Présent</span>
                                             {% elif presence.presence == 'absent' %}
-                                                <span class="badge bg-danger">Absent</span>
+                                                <span class="badge bg-danger" style="font-size: 0.65rem;">Absent</span>
                                             {% elif presence.presence == 'excuse' %}
-                                                <span class="badge bg-warning">Excusé</span>
+                                                <span class="badge bg-warning" style="font-size: 0.65rem;">Excusé</span>
+                                            {% elif presence.presence == 'en_attente' %}
+                                                <span class="badge bg-info" style="font-size: 0.65rem;">En Attente</span>
                                             {% else %}
-                                                <span class="badge bg-secondary">{{ presence.presence }}</span>
+                                                <span class="badge bg-secondary" style="font-size: 0.65rem;">{{ presence.presence }}</span>
                                             {% endif %}
                                         </td>
                                         <td>
                                             {% if presence.methode_signature %}
-                                                <span class="badge bg-info">{{ presence.methode_signature }}</span>
+                                                <span class="badge bg-info" style="font-size: 0.65rem;">{{ presence.methode_signature.value|title }}</span>
                                             {% else %}
-                                                <span class="text-muted">-</span>
+                                                <span class="text-muted" style="font-size: 0.7rem;">-</span>
                                             {% endif %}
                                         </td>
                                         <td>
                                             {% if presence.heure_arrivee %}
-                                                {{ presence.heure_arrivee.strftime('%H:%M') }}
+                                                <span style="font-size: 0.8rem;">{{ presence.heure_arrivee.strftime('%H:%M') }}</span>
                                             {% else %}
-                                                <span class="text-muted">-</span>
+                                                <span class="text-muted" style="font-size: 0.7rem;">-</span>
                                             {% endif %}
                                         </td>
                                         <td>
                                             <div class="btn-group" role="group">
-                                                <button class="btn btn-sm btn-outline-primary" onclick="editPresence({{ presence.id }})">
+                                                <button class="btn btn-sm btn-outline-primary" onclick="editPresence({{ presence.id }})" style="font-size: 0.7rem; padding: 0.2rem 0.4rem;" title="Modifier">
                                                     <i class="fas fa-edit"></i>
+                                                </button>
+                                                <button class="btn btn-sm btn-outline-danger" onclick="supprimerParticipant({{ event.id }}, {{ presence.inscription_id }}, '{{ presence.inscription.candidat.prenom }} {{ presence.inscription.candidat.nom }}')" style="font-size: 0.7rem; padding: 0.2rem 0.4rem;" title="Supprimer">
+                                                    <i class="fas fa-trash"></i>
                                                 </button>
                                             </div>
                                         </td>
@@ -171,10 +221,10 @@
                             </table>
                         </div>
                     {% else %}
-                        <div class="text-center py-5">
-                            <i class="fas fa-users fa-3x text-muted mb-3"></i>
-                            <h4 class="text-muted">Aucun participant</h4>
-                            <p class="text-muted">Les invitations n'ont pas encore été envoyées.</p>
+                        <div class="text-center py-3">
+                            <i class="fas fa-users fa-2x text-muted mb-2"></i>
+                            <h6 class="text-muted">Aucun participant</h6>
+                            <p class="text-muted small">Les invitations n'ont pas encore été envoyées.</p>
                         </div>
                     {% endif %}
                 </div>
@@ -183,11 +233,98 @@
     </div>
 </div>
 
+<style>
+/* En-tête fixe */
+.sticky-header {
+    position: sticky;
+    top: 0;
+    z-index: 15;
+    background-color: white;
+    border-bottom: 1px solid #dee2e6;
+    margin-bottom: 0.5rem !important;
+    padding-bottom: 0.5rem;
+}
+
+/* En-tête de tableau fixe */
+.sticky-table-header {
+    position: sticky;
+    top: 0;
+    z-index: 10;
+    background-color: #f8f9fa;
+}
+
+/* Zone de scroll pour les participants */
+.participants-scroll-area {
+    max-height: 30vh;
+    overflow-y: auto;
+    scrollbar-width: thin;
+    background-color: #f8f9fa;
+    height: 30vh;
+}
+
+.participants-scroll-area::-webkit-scrollbar {
+    width: 6px;
+}
+
+.participants-scroll-area::-webkit-scrollbar-track {
+    background: #f1f1f1;
+}
+
+.participants-scroll-area::-webkit-scrollbar-thumb {
+    background: #c1c1c1;
+    border-radius: 3px;
+}
+
+.participants-scroll-area::-webkit-scrollbar-thumb:hover {
+    background: #a8a8a8;
+}
+
+/* Tableau compact */
+.table-sm td, .table-sm th {
+    padding: 0.2rem 0.4rem;
+    vertical-align: middle;
+}
+
+/* Cards compactes */
+.card-body {
+    padding: 0.3rem;
+}
+
+.card-header {
+    padding: 0.3rem 0.8rem;
+}
+</style>
+
 <script>
 function editPresence(presenceId) {
     // Fonction pour éditer une présence
     console.log('Édition de la présence:', presenceId);
     // TODO: Implémenter l'édition de présence
+}
+
+function supprimerParticipant(eventId, inscriptionId, nomParticipant) {
+    // Confirmation avant suppression
+    if (confirm(`Êtes-vous sûr de vouloir supprimer ${nomParticipant} de cet événement ?\n\nCette action supprimera définitivement l'invitation et la présence de ce participant.`)) {
+        // Utiliser fetch pour une suppression AJAX
+        fetch(`/events/${eventId}/participant/${inscriptionId}/supprimer`, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/x-www-form-urlencoded',
+            },
+        })
+        .then(response => {
+            if (response.ok) {
+                // Recharger la page pour actualiser la liste
+                window.location.reload();
+            } else {
+                alert('Erreur lors de la suppression du participant');
+            }
+        })
+        .catch(error => {
+            console.error('Erreur:', error);
+            alert('Erreur lors de la suppression du participant');
+        });
+    }
 }
 </script>
 {% endblock %}

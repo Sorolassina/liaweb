@@ -28,18 +28,19 @@
                 </div>
                 <div class="card-body p-0">
                     <div class="list-group list-group-flush">
-                        {% for presence in presences %}
-                        <div class="list-group-item list-group-item-action candidat-item {% if presence.presence == 'present' %}list-group-item-success{% endif %}" 
-                             onclick="selectCandidat({{ presence.inscription.id }}, '{{ presence.inscription.candidat.prenom }} {{ presence.inscription.candidat.nom }}', '{{ presence.inscription.candidat.email }}', '{% if presence.inscription.candidat.photo_profil %}/media/{{ presence.inscription.candidat.photo_profil.replace('\\', '/') }}{% else %}/static/images/utilisateur.png{% endif %}', {{ presence.presence == 'present'|lower }})"
-                             data-presence="{{ presence.presence }}">
+                        {% for invitation in invitations %}
+                        {% set presence = presences | selectattr('inscription_id', 'equalto', invitation.inscription_id) | first %}
+                        <div class="list-group-item candidat-item {% if presence and presence.presence == 'present' %}list-group-item-success candidat-deja-emarge{% else %}list-group-item-action{% endif %}" 
+                             {% if not (presence and presence.presence == 'present') %}onclick="selectCandidat({{ invitation.inscription.id }}, '{{ invitation.inscription.candidat.prenom }} {{ invitation.inscription.candidat.nom }}', '{{ invitation.inscription.candidat.email }}', '{% if invitation.inscription.candidat.photo_profil %}/media/{{ invitation.inscription.candidat.photo_profil.replace('\\', '/') }}{% else %}/static/images/utilisateur.png{% endif %}', {% if presence and presence.presence == 'present' %}true{% else %}false{% endif %})"{% endif %}
+                             data-presence="{% if presence %}{{ presence.presence }}{% else %}en_attente{% endif %}">
                             <div class="d-flex align-items-center">
-                                <div class="avatar me-3" style="background-image:url('{% if presence.inscription.candidat.photo_profil %}/media/{{ presence.inscription.candidat.photo_profil.replace('\\', '/') }}{% else %}/static/images/utilisateur.png{% endif %}')"></div>
+                                <div class="avatar me-3" style="background-image:url('{% if invitation.inscription.candidat.photo_profil %}/media/{{ invitation.inscription.candidat.photo_profil.replace('\\', '/') }}{% else %}/static/images/utilisateur.png{% endif %}')"></div>
                                 <div class="flex-grow-1">
-                                    <h6 class="mb-1">{{ presence.inscription.candidat.prenom }} {{ presence.inscription.candidat.nom }}</h6>
-                                    <small class="text-muted">{{ presence.inscription.candidat.email }}</small>
+                                    <h6 class="mb-1">{{ invitation.inscription.candidat.prenom }} {{ invitation.inscription.candidat.nom }}</h6>
+                                    <small class="text-muted">{{ invitation.inscription.candidat.email }}</small>
                                 </div>
                                 <div class="text-end">
-                                    {% if presence.presence == 'present' %}
+                                    {% if presence and presence.presence == 'present' %}
                                         <span class="badge bg-success">
                                             <i class="fas fa-check me-1"></i>Présent
                                         </span>
@@ -182,6 +183,26 @@
     background-color: #d4edda;
 }
 
+.candidat-deja-emarge {
+    cursor: not-allowed !important;
+    opacity: 0.7;
+    position: relative;
+}
+
+.candidat-deja-emarge::after {
+    content: "✓ Déjà émargé";
+    position: absolute;
+    top: 50%;
+    right: 20px;
+    transform: translateY(-50%);
+    background-color: #28a745;
+    color: white;
+    padding: 4px 8px;
+    border-radius: 4px;
+    font-size: 12px;
+    font-weight: bold;
+}
+
 .list-group-item-action:focus {
     background-color: #f8f9fa;
     border-color: #dee2e6;
@@ -213,6 +234,20 @@
 
     // Fonctions pour l'interface
     function selectCandidat(inscriptionId, nom, email, photo, isPresent) {
+        console.log('🔍 selectCandidat appelée avec:', {
+            inscriptionId: inscriptionId,
+            nom: nom,
+            email: email,
+            photo: photo,
+            isPresent: isPresent
+        });
+        
+        // Vérifier si le candidat a déjà émargé
+        if (isPresent) {
+            alert(`⚠️ ${nom} a déjà émargé pour cette session.\n\nIl ne peut pas émarger à nouveau.`);
+            return; // Empêcher la suite de l'exécution
+        }
+        
         selectedCandidat = {
             inscriptionId: inscriptionId,
             nom: nom,

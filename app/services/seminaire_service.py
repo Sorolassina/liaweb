@@ -80,6 +80,37 @@ class SeminaireService:
         seminaire.actif = False
         db.commit()
         return True
+    
+    def remove_participant_from_session(self, seminaire_id: int, session_id: int, inscription_id: int, db: Session) -> bool:
+        """Supprimer un participant d'une session de séminaire"""
+        try:
+            # Supprimer l'invitation au séminaire (pas de session spécifique)
+            invitation_query = select(InvitationSeminaire).where(
+                InvitationSeminaire.seminaire_id == seminaire_id,
+                InvitationSeminaire.inscription_id == inscription_id
+            )
+            invitation = db.exec(invitation_query).first()
+            
+            if invitation:
+                db.delete(invitation)
+            
+            # Supprimer la présence de cette session spécifique
+            presence_query = select(PresenceSeminaire).where(
+                PresenceSeminaire.session_id == session_id,
+                PresenceSeminaire.inscription_id == inscription_id
+            )
+            presence = db.exec(presence_query).first()
+            
+            if presence:
+                db.delete(presence)
+            
+            db.commit()
+            return True
+            
+        except Exception as e:
+            print(f"Erreur lors de la suppression du participant: {e}")
+            db.rollback()
+            return False
 
     # === GESTION DES SESSIONS ===
     
@@ -200,6 +231,11 @@ class SeminaireService:
             for field, value in presence_data.dict().items():
                 if field not in ['session_id', 'inscription_id']:  # Exclure les champs de clé
                     setattr(existing_presence, field, value)
+            
+            # Enregistrer l'heure d'arrivée si c'est la première fois qu'on marque "present"
+            if presence_data.presence == "present" and not existing_presence.heure_arrivee:
+                existing_presence.heure_arrivee = datetime.now(timezone.utc)
+            
             existing_presence.modifie_le = datetime.now(timezone.utc)
             db.commit()
             db.refresh(existing_presence)
@@ -207,24 +243,99 @@ class SeminaireService:
         else:
             # Créer une nouvelle présence
             presence = PresenceSeminaire(**presence_data.dict())
+            
+            # Enregistrer l'heure d'arrivée si on marque "present"
+            if presence_data.presence == "present":
+                presence.heure_arrivee = datetime.now(timezone.utc)
+            
             db.add(presence)
             db.commit()
             db.refresh(presence)
-            return presence
-
+        return presence
+    
+    def delete_seminaire(self, seminaire_id: int, db: Session) -> bool:
+        """Supprimer un séminaire et toutes ses données associées"""
+        try:
+            # Récupérer le séminaire
+            seminaire = db.get(Seminaire, seminaire_id)
+            if not seminaire:
+                return False
+            
+            # Supprimer manuellement les données liées dans l'ordre correct
+            # 1. Supprimer les livrables du séminaire
+            from app_lia_web.app.models.seminaire import LivrableSeminaire
+            livrables_query = select(LivrableSeminaire).where(LivrableSeminaire.seminaire_id == seminaire_id)
+            livrables = db.exec(livrables_query).all()
+            for livrable in livrables:
+                db.delete(livrable)
+            
+            # 2. Supprimer les présences des sessions du séminaire
+            sessions_query = select(SessionSeminaire).where(SessionSeminaire.seminaire_id == seminaire_id)
+            sessions = db.exec(sessions_query).all()
+            
+            for session in sessions:
+                presences_query = select(PresenceSeminaire).where(PresenceSeminaire.session_id == session.id)
+                presences = db.exec(presences_query).all()
+                for presence in presences:
+                    db.delete(presence)
+            
+            # 3. Supprimer les sessions du séminaire
+            for session in sessions:
+                db.delete(session)
+            
+            # 4. Supprimer les invitations du séminaire
+            invitations_query = select(InvitationSeminaire).where(InvitationSeminaire.seminaire_id == seminaire_id)
+            invitations = db.exec(invitations_query).all()
+            for invitation in invitations:
+                db.delete(invitation)
+            
+            # 5. Supprimer le séminaire lui-même
+            db.delete(seminaire)
+            db.commit()
+            return True
+            
+        except Exception as e:
+            db.rollback()
+            print(f"Erreur lors de la suppression du séminaire {seminaire_id}: {e}")
+            return False
+    
+    def delete_session(self, session_id: int, db: Session) -> bool:
+        """Supprimer une session et toutes ses données associées"""
+        try:
+            # Récupérer la session
+            session = db.get(SessionSeminaire, session_id)
+            if not session:
+                return False
+            
+            # Supprimer manuellement les données liées
+            # 1. Supprimer les présences de la session
+            presences_query = select(PresenceSeminaire).where(PresenceSeminaire.session_id == session_id)
+            presences = db.exec(presences_query).all()
+            for presence in presences:
+                db.delete(presence)
+            
+            # 2. Supprimer la session elle-même
+            db.delete(session)
+            db.commit()
+            return True
+            
+        except Exception as e:
+            db.rollback()
+            print(f"Erreur lors de la suppression de la session {session_id}: {e}")
+            return False
+    
     def get_presences_session(self, session_id: int, db: Session) -> List[PresenceSeminaire]:
         """Récupérer toutes les présences d'une session"""
         query = select(PresenceSeminaire).where(PresenceSeminaire.session_id == session_id)
         return db.exec(query).all()
     
     def get_presences_with_invitations(self, seminaire_id: int, session_id: int, db: Session) -> List[PresenceSeminaire]:
-        """Récupérer toutes les présences pour une session, créant des enregistrements par défaut pour les invités"""
-        # Récupérer toutes les invitations acceptées pour ce séminaire avec les relations
+        """Récupérer toutes les présences pour une session, créant des enregistrements par défaut pour tous les invités"""
+        from sqlalchemy.orm import selectinload
+        
+        # Récupérer toutes les invitations pour ce séminaire (acceptées ET refusées)
         query_invitations = select(InvitationSeminaire).where(
-            and_(
-                InvitationSeminaire.seminaire_id == seminaire_id,
-                InvitationSeminaire.statut == "ACCEPTEE"
-            )
+            InvitationSeminaire.seminaire_id == seminaire_id
         )
         invitations = db.exec(query_invitations).all()
         
@@ -234,27 +345,47 @@ class SeminaireService:
             # Charger les relations de l'invitation
             db.refresh(invitation)
             
-            # Vérifier si une présence existe déjà
-            existing_presence = self.get_presence_candidat(session_id, invitation.inscription_id, db)
+            # Vérifier si une présence existe déjà pour cette session
+            existing_presence_query = select(PresenceSeminaire).options(
+                selectinload(PresenceSeminaire.inscription).selectinload(Inscription.candidat)
+            ).where(
+                PresenceSeminaire.session_id == session_id,
+                PresenceSeminaire.inscription_id == invitation.inscription_id
+            )
+            existing_presence = db.exec(existing_presence_query).first()
             
             if existing_presence:
-                # Charger les relations de la présence existante
-                db.refresh(existing_presence)
                 presences.append(existing_presence)
             else:
                 # Créer une présence par défaut avec statut ABSENT et la sauvegarder
-                # Récupérer l'inscription pour charger les relations
-                inscription = db.get(Inscription, invitation.inscription_id)
+                # Récupérer l'inscription avec ses relations chargées
+                inscription_query = select(Inscription).options(
+                    selectinload(Inscription.candidat)
+                ).where(Inscription.id == invitation.inscription_id)
+                inscription = db.exec(inscription_query).first()
+                
                 if inscription:
-                    db.refresh(inscription)  # Charger les relations
-                    # Charger aussi la relation candidat
-                    if inscription.candidat:
-                        db.refresh(inscription.candidat)
+                    
+                    # Déterminer le statut par défaut selon l'invitation et la date
+                    default_status = "en_attente"  # Par défaut en attente
+                    
+                    # Vérifier si l'événement est déjà passé
+                    session_obj = db.get(SessionSeminaire, session_id)
+                    if session_obj and session_obj.date_session:
+                        from datetime import date
+                        today = date.today()
+                        if session_obj.date_session < today:
+                            # L'événement est passé, mettre absent par défaut
+                            default_status = "absent"
+                    
+                    # Si l'invitation est refusée, mettre absent même si l'événement n'est pas passé
+                    if invitation.statut == "REFUSEE":
+                        default_status = "absent"
                     
                     default_presence = PresenceSeminaire(
                         session_id=session_id,
                         inscription_id=invitation.inscription_id,
-                        presence="absent"  # Texte simple
+                        presence=default_status
                     )
                     # Sauvegarder la présence par défaut en base
                     db.add(default_presence)
@@ -265,6 +396,105 @@ class SeminaireService:
                     presences.append(default_presence)
         
         return presences
+    
+    def get_presences_for_direct_emargement(self, seminaire_id: int, session_id: int, db: Session) -> List[PresenceSeminaire]:
+        """Récupérer les présences pour l'émargement direct - seulement les présences existantes en base"""
+        from sqlalchemy.orm import selectinload
+        
+        # Récupérer toutes les invitations pour ce séminaire (acceptées ET refusées)
+        query_invitations = select(InvitationSeminaire).where(
+            InvitationSeminaire.seminaire_id == seminaire_id
+        )
+        invitations = db.exec(query_invitations).all()
+        
+        presences = []
+        
+        for invitation in invitations:
+            # Charger les relations de l'invitation
+            db.refresh(invitation)
+            
+            # Vérifier si une présence existe déjà pour cette session
+            existing_presence_query = select(PresenceSeminaire).options(
+                selectinload(PresenceSeminaire.inscription).selectinload(Inscription.candidat)
+            ).where(
+                PresenceSeminaire.session_id == session_id,
+                PresenceSeminaire.inscription_id == invitation.inscription_id
+            )
+            existing_presence = db.exec(existing_presence_query).first()
+            
+            if existing_presence:
+                presences.append(existing_presence)
+            # Ne pas créer de présences temporaires - seulement retourner celles qui existent vraiment
+        
+        return presences
+    
+    def get_presences_with_invitation_details(self, seminaire_id: int, session_id: int, db: Session) -> List[Dict]:
+        """Récupérer toutes les présences avec les détails d'invitation pour une session"""
+        # Récupérer toutes les invitations pour ce séminaire (acceptées ET refusées)
+        query_invitations = select(InvitationSeminaire).where(
+            InvitationSeminaire.seminaire_id == seminaire_id
+        )
+        invitations = db.exec(query_invitations).all()
+        
+        presences_data = []
+        
+        for invitation in invitations:
+            # Charger les relations de l'invitation
+            db.refresh(invitation)
+            
+            # Vérifier si une présence existe déjà pour cette session
+            existing_presence = self.get_presence_candidat(session_id, invitation.inscription_id, db)
+            
+            if existing_presence:
+                # Charger les relations de la présence existante
+                db.refresh(existing_presence)
+                presence_obj = existing_presence
+            else:
+                # Créer une présence par défaut avec statut ABSENT et la sauvegarder
+                inscription = db.get(Inscription, invitation.inscription_id)
+                if inscription:
+                    db.refresh(inscription)
+                    if inscription.candidat:
+                        db.refresh(inscription.candidat)
+                    
+                    # Déterminer le statut par défaut selon l'invitation et la date
+                    default_status = "en_attente"  # Par défaut en attente
+                    
+                    # Vérifier si l'événement est déjà passé
+                    session_obj = db.get(SessionSeminaire, session_id)
+                    if session_obj and session_obj.date_session:
+                        from datetime import date
+                        today = date.today()
+                        if session_obj.date_session < today:
+                            # L'événement est passé, mettre absent par défaut
+                            default_status = "absent"
+                    
+                    # Si l'invitation est refusée, mettre absent même si l'événement n'est pas passé
+                    if invitation.statut == "REFUSEE":
+                        default_status = "absent"
+                    
+                    default_presence = PresenceSeminaire(
+                        session_id=session_id,
+                        inscription_id=invitation.inscription_id,
+                        presence=default_status
+                    )
+                    db.add(default_presence)
+                    db.commit()
+                    db.refresh(default_presence)
+                    default_presence.inscription = inscription
+                    presence_obj = default_presence
+                else:
+                    continue
+            
+            # Créer l'objet de données enrichi
+            presence_data = {
+                'presence': presence_obj,
+                'invitation': invitation,
+                'invitation_statut': invitation.statut
+            }
+            presences_data.append(presence_data)
+        
+        return presences_data
 
     def get_presence_stats(self, session_id: int, db: Session) -> Dict[str, int]:
         """Obtenir les statistiques de présence pour une session"""

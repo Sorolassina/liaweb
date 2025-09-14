@@ -22,62 +22,62 @@
     </div>
 
     <!-- Statistiques -->
-    <div class="row mb-4">
+    <div class="row mb-2">
         <div class="col-md-3">
-            <div class="card bg-primary text-white">
-                <div class="card-body">
-                    <div class="d-flex justify-content-between">
+            <div class="card bg-primary text-white" style="height: 60px;">
+                <div class="card-body py-1 px-3">
+                    <div class="d-flex justify-content-between align-items-center h-100">
                         <div>
-                            <h4 class="mb-0">{{ stats.total_events }}</h4>
-                            <p class="mb-0">Total Événements</p>
+                            <h6 class="mb-0">{{ stats.total_events }}</h6>
+                            <small class="mb-0" style="font-size: 0.7rem;">Total Événements</small>
                         </div>
-                        <div class="align-self-center">
-                            <i class="fas fa-calendar-alt fa-2x"></i>
+                        <div>
+                            <i class="fas fa-calendar-alt"></i>
                         </div>
                     </div>
                 </div>
             </div>
         </div>
         <div class="col-md-3">
-            <div class="card bg-info text-white">
-                <div class="card-body">
-                    <div class="d-flex justify-content-between">
+            <div class="card bg-info text-white" style="height: 60px;">
+                <div class="card-body py-1 px-3">
+                    <div class="d-flex justify-content-between align-items-center h-100">
                         <div>
-                            <h4 class="mb-0">{{ stats.events_planifies }}</h4>
-                            <p class="mb-0">Planifiés</p>
+                            <h6 class="mb-0">{{ stats.events_planifies }}</h6>
+                            <small class="mb-0" style="font-size: 0.7rem;">Planifiés</small>
                         </div>
-                        <div class="align-self-center">
-                            <i class="fas fa-clock fa-2x"></i>
+                        <div>
+                            <i class="fas fa-clock"></i>
                         </div>
                     </div>
                 </div>
             </div>
         </div>
         <div class="col-md-3">
-            <div class="card bg-warning text-white">
-                <div class="card-body">
-                    <div class="d-flex justify-content-between">
+            <div class="card bg-warning text-white" style="height: 60px;">
+                <div class="card-body py-1 px-3">
+                    <div class="d-flex justify-content-between align-items-center h-100">
                         <div>
-                            <h4 class="mb-0">{{ stats.events_en_cours }}</h4>
-                            <p class="mb-0">En Cours</p>
+                            <h6 class="mb-0">{{ stats.events_en_cours }}</h6>
+                            <small class="mb-0" style="font-size: 0.7rem;">En Cours</small>
                         </div>
-                        <div class="align-self-center">
-                            <i class="fas fa-play fa-2x"></i>
+                        <div>
+                            <i class="fas fa-play"></i>
                         </div>
                     </div>
                 </div>
             </div>
         </div>
         <div class="col-md-3">
-            <div class="card bg-success text-white">
-                <div class="card-body">
-                    <div class="d-flex justify-content-between">
+            <div class="card bg-success text-white" style="height: 60px;">
+                <div class="card-body py-1 px-3">
+                    <div class="d-flex justify-content-between align-items-center h-100">
                         <div>
-                            <h4 class="mb-0">{{ stats.events_termines }}</h4>
-                            <p class="mb-0">Terminés</p>
+                            <h6 class="mb-0">{{ stats.events_termines }}</h6>
+                            <small class="mb-0" style="font-size: 0.7rem;">Terminés</small>
                         </div>
-                        <div class="align-self-center">
-                            <i class="fas fa-check fa-2x"></i>
+                        <div>
+                            <i class="fas fa-check"></i>
                         </div>
                     </div>
                 </div>
@@ -86,17 +86,17 @@
     </div>
 
     <!-- Liste des événements -->
-    <div class="row" style="height: 100%;">
+    <div class="row" style="height: 400px;">
         <div class="col-12" style="height: 100%;">
             <div class="card" style="height: 100%;">
                 <div class="card-header">
                     <h5 class="mb-0">Liste des Événements</h5>
                 </div>
-                <div class="card-body" style="height: 100%;">
+                <div class="card-body p-0" style="height: calc(100% - 60px);">
                     {% if events %}
-                        <div class="table-responsive" style="height: 100%;">
-                            <table class="table table-hover">
-                                <thead>
+                        <div class="table-responsive" style="height: 100%; overflow-y: auto;">
+                            <table class="table table-hover mb-0">
+                                <thead class="table-light sticky-top">
                                     <tr>
                                         <th>Titre</th>
                                         <th>Programme</th>
