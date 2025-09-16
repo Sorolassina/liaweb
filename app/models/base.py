@@ -429,6 +429,10 @@ class Groupe(SQLModel, table=True):
     actif: bool = Field(default=True)
     date_creation: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
     date_modification: Optional[datetime] = Field(default=None)
+    
+    # Relations pour le codev (ajoutées dynamiquement)
+    # seances: List["SeanceCodev"] = Relationship(back_populates="groupe")
+    # groupes_codev: List["GroupeCodev"] = Relationship(back_populates="groupe")
 
 class EmargementRDV(SQLModel, table=True):
     """Émargement pour les rendez-vous"""

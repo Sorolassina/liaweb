@@ -141,3 +141,48 @@ class MethodeSignature(str, Enum):
     DIGITAL = "digital"                # Signature digitale sur écran
     QR_CODE = "qr_code"                # Signature via QR code
     EMAIL = "email"                    # Confirmation par email
+
+# ===== ENUMS POUR LE CODEV =====
+
+class StatutSeanceCodev(str, Enum):
+    PLANIFIEE = "planifiee"
+    EN_COURS = "en_cours"
+    TERMINEE = "terminee"
+    ANNULEE = "annulee"
+    REPORTEE = "reportee"
+
+class StatutPresentation(str, Enum):
+    EN_ATTENTE = "en_attente"          # En attente de présentation
+    EN_COURS = "en_cours"              # En cours de présentation
+    TERMINEE = "terminee"              # Présentation terminée
+    ENGAGEMENT_PRIS = "engagement_pris" # Engagement pris par le candidat
+    TEST_EN_COURS = "test_en_cours"    # Test des solutions en cours
+    RETOUR_FAIT = "retour_fait"        # Retour d'expérience fait
+
+class TypeContribution(str, Enum):
+    QUESTION = "question"              # Question de clarification
+    SUGGESTION = "suggestion"         # Suggestion de solution
+    EXPERIENCE = "experience"         # Partage d'expérience similaire
+    CONSEIL = "conseil"               # Conseil pratique
+    RESSOURCE = "ressource"           # Ressource utile
+    AUTRE = "autre"                   # Autre type de contribution
+
+class StatutCycleCodev(str, Enum):
+    PLANIFIE = "planifie"
+    EN_COURS = "en_cours"
+    TERMINE = "termine"
+    ANNULE = "annule"
+    SUSPENDU = "suspendu"
+
+class StatutGroupeCodev(str, Enum):
+    EN_CONSTITUTION = "en_constitution"
+    COMPLET = "complet"
+    EN_COURS = "en_cours"
+    TERMINE = "termine"
+    DISSOUS = "dissous"
+
+class StatutMembreGroupe(str, Enum):
+    ACTIF = "actif"
+    INACTIF = "inactif"
+    SUSPENDU = "suspendu"
+    EXCLU = "exclu"

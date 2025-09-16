@@ -1,0 +1,457 @@
+{% extends "base.html" %}
+
+{% block title %}Groupes de Codéveloppement - {{ super() }}{% endblock %}
+
+{% block head_extra %}
+<style>
+  .container-fluid.p-4 {
+    width: 100%;
+    margin: 0 auto;
+    padding: 15px;
+  }
+  .groupes-container {
+    max-width: 1200px;
+    margin: 0 auto;
+    padding: 15px;
+  }
+  
+  .groupes-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 20px;
+    gap: 40px;
+  }
+  
+  .header-left {
+    display: flex;
+    align-items: center;
+    gap: 15px;
+  }
+  
+  .btn-back {
+    background: #6c757d;
+    color: white;
+    border: none;
+    padding: 6px 12px;
+    border-radius: 6px;
+    font-size: 12px;
+    font-weight: 600;
+    cursor: pointer;
+    text-decoration: none;
+    display: inline-flex;
+    align-items: center;
+    gap: 5px;
+    transition: background-color 0.3s ease;
+  }
+  
+  .btn-back:hover {
+    background: #5a6268;
+    color: white;
+  }
+  
+  .btn-create {
+    background: linear-gradient(135deg, var(--primary-color) 0%, #e6b800 100%);
+    color: white;
+    border: none;
+    padding: 8px 16px;
+    border-radius: 6px;
+    font-size: 13px;
+    font-weight: 600;
+    cursor: pointer;
+    text-decoration: none;
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+  }
+  
+  .btn-create:hover {
+    transform: translateY(-1px);
+  }
+  
+  .filters-section {
+    background: white;
+    border-radius: 8px;
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+    padding: 15px;
+    margin-bottom: 20px;
+  }
+  
+  .filters-row {
+    display: grid;
+    grid-template-columns: 1fr 1fr 1fr auto;
+    gap: 15px;
+    align-items: end;
+  }
+  
+  .filter-group {
+    display: flex;
+    flex-direction: column;
+  }
+  
+  .filter-group label {
+    font-weight: 600;
+    color: var(--primary-color);
+    margin-bottom: 5px;
+    font-size: 13px;
+  }
+  
+  .filter-group select {
+    padding: 8px;
+    border: 1px solid #e1e5e9;
+    border-radius: 6px;
+    font-size: 13px;
+  }
+  
+  .groupes-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(350px, 1fr));
+    gap: 15px;
+  }
+  
+  .groupe-card {
+    background: white;
+    border-radius: 8px;
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+    padding: 15px;
+    transition: transform 0.2s ease, box-shadow 0.2s ease;
+  }
+  
+  .groupe-card:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 4px 8px rgba(0, 0, 0, 0.15);
+  }
+  
+  .groupe-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
+    margin-bottom: 10px;
+  }
+  
+  .groupe-title {
+    font-size: 16px;
+    font-weight: 600;
+    color: var(--primary-color);
+    margin: 0;
+  }
+  
+  .groupe-status {
+    padding: 3px 8px;
+    border-radius: 12px;
+    font-size: 11px;
+    font-weight: 600;
+    text-transform: uppercase;
+  }
+  
+  .status-en_constitution {
+    background-color: #e3f2fd;
+    color: #1976d2;
+  }
+  
+  .status-actif {
+    background-color: #e8f5e8;
+    color: #2e7d32;
+  }
+  
+  .status-complet {
+    background-color: #fff3e0;
+    color: #f57c00;
+  }
+  
+  .status-termine {
+    background-color: #f3e5f5;
+    color: #7b1fa2;
+  }
+  
+  .groupe-info {
+    margin-bottom: 12px;
+  }
+  
+  .groupe-info-item {
+    display: flex;
+    align-items: center;
+    margin-bottom: 5px;
+    font-size: 12px;
+    color: #666;
+  }
+  
+  .groupe-info-item i {
+    width: 14px;
+    margin-right: 6px;
+    color: var(--primary-color);
+  }
+  
+  .members-preview {
+    background: #f8f9fa;
+    border-radius: 6px;
+    padding: 10px;
+    margin-bottom: 12px;
+  }
+  
+  .members-title {
+    font-size: 12px;
+    font-weight: 600;
+    color: var(--primary-color);
+    margin-bottom: 6px;
+  }
+  
+  .member-item {
+    display: flex;
+    align-items: center;
+    padding: 2px 0;
+    font-size: 11px;
+    color: #666;
+  }
+  
+  .member-item i {
+    width: 10px;
+    margin-right: 6px;
+    color: #28a745;
+  }
+  
+  .groupe-actions {
+    display: flex;
+    gap: 6px;
+    flex-wrap: wrap;
+  }
+  
+  .btn-action {
+    padding: 5px 10px;
+    border: none;
+    border-radius: 4px;
+    font-size: 11px;
+    font-weight: 600;
+    cursor: pointer;
+    text-decoration: none;
+    display: inline-flex;
+    align-items: center;
+    gap: 3px;
+  }
+  
+  .btn-view {
+    background-color: #e3f2fd;
+    color: #1976d2;
+  }
+  
+  .btn-edit {
+    background-color: #fff3e0;
+    color: #f57c00;
+  }
+  
+  .btn-members {
+    background-color: #e8f5e8;
+    color: #2e7d32;
+  }
+  
+  .btn-sessions {
+    background-color: #f3e5f5;
+    color: #7b1fa2;
+  }
+  
+  .empty-state {
+    text-align: center;
+    padding: 40px 20px;
+    color: #666;
+  }
+  
+  .empty-state i {
+    font-size: 36px;
+    margin-bottom: 15px;
+    color: #ccc;
+  }
+  
+  .cycle-info {
+    background: linear-gradient(135deg, var(--primary-color) 0%, #e6b800 100%);
+    color: white;
+    border-radius: 6px;
+    padding: 10px;
+    margin-bottom: 15px;
+  }
+  
+  .cycle-info h3 {
+    margin: 0 0 3px 0;
+    font-size: 14px;
+  }
+  
+  .cycle-info p {
+    margin: 0;
+    opacity: 0.9;
+    font-size: 12px;
+  }
+  
+  .empty-state .btn-create {
+    padding: 4px 12px;
+    font-size: 12px;
+  }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="groupes-container"style="width: 100%;">
+  <div class="groupes-header">
+    <div class="header-left">
+      
+      <h1>
+        <i class="fas fa-users"></i> Groupes de Codéveloppement
+      </h1>
+    </div>
+    <div class="header-right">
+        <a href="{{ url_for('codev_dashboard') }}" class="btn-back">
+          <i class="fas fa-arrow-left"></i> Retour
+        </a>
+        <a href="{{ url_for('codev_groupes_creer') }}" class="btn-create">
+          <i class="fas fa-plus"></i> Nouveau groupe
+        </a>
+    </div>
+  </div>
+  
+  {% if cycle_id %}
+  {% for cycle in cycles %}
+  {% if cycle.id == cycle_id %}
+  <div class="cycle-info">
+    <h3>{{ cycle.nom }}</h3>
+    <p>{{ cycle.description if cycle.description else 'Cycle de codéveloppement' }}</p>
+  </div>
+  {% endif %}
+  {% endfor %}
+  {% endif %}
+  
+  <div class="filters-section">
+    <form method="get" class="filters-row">
+      <div class="filter-group">
+        <label for="cycle_id">Cycle</label>
+        <select id="cycle_id" name="cycle_id">
+          <option value="">Tous les cycles</option>
+          {% for cycle in cycles %}
+          <option value="{{ cycle.id }}" {% if cycle_id and cycle_id|int == cycle.id %}selected{% endif %}>
+            {{ cycle.nom }}
+          </option>
+          {% endfor %}
+        </select>
+      </div>
+      
+      <div class="filter-group">
+        <label for="statut">Statut</label>
+        <select id="statut" name="statut">
+          <option value="">Tous les statuts</option>
+          <option value="en_constitution" {% if statut == 'en_constitution' %}selected{% endif %}>En constitution</option>
+          <option value="actif" {% if statut == 'actif' %}selected{% endif %}>Actif</option>
+          <option value="complet" {% if statut == 'complet' %}selected{% endif %}>Complet</option>
+          <option value="termine" {% if statut == 'termine' %}selected{% endif %}>Terminé</option>
+        </select>
+      </div>
+      
+      <div class="filter-group">
+        <label for="capacite">Capacité</label>
+        <select id="capacite" name="capacite">
+          <option value="">Toutes les capacités</option>
+          <option value="4-8">4-8 membres</option>
+          <option value="9-12">9-12 membres</option>
+          <option value="13+">13+ membres</option>
+        </select>
+      </div>
+      
+      <button type="submit" class="btn-create">
+        <i class="fas fa-filter"></i> Filtrer
+      </button>
+    </form>
+  </div>
+  
+  {% if groupes %}
+  <div class="groupes-grid">
+    {% for groupe in groupes %}
+    <div class="groupe-card">
+      <div class="groupe-header">
+        <h3 class="groupe-title">{{ groupe.nom_groupe }}</h3>
+        <span class="groupe-status status-{{ groupe.statut.value if groupe.statut else 'en_constitution' }}">
+          {{ groupe.statut.value if groupe.statut else 'en_constitution' }}
+        </span>
+      </div>
+      
+      <div class="groupe-info">
+        {% if groupe.cycle %}
+        <div class="groupe-info-item">
+          <i class="fas fa-sync-alt"></i>
+          Cycle : {{ groupe.cycle.nom }}
+        </div>
+        {% endif %}
+        
+        <div class="groupe-info-item">
+          <i class="fas fa-users"></i>
+          Capacité : {{ groupe.capacite_max }} membres
+        </div>
+        
+        {% if groupe.animateur %}
+        <div class="groupe-info-item">
+          <i class="fas fa-user-tie"></i>
+          Animateur : {{ groupe.animateur.nom_complet }}
+        </div>
+        {% endif %}
+        
+        <div class="groupe-info-item">
+          <i class="fas fa-calendar-plus"></i>
+          Créé le : {{ groupe.date_creation.strftime('%d/%m/%Y') }}
+        </div>
+      </div>
+      
+      {% if groupe.membres %}
+      <div class="members-preview">
+        <div class="members-title">
+          <i class="fas fa-user-friends"></i> Membres ({{ groupe.membres|length }}/{{ groupe.capacite_max }})
+        </div>
+        {% for membre in groupe.membres[:3] %}
+        <div class="member-item">
+          <i class="fas fa-user"></i>
+          {{ membre.candidat.nom_complet if membre.candidat else 'Membre ' + membre.id|string }}
+          {% if membre.role_special %}
+            <span style="color: var(--primary-color); font-weight: 600;">({{ membre.role_special }})</span>
+          {% endif %}
+        </div>
+        {% endfor %}
+        {% if groupe.membres|length > 3 %}
+        <div class="member-item" style="color: #999; font-style: italic;">
+          ... et {{ groupe.membres|length - 3 }} autres membres
+        </div>
+        {% endif %}
+      </div>
+      {% endif %}
+      
+      <div class="groupe-actions">
+        <a href="{{ url_for('codev_groupe_detail', groupe_id=groupe.id) }}" class="btn-action btn-view">
+          <i class="fas fa-eye"></i> Voir
+        </a>
+        
+        <a href="{{ url_for('codev_groupe_membres', groupe_id=groupe.id) }}" class="btn-action btn-members">
+          <i class="fas fa-user-friends"></i> Membres
+        </a>
+        
+        <a href="{{ url_for('codev_seances', groupe_id=groupe.id) }}" class="btn-action btn-sessions">
+          <i class="fas fa-calendar-alt"></i> Séances
+        </a>
+        
+        <a href="{{ url_for('codev_groupe_detail', groupe_id=groupe.id, edit=1) }}" class="btn-action btn-edit">
+          <i class="fas fa-edit"></i> Modifier
+        </a>
+      </div>
+    </div>
+    {% endfor %}
+  </div>
+  {% else %}
+  <div class="empty-state">
+    <i class="fas fa-users"></i>
+    <h3>Aucun groupe trouvé</h3>
+    <p>
+      {% if cycle_id %}
+        Aucun groupe n'a encore été créé pour ce cycle.
+      {% else %}
+        Aucun groupe de codéveloppement n'a encore été créé.
+      {% endif %}
+    </p>
+    <a href="{{ url_for('codev_groupes_creer', cycle_id=cycle_id) if cycle_id else url_for('codev_groupes_creer') }}" class="btn-create">
+      <i class="fas fa-plus" style="font-size: 20px;"></i> Créer le premier groupe
+    </a>
+  </div>
+  {% endif %}
+</div>
+{% endblock %}

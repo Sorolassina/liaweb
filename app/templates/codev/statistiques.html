@@ -1,0 +1,481 @@
+{% extends "base.html" %}
+
+{% block title %}Statistiques Codéveloppement - {{ super() }}{% endblock %}
+
+{% block head_extra %}
+<style>
+  .stats-container {
+    width: 100%;
+    margin: 0 auto;
+    padding: 15px;
+  }
+  
+  .container-fluid.p-4 {
+    width: 100%;
+    margin: 0 auto;
+    padding: 15px;
+    overflow: hidden;
+  }
+  
+  .stats-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 20px;
+    gap: 40px;
+    position: sticky;
+    top: 0;
+    background: white;
+    z-index: 100;
+    padding: 15px 0;
+    border-bottom: 1px solid #e9ecef;
+  }
+  
+  .header-left {
+    display: flex;
+    align-items: center;
+    gap: 15px;
+  }
+  
+  .header-right {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+  }
+  
+  .btn-back {
+    background: #6c757d;
+    color: white;
+    border: none;
+    padding: 6px 12px;
+    border-radius: 6px;
+    font-size: 12px;
+    font-weight: 600;
+    cursor: pointer;
+    text-decoration: none;
+    display: inline-flex;
+    align-items: center;
+    gap: 5px;
+    transition: background-color 0.3s ease;
+  }
+  
+  .btn-back:hover {
+    background: #5a6268;
+    color: white;
+  }
+  
+  .stats-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+    gap: 15px;
+    margin-bottom: 25px;
+  }
+  
+  .stat-card {
+    background: white;
+    border-radius: 8px;
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+    padding: 15px;
+    text-align: center;
+    transition: transform 0.2s ease;
+  }
+  
+  .stat-card:hover {
+    transform: translateY(-2px);
+  }
+  
+  .stat-icon {
+    font-size: 32px;
+    margin-bottom: 8px;
+  }
+  
+  .stat-number {
+    font-size: 24px;
+    font-weight: 700;
+    color: var(--primary-color);
+    margin-bottom: 5px;
+  }
+  
+  .stat-label {
+    font-size: 12px;
+    color: #666;
+    font-weight: 600;
+  }
+  
+  .charts-section {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 20px;
+    margin-bottom: 25px;
+  }
+  
+  .chart-card {
+    background: white;
+    border-radius: 8px;
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+    padding: 15px;
+  }
+  
+  .chart-title {
+    font-size: 16px;
+    font-weight: 600;
+    color: var(--primary-color);
+    margin-bottom: 15px;
+    text-align: center;
+  }
+  
+  .chart-item {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 8px 0;
+    border-bottom: 1px solid #f0f0f0;
+  }
+  
+  .chart-item:last-child {
+    border-bottom: none;
+  }
+  
+  .chart-label {
+    font-size: 12px;
+    color: #666;
+    text-transform: capitalize;
+  }
+  
+  .chart-value {
+    font-size: 14px;
+    font-weight: 600;
+    color: var(--primary-color);
+  }
+  
+  .chart-bar {
+    width: 100%;
+    height: 8px;
+    background-color: #f0f0f0;
+    border-radius: 4px;
+    margin-top: 5px;
+    overflow: hidden;
+  }
+  
+  .chart-bar-fill {
+    height: 100%;
+    background: linear-gradient(135deg, var(--primary-color) 0%, #e6b800 100%);
+    border-radius: 4px;
+    transition: width 0.3s ease;
+  }
+  
+  .lists-section {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 20px;
+  }
+  
+  .list-card {
+    background: white;
+    border-radius: 8px;
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+    padding: 15px;
+  }
+  
+  .list-title {
+    font-size: 16px;
+    font-weight: 600;
+    color: var(--primary-color);
+    margin-bottom: 15px;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
+  
+  .list-item {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 8px 0;
+    border-bottom: 1px solid #f0f0f0;
+  }
+  
+  .list-item:last-child {
+    border-bottom: none;
+  }
+  
+  .list-item-info {
+    flex: 1;
+  }
+  
+  .list-item-name {
+    font-size: 12px;
+    font-weight: 600;
+    color: #333;
+    margin-bottom: 2px;
+  }
+  
+  .list-item-details {
+    font-size: 10px;
+    color: #666;
+  }
+  
+  .list-item-value {
+    font-size: 12px;
+    font-weight: 600;
+    color: var(--primary-color);
+  }
+  
+  .empty-state {
+    text-align: center;
+    padding: 20px 10px;
+    color: #666;
+  }
+  
+  .empty-state i {
+    font-size: 24px;
+    margin-bottom: 8px;
+    color: #ccc;
+  }
+  
+  @media (max-width: 768px) {
+    .charts-section,
+    .lists-section {
+      grid-template-columns: 1fr;
+    }
+    
+    .stats-grid {
+      grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+    }
+  }
+</style>
+{% endblock %}
+
+{% block content %}
+
+<div class="stats-header" style="width: 100%; position: sticky;">
+  <div class="header-left">
+    <h1>
+      <i class="fas fa-chart-bar"></i> Statistiques Codéveloppement
+    </h1>
+  </div>
+  <div class="header-right">
+    <a href="{{ url_for('codev_dashboard') }}" class="btn-back">
+      <i class="fas fa-arrow-left"></i> Retour
+    </a>
+  </div>
+</div>
+
+<div class="stats-container" style="width: 100%;overflow: auto;">
+  
+  
+  <!-- Statistiques générales -->
+  <div class="stats-grid">
+    <div class="stat-card">
+      <div class="stat-icon" style="color: #1976d2;">
+        <i class="fas fa-sync-alt"></i>
+      </div>
+      <div class="stat-number">{{ nb_cycles }}</div>
+      <div class="stat-label">Cycles</div>
+    </div>
+    
+    <div class="stat-card">
+      <div class="stat-icon" style="color: #2e7d32;">
+        <i class="fas fa-users"></i>
+      </div>
+      <div class="stat-number">{{ nb_groupes }}</div>
+      <div class="stat-label">Groupes</div>
+    </div>
+    
+    <div class="stat-card">
+      <div class="stat-icon" style="color: #f57c00;">
+        <i class="fas fa-user-friends"></i>
+      </div>
+      <div class="stat-number">{{ nb_membres }}</div>
+      <div class="stat-label">Membres</div>
+    </div>
+    
+    <div class="stat-card">
+      <div class="stat-icon" style="color: #7b1fa2;">
+        <i class="fas fa-calendar-alt"></i>
+      </div>
+      <div class="stat-number">{{ nb_seances }}</div>
+      <div class="stat-label">Séances</div>
+    </div>
+    
+    <div class="stat-card">
+      <div class="stat-icon" style="color: #c62828;">
+        <i class="fas fa-presentation"></i>
+      </div>
+      <div class="stat-number">{{ nb_presentations }}</div>
+      <div class="stat-label">Présentations</div>
+    </div>
+  </div>
+  
+  <!-- Graphiques par statut -->
+  <div class="charts-section">
+    <div class="chart-card">
+      <h3 class="chart-title">
+        <i class="fas fa-sync-alt"></i> Cycles par statut
+      </h3>
+      {% if cycles_par_statut %}
+        {% for statut, count in cycles_par_statut %}
+        <div class="chart-item">
+          <div>
+            <div class="chart-label">{{ statut.replace('_', ' ') }}</div>
+            <div class="chart-bar">
+              <div class="chart-bar-fill" style="width: {{ (count / nb_cycles * 100) if nb_cycles > 0 else 0 }}%;"></div>
+            </div>
+          </div>
+          <div class="chart-value">{{ count }}</div>
+        </div>
+        {% endfor %}
+      {% else %}
+        <div class="empty-state">
+          <i class="fas fa-chart-bar"></i>
+          <p>Aucune donnée disponible</p>
+        </div>
+      {% endif %}
+    </div>
+    
+    <div class="chart-card">
+      <h3 class="chart-title">
+        <i class="fas fa-users"></i> Groupes par statut
+      </h3>
+      {% if groupes_par_statut %}
+        {% for statut, count in groupes_par_statut %}
+        <div class="chart-item">
+          <div>
+            <div class="chart-label">{{ statut.replace('_', ' ') }}</div>
+            <div class="chart-bar">
+              <div class="chart-bar-fill" style="width: {{ (count / nb_groupes * 100) if nb_groupes > 0 else 0 }}%;"></div>
+            </div>
+          </div>
+          <div class="chart-value">{{ count }}</div>
+        </div>
+        {% endfor %}
+      {% else %}
+        <div class="empty-state">
+          <i class="fas fa-chart-bar"></i>
+          <p>Aucune donnée disponible</p>
+        </div>
+      {% endif %}
+    </div>
+  </div>
+  
+  <!-- Graphiques séances et présentations -->
+  <div class="charts-section">
+    <div class="chart-card">
+      <h3 class="chart-title">
+        <i class="fas fa-calendar-alt"></i> Séances par statut
+      </h3>
+      {% if seances_par_statut %}
+        {% for statut, count in seances_par_statut %}
+        <div class="chart-item">
+          <div>
+            <div class="chart-label">{{ statut.replace('_', ' ') }}</div>
+            <div class="chart-bar">
+              <div class="chart-bar-fill" style="width: {{ (count / nb_seances * 100) if nb_seances > 0 else 0 }}%;"></div>
+            </div>
+          </div>
+          <div class="chart-value">{{ count }}</div>
+        </div>
+        {% endfor %}
+      {% else %}
+        <div class="empty-state">
+          <i class="fas fa-chart-bar"></i>
+          <p>Aucune donnée disponible</p>
+        </div>
+      {% endif %}
+    </div>
+    
+    <div class="chart-card">
+      <h3 class="chart-title">
+        <i class="fas fa-presentation"></i> Présentations par statut
+      </h3>
+      {% if presentations_par_statut %}
+        {% for statut, count in presentations_par_statut %}
+        <div class="chart-item">
+          <div>
+            <div class="chart-label">{{ statut.replace('_', ' ') }}</div>
+            <div class="chart-bar">
+              <div class="chart-bar-fill" style="width: {{ (count / nb_presentations * 100) if nb_presentations > 0 else 0 }}%;"></div>
+            </div>
+          </div>
+          <div class="chart-value">{{ count }}</div>
+        </div>
+        {% endfor %}
+      {% else %}
+        <div class="empty-state">
+          <i class="fas fa-chart-bar"></i>
+          <p>Aucune donnée disponible</p>
+        </div>
+      {% endif %}
+    </div>
+  </div>
+  
+  <!-- Listes détaillées -->
+  <div class="lists-section">
+    <div class="list-card">
+      <h3 class="list-title">
+        <i class="fas fa-clock"></i> Cycles récents
+      </h3>
+      {% if cycles_recents %}
+        {% for cycle in cycles_recents %}
+        <div class="list-item">
+          <div class="list-item-info">
+            <div class="list-item-name">{{ cycle.nom }}</div>
+            <div class="list-item-details">
+              {{ cycle.date_debut.strftime('%d/%m/%Y') }} - {{ cycle.date_fin.strftime('%d/%m/%Y') }}
+            </div>
+          </div>
+          <div class="list-item-value">
+            <span style="padding: 4px 8px; border-radius: 12px; font-size: 11px; background-color: #e3f2fd; color: #1976d2;">
+              {{ cycle.statut.replace('_', ' ') }}
+            </span>
+          </div>
+        </div>
+        {% endfor %}
+      {% else %}
+        <div class="empty-state">
+          <i class="fas fa-sync-alt"></i>
+          <p>Aucun cycle créé</p>
+        </div>
+      {% endif %}
+    </div>
+    
+    <div class="list-card">
+      <h3 class="list-title">
+        <i class="fas fa-star"></i> Groupes populaires
+      </h3>
+      {% if groupes_populaires %}
+        {% for groupe, nb_membres in groupes_populaires %}
+        <div class="list-item">
+          <div class="list-item-info">
+            <div class="list-item-name">{{ groupe.nom_groupe }}</div>
+            <div class="list-item-details">
+              Capacité: {{ groupe.capacite_max }} membres
+            </div>
+          </div>
+          <div class="list-item-value">{{ nb_membres }} membres</div>
+        </div>
+        {% endfor %}
+      {% else %}
+        <div class="empty-state">
+          <i class="fas fa-users"></i>
+          <p>Aucun groupe avec des membres</p>
+        </div>
+      {% endif %}
+    </div>
+  </div>
+</div>
+
+<script>
+// Animation des barres de progression
+document.addEventListener('DOMContentLoaded', function() {
+  const bars = document.querySelectorAll('.chart-bar-fill');
+  bars.forEach(bar => {
+    const width = bar.style.width;
+    bar.style.width = '0%';
+    setTimeout(() => {
+      bar.style.width = width;
+    }, 500);
+  });
+});
+</script>
+{% endblock %}

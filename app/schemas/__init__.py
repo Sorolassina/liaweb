@@ -43,6 +43,19 @@ from .recherche_schemas import CandidatFiltres, PaginationParams, PaginatedRespo
 # Schémas pipelines
 from .pipeline_schemas import EtapePipelineCreate, EtapePipelineUpdate, AvancementEtapeCreate
 
+# Schémas codéveloppement
+from .codev import (
+    CycleCodevCreate, CycleCodevUpdate, CycleCodevResponse,
+    GroupeCodevCreate, GroupeCodevResponse,
+    SeanceCodevCreate, SeanceCodevUpdate, SeanceCodevResponse,
+    PresentationCodevCreate, PresentationCodevUpdate, PresentationCodevResponse,
+    ContributionCodevCreate, ContributionCodevResponse,
+    MembreGroupeCodevCreate, MembreGroupeCodevUpdate, MembreGroupeCodevResponse,
+    ParticipationSeanceResponse,
+    StatistiquesCycleCodev, StatistiquesGroupeCodev,
+    PlanificationSeance, EngagementCandidat, RetourExperience
+)
+
 __all__ = [
     # Utilisateurs
     "UserBase", "UserCreate", "UserUpdate", "UserResponse",
@@ -85,4 +98,15 @@ __all__ = [
     
     # Pipelines
     "EtapePipelineCreate", "EtapePipelineUpdate", "AvancementEtapeCreate",
+    
+    # Codéveloppement
+    "CycleCodevCreate", "CycleCodevUpdate", "CycleCodevResponse",
+    "GroupeCodevCreate", "GroupeCodevResponse",
+    "SeanceCodevCreate", "SeanceCodevUpdate", "SeanceCodevResponse",
+    "PresentationCodevCreate", "PresentationCodevUpdate", "PresentationCodevResponse",
+    "ContributionCodevCreate", "ContributionCodevResponse",
+    "MembreGroupeCodevCreate", "MembreGroupeCodevUpdate", "MembreGroupeCodevResponse",
+    "ParticipationSeanceResponse",
+    "StatistiquesCycleCodev", "StatistiquesGroupeCodev",
+    "PlanificationSeance", "EngagementCandidat", "RetourExperience",
 ]

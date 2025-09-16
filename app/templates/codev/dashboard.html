@@ -1,0 +1,292 @@
+{% extends "base.html" %}
+
+{% block title %}Codéveloppement - {{ super() }}{% endblock %}
+
+{% block head_extra %}
+<style>
+  .codev-card {
+    background: linear-gradient(135deg, var(--primary-color) 0%, #e6b800 100%);
+    color: var(--secondary-color);
+    border-radius: 15px;
+    padding: 1.5rem;
+    margin-bottom: 1rem;
+    box-shadow: 0 4px 15px rgba(0,0,0,0.1);
+  }
+  
+  .codev-stat {
+    background: rgba(255,255,255,0.1);
+    border-radius: 10px;
+    padding: 1rem;
+    text-align: center;
+    margin: 0.5rem;
+  }
+  
+  .neumorphism-card {
+    background: #f0f0f3;
+    border-radius: 20px;
+    box-shadow: 
+      20px 20px 60px #d1d9e6,
+      -20px -20px 60px #ffffff;
+    border: none;
+    transition: all 0.3s ease;
+  }
+  
+  .neumorphism-card:hover {
+    box-shadow: 
+      25px 25px 70px #d1d9e6,
+      -25px -25px 70px #ffffff;
+    transform: translateY(-2px);
+  }
+  
+  .neumorphism-card:active {
+    box-shadow: 
+      inset 20px 20px 60px #d1d9e6,
+      inset -20px -20px 60px #ffffff;
+    transform: translateY(0);
+  }
+  
+  .codev-stat-number {
+    font-size: 2rem;
+    font-weight: bold;
+    display: block;
+  }
+  
+  .codev-stat-label {
+    font-size: 0.9rem;
+    opacity: 0.9;
+  }
+  
+  .cycle-card {
+    border-left: 4px solid var(--primary-color);
+    transition: all 0.3s ease;
+  }
+  
+  .cycle-card:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 4px 15px rgba(0,0,0,0.1);
+  }
+  
+  .seance-item {
+    border-left: 3px solid var(--primary-color);
+    padding-left: 1rem;
+    margin-bottom: 1rem;
+  }
+  
+  .engagement-item {
+    background: #f8f9fa;
+    border-radius: 8px;
+    padding: 1rem;
+    margin-bottom: 0.5rem;
+    border-left: 3px solid #28a745;
+  }
+</style>
+{% endblock %}
+
+{% block content %}
+<!--<div class="container-fluid">-->
+  <!-- En-tête -->
+  <div class="row mb-0">
+    <div class="col-12">
+      <div class="codev-card" style="padding: 15px 20px;">
+        <div class="row align-items-center">
+          <div class="col-md-8">
+            <h3 class="mb-0" style="font-size: 1.4rem;">
+              <i class="fa fa-users-cog me-2"></i>Codéveloppement
+            </h3>
+            <p class="mb-0 opacity-75" style="font-size: 0.9rem;">
+              Accompagnement collectif par groupes de travail
+            </p>
+          </div>
+          <div class="col-md-4 text-end">
+            <a href="{{ url_for('codev_cycles_creer') }}" class="btn btn-light">
+              <i class="fa fa-plus me-1"></i>Nouveau Cycle
+            </a>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Statistiques rapides -->
+  <div class="row mb-0">
+    <div class="col-md-3">
+      <div class="codev-stat neumorphism-card" style="padding: 15px 20px;">
+        <span class="codev-stat-number" style="font-size: 1.5rem;">{{ cycles_actifs|length }}</span>
+        <span class="codev-stat-label" style="font-size: 0.8rem;">Cycles</span>
+      </div>
+    </div>
+    <div class="col-md-3">
+      <div class="codev-stat neumorphism-card" style="padding: 15px 20px;">
+        <span class="codev-stat-number" style="font-size: 1.5rem;">{{ prochaines_seances|length }}</span>
+        <span class="codev-stat-label" style="font-size: 0.8rem;">Séances</span>
+      </div>
+    </div>
+    <div class="col-md-3">
+      <div class="codev-stat neumorphism-card" style="padding: 15px 20px;">
+        <span class="codev-stat-number" style="font-size: 1.5rem;">{{ engagements_en_cours|length }}</span>
+        <span class="codev-stat-label" style="font-size: 0.8rem;">Engagements</span>
+      </div>
+    </div>
+    <div class="col-md-3">
+      <div class="codev-stat neumorphism-card" style="padding: 15px 20px;">
+        <span class="codev-stat-number" style="font-size: 1.5rem;">0</span>
+        <span class="codev-stat-label" style="font-size: 0.8rem;">Retours</span>
+      </div>
+    </div>
+  </div>
+
+  <div class="row mb-0">
+    <!-- Cycles actifs -->
+    <div class="col-md-6">
+      <div class="card cycle-card" style="padding: 10px;">
+        <div class="card-header d-flex justify-content-between align-items-center" style="padding: 8px 12px;">
+          <h6 class="mb-0" style="font-size: 1rem;">
+            <i class="fa fa-calendar-alt me-1"></i>Cycles
+          </h6>
+          <a href="{{ url_for('codev_cycles') }}" class="btn btn-sm btn-outline-primary" style="padding: 2px 8px; font-size: 0.75rem;">
+            Tout
+          </a>
+        </div>
+        <div class="card-body" style="padding: 8px 12px;">
+          {% if cycles_actifs %}
+            {% for cycle in cycles_actifs[:2] %}
+            <div class="d-flex justify-content-between align-items-center mb-2">
+              <div>
+                <h6 class="mb-0" style="font-size: 0.9rem;">{{ cycle.nom }}</h6>
+                <small class="text-muted" style="font-size: 0.7rem;">
+                  {{ cycle.date_debut.strftime('%d/%m') }} - {{ cycle.date_fin.strftime('%d/%m') }}
+                </small>
+              </div>
+              <div class="text-end">
+                <span class="badge bg-primary" style="font-size: 0.65rem;">{{ cycle.statut.value }}</span>
+                <br>
+                <a href="{{ url_for('codev_cycle_detail', cycle_id=cycle.id) }}" class="btn btn-sm btn-outline-primary mt-1" style="padding: 2px 6px;">
+                  <i class="fa fa-eye" style="font-size: 0.7rem;"></i>
+                </a>
+              </div>
+            </div>
+            {% if not loop.last %}<hr style="margin: 8px 0;">{% endif %}
+            {% endfor %}
+          {% else %}
+            <div class="text-center text-muted py-2">
+              <i class="fa fa-calendar-alt fa-lg mb-1"></i>
+              <p style="font-size: 0.8rem; margin: 0;">Aucun cycle</p>
+            </div>
+          {% endif %}
+        </div>
+      </div>
+    </div>
+
+    <!-- Prochaines séances -->
+    <div class="col-md-6">
+      <div class="card cycle-card" style="padding: 10px;">
+        <div class="card-header d-flex justify-content-between align-items-center" style="padding: 8px 12px;">
+          <h6 class="mb-0" style="font-size: 1rem;">
+            <i class="fa fa-clock me-1"></i>Séances
+          </h6>
+          <a href="{{ url_for('codev_seances') }}" class="btn btn-sm btn-outline-primary" style="padding: 2px 8px; font-size: 0.75rem;">
+            Tout
+          </a>
+        </div>
+        <div class="card-body" style="padding: 8px 12px;">
+          {% if prochaines_seances %}
+            {% for seance in prochaines_seances[:2] %}
+            <div class="seance-item">
+              <div class="d-flex justify-content-between align-items-center">
+                <div>
+                  <h6 class="mb-0" style="font-size: 0.9rem;">Séance {{ seance.numero_seance }}</h6>
+                  <small class="text-muted" style="font-size: 0.7rem;">
+                    {{ seance.date_seance.strftime('%d/%m %H:%M') }}
+                  </small>
+                </div>
+                <span class="badge bg-info" style="font-size: 0.65rem;">{{ seance.statut.value }}</span>
+              </div>
+            </div>
+            {% if not loop.last %}<hr style="margin: 8px 0;">{% endif %}
+            {% endfor %}
+          {% else %}
+            <div class="text-center text-muted py-2">
+              <i class="fa fa-clock fa-lg mb-1"></i>
+              <p style="font-size: 0.8rem; margin: 0;">Aucune séance</p>
+            </div>
+          {% endif %}
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Engagements en cours -->
+  {% if engagements_en_cours %}
+  <div class="row mt-4">
+    <div class="col-12">
+      <div class="card cycle-card">
+        <div class="card-header">
+          <h5 class="mb-0">
+            <i class="fa fa-tasks me-2"></i>Engagements en Cours
+          </h5>
+        </div>
+        <div class="card-body">
+          {% for presentation in engagements_en_cours[:5] %}
+          <div class="engagement-item">
+            <div class="row align-items-center">
+              <div class="col-md-8">
+                <h6 class="mb-1">{{ presentation.candidat.nom }} {{ presentation.candidat.prenom }}</h6>
+                <p class="mb-1 small">{{ presentation.engagement_candidat[:100] }}...</p>
+                <small class="text-muted">
+                  Échéance: {{ presentation.delai_engagement.strftime('%d/%m/%Y') }}
+                </small>
+              </div>
+              <div class="col-md-4 text-end">
+                <span class="badge bg-warning">{{ presentation.statut.value }}</span>
+                <br>
+                <a href="{{ url_for('codev_presentation_detail', presentation_id=presentation.id) }}" class="btn btn-sm btn-outline-primary mt-1">
+                  <i class="fa fa-eye"></i>
+                </a>
+              </div>
+            </div>
+          </div>
+          {% endfor %}
+        </div>
+      </div>
+    </div>
+  </div>
+  {% endif %}
+
+  <!-- Actions rapides -->
+  <div class="row mt-4">
+    <div class="col-12">
+      <div class="card">
+        <div class="card-header">
+          <h5 class="mb-0">
+            <i class="fa fa-bolt me-2"></i>Actions Rapides
+          </h5>
+        </div>
+        <div class="card-body">
+          <div class="row">
+            <div class="col-md-3">
+              <a href="{{ url_for('codev_cycles_creer') }}" class="btn btn-primary w-100 mb-2">
+                <i class="fa fa-plus me-2"></i>Nouveau Cycle
+              </a>
+            </div>
+            <div class="col-md-3">
+              <a href="{{ url_for('codev_groupes') }}" class="btn btn-outline-primary w-100 mb-2">
+                <i class="fa fa-users me-2"></i>Gérer les Groupes
+              </a>
+            </div>
+            <div class="col-md-3">
+              <a href="{{ url_for('codev_seances') }}" class="btn btn-outline-primary w-100 mb-2">
+                <i class="fa fa-calendar me-2"></i>Planifier Séances
+              </a>
+            </div>
+            <div class="col-md-3">
+              <a href="{{ url_for('codev_statistiques') }}" class="btn btn-outline-primary w-100 mb-2">
+                <i class="fa fa-chart-bar me-2"></i>Statistiques
+              </a>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+<!--</div>-->
+{% endblock %}

@@ -1,0 +1,263 @@
+{% extends "base.html" %}
+
+{% block title %}Créer un Groupe de Codéveloppement - {{ super() }}{% endblock %}
+
+{% block head_extra %}
+<style>
+  .form-container {
+    width: 100%;
+    margin: 0 auto;
+    padding: 15px;
+  }
+  .container-fluid.p-4 {
+    width: 100%;
+    margin: 0 auto;
+    padding: 15px;
+    overflow: hidden;
+  }
+  
+  .form-card {
+    background: white;
+    border-radius: 8px;
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+    padding: 20px;
+  }
+  
+  .form-group {
+    margin-bottom: 15px;
+  }
+  
+  .form-group label {
+    display: block;
+    margin-bottom: 5px;
+    font-weight: 600;
+    color: var(--primary-color);
+    font-size: 13px;
+  }
+  
+  .form-group input,
+  .form-group select,
+  .form-group textarea {
+    width: 100%;
+    padding: 8px;
+    border: 1px solid #e1e5e9;
+    border-radius: 6px;
+    font-size: 13px;
+    transition: border-color 0.3s ease;
+  }
+  
+  .form-group input:focus,
+  .form-group select:focus,
+  .form-group textarea:focus {
+    outline: none;
+    border-color: var(--primary-color);
+  }
+  
+  .form-group textarea {
+    resize: vertical;
+    min-height: 100px;
+  }
+  
+  .form-row {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 15px;
+  }
+  
+  .btn-submit {
+    background: linear-gradient(135deg, var(--primary-color) 0%, #e6b800 100%);
+    color: white;
+    border: none;
+    padding: 10px 20px;
+    border-radius: 6px;
+    font-size: 13px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: transform 0.2s ease;
+  }
+  
+  .btn-submit:hover {
+    transform: translateY(-1px);
+  }
+  
+  .btn-cancel {
+    background: #6c757d;
+    color: white;
+    border: none;
+    padding: 10px 20px;
+    border-radius: 6px;
+    font-size: 13px;
+    font-weight: 600;
+    cursor: pointer;
+    text-decoration: none;
+    display: inline-block;
+    margin-right: 10px;
+  }
+  
+  .alert {
+    padding: 15px;
+    border-radius: 8px;
+    margin-bottom: 20px;
+  }
+  
+  .alert-error {
+    background-color: #f8d7da;
+    color: #721c24;
+    border: 1px solid #f5c6cb;
+  }
+  
+  .alert-success {
+    background-color: #d4edda;
+    color: #155724;
+    border: 1px solid #c3e6cb;
+  }
+  
+  .cycle-info {
+    background: linear-gradient(135deg, var(--primary-color) 0%, #e6b800 100%);
+    color: white;
+    border-radius: 10px;
+    padding: 15px;
+    margin-bottom: 20px;
+  }
+  
+  .cycle-info h3 {
+    margin: 0 0 5px 0;
+    font-size: 16px;
+  }
+  
+  .cycle-info p {
+    margin: 0;
+    opacity: 0.9;
+    font-size: 14px;
+  }
+</style>
+{% endblock %}
+
+{% block content %}
+<h2 class="text-center mb-0">
+  <i class="fas fa-users"></i> Créer un Groupe de Codéveloppement
+</h2>
+<div class="form-container" style="width: 100%">
+  <div class="form-card" style="width: 100%">
+    
+    
+    {% if cycle_id %}
+    {% for cycle in cycles %}
+    {% if cycle.id == cycle_id %}
+    <div class="cycle-info">
+      <h3>{{ cycle.nom }}</h3>
+      <p>{{ cycle.description if cycle.description else 'Cycle de codéveloppement' }}</p>
+    </div>
+    {% endif %}
+    {% endfor %}
+    {% endif %}
+    
+    {% if error %}
+    <div class="alert alert-error">
+      <i class="fas fa-exclamation-triangle"></i> {{ error }}
+    </div>
+    {% endif %}
+    
+    {% if success %}
+    <div class="alert alert-success">
+      <i class="fas fa-check-circle"></i> {{ success }}
+    </div>
+    {% endif %}
+    
+    <form method="post" action="{{ url_for('codev_groupes_creer') }}">
+      <div class="form-group">
+        <label for="cycle_id">Cycle *</label>
+        <select id="cycle_id" name="cycle_id" required>
+          <option value="">Sélectionner un cycle</option>
+          {% for cycle in cycles %}
+          <option value="{{ cycle.id }}" 
+                  {% if cycle_id and cycle_id|int == cycle.id %}selected{% endif %}>
+            {{ cycle.nom }} ({{ cycle.date_debut.strftime('%d/%m/%Y') }} - {{ cycle.date_fin.strftime('%d/%m/%Y') }})
+          </option>
+          {% endfor %}
+        </select>
+      </div>
+      
+      <div class="form-group">
+        <label for="groupe_id">Groupe de base *</label>
+        <select id="groupe_id" name="groupe_id" required>
+          <option value="">Sélectionner un groupe</option>
+          {% for groupe in groupes %}
+          <option value="{{ groupe.id }}">
+            {{ groupe.nom }} ({{ groupe.code if groupe.code else 'Groupe ' + groupe.id|string }})
+          </option>
+          {% endfor %}
+        </select>
+      </div>
+      
+      <div class="form-group">
+        <label for="nom_groupe">Nom du groupe *</label>
+        <input type="text" id="nom_groupe" name="nom_groupe" required 
+               placeholder="Ex: Groupe Alpha - Cycle 2024" 
+               value="{{ request.form.nom_groupe if request.form.nom_groupe else '' }}">
+      </div>
+      
+      <div class="form-row">
+        <div class="form-group">
+          <label for="animateur_id">Animateur</label>
+          <select id="animateur_id" name="animateur_id">
+            <option value="">Sélectionner un animateur (optionnel)</option>
+            {% for animateur in animateurs %}
+            <option value="{{ animateur.id }}" 
+                    {% if request.form.animateur_id and request.form.animateur_id|int == animateur.id %}selected{% endif %}>
+              {{ animateur.nom_complet }}
+            </option>
+            {% endfor %}
+          </select>
+        </div>
+        
+        <div class="form-group">
+          <label for="capacite_max">Capacité maximale</label>
+          <input type="number" id="capacite_max" name="capacite_max" 
+                 min="4" max="20" value="{{ request.form.capacite_max if request.form.capacite_max else '12' }}">
+        </div>
+      </div>
+      
+      <div class="text-center mt-4">
+        <a href="{{ url_for('codev_groupes', cycle_id=cycle_id) if cycle_id else url_for('codev_groupes') }}" class="btn-cancel">
+          <i class="fas fa-arrow-left"></i> Annuler
+        </a>
+        <button type="submit" class="btn-submit">
+          <i class="fas fa-save"></i> Créer le groupe
+        </button>
+      </div>
+    </form>
+  </div>
+</div>
+
+<script>
+// Validation côté client
+document.querySelector('form').addEventListener('submit', function(e) {
+  const capaciteMax = parseInt(document.getElementById('capacite_max').value);
+  if (capaciteMax < 4 || capaciteMax > 20) {
+    e.preventDefault();
+    alert('La capacité maximale doit être entre 4 et 20 membres.');
+    return false;
+  }
+  
+  const nomGroupe = document.getElementById('nom_groupe').value.trim();
+  if (nomGroupe.length < 3) {
+    e.preventDefault();
+    alert('Le nom du groupe doit contenir au moins 3 caractères.');
+    return false;
+  }
+});
+
+// Auto-remplissage du nom du groupe basé sur le groupe sélectionné
+document.getElementById('groupe_id').addEventListener('change', function() {
+  const groupeSelect = this;
+  const nomGroupeInput = document.getElementById('nom_groupe');
+  
+  if (groupeSelect.value && !nomGroupeInput.value) {
+    const groupeText = groupeSelect.options[groupeSelect.selectedIndex].text;
+    const groupeName = groupeText.split(' (')[0]; // Prendre seulement le nom avant les parenthèses
+    nomGroupeInput.value = groupeName + ' - Codéveloppement';
+  }
+});
+</script>
+{% endblock %}

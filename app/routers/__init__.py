@@ -32,6 +32,7 @@ from .candidat_email_update import router as candidat_email_router
 from .password_recovery import router as password_recovery_router
 from .seminaire import router as seminaire_router
 from .event import router as event_router
+from .codev import router as codev_router
 
 # Configuration des routers avec préfixes et tags
 router_configs = [
@@ -52,6 +53,7 @@ router_configs = [
     (password_recovery_router, "", ["password_recovery"]),
     (seminaire_router, "/seminaires", ["seminaires"]),
     (event_router, "/events", ["events"]),
+    (codev_router, "/codev", ["codev"]),
 
     
     # Gestion des données principales
@@ -93,5 +95,6 @@ __all__ = [
     "password_recovery_router",
     "seminaire_router",
     "event_router",
+    "codev_router",
     "router_configs",
 ]

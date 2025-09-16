@@ -1,0 +1,551 @@
+{% extends "base.html" %}
+
+{% block title %}Séances de Codéveloppement - {{ super() }}{% endblock %}
+
+{% block head_extra %}
+<style>
+  .seances-container {
+    max-width: 1200px;
+    margin: 0 auto;
+    padding: 15px;
+  }
+  .container-fluid.p-4 {
+    width: 100%;
+    margin: 0 auto;
+    padding: 15px;
+  }
+  
+  .seances-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 20px;
+    gap: 40px;
+  }
+  
+  .header-left {
+    display: flex;
+    align-items: center;
+    gap: 15px;
+  }
+  
+  .header-right {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+  }
+  
+  .btn-back {
+    background: #6c757d;
+    color: white;
+    border: none;
+    padding: 6px 12px;
+    border-radius: 6px;
+    font-size: 12px;
+    font-weight: 600;
+    cursor: pointer;
+    text-decoration: none;
+    display: inline-flex;
+    align-items: center;
+    gap: 5px;
+    transition: background-color 0.3s ease;
+  }
+  
+  .btn-back:hover {
+    background: #5a6268;
+    color: white;
+  }
+  
+  .btn-create {
+    background: linear-gradient(135deg, var(--primary-color) 0%, #e6b800 100%);
+    color: white;
+    border: none;
+    padding: 8px 16px;
+    border-radius: 6px;
+    font-size: 13px;
+    font-weight: 600;
+    cursor: pointer;
+    text-decoration: none;
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+  }
+  
+  .btn-create:hover {
+    transform: translateY(-1px);
+  }
+  
+  .filters-section {
+    background: white;
+    border-radius: 8px;
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+    padding: 15px;
+    margin-bottom: 20px;
+  }
+  
+  .filters-row {
+    display: grid;
+    grid-template-columns: 1fr 1fr 1fr auto;
+    gap: 15px;
+    align-items: end;
+  }
+  
+  .filter-group {
+    display: flex;
+    flex-direction: column;
+  }
+  
+  .filter-group label {
+    font-weight: 600;
+    color: var(--primary-color);
+    margin-bottom: 5px;
+    font-size: 13px;
+  }
+  
+  .filter-group select {
+    padding: 8px;
+    border: 1px solid #e1e5e9;
+    border-radius: 6px;
+    font-size: 13px;
+  }
+  
+  .seances-list {
+    display: flex;
+    flex-direction: column;
+    gap: 15px;
+  }
+  
+  .seance-card {
+    background: white;
+    border-radius: 8px;
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+    padding: 15px;
+    transition: transform 0.2s ease, box-shadow 0.2s ease;
+  }
+  
+  .seance-card:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 4px 8px rgba(0, 0, 0, 0.15);
+  }
+  
+  .seance-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
+    margin-bottom: 10px;
+  }
+  
+  .seance-title {
+    font-size: 16px;
+    font-weight: 600;
+    color: var(--primary-color);
+    margin: 0;
+  }
+  
+  .seance-number {
+    background: linear-gradient(135deg, var(--primary-color) 0%, #e6b800 100%);
+    color: white;
+    padding: 6px 12px;
+    border-radius: 20px;
+    font-size: 14px;
+    font-weight: 600;
+  }
+  
+  .seance-status {
+    padding: 4px 12px;
+    border-radius: 20px;
+    font-size: 12px;
+    font-weight: 600;
+    text-transform: uppercase;
+  }
+  
+  .status-planifiee {
+    background-color: #e3f2fd;
+    color: #1976d2;
+  }
+  
+  .status-en_cours {
+    background-color: #e8f5e8;
+    color: #2e7d32;
+  }
+  
+  .status-terminee {
+    background-color: #f3e5f5;
+    color: #7b1fa2;
+  }
+  
+  .status-annulee {
+    background-color: #ffebee;
+    color: #c62828;
+  }
+  
+  .seance-content {
+    display: grid;
+    grid-template-columns: 2fr 1fr;
+    gap: 30px;
+  }
+  
+  .seance-info {
+    display: flex;
+    flex-direction: column;
+    gap: 15px;
+  }
+  
+  .seance-info-item {
+    display: flex;
+    align-items: center;
+    font-size: 14px;
+    color: #666;
+  }
+  
+  .seance-info-item i {
+    width: 16px;
+    margin-right: 8px;
+    color: var(--primary-color);
+  }
+  
+  .seance-sidebar {
+    display: flex;
+    flex-direction: column;
+    gap: 20px;
+  }
+  
+  .presentations-section {
+    background: #f8f9fa;
+    border-radius: 10px;
+    padding: 20px;
+  }
+  
+  .presentations-title {
+    font-size: 16px;
+    font-weight: 600;
+    color: var(--primary-color);
+    margin-bottom: 15px;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
+  
+  .presentation-item {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 10px 0;
+    border-bottom: 1px solid #e0e0e0;
+  }
+  
+  .presentation-item:last-child {
+    border-bottom: none;
+  }
+  
+  .presentation-info {
+    font-size: 13px;
+    color: #666;
+  }
+  
+  .presentation-status {
+    padding: 2px 8px;
+    border-radius: 12px;
+    font-size: 11px;
+    font-weight: 600;
+    text-transform: uppercase;
+  }
+  
+  .status-en_attente {
+    background-color: #e3f2fd;
+    color: #1976d2;
+  }
+  
+  .status-en_cours {
+    background-color: #e8f5e8;
+    color: #2e7d32;
+  }
+  
+  .status-retour_fait {
+    background-color: #f3e5f5;
+    color: #7b1fa2;
+  }
+  
+  .seance-actions {
+    display: flex;
+    gap: 10px;
+    flex-wrap: wrap;
+  }
+  
+  .btn-action {
+    padding: 8px 16px;
+    border: none;
+    border-radius: 6px;
+    font-size: 12px;
+    font-weight: 600;
+    cursor: pointer;
+    text-decoration: none;
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+  }
+  
+  .btn-view {
+    background-color: #e3f2fd;
+    color: #1976d2;
+  }
+  
+  .btn-edit {
+    background-color: #fff3e0;
+    color: #f57c00;
+  }
+  
+  .btn-presentations {
+    background-color: #e8f5e8;
+    color: #2e7d32;
+  }
+  
+  .btn-start {
+    background-color: #28a745;
+    color: white;
+  }
+  
+  .empty-state {
+    text-align: center;
+    padding: 40px 20px;
+    color: #666;
+  }
+  
+  .empty-state i {
+    font-size: 36px;
+    margin-bottom: 15px;
+    color: #ccc;
+  }
+  
+  .empty-state .btn-create {
+    padding: 4px 12px;
+    font-size: 12px;
+  }
+  
+  .groupe-info {
+    background: linear-gradient(135deg, var(--primary-color) 0%, #e6b800 100%);
+    color: white;
+    border-radius: 6px;
+    padding: 10px;
+    margin-bottom: 15px;
+  }
+  
+  .groupe-info h3 {
+    margin: 0 0 3px 0;
+    font-size: 14px;
+  }
+  
+  .groupe-info p {
+    margin: 0;
+    opacity: 0.9;
+    font-size: 12px;
+  }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="seances-container" style="width: 100%;">
+  <div class="seances-header">
+    <div class="header-left">
+      <h1>
+        <i class="fas fa-calendar-alt"></i> Séances de Codéveloppement
+      </h1>
+    </div>
+    <div class="header-right">
+      <a href="{{ url_for('codev_dashboard') }}" class="btn-back">
+        <i class="fas fa-arrow-left"></i> Retour
+      </a>
+      <a href="{{ url_for('codev_seance_creer_form') }}" class="btn-create">
+        <i class="fas fa-plus"></i> Nouvelle séance
+      </a>
+    </div>
+  </div>
+  
+  {% if groupe_id %}
+  {% for groupe in groupes %}
+  {% if groupe.id == groupe_id %}
+  <div class="groupe-info">
+    <h3>{{ groupe.nom_groupe }}</h3>
+    <p>{{ groupe.cycle.nom if groupe.cycle else 'Groupe de codéveloppement' }}</p>
+  </div>
+  {% endif %}
+  {% endfor %}
+  {% endif %}
+  
+  <div class="filters-section">
+    <form method="get" class="filters-row">
+      <div class="filter-group">
+        <label for="groupe_id">Groupe</label>
+        <select id="groupe_id" name="groupe_id">
+          <option value="">Tous les groupes</option>
+          {% for groupe in groupes %}
+          <option value="{{ groupe.id }}" {% if groupe_id and groupe_id|int == groupe.id %}selected{% endif %}>
+            {{ groupe.nom_groupe }} ({{ groupe.cycle.nom if groupe.cycle else 'Sans cycle' }})
+          </option>
+          {% endfor %}
+        </select>
+      </div>
+      
+      <div class="filter-group">
+        <label for="statut">Statut</label>
+        <select id="statut" name="statut">
+          <option value="">Tous les statuts</option>
+          <option value="planifiee" {% if statut == 'planifiee' %}selected{% endif %}>Planifiée</option>
+          <option value="en_cours" {% if statut == 'en_cours' %}selected{% endif %}>En cours</option>
+          <option value="terminee" {% if statut == 'terminee' %}selected{% endif %}>Terminée</option>
+          <option value="annulee" {% if statut == 'annulee' %}selected{% endif %}>Annulée</option>
+        </select>
+      </div>
+      
+      <div class="filter-group">
+        <label for="periode">Période</label>
+        <select id="periode" name="periode">
+          <option value="">Toutes les périodes</option>
+          <option value="passees">Séances passées</option>
+          <option value="a_venir">Séances à venir</option>
+          <option value="aujourdhui">Aujourd'hui</option>
+        </select>
+      </div>
+      
+      <button type="submit" class="btn-create">
+        <i class="fas fa-filter"></i> Filtrer
+      </button>
+    </form>
+  </div>
+  
+  {% if seances %}
+  <div class="seances-list">
+    {% for seance in seances %}
+    <div class="seance-card">
+      <div class="seance-header">
+        <div>
+          <h3 class="seance-title">
+            {% if seance.groupe %}
+              Séance {{ seance.numero_seance }} - {{ seance.groupe.nom_groupe }}
+            {% else %}
+              Séance {{ seance.numero_seance }}
+            {% endif %}
+          </h3>
+        </div>
+        <div style="display: flex; gap: 10px; align-items: center;">
+          <span class="seance-number">Séance #{{ seance.numero_seance }}</span>
+          <span class="seance-status status-{{ seance.statut.value if seance.statut else 'planifiee' }}">
+            {{ seance.statut.value if seance.statut else 'planifiee' }}
+          </span>
+        </div>
+      </div>
+      
+      <div class="seance-content">
+        <div class="seance-info">
+          <div class="seance-info-item">
+            <i class="fas fa-calendar"></i>
+            <strong>Date :</strong> {{ seance.date_seance.strftime('%d/%m/%Y à %H:%M') }}
+          </div>
+          
+          {% if seance.lieu %}
+          <div class="seance-info-item">
+            <i class="fas fa-map-marker-alt"></i>
+            <strong>Lieu :</strong> {{ seance.lieu }}
+          </div>
+          {% endif %}
+          
+          <div class="seance-info-item">
+            <i class="fas fa-clock"></i>
+            <strong>Durée :</strong> {{ seance.duree_minutes }} minutes
+          </div>
+          
+          {% if seance.animateur %}
+          <div class="seance-info-item">
+            <i class="fas fa-user-tie"></i>
+            <strong>Animateur :</strong> {{ seance.animateur.nom_complet }}
+          </div>
+          {% endif %}
+          
+          {% if seance.objectifs %}
+          <div class="seance-info-item">
+            <i class="fas fa-bullseye"></i>
+            <strong>Objectifs :</strong> {{ seance.objectifs }}
+          </div>
+          {% endif %}
+          
+          {% if seance.notes_animateur %}
+          <div class="seance-info-item">
+            <i class="fas fa-sticky-note"></i>
+            <strong>Notes animateur :</strong> {{ seance.notes_animateur }}
+          </div>
+          {% endif %}
+        </div>
+        
+        <div class="seance-sidebar">
+          {% if seance.presentations %}
+          <div class="presentations-section">
+            <div class="presentations-title">
+              <i class="fas fa-presentation"></i>
+              Présentations ({{ seance.presentations|length }})
+            </div>
+            
+            {% for presentation in seance.presentations[:5] %}
+            <div class="presentation-item">
+              <div class="presentation-info">
+                {{ presentation.candidat.nom_complet if presentation.candidat else 'Candidat ' + presentation.id|string }}
+                <br>
+                <small>Ordre: {{ presentation.ordre_presentation }}</small>
+              </div>
+              <span class="presentation-status status-{{ presentation.statut.value if presentation.statut else 'en_attente' }}">
+                {{ presentation.statut.value if presentation.statut else 'en_attente' }}
+              </span>
+            </div>
+            {% endfor %}
+            
+            {% if seance.presentations|length > 5 %}
+            <div style="text-align: center; margin-top: 10px; color: #999; font-size: 12px;">
+              ... et {{ seance.presentations|length - 5 }} autres présentations
+            </div>
+            {% endif %}
+          </div>
+          {% endif %}
+          
+          <div class="seance-actions">
+            <a href="{{ url_for('codev_seance_detail', seance_id=seance.id) }}" class="btn-action btn-view">
+              <i class="fas fa-eye"></i> Voir détails
+            </a>
+            
+            {% if seance.presentations %}
+            <a href="{{ url_for('codev_seance_presentations', seance_id=seance.id) }}" class="btn-action btn-presentations">
+              <i class="fas fa-presentation"></i> Présentations
+            </a>
+            {% endif %}
+            
+            {% if seance.statut and seance.statut.value == 'planifiee' %}
+            <a href="{{ url_for('codev_seance_start', seance_id=seance.id) }}" class="btn-action btn-start">
+              <i class="fas fa-play"></i> Démarrer
+            </a>
+            {% endif %}
+            
+            <a href="{{ url_for('codev_seance_detail', seance_id=seance.id, edit=1) }}" class="btn-action btn-edit">
+              <i class="fas fa-edit"></i> Modifier
+            </a>
+          </div>
+        </div>
+      </div>
+    </div>
+    {% endfor %}
+  </div>
+  {% else %}
+  <div class="empty-state">
+    <i class="fas fa-calendar-alt"></i>
+    <h3>Aucune séance trouvée</h3>
+    <p>
+      {% if groupe_id %}
+        Aucune séance n'a encore été planifiée pour ce groupe.
+      {% else %}
+        Aucune séance de codéveloppement n'a encore été planifiée.
+      {% endif %}
+    </p>
+    <a href="{{ url_for('codev_seance_creer_form', groupe_id=groupe_id) if groupe_id else url_for('codev_seance_creer_form') }}" class="btn-create">
+      <i class="fas fa-plus" style="font-size: 20px;"></i> Planifier la première séance
+    </a>
+  </div>
+  {% endif %}
+</div>
+{% endblock %}

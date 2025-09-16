@@ -1,0 +1,266 @@
+{% extends "base.html" %}
+
+{% block title %}Cycles de Codéveloppement - {{ super() }}{% endblock %}
+
+{% block head_extra %}
+<style>
+  .cycles-container {
+    max-width: 1200px;
+    margin: 0 auto;
+    padding: 20px;
+  }
+  
+  .cycles-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 30px;
+  }
+  
+  .btn-create {
+    background: linear-gradient(135deg, var(--primary-color) 0%, #e6b800 100%);
+    color: white;
+    border: none;
+    padding: 12px 24px;
+    border-radius: 8px;
+    font-size: 14px;
+    font-weight: 600;
+    cursor: pointer;
+    text-decoration: none;
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+  }
+  
+  .btn-create:hover {
+    transform: translateY(-2px);
+  }
+  
+  .search-form {
+    margin-bottom: 20px;
+  }
+  
+  .search-input {
+    width: 300px;
+    padding: 10px;
+    border: 2px solid #e1e5e9;
+    border-radius: 8px;
+    font-size: 14px;
+  }
+  
+  .cycles-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(350px, 1fr));
+    gap: 20px;
+  }
+  
+  .cycle-card {
+    background: white;
+    border-radius: 15px;
+    box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+    padding: 25px;
+    transition: transform 0.3s ease, box-shadow 0.3s ease;
+  }
+  
+  .cycle-card:hover {
+    transform: translateY(-5px);
+    box-shadow: 0 8px 15px rgba(0, 0, 0, 0.15);
+  }
+  
+  .cycle-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
+    margin-bottom: 15px;
+  }
+  
+  .cycle-title {
+    font-size: 18px;
+    font-weight: 600;
+    color: var(--primary-color);
+    margin: 0;
+  }
+  
+  .cycle-status {
+    padding: 4px 12px;
+    border-radius: 20px;
+    font-size: 12px;
+    font-weight: 600;
+    text-transform: uppercase;
+  }
+  
+  .status-planifie {
+    background-color: #e3f2fd;
+    color: #1976d2;
+  }
+  
+  .status-en_cours {
+    background-color: #e8f5e8;
+    color: #2e7d32;
+  }
+  
+  .status-termine {
+    background-color: #f3e5f5;
+    color: #7b1fa2;
+  }
+  
+  .cycle-info {
+    margin-bottom: 15px;
+  }
+  
+  .cycle-info-item {
+    display: flex;
+    align-items: center;
+    margin-bottom: 8px;
+    font-size: 14px;
+    color: #666;
+  }
+  
+  .cycle-info-item i {
+    width: 16px;
+    margin-right: 8px;
+    color: var(--primary-color);
+  }
+  
+  .cycle-actions {
+    display: flex;
+    gap: 10px;
+  }
+  
+  .btn-action {
+    padding: 8px 16px;
+    border: none;
+    border-radius: 6px;
+    font-size: 12px;
+    font-weight: 600;
+    cursor: pointer;
+    text-decoration: none;
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+  }
+  
+  .btn-view {
+    background-color: #e3f2fd;
+    color: #1976d2;
+  }
+  
+  .btn-edit {
+    background-color: #fff3e0;
+    color: #f57c00;
+  }
+  
+  .empty-state {
+    text-align: center;
+    padding: 60px 20px;
+    color: #666;
+  }
+  
+  .empty-state i {
+    font-size: 48px;
+    margin-bottom: 20px;
+    color: #ccc;
+  }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="cycles-container">
+  <div class="cycles-header">
+    <h1>
+      <i class="fas fa-sync-alt"></i> Cycles de Codéveloppement
+    </h1>
+    <a href="/codev/cycles/creer" class="btn-create">
+      <i class="fas fa-plus"></i> Nouveau cycle
+    </a>
+  </div>
+  
+  <form method="get" class="search-form">
+    <input type="text" name="q" class="search-input" 
+           placeholder="Rechercher un cycle..." 
+           value="{{ q }}">
+    <button type="submit" class="btn-create">
+      <i class="fas fa-search"></i> Rechercher
+    </button>
+  </form>
+  
+  {% if cycles %}
+  <div class="cycles-grid">
+    {% for cycle in cycles %}
+    <div class="cycle-card">
+      <div class="cycle-header">
+        <h3 class="cycle-title">{{ cycle.nom }}</h3>
+        <span class="cycle-status status-{{ cycle.statut.value if cycle.statut else 'planifie' }}">
+          {{ cycle.statut.value if cycle.statut else 'planifie' }}
+        </span>
+      </div>
+      
+      <div class="cycle-info">
+        {% if cycle.description %}
+        <div class="cycle-info-item">
+          <i class="fas fa-info-circle"></i>
+          {{ cycle.description[:100] }}{% if cycle.description|length > 100 %}...{% endif %}
+        </div>
+        {% endif %}
+        
+        <div class="cycle-info-item">
+          <i class="fas fa-calendar-alt"></i>
+          {{ cycle.date_debut.strftime('%d/%m/%Y') }} - {{ cycle.date_fin.strftime('%d/%m/%Y') }}
+        </div>
+        
+        <div class="cycle-info-item">
+          <i class="fas fa-users"></i>
+          {{ cycle.nombre_seances_prevues }} séances prévues
+        </div>
+        
+        {% if cycle.programme %}
+        <div class="cycle-info-item">
+          <i class="fas fa-graduation-cap"></i>
+          {{ cycle.programme.nom }}
+        </div>
+        {% endif %}
+        
+        {% if cycle.promotion %}
+        <div class="cycle-info-item">
+          <i class="fas fa-tag"></i>
+          {{ cycle.promotion.nom }}
+        </div>
+        {% endif %}
+        
+        {% if cycle.animateur_principal %}
+        <div class="cycle-info-item">
+          <i class="fas fa-user-tie"></i>
+          {{ cycle.animateur_principal.nom_complet }}
+        </div>
+        {% endif %}
+      </div>
+      
+      <div class="cycle-actions">
+        <a href="/codev/cycles/{{ cycle.id }}" class="btn-action btn-view">
+          <i class="fas fa-eye"></i> Voir
+        </a>
+        <a href="/codev/cycles/{{ cycle.id }}?edit=1" class="btn-action btn-edit">
+          <i class="fas fa-edit"></i> Modifier
+        </a>
+      </div>
+    </div>
+    {% endfor %}
+  </div>
+  {% else %}
+  <div class="empty-state">
+    <i class="fas fa-sync-alt"></i>
+    <h3>Aucun cycle trouvé</h3>
+    <p>
+      {% if q %}
+        Aucun cycle ne correspond à votre recherche "{{ q }}".
+      {% else %}
+        Aucun cycle de codéveloppement n'a encore été créé.
+      {% endif %}
+    </p>
+    <a href="/codev/cycles/creer" class="btn-create">
+      <i class="fas fa-plus"></i> Créer le premier cycle
+    </a>
+  </div>
+  {% endif %}
+</div>
+{% endblock %}

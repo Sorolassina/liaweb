@@ -75,8 +75,8 @@
           <a href="{{ url_for('liste_events') }}" class="submenu-item {% if '/events' in request.url.path %}active{% endif %}">
             <div class="icon"><i class="fas fa-calendar-check"></i></div><div>Événements</div>
           </a>
-          <a href="" class="submenu-item {% if '/reports' in request.url.path %}active{% endif %}">
-            <div class="icon"><i class="fas fa-file-alt"></i></div><div>Codev</div>
+          <a href="{{url_for('codev_dashboard')}}" class="submenu-item {% if '/codev' in request.url.path %}active{% endif %}">
+            <div class="icon"><i class="fas fa-users-cog"></i></div><div>Codev</div>
           </a>
           <a href="" class="submenu-item {% if '/reports' in request.url.path %}active{% endif %}">
             <div class="icon"><i class="fas fa-file-alt"></i></div><div>Webinaire</div>

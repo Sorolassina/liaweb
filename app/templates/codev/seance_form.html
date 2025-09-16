@@ -1,0 +1,249 @@
+{% extends "base.html" %}
+
+{% block title %}Créer une Séance - {{ super() }}{% endblock %}
+
+{% block head_extra %}
+<style>
+  .form-container {
+    width: 100%;
+    margin: 0 auto;
+    padding: 15px;
+  }
+  
+  .container-fluid.p-4 {
+    width: 100%;
+    margin: 0 auto;
+    padding: 15px;
+    overflow: hidden;
+  }
+  
+  .form-card {
+    background: white;
+    border-radius: 8px;
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+    padding: 20px;
+  }
+  
+  .form-header {
+    text-align: center;
+    margin-bottom: 20px;
+  }
+  
+  .form-header h1 {
+    color: var(--primary-color);
+    margin-bottom: 8px;
+    font-size: 1.5rem;
+  }
+  
+  .form-group {
+    margin-bottom: 15px;
+  }
+  
+  .form-label {
+    font-weight: 600;
+    color: #333;
+    margin-bottom: 5px;
+    display: block;
+    font-size: 13px;
+  }
+  
+  .form-control {
+    width: 100%;
+    padding: 8px;
+    border: 1px solid #e0e0e0;
+    border-radius: 6px;
+    font-size: 13px;
+    transition: border-color 0.3s ease;
+  }
+  
+  .form-control:focus {
+    outline: none;
+    border-color: var(--primary-color);
+    box-shadow: 0 0 0 2px rgba(0, 123, 255, 0.1);
+  }
+  
+  .form-row {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 15px;
+  }
+  
+  .btn-submit {
+    background: linear-gradient(135deg, var(--primary-color) 0%, #e6b800 100%);
+    color: white;
+    border: none;
+    padding: 10px 20px;
+    border-radius: 6px;
+    font-size: 13px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: transform 0.2s ease;
+    width: 20%;
+  }
+  
+  .btn-submit:hover {
+    transform: translateY(-1px);
+  }
+  
+  .btn-cancel {
+    background: #6c757d;
+    color: white;
+    border: none;
+    padding: 10px 20px;
+    border-radius: 6px;
+    font-size: 13px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: background-color 0.3s ease;
+    width: 20%;
+    margin-top: 8px;
+  }
+  
+  .btn-cancel:hover {
+    background: #5a6268;
+  }
+  
+  .alert {
+    padding: 12px 15px;
+    border-radius: 8px;
+    margin-bottom: 20px;
+  }
+  
+  .alert-success {
+    background-color: #d4edda;
+    border: 1px solid #c3e6cb;
+    color: #155724;
+  }
+  
+  .alert-danger {
+    background-color: #f8d7da;
+    border: 1px solid #f5c6cb;
+    color: #721c24;
+  }
+  
+  @media (max-width: 768px) {
+    .form-row {
+      grid-template-columns: 1fr;
+    }
+    
+    .form-container {
+      padding: 10px;
+    }
+    
+    .form-card {
+      padding: 20px;
+    }
+  }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="form-container" style="width: 100%;">
+  <div class="form-card" style="width: 100%;">
+    <div class="form-header">
+      <h1>
+        <i class="fas fa-calendar-plus"></i> Créer une Séance
+      </h1>
+      <p class="text-muted">Planifier une nouvelle séance de codéveloppement</p>
+    </div>
+    
+    {% if request.query_params.get('error') %}
+    <div class="alert alert-danger">
+      <i class="fas fa-exclamation-triangle"></i>
+      {{ request.query_params.get('message', 'Une erreur est survenue') }}
+    </div>
+    {% endif %}
+    
+    <form method="post" action="{{ url_for('codev_seance_creer') }}">
+      <div class="form-row">
+        <div class="form-group">
+          <label class="form-label" for="groupe_id">
+            <i class="fas fa-users"></i> Groupe *
+          </label>
+          <select class="form-control" id="groupe_id" name="groupe_id" required>
+            <option value="">Sélectionner un groupe</option>
+            {% for groupe in groupes %}
+            <option value="{{ groupe.id }}">{{ groupe.nom_groupe }}</option>
+            {% endfor %}
+          </select>
+        </div>
+        
+        <div class="form-group">
+          <label class="form-label" for="numero_seance">
+            <i class="fas fa-hashtag"></i> Numéro de séance *
+          </label>
+          <input type="number" class="form-control" id="numero_seance" name="numero_seance" 
+                 min="1" max="20" required>
+        </div>
+      </div>
+      
+      <div class="form-row">
+        <div class="form-group">
+          <label class="form-label" for="date_seance">
+            <i class="fas fa-calendar-alt"></i> Date et heure *
+          </label>
+          <input type="datetime-local" class="form-control" id="date_seance" name="date_seance" required>
+        </div>
+        
+        <div class="form-group">
+          <label class="form-label" for="duree_minutes">
+            <i class="fas fa-clock"></i> Durée (minutes)
+          </label>
+          <input type="number" class="form-control" id="duree_minutes" name="duree_minutes" 
+                 value="180" min="60" max="480">
+        </div>
+      </div>
+      
+      <div class="form-row">
+        <div class="form-group">
+          <label class="form-label" for="lieu">
+            <i class="fas fa-map-marker-alt"></i> Lieu
+          </label>
+          <input type="text" class="form-control" id="lieu" name="lieu" 
+                 placeholder="Ex: Salle de réunion A, En ligne...">
+        </div>
+        
+        <div class="form-group">
+          <label class="form-label" for="animateur_id">
+            <i class="fas fa-user-tie"></i> Animateur
+          </label>
+          <select class="form-control" id="animateur_id" name="animateur_id">
+            <option value="">Sélectionner un animateur</option>
+            {% for animateur in animateurs %}
+            <option value="{{ animateur.id }}">{{ animateur.nom_complet }}</option>
+            {% endfor %}
+          </select>
+        </div>
+      </div>
+      
+      <div class="form-group">
+        <label class="form-label" for="objectifs">
+          <i class="fas fa-target"></i> Objectifs de la séance
+        </label>
+        <textarea class="form-control" id="objectifs" name="objectifs" rows="4" 
+                  placeholder="Décrivez les objectifs et le contenu de cette séance..."></textarea>
+      </div>
+      
+      <button type="submit" class="btn-submit">
+        <i class="fas fa-save"></i> Créer la Séance
+      </button>
+      
+      <a href="{{ url_for('codev_seances') }}" class="btn-cancel">
+        <i class="fas fa-times"></i> Annuler
+      </a>
+    </form>
+  </div>
+</div>
+
+<script>
+// Définir la date/heure par défaut (maintenant + 1 heure)
+document.addEventListener('DOMContentLoaded', function() {
+  const now = new Date();
+  now.setHours(now.getHours() + 1);
+  now.setMinutes(0); // Arrondir aux heures pleines
+  
+  const dateInput = document.getElementById('date_seance');
+  dateInput.value = now.toISOString().slice(0, 16);
+});
+</script>
+{% endblock %}
