@@ -291,36 +291,45 @@ class CodevService:
         }
     
     @staticmethod
-    def get_prochaines_seances(session: Session, limit: int = 10) -> List[SeanceCodev]:
+    def get_prochaines_seances(session: Session, limit: int = 10, programme_id: Optional[int] = None) -> List[SeanceCodev]:
         """Récupère les prochaines séances de codéveloppement"""
         
         maintenant = datetime.now(timezone.utc)
         
+        query = select(SeanceCodev).where(and_(
+            SeanceCodev.date_seance >= maintenant,
+            SeanceCodev.statut == StatutSeanceCodev.PLANIFIEE.value
+        ))
+        
+        if programme_id:
+            # Joindre avec CycleCodev pour filtrer par programme
+            query = query.join(CycleCodev, SeanceCodev.cycle_id == CycleCodev.id).where(CycleCodev.programme_id == programme_id)
+        
         seances = session.exec(
-            select(SeanceCodev)
-            .where(and_(
-                SeanceCodev.date_seance >= maintenant,
-                SeanceCodev.statut == StatutSeanceCodev.PLANIFIEE.value
-            ))
-            .order_by(SeanceCodev.date_seance)
-            .limit(limit)
+            query.order_by(SeanceCodev.date_seance).limit(limit)
         ).all()
         
         return seances
     
     @staticmethod
-    def get_engagements_en_cours(session: Session) -> List[PresentationCodev]:
+    def get_engagements_en_cours(session: Session, programme_id: Optional[int] = None) -> List[PresentationCodev]:
         """Récupère les engagements en cours de test"""
         
         maintenant = datetime.now(timezone.utc)
         
+        query = select(PresentationCodev).where(and_(
+            PresentationCodev.statut == StatutPresentation.TEST_EN_COURS.value,
+            PresentationCodev.delai_engagement >= maintenant.date()
+        ))
+        
+        if programme_id:
+            # Joindre avec SeanceCodev et CycleCodev pour filtrer par programme
+            query = query.join(SeanceCodev, PresentationCodev.seance_id == SeanceCodev.id).join(
+                CycleCodev, SeanceCodev.cycle_id == CycleCodev.id
+            ).where(CycleCodev.programme_id == programme_id)
+        
         presentations = session.exec(
-            select(PresentationCodev)
-            .where(and_(
-                PresentationCodev.statut == StatutPresentation.TEST_EN_COURS.value,
-                PresentationCodev.delai_engagement >= maintenant.date()
-            ))
-            .order_by(PresentationCodev.delai_engagement)
+            query.order_by(PresentationCodev.delai_engagement)
         ).all()
         
         return presentations

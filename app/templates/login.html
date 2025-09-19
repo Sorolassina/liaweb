@@ -129,6 +129,9 @@
             padding: 12px 16px;
             border-radius: 8px;
             margin-bottom: 16px;
+            transition: opacity 0.3s ease, transform 0.3s ease;
+            opacity: 1;
+            transform: translateY(0);
         }
 
         .message.show {
@@ -529,6 +532,28 @@
                 // Let the form submit naturally - no need to prevent default
                 // The server will handle the authentication and redirect
             });
+
+            // Auto-hide error message after 5 seconds
+            if (errorMessage) {
+                setTimeout(function() {
+                    errorMessage.style.opacity = '0';
+                    errorMessage.style.transform = 'translateY(-10px)';
+                    setTimeout(function() {
+                        errorMessage.style.display = 'none';
+                    }, 300);
+                }, 5000);
+            }
+
+            // Auto-hide success message after 5 seconds
+            if (successMessage) {
+                setTimeout(function() {
+                    successMessage.style.opacity = '0';
+                    successMessage.style.transform = 'translateY(-10px)';
+                    setTimeout(function() {
+                        successMessage.style.display = 'none';
+                    }, 300);
+                }, 5000);
+            }
         });
     </script>
 </body>

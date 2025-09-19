@@ -89,6 +89,17 @@
                 <div class="card-body">
                     <form method="GET" class="row g-3">
                         <div class="col-md-3">
+                            <label for="programme_id" class="form-label">Programme</label>
+                            <select class="form-select" id="programme_id" name="programme_id">
+                                <option value="">Tous les programmes</option>
+                                {% for programme in programmes %}
+                                <option value="{{ programme.id }}" {% if programme_id == programme.id %}selected{% endif %}>
+                                    {{ programme.nom }}
+                                </option>
+                                {% endfor %}
+                            </select>
+                        </div>
+                        <div class="col-md-3">
                             <label for="statut" class="form-label">Statut</label>
                             <select class="form-select" id="statut" name="statut">
                                 <option value="">Tous les statuts</option>

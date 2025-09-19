@@ -49,121 +49,58 @@
       <a href="/accueil" class="submenu-item {% if '/accueil' in request.url.path %}active{% endif %}">
         <div class="icon"><i class="fas fa-home"></i></div><div>ACCUEIL</div>
       </a>
-      <!-- ACD -->
-      <div id="acc-ext" class="accordion-menu">
-        <div class="accordion-header" onclick="toggleAccordion('acc-ext')">
-          <div class="icon"><i class="fas fa-graduation-cap"></i></div>
-          <div>ACD</div>
+      <!-- Programmes dynamiques -->
+      {% for programme in programmes() %}
+      <div id="acc-{{ programme.code|lower }}" class="accordion-menu">
+        <div class="accordion-header" onclick="toggleAccordion('acc-{{ programme.code|lower }}')">
+          <div class="icon">
+            {% if programme.code == 'ACD' %}
+              <i class="fas fa-graduation-cap"></i>
+            {% elif programme.code == 'ACI' %}
+              <i class="fas fa-building"></i>
+            {% elif programme.code == 'ACT' %}
+              <i class="fas fa-handshake"></i>
+            {% elif programme.code == 'ACR' %}
+              <i class="fas fa-seedling"></i>
+            {% else %}
+              <i class="fas fa-star"></i>
+            {% endif %}
+          </div>
+          <div>{{ programme.code }}</div>
           <div class="accordion-arrow"><i class="fas fa-chevron-down"></i></div>
         </div>
         <div class="accordion-content">
-          <a href="/ACD/dashboard" class="submenu-item {% if request.url.path == '/ACD/dashboard' %}active{% endif %}">
+          <a href="{{ url_for('programme_dashboard') }}?programme_id={{ programme.id }}" class="submenu-item {% if request.url.path == '/{{ programme.code }}/dashboard' %}active{% endif %}">
             <div class="icon"><i class="fas fa-tachometer-alt"></i></div><div>Tableau de bord</div>
           </a>
-          <a href="/ACD/preinscriptions/form?programme=ACD" class="submenu-item {% if '/ACD/preinscriptions' in request.url.path %}active{% endif %}">
+          <a href="{{ url_for('preinscriptions_form') }}?programme={{ programme.code }}" class="submenu-item {% if '/{{ programme.code }}/preinscriptions' in request.url.path %}active{% endif %}">
             <div class="icon"><i class="fas fa-building"></i></div><div>Préinscriptions</div>
           </a>
-          <a href="/ACD/inscriptions/form?programme=ACD" class="submenu-item {% if '/ACD/inscriptions' in request.url.path %}active{% endif %}">
+          <a href="{{ url_for('inscriptions_form') }}?programme={{ programme.code }}" class="submenu-item {% if '/{{ programme.code }}/inscriptions' in request.url.path %}active{% endif %}">
             <div class="icon"><i class="fas fa-project-diagram"></i></div><div>Inscriptions</div>
           </a>
-          <a href="/rendez-vous" class="submenu-item {% if '/rendez-vous' in request.url.path %}active{% endif %}">
+          <a href="{{ url_for('rendez_vous_list') }}?programme_id={{ programme.id }}" class="submenu-item {% if '/rendez-vous' in request.url.path %}active{% endif %}">
             <div class="icon"><i class="fas fa-calendar-alt"></i></div><div>Rendez-vous</div>
           </a>
-          <a href="{{ url_for('liste_seminaires') }}" class="submenu-item {% if '/seminaires' in request.url.path %}active{% endif %}">
+          <a href="{{ url_for('liste_seminaires') }}?programme_id={{ programme.id }}" class="submenu-item {% if '/seminaires' in request.url.path %}active{% endif %}">
             <div class="icon"><i class="fas fa-chalkboard-teacher"></i></div><div>Séminaires</div>
           </a>
-          <a href="{{ url_for('liste_events') }}" class="submenu-item {% if '/events' in request.url.path %}active{% endif %}">
+          <a href="{{ url_for('liste_events') }}?programme_id={{ programme.id }}" class="submenu-item {% if '/events' in request.url.path %}active{% endif %}">
             <div class="icon"><i class="fas fa-calendar-check"></i></div><div>Événements</div>
           </a>
-          <a href="{{url_for('codev_dashboard')}}" class="submenu-item {% if '/codev' in request.url.path %}active{% endif %}">
+          <a href="{{url_for('codev_dashboard')}}?programme_id={{ programme.id }}" class="submenu-item {% if '/codev' in request.url.path %}active{% endif %}">
             <div class="icon"><i class="fas fa-users-cog"></i></div><div>Codev</div>
           </a>
-          <a href="" class="submenu-item {% if '/reports' in request.url.path %}active{% endif %}">
-            <div class="icon"><i class="fas fa-file-alt"></i></div><div>Webinaire</div>
+          <a href="{{url_for('elearning_modules')}}?programme_id={{ programme.id }}" class="submenu-item {% if '/elearning' in request.url.path %}active{% endif %}">
+            <div class="icon"><i class="fas fa-laptop"></i></div><div>E-learning</div>
           </a>
-          <a href="" class="submenu-item {% if '/reports' in request.url.path %}active{% endif %}">
-            <div class="icon"><i class="fas fa-file-alt"></i></div><div>Suivi mensuel</div>
+          <a href="{{url_for('liste_candidats_valides')}}" class="submenu-item {% if '/suivi-mensuel' in request.url.path %}active{% endif %}">
+            <div class="icon"><i class="fas fa-chart-line"></i></div><div>Suivi mensuel</div>
           </a>
         </div>
       </div>
+      {% endfor %}
 
-      <!-- ACI -->
-      <div id="acc-int" class="accordion-menu">
-        <div class="accordion-header" onclick="toggleAccordion('acc-int')">
-          <div class="icon"><i class="fas fa-building"></i></div>
-          <div>ACI</div>
-          <div class="accordion-arrow"><i class="fas fa-chevron-down"></i></div>
-        </div>
-        <div class="accordion-content">
-          <a href="/dashboard" class="submenu-item {% if request.url.path == '/dashboard' %}active{% endif %}">
-            <div class="icon"><i class="fas fa-tachometer-alt"></i></div><div>Tableau de bord</div>
-          </a>
-          <a href="/clients" class="submenu-item {% if '/clients' in request.url.path %}active{% endif %}">
-            <div class="icon"><i class="fas fa-building"></i></div><div>Préinscriptions</div>
-          </a>
-          <a href="/engagements" class="submenu-item {% if '/engagements' in request.url.path %}active{% endif %}">
-            <div class="icon"><i class="fas fa-project-diagram"></i></div><div>Inscriptions</div>
-          </a>
-          <a href="/rendez-vous" class="submenu-item {% if '/rendez-vous' in request.url.path %}active{% endif %}">
-            <div class="icon"><i class="fas fa-calendar-alt"></i></div><div>Rendez-vous</div>
-          </a>
-          <a href="{{url_for('liste_seminaires')}}" class="submenu-item {% if '/seminaires' in request.url.path %}active{% endif %}">
-            <div class="icon"><i class="fas fa-chalkboard-teacher"></i></div><div>Séminaires</div>
-          </a>
-          <a href="" class="submenu-item {% if '/reports' in request.url.path %}active{% endif %}">
-            <div class="icon"><i class="fas fa-file-alt"></i></div><div>Codev</div>
-          </a>
-          <a href="" class="submenu-item {% if '/reports' in request.url.path %}active{% endif %}">
-            <div class="icon"><i class="fas fa-file-alt"></i></div><div>Webinaire</div>
-          </a>
-          <a href="" class="submenu-item {% if '/reports' in request.url.path %}active{% endif %}">
-            <div class="icon"><i class="fas fa-file-alt"></i></div><div>Suivi mensuel</div>
-          </a>
-        </div>
-      </div>
-
-      <!-- ACT -->
-      <div id="acc-af" class="accordion-menu">
-        <div class="accordion-header" onclick="toggleAccordion('acc-af')">
-          <div class="icon"><i class="fas fa-handshake"></i></div>
-          <div>ACT</div>
-          <div class="accordion-arrow"><i class="fas fa-chevron-down"></i></div>
-        </div>
-        <div class="accordion-content">
-          <a href="" class="submenu-item {% if '/analyse-financiere/ratios' in request.url.path %}active{% endif %}">
-            <div class="icon"><i class="fas fa-calculator"></i></div><div>Tableau de bord</div>
-          </a>
-          <a href="" class="submenu-item {% if '/analyse-financiere/indicateurs' in request.url.path %}active{% endif %}">
-            <div class="icon"><i class="fas fa-chart-area"></i></div><div>Candidats</div>
-          </a>
-          <a href="" class="submenu-item {% if '/business-plan' in request.url.path %}active{% endif %}">
-            <div class="icon"><i class="fas fa-balance-scale"></i></div><div>Rendez-vous</div>
-          </a>
-          <a href="" class="submenu-item {% if '/business-plan' in request.url.path %}active{% endif %}">
-            <div class="icon"><i class="fas fa-balance-scale"></i></div><div>Séminaires</div>
-          </a>
-          <a href="" class="submenu-item {% if '/business-plan' in request.url.path %}active{% endif %}">
-            <div class="icon"><i class="fas fa-balance-scale"></i></div><div>Webinaire</div>
-          </a>
-        </div>
-      </div>
-
-      <!-- Communication -->
-      <div id="acc-com" class="accordion-menu">
-        <div class="accordion-header" onclick="toggleAccordion('acc-com')">
-          <div class="icon"><i class="fas fa-bullhorn"></i></div>
-          <div>Communication</div>
-          <div class="accordion-arrow"><i class="fas fa-chevron-down"></i></div>
-        </div>
-        <div class="accordion-content">
-          <a href="/messages" class="submenu-item {% if '/messages' in request.url.path %}active{% endif %}">
-            <div class="icon"><i class="fas fa-comments"></i></div><div>Messages</div>
-          </a>
-          <a href="/knowledge-base" class="submenu-item {% if '/knowledge-base' in request.url.path %}active{% endif %}">
-            <div class="icon"><i class="fas fa-book"></i></div><div>Evénéments</div>
-          </a>
-        </div>
-      </div>
 
       <button class="more-button" onclick="toggleMoreMenu(event, this)">
         <i class="fas fa-ellipsis-h"></i><span>Plus</span>
@@ -175,21 +112,22 @@
       <a href="/accueil" class="icon-button" title="Accueil">
         <i class="fas fa-home"></i>
       </a>
-      <a href="{{ url_for('liste_seminaires') }}" class="icon-button" title="Séminaires">
-        <i class="fas fa-chalkboard-teacher"></i>
-      </a>
-      <button class="icon-button" onclick="toggleACDMenu(event, this)" title="ACD">
-        <i class="fas fa-graduation-cap"></i>
+      <!-- Programmes dynamiques -->
+      {% for programme in programmes() %}
+      <button class="icon-button" onclick="toggleProgrammeMenu(event, this, '{{ programme.code }}')" title="{{ programme.code }}">
+        {% if programme.code == 'ACD' %}
+          <i class="fas fa-graduation-cap"></i>
+        {% elif programme.code == 'ACI' %}
+          <i class="fas fa-building"></i>
+        {% elif programme.code == 'ACT' %}
+          <i class="fas fa-handshake"></i>
+        {% elif programme.code == 'ACR' %}
+          <i class="fas fa-seedling"></i>
+        {% else %}
+          <i class="fas fa-star"></i>
+        {% endif %}
       </button>
-      <button class="icon-button" onclick="toggleACIMenu(event, this)" title="ACI">
-        <i class="fas fa-building"></i>
-      </button>
-      <button class="icon-button" onclick="toggleACTMenu(event, this)" title="ACT">
-        <i class="fas fa-handshake"></i>
-      </button>
-      <button class="icon-button" onclick="toggleCommunicationMenu(event, this)" title="Communication">
-        <i class="fas fa-bullhorn"></i>
-      </button>
+      {% endfor %}
       <button class="icon-button" onclick="toggleMoreMenuCollapsed(event, this)" title="Plus">
         <i class="fas fa-ellipsis-h"></i>
       </button>
@@ -359,6 +297,7 @@
     function htmlMoreMenu(){
       return `
         <div class="more-menu-title">Plus d'options</div>
+        <a href="/messages"><i class="fas fa-bullhorn"></i><span>Communication</span></a>
         {% if utilisateur and (utilisateur.email == "sorolassina58@gmail.com" or utilisateur.role == "general_manager") %}
         <a href="/admin/"><i class="fas fa-cogs"></i><span>Administration</span></a>
         {% endif %}
@@ -366,40 +305,28 @@
         <a href="/knowledge-base"><i class="fas fa-book"></i><span>Knowledge Base</span></a>
       `;
     }
-    function htmlACDMenu(){
+    function htmlProgrammeMenu(programmeCode){
+      const baseUrl = `/${programmeCode}`;
+      // Mapping des codes de programme vers leurs IDs (à adapter selon votre base de données)
+      const programmeIds = {
+        'ACD': 1,
+        'ACI': 2, 
+        'ACT': 3,
+        'ACR': 4
+      };
+      const programmeId = programmeIds[programmeCode] || 1; // Par défaut ACD
+      
       return `
-        <div class="more-menu-title">ACD</div>
-        <a href="/ACD/dashboard"><i class="fas fa-tachometer-alt"></i><span>Tableau de bord</span></a>
-        <a href="/ACD/preinscriptions/form?programme=ACD"><i class="fas fa-building"></i><span>Préinscriptions</span></a>
-        <a href="/ACD/inscriptions/form?programme=ACD"><i class="fas fa-project-diagram"></i><span>Inscriptions</span></a>
-        <a href="/rendez-vous"><i class="fas fa-calendar-alt"></i><span>Rendez-vous</span></a>
-        <a href="#"><i class="fas fa-chart-line"></i><span>Séminaires</span></a>
-        <a href="#"><i class="fas fa-file-alt"></i><span>Codev</span></a>
-        <a href="#"><i class="fas fa-file-alt"></i><span>Webinaire</span></a>
-        <a href="#"><i class="fas fa-file-alt"></i><span>Suivi mensuel</span></a>
-      `;
-    }
-    function htmlACIMenu(){
-      return `
-        <div class="more-menu-title">ACI</div>
-        <a href="#"><i class="fas fa-tachometer-alt"></i><span>Tableau de bord</span></a>
-        <a href="#"><i class="fas fa-building"></i><span>Préinscriptions</span></a>
-        <a href="#"><i class="fas fa-project-diagram"></i><span>Inscriptions</span></a>
-        <a href="/rendez-vous"><i class="fas fa-calendar-alt"></i><span>Rendez-vous</span></a>
-        <a href="#"><i class="fas fa-chart-line"></i><span>Séminaires</span></a>
-        <a href="#"><i class="fas fa-file-alt"></i><span>Codev</span></a>
-        <a href="#"><i class="fas fa-file-alt"></i><span>Webinaire</span></a>
-        <a href="#"><i class="fas fa-file-alt"></i><span>Suivi mensuel</span></a>
-      `;
-    }
-    function htmlACTMenu(){
-      return `
-        <div class="more-menu-title">ACT</div>
-        <a href="#"><i class="fas fa-calculator"></i><span>Tableau de bord</span></a>
-        <a href="#"><i class="fas fa-chart-area"></i><span>Candidats</span></a>
-        <a href="#"><i class="fas fa-balance-scale"></i><span>Rendez-vous</span></a>
-        <a href="#"><i class="fas fa-balance-scale"></i><span>Séminaires</span></a>
-        <a href="#"><i class="fas fa-balance-scale"></i><span>Webinaire</span></a>
+        <div class="more-menu-title">${programmeCode}</div>
+        <a href="{{ url_for('programme_dashboard') }}?programme_id=${programmeId}"><i class="fas fa-tachometer-alt"></i><span>Tableau de bord</span></a>
+        <a href="{{ url_for('preinscriptions_form') }}?programme=${programmeCode}"><i class="fas fa-building"></i><span>Préinscriptions</span></a>
+        <a href="{{ url_for('inscriptions_form') }}?programme=${programmeCode}"><i class="fas fa-project-diagram"></i><span>Inscriptions</span></a>
+        <a href="{{ url_for('rendez_vous_list') }}?programme_id=${programmeId}"><i class="fas fa-calendar-alt"></i><span>Rendez-vous</span></a>
+        <a href="{{ url_for('liste_seminaires') }}?programme_id=${programmeId}"><i class="fas fa-chalkboard-teacher"></i><span>Séminaires</span></a>
+        <a href="{{ url_for('liste_events') }}?programme_id=${programmeId}"><i class="fas fa-calendar-check"></i><span>Événements</span></a>
+        <a href="{{url_for('codev_dashboard')}}?programme_id=${programmeId}"><i class="fas fa-users-cog"></i><span>Codev</span></a>
+        <a href="{{url_for('elearning_modules')}}?programme_id=${programmeId}"><i class="fas fa-laptop"></i><span>E-learning</span></a>
+        <a href="{{url_for('liste_candidats_valides')}}"><i class="fas fa-chart-line"></i><span>Suivi mensuel</span></a>
       `;
     }
     function htmlCommunication(){
@@ -411,6 +338,7 @@
     function htmlMoreCollapsed(){
       return `
         <div class="more-menu-title">Plus d'options</div>
+        <a href="/messages"><i class="fas fa-bullhorn"></i><span>Communication</span></a>
         {% if utilisateur and (utilisateur.email == "sorolassina58@gmail.com" or utilisateur.role == "general_manager") %}
         <a href="/admin"><i class="fas fa-cogs"></i><span>Administration</span></a>
         {% endif %}
@@ -419,10 +347,14 @@
     }
 
     function toggleMoreMenu(evt, btn){ if(evt) evt.stopPropagation(); toggleOverlay(htmlMoreMenu(), btn || evt.currentTarget); }
-    function toggleACDMenu(evt, btn){ if(evt) evt.stopPropagation(); toggleOverlay(htmlACDMenu(), btn || evt.currentTarget); }
-    function toggleACIMenu(evt, btn){ if(evt) evt.stopPropagation(); toggleOverlay(htmlACIMenu(), btn || evt.currentTarget); }
-    function toggleACTMenu(evt, btn){ if(evt) evt.stopPropagation(); toggleOverlay(htmlACTMenu(), btn || evt.currentTarget); }
-    function toggleCommunicationMenu(evt, btn){ if(evt) evt.stopPropagation(); toggleOverlay(htmlCommunication(), btn || evt.currentTarget); }
+    function toggleProgrammeMenu(evt, btn, programmeCode){ 
+      if(evt) evt.stopPropagation(); 
+      toggleOverlay(htmlProgrammeMenu(programmeCode), btn || evt.currentTarget); 
+    }
+    // Fonctions spécifiques maintenues pour compatibilité (dépréciées)
+    function toggleACDMenu(evt, btn){ toggleProgrammeMenu(evt, btn, 'ACD'); }
+    function toggleACIMenu(evt, btn){ toggleProgrammeMenu(evt, btn, 'ACI'); }
+    function toggleACTMenu(evt, btn){ toggleProgrammeMenu(evt, btn, 'ACT'); }
     function toggleMoreMenuCollapsed(evt, btn){ if(evt) evt.stopPropagation(); toggleOverlay(htmlMoreCollapsed(), btn || evt.currentTarget); }
     window.addEventListener('resize', closeAnyOverlay);
     window.addEventListener('scroll', closeAnyOverlay, { passive:true });

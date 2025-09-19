@@ -221,7 +221,7 @@
     <div class="p-2">
       {% for row in pre_rows %}
       {% set p, c, e, elig = row %}
-        <a class="text-decoration-none d-block mb-2" href="/ACD/inscriptions/form?programme={{ current_programme }}&pre_id={{ p.id }}&t={{ timestamp }}">
+        <a class="text-decoration-none d-block mb-2" href="{{ url_for('inscriptions_form') }}?programme={{ current_programme }}&pre_id={{ p.id }}&t={{ timestamp }}">
         <div class="pre-card {% if selected and selected.id==p.id %}active{% endif %}">
           <div class="avatar" style="background-image:url('{% if c.photo_profil %}/media/{{ c.photo_profil.replace('\\', '/') }}{% else %}/static/images/utilisateur.png{% endif %}')"></div>
           <div class="flex-grow-1">
@@ -616,10 +616,10 @@
                     </td>
                     <td>
                       <div class="btn-group btn-group-sm">
-                        <a href="/ACD/inscriptions/document/{{ doc.id }}/view" target="_blank" class="btn btn-outline-primary" title="Voir">
+                        <a href="{{ url_for('inscriptions_document_view', document_id=doc.id) }}" target="_blank" class="btn btn-outline-primary" title="Voir">
                           <i class="fas fa-eye"></i>
                         </a>
-                        <a href="/ACD/inscriptions/document/{{ doc.id }}/download" class="btn btn-outline-success" title="Télécharger">
+                        <a href="{{ url_for('inscriptions_document_download', document_id=doc.id) }}" class="btn btn-outline-success" title="Télécharger">
                           <i class="fas fa-download"></i>
                         </a>
                         <button type="button" class="btn btn-outline-danger" onclick="deleteDocument({{ doc.id }})" title="Supprimer">

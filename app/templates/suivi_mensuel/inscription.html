@@ -1,0 +1,449 @@
+{% extends "base.html" %}
+
+{% block title %}Suivis par Inscription{% endblock %}
+
+{% block content %}
+<style>
+    /* Tableau compact */
+    .table-compact {
+        font-size: 0.85rem;
+    }
+    
+    .table-compact th,
+    .table-compact td {
+        padding: 0.3rem 0.4rem;
+        vertical-align: middle;
+        line-height: 1.2;
+    }
+    
+    .table-compact .badge {
+        font-size: 0.7rem;
+        padding: 0.2rem 0.4rem;
+    }
+    
+    .table-compact .progress {
+        height: 1.2rem;
+        width: 50px;
+    }
+    
+    .table-compact .progress-bar {
+        font-size: 0.7rem;
+        line-height: 1.2rem;
+    }
+    
+    .table-compact .btn-sm {
+        padding: 0.2rem 0.4rem;
+        font-size: 0.75rem;
+    }
+    
+    .table-compact .btn-xs {
+        padding: 0.15rem 0.3rem;
+        font-size: 0.7rem;
+        line-height: 1.2;
+    }
+    
+    /* Réduire l'espacement des colonnes */
+    .table-compact th:nth-child(1) { width: 12%; } /* Mois */
+    .table-compact th:nth-child(2) { width: 10%; } /* CA */
+    .table-compact th:nth-child(3) { width: 8%; }  /* Employés */
+    .table-compact th:nth-child(4) { width: 10%; } /* Subventions */
+    .table-compact th:nth-child(5) { width: 8%; }  /* Dettes */
+    .table-compact th:nth-child(6) { width: 8%; }  /* Equity */
+    .table-compact th:nth-child(7) { width: 10%; } /* Statut */
+    .table-compact th:nth-child(8) { width: 8%; }  /* Score */
+    .table-compact th:nth-child(9) { width: 18%; } /* Actions */
+    
+    /* Zones de statistiques ultra-compactes */
+    .stats-compact .info-box {
+        padding: 0.4rem;
+        margin-bottom: 0.3rem;
+        border-radius: 0.3rem;
+    }
+    
+    .stats-compact .info-box-icon {
+        font-size: 1rem;
+        width: 1.8rem;
+        height: 1.8rem;
+        line-height: 1.8rem;
+        border-radius: 0.3rem;
+    }
+    
+    .stats-compact .info-box-text {
+        font-size: 0.7rem;
+        margin-bottom: 0.1rem;
+        font-weight: 500;
+    }
+    
+    .stats-compact .info-box-number {
+        font-size: 1rem;
+        font-weight: 600;
+    }
+    
+    /* Réduire encore plus l'espacement des colonnes de stats */
+    .stats-compact .col-md-2 {
+        padding-left: 0.2rem;
+        padding-right: 0.2rem;
+    }
+    
+    /* Réduire l'espacement général */
+    .stats-compact .row {
+        margin-bottom: 0.5rem;
+    }
+    
+    /* Cartes d'information compactes */
+    .info-compact .card {
+        margin-bottom: 0.5rem;
+    }
+    
+    .info-compact .card-header {
+        padding: 0.5rem 0.75rem;
+    }
+    
+    .info-compact .card-header h5 {
+        font-size: 0.9rem;
+        margin: 0;
+    }
+    
+    .info-compact .card-body {
+        padding: 0.5rem 0.75rem;
+    }
+    
+    .info-compact .card-body p {
+        margin-bottom: 0.3rem;
+        font-size: 0.85rem;
+    }
+    
+    .info-compact .row {
+        margin-bottom: 0.5rem;
+    }
+    
+    /* En-tête de carte compact */
+    .card-header-compact {
+        padding: 0.5rem 0.75rem;
+    }
+    
+    .card-header-compact h3 {
+        font-size: 1.1rem;
+        margin: 0;
+    }
+    
+    .card-header-compact .btn {
+        font-size: 0.8rem;
+        padding: 0.25rem 0.5rem;
+    }
+</style>
+
+<div class="container-fluid">
+    <div class="row">
+        <div class="col-12">
+            <div class="card">
+                <div class="card-header card-header-compact">
+                    <h3 class="card-title">
+                        <i class="fas fa-user me-2"></i>Suivis Mensuels - {{ candidat.prenom }} {{ candidat.nom }}
+                    </h3>
+                    <div class="card-tools">
+                        <a href="{{ url_for('liste_candidats_valides') }}" class="btn btn-secondary">
+                            <i class="fas fa-arrow-left me-1"></i>Retour à la liste
+                        </a>
+                        <a href="{{ url_for('creer_suivi_mensuel_form') }}?inscription_id={{ inscription.id }}" class="btn btn-primary">
+                            <i class="fas fa-plus me-1"></i>Nouveau Suivi
+                        </a>
+                    </div>
+                </div>
+                
+                <div class="card-body">
+                    <!-- Informations du candidat -->
+                    <div class="row mb-3 info-compact">
+                        <div class="col-md-6">
+                            <div class="card">
+                                <div class="card-header">
+                                    <h5 class="card-title">Informations Candidat</h5>
+                                </div>
+                                <div class="card-body">
+                                    <p><strong>Nom :</strong> {{ candidat.prenom }} {{ candidat.nom }}</p>
+                                    <p><strong>Email :</strong> {{ candidat.email }}</p>
+                                    <p><strong>Téléphone :</strong> {{ candidat.telephone or 'Non renseigné' }}</p>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="col-md-6">
+                            <div class="card">
+                                <div class="card-header">
+                                    <h5 class="card-title">Informations Programme</h5>
+                                </div>
+                                <div class="card-body">
+                                    <p><strong>Programme :</strong> {{ programme.nom }}</p>
+                                    <p><strong>Code :</strong> {{ programme.code }}</p>
+                                    <p><strong>Date d'inscription :</strong> {{ inscription.cree_le.strftime('%d/%m/%Y') }}</p>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Statistiques -->
+                    {% if stats %}
+                    <div class="row mb-2 stats-compact">
+                        <div class="col-md-2">
+                            <div class="info-box">
+                                <span class="info-box-icon bg-info"><i class="fas fa-chart-line"></i></span>
+                                <div class="info-box-content">
+                                    <span class="info-box-text">Suivis</span>
+                                    <span class="info-box-number">{{ stats.total_suivis }}</span>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="col-md-2">
+                            <div class="info-box">
+                                <span class="info-box-icon bg-success"><i class="fas fa-percentage"></i></span>
+                                <div class="info-box-content">
+                                    <span class="info-box-text">Score</span>
+                                    <span class="info-box-number">{{ stats.score_moyen or 'N/A' }}</span>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="col-md-2">
+                            <div class="info-box">
+                                <span class="info-box-icon bg-warning"><i class="fas fa-euro-sign"></i></span>
+                                <div class="info-box-content">
+                                    <span class="info-box-text">CA</span>
+                                    <span class="info-box-number">{{ stats.ca_moyen|format_number_french(0) if stats.ca_moyen else 'N/A' }}€</span>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="col-md-2">
+                            <div class="info-box">
+                                <span class="info-box-icon bg-primary"><i class="fas fa-users"></i></span>
+                                <div class="info-box-content">
+                                    <span class="info-box-text">Employés</span>
+                                    <span class="info-box-number">{{ stats.total_employes or 0 }}</span>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="col-md-2">
+                            <div class="info-box">
+                                <span class="info-box-icon bg-secondary"><i class="fas fa-hand-holding-usd"></i></span>
+                                <div class="info-box-content">
+                                    <span class="info-box-text">Subventions</span>
+                                    <span class="info-box-number">{{ stats.montant_subventions_total|format_number_french(0) if stats.montant_subventions_total else '0' }}€</span>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="col-md-2">
+                            <div class="info-box">
+                                <span class="info-box-icon bg-danger"><i class="fas fa-chart-pie"></i></span>
+                                <div class="info-box-content">
+                                    <span class="info-box-text">Equity</span>
+                                    <span class="info-box-number">{{ stats.montant_equity_total|format_number_french(0) if stats.montant_equity_total else '0' }}€</span>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    {% endif %}
+
+                    <!-- Liste des suivis -->
+                    <div class="table-responsive">
+                        <table class="table table-striped table-hover table-compact">
+                            <thead>
+                                <tr>
+                                    <th>Mois</th>
+                                    <th>CA</th>
+                                    <th>Employés</th>
+                                    <th>Subventions</th>
+                                    <th>Dettes</th>
+                                    <th>Equity</th>
+                                    <th>Statut Jur.</th>
+                                    <th>Score</th>
+                                    <th>Actions</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% for suivi in suivis %}
+                                <tr>
+                                    <td>
+                                        <strong>{{ suivi.mois.strftime('%m/%Y') }}</strong>
+                                        <!--<br>
+                                        <small class="text-muted">{{ suivi.cree_le.strftime('%d/%m/%Y') }}</small>-->
+                                    </td>
+                                    <td>
+                                        {% if suivi.chiffre_affaires_actuel %}
+                                            <span class="badge bg-success">{{ suivi.chiffre_affaires_actuel|format_number_french(0) }}€</span>
+                                        {% else %}
+                                            <span class="text-muted">-</span>
+                                        {% endif %}
+                                    </td>
+                                    <td>
+                                        {% set total_employes = (suivi.nb_stagiaires or 0) + (suivi.nb_alternants or 0) + (suivi.nb_cdd or 0) + (suivi.nb_cdi or 0) %}
+                                        {% if total_employes > 0 %}
+                                            <span class="badge bg-info">{{ total_employes }}</span>
+                                            <!--<br>
+                                            <small class="text-muted">
+                                                S:{{ suivi.nb_stagiaires or 0 }} A:{{ suivi.nb_alternants or 0 }} CDD:{{ suivi.nb_cdd or 0 }} CDI:{{ suivi.nb_cdi or 0 }}
+                                            </small>-->
+                                        {% else %}
+                                            <span class="text-muted">-</span>
+                                        {% endif %}
+                                    </td>
+                                    <td>
+                                        {% if suivi.montant_subventions_obtenues %}
+                                            <span class="badge bg-warning">{{ suivi.montant_subventions_obtenues|format_number_french(0) }}€</span>
+                                            {% if suivi.organismes_financeurs %}
+                                                <!--<br>
+                                                <small class="text-muted">{{ suivi.organismes_financeurs[:30] }}{% if suivi.organismes_financeurs|length > 30 %}...{% endif %}</small>
+                                                -->
+                                            {% endif %}
+                                        {% else %}
+                                            <span class="text-muted">-</span>
+                                        {% endif %}
+                                    </td>
+                                    <td>
+                                        {% set total_dettes = (suivi.montant_dettes_effectuees or 0) + (suivi.montant_dettes_encours or 0) + (suivi.montant_dettes_envisagees or 0) %}
+                                        {% if total_dettes > 0 %}
+                                            <span class="badge bg-danger">{{ total_dettes|format_number_french(0) }}€</span>
+                                            <!--<br>
+                                            <small class="text-muted">
+                                                Payées: {{ (suivi.montant_dettes_effectuees or 0)|format_number_french(0) }}€
+                                                En cours: {{ (suivi.montant_dettes_encours or 0)|format_number_french(0) }}€
+                                                Prévues: {{ (suivi.montant_dettes_envisagees or 0)|format_number_french(0) }}€
+                                            </small>-->
+                                        {% else %}
+                                            <span class="text-muted">-</span>
+                                        {% endif %}
+                                    </td>
+                                    <td>
+                                        {% set total_equity = (suivi.montant_equity_effectue or 0) + (suivi.montant_equity_encours or 0) %}
+                                        {% if total_equity > 0 %}
+                                            <span class="badge bg-primary">{{ total_equity|format_number_french(0) }}€</span>
+                                            <!--<br>
+                                            <small class="text-muted">
+                                                Réalisée: {{ (suivi.montant_equity_effectue or 0)|format_number_french(0) }}€
+                                                En cours: {{ (suivi.montant_equity_encours or 0)|format_number_french(0) }}€
+                                            </small>-->
+                                        {% else %}
+                                            <span class="text-muted">-</span>
+                                        {% endif %}
+                                    </td>
+                                    <td>
+                                        {% if suivi.statut_juridique %}
+                                            <span class="badge bg-secondary">{{ suivi.statut_juridique }}</span>
+                                        {% else %}
+                                            <span class="text-muted">-</span>
+                                        {% endif %}
+                                    </td>
+                                    <td>
+                                        {% if suivi.score_objectifs %}
+                                            <div class="progress" style="width: 60px;">
+                                                <div class="progress-bar {% if suivi.score_objectifs >= 80 %}bg-success{% elif suivi.score_objectifs >= 60 %}bg-warning{% else %}bg-danger{% endif %}" 
+                                                     style="width: {{ suivi.score_objectifs }}%">
+                                                    {{ suivi.score_objectifs|format_number_french(0) }}
+                                                </div>
+                                            </div>
+                                        {% else %}
+                                            <span class="text-muted">-</span>
+                                        {% endif %}
+                                    </td>
+                                    <td>
+                                        <div class="btn-group" role="group">
+                                            <a href="{{ url_for('modifier_suivi_mensuel_form', suivi_id=suivi.id) }}" 
+                                               class="btn btn-xs btn-outline-primary" title="Modifier">
+                                                <i class="fas fa-edit"></i>
+                                            </a>
+                                            <button class="btn btn-xs btn-outline-danger" 
+                                                    onclick="deleteSuivi({{ suivi.id }})" title="Supprimer">
+                                                <i class="fas fa-trash"></i>
+                                            </button>
+                                        </div>
+                                    </td>
+                                </tr>
+                                {% if suivi.commentaire %}
+                                <tr>
+                                    <td colspan="9" class="bg-light">
+                                        <small class="text-muted">
+                                            <i class="fas fa-comment me-1"></i>
+                                            <strong>Commentaire :</strong> {{ suivi.commentaire }}
+                                        </small>
+                                    </td>
+                                </tr>
+                                {% endif %}
+                                {% else %}
+                                <tr>
+                                    <td colspan="9" class="text-center text-muted">
+                                        <i class="fas fa-info-circle me-2"></i>
+                                        Aucun suivi mensuel trouvé pour ce candidat.
+                                        <br>
+                                        <a href="{{ url_for('creer_suivi_mensuel_form') }}?inscription_id={{ inscription.id }}" class="btn btn-primary btn-sm mt-2">
+                                            <i class="fas fa-plus me-1"></i>Créer le premier suivi
+                                        </a>
+                                    </td>
+                                </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+function deleteSuivi(suiviId) {
+    if (confirm('Êtes-vous sûr de vouloir supprimer ce suivi mensuel ?')) {
+        const form = document.createElement('form');
+        form.method = 'POST';
+        form.action = `{{ url_for('supprimer_suivi_mensuel', suivi_id=0) }}`.replace('0', suiviId);
+        document.body.appendChild(form);
+        form.submit();
+    }
+}
+</script>
+
+<style>
+.info-box {
+    display: flex;
+    align-items: center;
+    padding: 10px;
+    background: #f8f9fa;
+    border-radius: 5px;
+    margin-bottom: 10px;
+}
+
+.info-box-icon {
+    width: 50px;
+    height: 50px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border-radius: 50%;
+    margin-right: 15px;
+}
+
+.info-box-content {
+    flex: 1;
+}
+
+.info-box-text {
+    display: block;
+    font-size: 12px;
+    color: #6c757d;
+    margin-bottom: 2px;
+}
+
+.info-box-number {
+    display: block;
+    font-size: 18px;
+    font-weight: bold;
+    color: #495057;
+}
+
+.progress {
+    height: 20px;
+    border-radius: 10px;
+}
+
+.progress-bar {
+    border-radius: 10px;
+    font-size: 12px;
+    line-height: 20px;
+}
+</style>
+{% endblock %}

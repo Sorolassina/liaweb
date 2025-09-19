@@ -1,0 +1,299 @@
+{% extends "base.html" %}
+
+{% block title %}
+  {% if module %}
+    Modifier le module {{ module.titre }} - E-learning
+  {% else %}
+    Nouveau module - E-learning
+  {% endif %}
+{% endblock %}
+
+{% block head_extra %}
+<style>
+  .form-container {
+    width: 100%;
+    margin: 0 auto;
+    padding: 15px;
+  }
+  
+  .form-card {
+    background: white;
+    border-radius: 8px;
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+    padding: 20px;
+  }
+  
+  .form-header {
+    margin-bottom: 20px;
+    padding-bottom: 15px;
+    border-bottom: 1px solid #e9ecef;
+  }
+  
+  .form-header h1 {
+    font-size: 1.5rem;
+    margin: 0;
+    color: #333;
+  }
+  
+  .form-group {
+    margin-bottom: 15px;
+  }
+  
+  .form-label {
+    font-size: 13px;
+    margin-bottom: 5px;
+    font-weight: 600;
+    color: #555;
+  }
+  
+  .form-control {
+    padding: 8px;
+    border: 1px solid #e0e0e0;
+    border-radius: 6px;
+    font-size: 13px;
+    width: 100%;
+  }
+  
+  .form-control:focus {
+    border-color: var(--primary-color);
+    box-shadow: 0 0 0 0.2rem rgba(102, 126, 234, 0.25);
+  }
+  
+  .form-row {
+    display: flex;
+    gap: 15px;
+  }
+  
+  .form-row .form-group {
+    flex: 1;
+  }
+  
+  .btn-submit, .btn-cancel {
+    padding: 10px 20px;
+    border-radius: 6px;
+    font-size: 13px;
+    font-weight: 600;
+    cursor: pointer;
+    text-decoration: none;
+    display: inline-block;
+    text-align: center;
+    border: none;
+    transition: all 0.2s ease;
+  }
+  
+  .btn-submit {
+    background: linear-gradient(135deg, #667eea, #764ba2);
+    color: white;
+    width: 20%;
+  }
+  
+  .btn-submit:hover {
+    transform: translateY(-1px);
+    box-shadow: 0 4px 8px rgba(102, 126, 234, 0.3);
+  }
+  
+  .btn-cancel {
+    background: #6c757d;
+    color: white;
+    width: 20%;
+  }
+  
+  .btn-cancel:hover {
+    background: #5a6268;
+    transform: translateY(-1px);
+  }
+  
+  .form-actions {
+    display: flex;
+    gap: 10px;
+    justify-content: flex-end;
+    margin-top: 20px;
+    padding-top: 20px;
+    border-top: 1px solid #e9ecef;
+  }
+  
+  .form-text {
+    font-size: 0.8rem;
+    color: #6c757d;
+    margin-top: 0.25rem;
+  }
+  
+  .required {
+    color: #dc3545;
+  }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="form-container">
+  <div class="form-card">
+    <div class="form-header">
+      <div class="d-flex justify-content-between align-items-center">
+        <h1>
+          <i class="fas fa-{% if module %}edit{% else %}plus-circle{% endif %} me-2"></i>
+          {% if module %}
+            Modifier le module
+          {% else %}
+            Nouveau module
+          {% endif %}
+        </h1>
+        <a href="{{ url_for('elearning_modules') }}" class="btn btn-outline-secondary btn-sm">
+          <i class="fas fa-arrow-left me-2"></i>
+          Retour
+        </a>
+      </div>
+    </div>
+    
+    <form method="post" action="{% if module %}{{ url_for('elearning_module_edit', module_id=module.id) }}{% else %}{{ url_for('elearning_module_creer') }}{% endif %}">
+      <div class="form-row">
+        <div class="form-group">
+          <label for="titre" class="form-label">
+            Titre <span class="required">*</span>
+          </label>
+          <input 
+            type="text" 
+            id="titre" 
+            name="titre" 
+            class="form-control" 
+            value="{{ module.titre if module else '' }}"
+            required
+            placeholder="Ex: Introduction au marketing digital"
+          >
+        </div>
+        
+        <div class="form-group">
+          <label for="programme_id" class="form-label">
+            Programme <span class="required">*</span>
+          </label>
+          <select id="programme_id" name="programme_id" class="form-control" required>
+            <option value="">Sélectionner un programme</option>
+            {% for programme in programmes %}
+            <option value="{{ programme.id }}" 
+              {% if module and module.programme_id == programme.id %}selected{% endif %}>
+              {{ programme.nom }}
+            </option>
+            {% endfor %}
+          </select>
+        </div>
+      </div>
+      
+      <div class="form-group">
+        <label for="description" class="form-label">Description</label>
+        <textarea 
+          id="description" 
+          name="description" 
+          class="form-control" 
+          rows="3"
+          placeholder="Description du module..."
+        >{{ module.description if module else '' }}</textarea>
+      </div>
+      
+      <div class="form-row">
+        <div class="form-group">
+          <label for="duree_totale_minutes" class="form-label">Durée estimée (minutes)</label>
+          <input 
+            type="number" 
+            id="duree_totale_minutes" 
+            name="duree_totale_minutes" 
+            class="form-control" 
+            value="{{ module.duree_totale_minutes if module else '' }}"
+            min="1"
+            placeholder="Ex: 120"
+          >
+          <div class="form-text">Durée totale estimée pour compléter le module</div>
+        </div>
+        
+        <div class="form-group">
+          <label for="difficulte" class="form-label">Difficulté</label>
+          <select id="difficulte" name="difficulte" class="form-control">
+            <option value="facile" {% if module and module.difficulte == 'facile' %}selected{% endif %}>Facile</option>
+            <option value="moyen" {% if module and module.difficulte == 'moyen' %}selected{% endif %}>Moyen</option>
+            <option value="difficile" {% if module and module.difficulte == 'difficile' %}selected{% endif %}>Difficile</option>
+          </select>
+        </div>
+        
+        <div class="form-group">
+          <label for="statut" class="form-label">Statut</label>
+          <select id="statut" name="statut" class="form-control">
+            <option value="brouillon" {% if module and module.statut == 'brouillon' %}selected{% endif %}>Brouillon</option>
+            <option value="actif" {% if module and module.statut == 'actif' %}selected{% endif %}>Actif</option>
+            <option value="archive" {% if module and module.statut == 'archive' %}selected{% endif %}>Archivé</option>
+          </select>
+        </div>
+      </div>
+      
+      <div class="form-group">
+        <label for="objectifs" class="form-label">Objectifs pédagogiques</label>
+        <textarea 
+          id="objectifs" 
+          name="objectifs" 
+          class="form-control" 
+          rows="3"
+          placeholder="Quels sont les objectifs d'apprentissage de ce module ?"
+        >{{ module.objectifs if module else '' }}</textarea>
+        <div class="form-text">Décrivez ce que les apprenants devront savoir ou savoir-faire à la fin du module</div>
+      </div>
+      
+      <div class="form-group">
+        <label for="prerequis" class="form-label">Prérequis</label>
+        <textarea 
+          id="prerequis" 
+          name="prerequis" 
+          class="form-control" 
+          rows="2"
+          placeholder="Quels sont les prérequis nécessaires pour suivre ce module ?"
+        >{{ module.prerequis if module else '' }}</textarea>
+        <div class="form-text">Décrivez les connaissances ou compétences requises avant de commencer</div>
+      </div>
+      
+      <div class="form-row">
+        <div class="form-group">
+          <label for="ordre" class="form-label">Ordre d'affichage</label>
+          <input 
+            type="number" 
+            id="ordre" 
+            name="ordre" 
+            class="form-control" 
+            value="{{ module.ordre if module else 0 }}"
+            min="0"
+            placeholder="0"
+          >
+          <div class="form-text">Ordre d'affichage dans la liste des modules (0 = premier)</div>
+        </div>
+        
+        <div class="form-group">
+          <label class="form-label">Options</label>
+          <div class="form-check">
+            <input 
+              class="form-check-input" 
+              type="checkbox" 
+              id="actif" 
+              name="actif" 
+              value="true"
+              {% if not module or module.actif %}checked{% endif %}
+            >
+            <label class="form-check-label" for="actif">
+              Module actif
+            </label>
+          </div>
+        </div>
+      </div>
+      
+      <div class="form-actions">
+        <a href="{{ url_for('elearning_modules') }}" class="btn-cancel">
+          <i class="fas fa-times me-1"></i>
+          Annuler
+        </a>
+        <button type="submit" class="btn-submit">
+          <i class="fas fa-save me-1"></i>
+          {% if module %}
+            Mettre à jour
+          {% else %}
+            Créer le module
+          {% endif %}
+        </button>
+      </div>
+    </form>
+  </div>
+</div>
+{% endblock %}

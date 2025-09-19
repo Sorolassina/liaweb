@@ -1,0 +1,273 @@
+{% extends "base.html" %}
+
+{% block title %}
+    {% if edit_mode %}Modifier le suivi mensuel{% else %}Nouveau suivi mensuel{% endif %}
+{% endblock %}
+
+{% block content %}
+<div class="container-fluid">
+    <div class="row">
+        <div class="col-12">
+            <div class="card">
+                <div class="card-header">
+                    <h3 class="card-title">
+                        <i class="fas fa-chart-line me-2"></i>
+                        {% if edit_mode %}Modifier le suivi mensuel{% else %}Nouveau suivi mensuel{% endif %}
+                    </h3>
+                    <div class="card-tools">
+                        <a href="{{ url_for('suivis_par_inscription', inscription_id=inscription_id) }}" class="btn btn-secondary">
+                            <i class="fas fa-arrow-left me-1"></i>Retour aux suivis
+                        </a>
+                    </div>
+                </div>
+                
+                <div class="card-body">
+                    {% if error_message %}
+                        <div class="alert alert-danger">
+                            <i class="fas fa-exclamation-triangle me-2"></i>{{ error_message }}
+                        </div>
+                    {% endif %}
+
+                    <form method="post" action="{% if edit_mode %}{{ url_for('modifier_suivi_mensuel', suivi_id=suivi.id) }}{% else %}{{ url_for('creer_suivi_mensuel') }}{% endif %}">
+                        <!-- Note explicative -->
+                        <div class="alert alert-info mb-4">
+                            <i class="fas fa-info-circle me-2"></i>
+                            <strong>Instructions :</strong> Les champs marqués avec <span class="text-muted">(entier)</span> attendent des nombres entiers (ex: 0, 1, 5). 
+                            Les champs marqués avec <span class="text-muted">(décimal)</span> acceptent les montants avec décimales (ex: 0.00, 1500.50). 
+                            Les champs vides seront traités comme 0.
+                        </div>
+                        
+                        <div class="row">
+                            <!-- Informations générales -->
+                            <div class="col-md-6">
+                                <div class="card">
+                                    <div class="card-header">
+                                        <h5 class="card-title">
+                                            <i class="fas fa-info-circle me-2"></i>Informations générales
+                                        </h5>
+                                    </div>
+                                    <div class="card-body">
+                                        <div class="mb-3">
+                                            <label for="inscription_id" class="form-label">Candidat *</label>
+                                            <select class="form-select" id="inscription_id" name="inscription_id" required>
+                                                <option value="">Sélectionner un candidat</option>
+                                                {% for inscription in inscriptions %}
+                                                <option value="{{ inscription.id }}" 
+                                                    {% if initial_data.inscription_id == inscription.id %}selected{% endif %}>
+                                                    {{ inscription.nom_complet }} - {{ inscription.programme_nom }}
+                                                </option>
+                                                {% endfor %}
+                                            </select>
+                                        </div>
+
+                                        <div class="mb-3">
+                                            <label for="mois" class="form-label">Mois *</label>
+                                            <input type="month" class="form-control" id="mois" name="mois" 
+                                                   value="{{ initial_data.mois }}" required>
+                                        </div>
+
+                                        <div class="mb-3">
+                                            <label for="score_objectifs" class="form-label">Score global (0-100)</label>
+                                            <input type="number" class="form-control" id="score_objectifs" name="score_objectifs" 
+                                                   min="0" max="100" step="0.1" value="{{ initial_data.score_objectifs or '' }}">
+                                        </div>
+
+                                        <div class="mb-3">
+                                            <label for="commentaire" class="form-label">Commentaires</label>
+                                            <textarea class="form-control" id="commentaire" name="commentaire" rows="3">{{ initial_data.commentaire or '' }}</textarea>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <!-- Métriques business -->
+                            <div class="col-md-6">
+                                <div class="card">
+                                    <div class="card-header">
+                                        <h5 class="card-title">
+                                            <i class="fas fa-chart-bar me-2"></i>Métriques business
+                                        </h5>
+                                    </div>
+                                    <div class="card-body">
+                                        <div class="mb-3">
+                                            <label for="chiffre_affaires_actuel" class="form-label">Chiffre d'affaires actuel (€) <span class="text-muted">(décimal)</span></label>
+                                            <input type="number" class="form-control" id="chiffre_affaires_actuel" name="chiffre_affaires_actuel" 
+                                                   min="0" step="0.01" placeholder="0.00" value="{{ initial_data.chiffre_affaires_actuel or '' }}">
+                                        </div>
+
+                                        <div class="row">
+                                            <div class="col-md-6">
+                                                <div class="mb-3">
+                                                    <label for="nb_stagiaires" class="form-label">Nombre de stagiaires <span class="text-muted">(entier)</span></label>
+                                                    <input type="number" class="form-control" id="nb_stagiaires" name="nb_stagiaires" 
+                                                           min="0" step="1" placeholder="0" value="{{ initial_data.nb_stagiaires or 0 }}">
+                                                </div>
+                                            </div>
+                                            <div class="col-md-6">
+                                                <div class="mb-3">
+                                                    <label for="nb_alternants" class="form-label">Nombre d'alternants <span class="text-muted">(entier)</span></label>
+                                                    <input type="number" class="form-control" id="nb_alternants" name="nb_alternants" 
+                                                           min="0" step="1" placeholder="0" value="{{ initial_data.nb_alternants or 0 }}">
+                                                </div>
+                                            </div>
+                                        </div>
+
+                                        <div class="row">
+                                            <div class="col-md-6">
+                                                <div class="mb-3">
+                                                    <label for="nb_cdd" class="form-label">Nombre de CDD <span class="text-muted">(entier)</span></label>
+                                                    <input type="number" class="form-control" id="nb_cdd" name="nb_cdd" 
+                                                           min="0" step="1" placeholder="0" value="{{ initial_data.nb_cdd or 0 }}">
+                                                </div>
+                                            </div>
+                                            <div class="col-md-6">
+                                                <div class="mb-3">
+                                                    <label for="nb_cdi" class="form-label">Nombre de CDI <span class="text-muted">(entier)</span></label>
+                                                    <input type="number" class="form-control" id="nb_cdi" name="nb_cdi" 
+                                                           min="0" step="1" placeholder="0" value="{{ initial_data.nb_cdi or 0 }}">
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="row mt-3">
+                            <!-- Financements -->
+                            <div class="col-md-6">
+                                <div class="card">
+                                    <div class="card-header">
+                                        <h5 class="card-title">
+                                            <i class="fas fa-euro-sign me-2"></i>Financements
+                                        </h5>
+                                    </div>
+                                    <div class="card-body">
+                                        <div class="mb-3">
+                                            <label for="montant_subventions_obtenues" class="form-label">Montant des subventions obtenues (€) <span class="text-muted">(décimal)</span></label>
+                                            <input type="number" class="form-control" id="montant_subventions_obtenues" name="montant_subventions_obtenues" 
+                                                   min="0" step="0.01" placeholder="0.00" value="{{ initial_data.montant_subventions_obtenues or '' }}">
+                                        </div>
+
+                                        <div class="mb-3">
+                                            <label for="organismes_financeurs" class="form-label">Organismes financeurs</label>
+                                            <textarea class="form-control" id="organismes_financeurs" name="organismes_financeurs" rows="2">{{ initial_data.organismes_financeurs or '' }}</textarea>
+                                        </div>
+
+                                        <div class="mb-3">
+                                            <label for="montant_equity_effectue" class="form-label">Montant levée de fonds equity réalisée (€) <span class="text-muted">(décimal)</span></label>
+                                            <input type="number" class="form-control" id="montant_equity_effectue" name="montant_equity_effectue" 
+                                                   min="0" step="0.01" placeholder="0.00" value="{{ initial_data.montant_equity_effectue or '' }}">
+                                        </div>
+
+                                        <div class="mb-3">
+                                            <label for="montant_equity_encours" class="form-label">Montant levée de fonds equity en cours (€) <span class="text-muted">(décimal)</span></label>
+                                            <input type="number" class="form-control" id="montant_equity_encours" name="montant_equity_encours" 
+                                                   min="0" step="0.01" placeholder="0.00" value="{{ initial_data.montant_equity_encours or '' }}">
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <!-- Dettes et informations entreprise -->
+                            <div class="col-md-6">
+                                <div class="card">
+                                    <div class="card-header">
+                                        <h5 class="card-title">
+                                            <i class="fas fa-building me-2"></i>Dettes & Entreprise
+                                        </h5>
+                                    </div>
+                                    <div class="card-body">
+                                        <div class="mb-3">
+                                            <label for="montant_dettes_effectuees" class="form-label">Montant des dettes payées (€) <span class="text-muted">(décimal)</span></label>
+                                            <input type="number" class="form-control" id="montant_dettes_effectuees" name="montant_dettes_effectuees" 
+                                                   min="0" step="0.01" placeholder="0.00" value="{{ initial_data.montant_dettes_effectuees or '' }}">
+                                        </div>
+
+                                        <div class="mb-3">
+                                            <label for="montant_dettes_encours" class="form-label">Montant des dettes en cours (€) <span class="text-muted">(décimal)</span></label>
+                                            <input type="number" class="form-control" id="montant_dettes_encours" name="montant_dettes_encours" 
+                                                   min="0" step="0.01" placeholder="0.00" value="{{ initial_data.montant_dettes_encours or '' }}">
+                                        </div>
+
+                                        <div class="mb-3">
+                                            <label for="montant_dettes_envisagees" class="form-label">Montant des dettes prévues (€) <span class="text-muted">(décimal)</span></label>
+                                            <input type="number" class="form-control" id="montant_dettes_envisagees" name="montant_dettes_envisagees" 
+                                                   min="0" step="0.01" placeholder="0.00" value="{{ initial_data.montant_dettes_envisagees or '' }}">
+                                        </div>
+
+                                        <div class="mb-3">
+                                            <label for="statut_juridique" class="form-label">Statut juridique</label>
+                                            <select class="form-select" id="statut_juridique" name="statut_juridique">
+                                                <option value="">Sélectionner</option>
+                                                <option value="SAS" {% if initial_data.statut_juridique == 'SAS' %}selected{% endif %}>SAS</option>
+                                                <option value="SARL" {% if initial_data.statut_juridique == 'SARL' %}selected{% endif %}>SARL</option>
+                                                <option value="EURL" {% if initial_data.statut_juridique == 'EURL' %}selected{% endif %}>EURL</option>
+                                                <option value="SASU" {% if initial_data.statut_juridique == 'SASU' %}selected{% endif %}>SASU</option>
+                                                <option value="Auto-entrepreneur" {% if initial_data.statut_juridique == 'Auto-entrepreneur' %}selected{% endif %}>Auto-entrepreneur</option>
+                                                <option value="Autre" {% if initial_data.statut_juridique == 'Autre' %}selected{% endif %}>Autre</option>
+                                            </select>
+                                        </div>
+
+                                        <div class="mb-3">
+                                            <label for="adresse_entreprise" class="form-label">Adresse entreprise</label>
+                                            <textarea class="form-control" id="adresse_entreprise" name="adresse_entreprise" rows="2">{{ initial_data.adresse_entreprise or '' }}</textarea>
+                                        </div>
+
+                                        <div class="mb-3">
+                                            <label for="situation_socioprofessionnelle" class="form-label">Situation socioprofessionnelle</label>
+                                            <select class="form-select" id="situation_socioprofessionnelle" name="situation_socioprofessionnelle">
+                                                <option value="">Sélectionner</option>
+                                                <option value="Dirigeant d'entreprise" {% if initial_data.situation_socioprofessionnelle == 'Dirigeant d\'entreprise' %}selected{% endif %}>Dirigeant d'entreprise</option>
+                                                <option value="Salarié" {% if initial_data.situation_socioprofessionnelle == 'Salarié' %}selected{% endif %}>Salarié</option>
+                                                <option value="Demandeur d'emploi" {% if initial_data.situation_socioprofessionnelle == 'Demandeur d\'emploi' %}selected{% endif %}>Demandeur d'emploi</option>
+                                                <option value="Étudiant" {% if initial_data.situation_socioprofessionnelle == 'Étudiant' %}selected{% endif %}>Étudiant</option>
+                                                <option value="Retraité" {% if initial_data.situation_socioprofessionnelle == 'Retraité' %}selected{% endif %}>Retraité</option>
+                                                <option value="Autre" {% if initial_data.situation_socioprofessionnelle == 'Autre' %}selected{% endif %}>Autre</option>
+                                            </select>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="row mt-3">
+                            <div class="col-12">
+                                <div class="d-flex justify-content-between">
+                                    <a href="{{ url_for('suivis_par_inscription', inscription_id=inscription_id) }}" class="btn btn-secondary">
+                                        <i class="fas fa-times me-1"></i>Annuler
+                                    </a>
+                                    <button type="submit" class="btn btn-primary">
+                                        <i class="fas fa-save me-1"></i>
+                                        {% if edit_mode %}Mettre à jour{% else %}Créer le suivi{% endif %}
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+// Calcul automatique du total des employés
+function updateTotalEmployes() {
+    const stagiaires = parseInt(document.getElementById('nb_stagiaires').value) || 0;
+    const alternants = parseInt(document.getElementById('nb_alternants').value) || 0;
+    const cdd = parseInt(document.getElementById('nb_cdd').value) || 0;
+    const cdi = parseInt(document.getElementById('nb_cdi').value) || 0;
+    const total = stagiaires + alternants + cdd + cdi;
+    
+    // Afficher le total quelque part si nécessaire
+    console.log('Total employés:', total);
+}
+
+// Ajouter les event listeners
+document.getElementById('nb_stagiaires').addEventListener('input', updateTotalEmployes);
+document.getElementById('nb_alternants').addEventListener('input', updateTotalEmployes);
+document.getElementById('nb_cdd').addEventListener('input', updateTotalEmployes);
+document.getElementById('nb_cdi').addEventListener('input', updateTotalEmployes);
+</script>
+{% endblock %}

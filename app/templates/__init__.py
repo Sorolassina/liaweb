@@ -169,6 +169,26 @@ def get_current_programme_title(request):
     else:
         return "LIA-Gestion coaching"
 
+def format_number_french(value, decimals=2):
+    """Formate un nombre avec la virgule comme séparateur décimal (format français)"""
+    if value is None:
+        return "0,00"
+    
+    try:
+        # Convertir en float si nécessaire
+        if isinstance(value, str):
+            value = float(value)
+        
+        # Formater avec le nombre de décimales demandé
+        if decimals == 0:
+            formatted = f"{int(value):,}".replace(",", " ")
+        else:
+            formatted = f"{value:,.{decimals}f}".replace(",", " ").replace(".", ",")
+        
+        return formatted
+    except (ValueError, TypeError):
+        return "0,00"
+
 # Ajout des filtres au template
 templates.env.filters["format_date"] = format_date
 templates.env.filters["format_datetime"] = format_datetime
@@ -176,6 +196,25 @@ templates.env.filters["statut_color"] = statut_color
 templates.env.filters["action_color"] = action_color
 templates.env.filters["format_candidat_name"] = format_candidat_name
 templates.env.filters["format_email"] = format_email
+templates.env.filters["format_number_french"] = format_number_french
+
+def get_programmes():
+    """Récupère tous les programmes actifs pour le menu (lazy loading)"""
+    try:
+        from app_lia_web.core.database import get_session
+        from app_lia_web.app.models.base import Programme
+        from sqlmodel import Session, select
+        
+        # Créer une session temporaire
+        session = next(get_session())
+        try:
+            programmes = session.exec(select(Programme).where(Programme.actif == True).order_by(Programme.code)).all()
+            return programmes
+        finally:
+            session.close()
+    except Exception as e:
+        print(f"Erreur lors de la récupération des programmes: {e}")
+        return []
 
 # Configuration globale des templates
 if settings:
@@ -191,4 +230,5 @@ if settings:
         format_candidat_name=format_candidat_name,
         format_email=format_email,
         get_current_programme_title=get_current_programme_title,
+        programmes=get_programmes,  # ← Fonction au lieu de résultat
     )

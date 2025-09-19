@@ -85,6 +85,51 @@
         </div>
     </div>
 
+    <!-- Filtres -->
+    <div class="row mb-3">
+        <div class="col-12">
+            <div class="card">
+                <div class="card-body py-2">
+                    <form method="GET" class="row g-2">
+                        <div class="col-md-3">
+                            <label for="programme_id" class="form-label">Programme</label>
+                            <select class="form-select form-select-sm" id="programme_id" name="programme_id">
+                                <option value="">Tous les programmes</option>
+                                {% for programme in programmes %}
+                                <option value="{{ programme.id }}" {% if programme_id == programme.id %}selected{% endif %}>
+                                    {{ programme.nom }}
+                                </option>
+                                {% endfor %}
+                            </select>
+                        </div>
+                        <div class="col-md-3">
+                            <label for="statut" class="form-label">Statut</label>
+                            <select class="form-select form-select-sm" id="statut" name="statut">
+                                <option value="">Tous les statuts</option>
+                                <option value="planifie">Planifié</option>
+                                <option value="en_cours">En Cours</option>
+                                <option value="termine">Terminé</option>
+                                <option value="annule">Annulé</option>
+                            </select>
+                        </div>
+                        <div class="col-md-3">
+                            <label for="date_from" class="form-label">Date de début</label>
+                            <input type="date" class="form-control form-control-sm" id="date_from" name="date_from">
+                        </div>
+                        <div class="col-md-3 d-flex align-items-end">
+                            <button type="submit" class="btn btn-primary btn-sm me-2">
+                                <i class="fas fa-filter"></i> Filtrer
+                            </button>
+                            <a href="{{ url_for('liste_events') }}" class="btn btn-outline-secondary btn-sm">
+                                <i class="fas fa-times"></i> Effacer
+                            </a>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+
     <!-- Liste des événements -->
     <div class="row" style="height: 400px;">
         <div class="col-12" style="height: 100%;">

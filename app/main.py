@@ -256,6 +256,37 @@ from fastapi.exceptions import HTTPException
 for router, prefix, tags in router_configs:
     app.include_router(router, prefix=prefix, tags=tags)
 
+# Route globale pour servir les fichiers uploadés (photos de profil, documents, etc.)
+@app.get("/media/{file_path:path}")
+async def serve_uploaded_file(file_path: str):
+    """Servir les fichiers uploadés (route globale)"""
+    from pathlib import Path
+    from fastapi.responses import FileResponse
+    from fastapi import HTTPException
+    import mimetypes
+    
+    # Construire le chemin complet vers le fichier
+    full_path = Path(settings.UPLOAD_DIR) / file_path
+    
+    if not full_path.exists():
+        print(f"🔍 Fichier non trouvé: {full_path}")
+        raise HTTPException(status_code=404, detail="Fichier non trouvé")
+    
+    # Vérifier que le fichier est dans le dossier uploads (sécurité)
+    try:
+        full_path.resolve().relative_to(Path(settings.UPLOAD_DIR).resolve())
+    except ValueError:
+        raise HTTPException(status_code=403, detail="Accès non autorisé")
+    
+    # Déterminer le type MIME
+    mime_type, _ = mimetypes.guess_type(str(full_path))
+    
+    return FileResponse(
+        path=str(full_path),
+        media_type=mime_type or "application/octet-stream",
+        filename=full_path.name
+    )
+
 # ----------------------------
 # Lifecycle
 # ----------------------------
@@ -400,7 +431,7 @@ async def logout(request: Request):
 
 
 
-@app.post("/login", response_class=RedirectResponse)
+@app.post("/login")
 async def login(
     request: Request,
     form_data: OAuth2PasswordRequestForm = Depends(),
@@ -409,15 +440,35 @@ async def login(
     """Authentification utilisateur"""
     user = authenticate_user(session, form_data.username, form_data.password)
     if not user:
-        raise HTTPException(
-            status_code=status.HTTP_401_UNAUTHORIZED,
-            detail="Email ou mot de passe incorrect",
-            headers={"WWW-Authenticate": "Bearer"},
+        # Retourner le template avec le message d'erreur au lieu de lever une HTTPException
+        return templates.TemplateResponse(
+            "login.html",
+            {
+                "request": request,
+                "app_name": settings.APP_NAME,
+                "version": settings.VERSION,
+                "author": settings.AUTHOR,
+                "current_year": datetime.now().year,
+                "settings": settings,
+                "error": "Email ou mot de passe incorrect"
+            }
         )
     
     access_token = create_access_token(
         data={"sub": user.email, "role": user.role}
     )
+
+    # Récupérer le paramètre "remember" depuis les données du formulaire
+    form_data_dict = await request.form()
+    remember_me = form_data_dict.get("remember-me") == "on"
+    
+    # Ajuster la durée du cookie selon "Se souvenir de moi"
+    if remember_me:
+        # Cookie persistant pour 30 jours
+        max_age = 30 * 24 * 60 * 60  # 30 jours en secondes
+    else:
+        # Cookie de session (expire à la fermeture du navigateur)
+        max_age = settings.ACCESS_TOKEN_EXPIRE_MINUTES * 60
 
     # Créer la réponse de redirection avec le cookie
     response = RedirectResponse(url="/accueil", status_code=302)
@@ -425,7 +476,7 @@ async def login(
         key="access_token",
         value=f"Bearer {access_token}",
         httponly=True,
-        max_age=settings.ACCESS_TOKEN_EXPIRE_MINUTES * 60,  # Aligner avec la durée du token JWT
+        max_age=max_age,
         secure=False,  # True en production avec HTTPS
         samesite="lax"
     )

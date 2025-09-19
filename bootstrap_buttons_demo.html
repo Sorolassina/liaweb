@@ -1,0 +1,490 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Démo Boutons Bootstrap</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" rel="stylesheet">
+    <style>
+        body {
+            background-color: #f8f9fa;
+            padding: 2rem 0;
+        }
+        .demo-section {
+            background: white;
+            border-radius: 8px;
+            padding: 2rem;
+            margin-bottom: 2rem;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        }
+        .demo-section h3 {
+            color: #495057;
+            margin-bottom: 1.5rem;
+            border-bottom: 2px solid #e9ecef;
+            padding-bottom: 0.5rem;
+        }
+        .button-group {
+            margin-bottom: 1.5rem;
+        }
+        .button-group h5 {
+            color: #6c757d;
+            margin-bottom: 1rem;
+            font-size: 1rem;
+        }
+        .btn {
+            margin: 0.25rem;
+        }
+        .code-block {
+            background: #f8f9fa;
+            border: 1px solid #e9ecef;
+            border-radius: 8px;
+            padding: 20px;
+            margin-top: 15px;
+            font-family: 'Courier New', monospace;
+            font-size: 14px;
+            line-height: 1.8;
+            color: #495057;
+            white-space: pre-wrap;
+            overflow-x: auto;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="row">
+            <div class="col-12">
+                <h1 class="text-center mb-4">
+                    <i class="fas fa-palette me-2"></i>
+                    Démo Complète des Boutons Bootstrap
+                </h1>
+                
+                <!-- Boutons de base -->
+                <div class="demo-section">
+                    <h3><i class="fas fa-circle me-2"></i>Boutons de Base</h3>
+                    
+                    <div class="button-group">
+                        <h5>Variantes de couleur</h5>
+                        <button type="button" class="btn btn-primary">Primary</button>
+                        <button type="button" class="btn btn-secondary">Secondary</button>
+                        <button type="button" class="btn btn-success">Success</button>
+                        <button type="button" class="btn btn-danger">Danger</button>
+                        <button type="button" class="btn btn-warning">Warning</button>
+                        <button type="button" class="btn btn-info">Info</button>
+                        <button type="button" class="btn btn-light">Light</button>
+                        <button type="button" class="btn btn-dark">Dark</button>
+                        <button type="button" class="btn btn-link">Link</button>
+                    </div>
+                    
+                    <div class="code-block">
+&lt;!-- Boutons de base --&gt;
+&lt;button type="button" class="btn btn-primary"&gt;Primary&lt;/button&gt;
+&lt;button type="button" class="btn btn-secondary"&gt;Secondary&lt;/button&gt;
+&lt;button type="button" class="btn btn-success"&gt;Success&lt;/button&gt;
+&lt;button type="button" class="btn btn-danger"&gt;Danger&lt;/button&gt;
+&lt;button type="button" class="btn btn-warning"&gt;Warning&lt;/button&gt;
+&lt;button type="button" class="btn btn-info"&gt;Info&lt;/button&gt;
+&lt;button type="button" class="btn btn-light"&gt;Light&lt;/button&gt;
+&lt;button type="button" class="btn btn-dark"&gt;Dark&lt;/button&gt;
+&lt;button type="button" class="btn btn-link"&gt;Link&lt;/button&gt;
+                    </div>
+                </div>
+
+                <!-- Boutons Outline -->
+                <div class="demo-section">
+                    <h3><i class="fas fa-circle-notch me-2"></i>Boutons Outline</h3>
+                    
+                    <div class="button-group">
+                        <h5>Variantes outline</h5>
+                        <button type="button" class="btn btn-outline-primary">Primary</button>
+                        <button type="button" class="btn btn-outline-secondary">Secondary</button>
+                        <button type="button" class="btn btn-outline-success">Success</button>
+                        <button type="button" class="btn btn-outline-danger">Danger</button>
+                        <button type="button" class="btn btn-outline-warning">Warning</button>
+                        <button type="button" class="btn btn-outline-info">Info</button>
+                        <button type="button" class="btn btn-outline-light">Light</button>
+                        <button type="button" class="btn btn-outline-dark">Dark</button>
+                    </div>
+                    
+                    <div class="code-block">
+&lt;!-- Boutons outline --&gt;
+&lt;button type="button" class="btn btn-outline-primary"&gt;Primary&lt;/button&gt;
+&lt;button type="button" class="btn btn-outline-secondary"&gt;Secondary&lt;/button&gt;
+&lt;button type="button" class="btn btn-outline-success"&gt;Success&lt;/button&gt;
+&lt;button type="button" class="btn btn-outline-danger"&gt;Danger&lt;/button&gt;
+&lt;button type="button" class="btn btn-outline-warning"&gt;Warning&lt;/button&gt;
+&lt;button type="button" class="btn btn-outline-info"&gt;Info&lt;/button&gt;
+&lt;button type="button" class="btn btn-outline-light"&gt;Light&lt;/button&gt;
+&lt;button type="button" class="btn btn-outline-dark"&gt;Dark&lt;/button&gt;
+                    </div>
+                </div>
+
+                <!-- Tailles de boutons -->
+                <div class="demo-section">
+                    <h3><i class="fas fa-expand-arrows-alt me-2"></i>Tailles de Boutons</h3>
+                    
+                    <div class="button-group">
+                        <h5>Différentes tailles</h5>
+                        <button type="button" class="btn btn-primary btn-sm">Small</button>
+                        <button type="button" class="btn btn-primary">Normal</button>
+                        <button type="button" class="btn btn-primary btn-lg">Large</button>
+                    </div>
+                    
+                    <div class="button-group">
+                        <h5>Avec icônes</h5>
+                        <button type="button" class="btn btn-success btn-sm">
+                            <i class="fas fa-plus me-1"></i>Small
+                        </button>
+                        <button type="button" class="btn btn-success">
+                            <i class="fas fa-plus me-1"></i>Normal
+                        </button>
+                        <button type="button" class="btn btn-success btn-lg">
+                            <i class="fas fa-plus me-1"></i>Large
+                        </button>
+                    </div>
+                    
+                    <div class="code-block">
+&lt;!-- Tailles de boutons --&gt;
+&lt;button type="button" class="btn btn-primary btn-sm"&gt;Small&lt;/button&gt;
+&lt;button type="button" class="btn btn-primary"&gt;Normal&lt;/button&gt;
+&lt;button type="button" class="btn btn-primary btn-lg"&gt;Large&lt;/button&gt;
+                    </div>
+                </div>
+
+                <!-- Boutons avec icônes -->
+                <div class="demo-section">
+                    <h3><i class="fas fa-icons me-2"></i>Boutons avec Icônes</h3>
+                    
+                    <div class="button-group">
+                        <h5>Actions communes</h5>
+                        <button type="button" class="btn btn-primary">
+                            <i class="fas fa-plus me-1"></i>Ajouter
+                        </button>
+                        <button type="button" class="btn btn-success">
+                            <i class="fas fa-save me-1"></i>Sauvegarder
+                        </button>
+                        <button type="button" class="btn btn-warning">
+                            <i class="fas fa-edit me-1"></i>Modifier
+                        </button>
+                        <button type="button" class="btn btn-danger">
+                            <i class="fas fa-trash me-1"></i>Supprimer
+                        </button>
+                        <button type="button" class="btn btn-info">
+                            <i class="fas fa-eye me-1"></i>Voir
+                        </button>
+                    </div>
+                    
+                    <div class="button-group">
+                        <h5>Navigation</h5>
+                        <button type="button" class="btn btn-secondary">
+                            <i class="fas fa-arrow-left me-1"></i>Retour
+                        </button>
+                        <button type="button" class="btn btn-secondary">
+                            <i class="fas fa-arrow-right me-1"></i>Suivant
+                        </button>
+                        <button type="button" class="btn btn-outline-primary">
+                            <i class="fas fa-home me-1"></i>Accueil
+                        </button>
+                        <button type="button" class="btn btn-outline-secondary">
+                            <i class="fas fa-search me-1"></i>Rechercher
+                        </button>
+                    </div>
+                    
+                    <div class="code-block">
+&lt;!-- Actions communes --&gt;
+&lt;button type="button" class="btn btn-primary"&gt;
+    &lt;i class="fas fa-plus me-1"&gt;&lt;/i&gt;Ajouter
+&lt;/button&gt;
+&lt;button type="button" class="btn btn-success"&gt;
+    &lt;i class="fas fa-save me-1"&gt;&lt;/i&gt;Sauvegarder
+&lt;/button&gt;
+&lt;button type="button" class="btn btn-warning"&gt;
+    &lt;i class="fas fa-edit me-1"&gt;&lt;/i&gt;Modifier
+&lt;/button&gt;
+&lt;button type="button" class="btn btn-danger"&gt;
+    &lt;i class="fas fa-trash me-1"&gt;&lt;/i&gt;Supprimer
+&lt;/button&gt;
+&lt;button type="button" class="btn btn-info"&gt;
+    &lt;i class="fas fa-eye me-1"&gt;&lt;/i&gt;Voir
+&lt;/button&gt;
+
+&lt;!-- Navigation --&gt;
+&lt;button type="button" class="btn btn-secondary"&gt;
+    &lt;i class="fas fa-arrow-left me-1"&gt;&lt;/i&gt;Retour
+&lt;/button&gt;
+&lt;button type="button" class="btn btn-secondary"&gt;
+    &lt;i class="fas fa-arrow-right me-1"&gt;&lt;/i&gt;Suivant
+&lt;/button&gt;
+&lt;button type="button" class="btn btn-outline-primary"&gt;
+    &lt;i class="fas fa-home me-1"&gt;&lt;/i&gt;Accueil
+&lt;/button&gt;
+&lt;button type="button" class="btn btn-outline-secondary"&gt;
+    &lt;i class="fas fa-search me-1"&gt;&lt;/i&gt;Rechercher
+&lt;/button&gt;
+                    </div>
+                </div>
+
+                <!-- États des boutons -->
+                <div class="demo-section">
+                    <h3><i class="fas fa-toggle-on me-2"></i>États des Boutons</h3>
+                    
+                    <div class="button-group">
+                        <h5>États actifs/inactifs</h5>
+                        <button type="button" class="btn btn-primary active">Actif</button>
+                        <button type="button" class="btn btn-primary" disabled>Désactivé</button>
+                        <button type="button" class="btn btn-outline-primary active">Outline Actif</button>
+                        <button type="button" class="btn btn-outline-primary" disabled>Outline Désactivé</button>
+                    </div>
+                    
+                    <div class="button-group">
+                        <h5>Boutons de formulaire</h5>
+                        <button type="submit" class="btn btn-success">Submit</button>
+                        <button type="reset" class="btn btn-warning">Reset</button>
+                        <button type="button" class="btn btn-secondary">Button</button>
+                    </div>
+                    
+                    <div class="code-block">
+&lt;!-- États actifs/inactifs --&gt;
+&lt;button type="button" class="btn btn-primary active"&gt;Actif&lt;/button&gt;
+&lt;button type="button" class="btn btn-primary" disabled&gt;Désactivé&lt;/button&gt;
+&lt;button type="button" class="btn btn-outline-primary active"&gt;Outline Actif&lt;/button&gt;
+&lt;button type="button" class="btn btn-outline-primary" disabled&gt;Outline Désactivé&lt;/button&gt;
+
+&lt;!-- Boutons de formulaire --&gt;
+&lt;button type="submit" class="btn btn-success"&gt;Submit&lt;/button&gt;
+&lt;button type="reset" class="btn btn-warning"&gt;Reset&lt;/button&gt;
+&lt;button type="button" class="btn btn-secondary"&gt;Button&lt;/button&gt;
+                    </div>
+                </div>
+
+                <!-- Boutons en groupes -->
+                <div class="demo-section">
+                    <h3><i class="fas fa-layer-group me-2"></i>Groupes de Boutons</h3>
+                    
+                    <div class="button-group">
+                        <h5>Groupe horizontal</h5>
+                        <div class="btn-group" role="group">
+                            <button type="button" class="btn btn-primary">Gauche</button>
+                            <button type="button" class="btn btn-primary">Centre</button>
+                            <button type="button" class="btn btn-primary">Droite</button>
+                        </div>
+                    </div>
+                    
+                    <div class="button-group">
+                        <h5>Groupe vertical</h5>
+                        <div class="btn-group-vertical" role="group">
+                            <button type="button" class="btn btn-outline-primary">Premier</button>
+                            <button type="button" class="btn btn-outline-primary">Deuxième</button>
+                            <button type="button" class="btn btn-outline-primary">Troisième</button>
+                        </div>
+                    </div>
+                    
+                    <div class="button-group">
+                        <h5>Groupe avec dropdown</h5>
+                        <div class="btn-group" role="group">
+                            <button type="button" class="btn btn-primary">Action</button>
+                            <button type="button" class="btn btn-primary dropdown-toggle dropdown-toggle-split" data-bs-toggle="dropdown">
+                                <span class="visually-hidden">Toggle Dropdown</span>
+                            </button>
+                            <ul class="dropdown-menu">
+                                <li><a class="dropdown-item" href="#">Action</a></li>
+                                <li><a class="dropdown-item" href="#">Autre action</a></li>
+                                <li><hr class="dropdown-divider"></li>
+                                <li><a class="dropdown-item" href="#">Action séparée</a></li>
+                            </ul>
+                        </div>
+                    </div>
+                    
+                    <div class="code-block">
+&lt;!-- Groupe horizontal --&gt;
+&lt;div class="btn-group" role="group"&gt;
+    &lt;button type="button" class="btn btn-primary"&gt;Gauche&lt;/button&gt;
+    &lt;button type="button" class="btn btn-primary"&gt;Centre&lt;/button&gt;
+    &lt;button type="button" class="btn btn-primary"&gt;Droite&lt;/button&gt;
+&lt;/div&gt;
+
+&lt;!-- Groupe vertical --&gt;
+&lt;div class="btn-group-vertical" role="group"&gt;
+    &lt;button type="button" class="btn btn-outline-primary"&gt;Premier&lt;/button&gt;
+    &lt;button type="button" class="btn btn-outline-primary"&gt;Deuxième&lt;/button&gt;
+    &lt;button type="button" class="btn btn-outline-primary"&gt;Troisième&lt;/button&gt;
+&lt;/div&gt;
+
+&lt;!-- Groupe avec dropdown --&gt;
+&lt;div class="btn-group" role="group"&gt;
+    &lt;button type="button" class="btn btn-primary"&gt;Action&lt;/button&gt;
+    &lt;button type="button" class="btn btn-primary dropdown-toggle dropdown-toggle-split" data-bs-toggle="dropdown"&gt;
+        &lt;span class="visually-hidden"&gt;Toggle Dropdown&lt;/span&gt;
+    &lt;/button&gt;
+    &lt;ul class="dropdown-menu"&gt;
+        &lt;li&gt;&lt;a class="dropdown-item" href="#"&gt;Action&lt;/a&gt;&lt;/li&gt;
+        &lt;li&gt;&lt;a class="dropdown-item" href="#"&gt;Autre action&lt;/a&gt;&lt;/li&gt;
+        &lt;li&gt;&lt;hr class="dropdown-divider"&gt;&lt;/li&gt;
+        &lt;li&gt;&lt;a class="dropdown-item" href="#"&gt;Action séparée&lt;/a&gt;&lt;/li&gt;
+    &lt;/ul&gt;
+&lt;/div&gt;
+                    </div>
+                </div>
+
+                <!-- Boutons spéciaux -->
+                <div class="demo-section">
+                    <h3><i class="fas fa-star me-2"></i>Boutons Spéciaux</h3>
+                    
+                    <div class="button-group">
+                        <h5>Boutons avec badges</h5>
+                        <button type="button" class="btn btn-primary">
+                            Messages <span class="badge bg-light text-dark ms-1">4</span>
+                        </button>
+                        <button type="button" class="btn btn-success">
+                            Notifications <span class="badge bg-light text-dark ms-1">12</span>
+                        </button>
+                        <button type="button" class="btn btn-warning">
+                            Alertes <span class="badge bg-light text-dark ms-1">3</span>
+                        </button>
+                    </div>
+                    
+                    <div class="button-group">
+                        <h5>Boutons de chargement</h5>
+                        <button type="button" class="btn btn-primary" disabled>
+                            <span class="spinner-border spinner-border-sm me-1" role="status"></span>
+                            Chargement...
+                        </button>
+                        <button type="button" class="btn btn-success" disabled>
+                            <span class="spinner-grow spinner-grow-sm me-1" role="status"></span>
+                            Sauvegarde...
+                        </button>
+                    </div>
+                    
+                    <div class="button-group">
+                        <h5>Boutons flottants</h5>
+                        <button type="button" class="btn btn-primary rounded-circle" style="width: 50px; height: 50px;">
+                            <i class="fas fa-plus"></i>
+                        </button>
+                        <button type="button" class="btn btn-success rounded-circle" style="width: 50px; height: 50px;">
+                            <i class="fas fa-heart"></i>
+                        </button>
+                        <button type="button" class="btn btn-danger rounded-circle" style="width: 50px; height: 50px;">
+                            <i class="fas fa-star"></i>
+                        </button>
+                    </div>
+                    
+                    <div class="code-block">
+&lt;!-- Boutons avec badges --&gt;
+&lt;button type="button" class="btn btn-primary"&gt;
+    Messages &lt;span class="badge bg-light text-dark ms-1"&gt;4&lt;/span&gt;
+&lt;/button&gt;
+
+&lt;button type="button" class="btn btn-success"&gt;
+    Notifications &lt;span class="badge bg-light text-dark ms-1"&gt;12&lt;/span&gt;
+&lt;/button&gt;
+
+&lt;button type="button" class="btn btn-warning"&gt;
+    Alertes &lt;span class="badge bg-light text-dark ms-1"&gt;3&lt;/span&gt;
+&lt;/button&gt;
+
+&lt;!-- Boutons de chargement --&gt;
+&lt;button type="button" class="btn btn-primary" disabled&gt;
+    &lt;span class="spinner-border spinner-border-sm me-1" role="status"&gt;&lt;/span&gt;
+    Chargement...
+&lt;/button&gt;
+
+&lt;button type="button" class="btn btn-success" disabled&gt;
+    &lt;span class="spinner-grow spinner-grow-sm me-1" role="status"&gt;&lt;/span&gt;
+    Sauvegarde...
+&lt;/button&gt;
+
+&lt;!-- Boutons flottants --&gt;
+&lt;button type="button" class="btn btn-primary rounded-circle" style="width: 50px; height: 50px;"&gt;
+    &lt;i class="fas fa-plus"&gt;&lt;/i&gt;
+&lt;/button&gt;
+
+&lt;button type="button" class="btn btn-success rounded-circle" style="width: 50px; height: 50px;"&gt;
+    &lt;i class="fas fa-heart"&gt;&lt;/i&gt;
+&lt;/button&gt;
+
+&lt;button type="button" class="btn btn-danger rounded-circle" style="width: 50px; height: 50px;"&gt;
+    &lt;i class="fas fa-star"&gt;&lt;/i&gt;
+&lt;/button&gt;
+                    </div>
+                </div>
+
+                <!-- Boutons personnalisés -->
+                <div class="demo-section">
+                    <h3><i class="fas fa-paint-brush me-2"></i>Boutons Personnalisés</h3>
+                    
+                    <div class="button-group">
+                        <h5>Avec styles personnalisés</h5>
+                        <button type="button" class="btn btn-primary" style="background: linear-gradient(45deg, #ff6b6b, #4ecdc4); border: none;">
+                            Gradient
+                        </button>
+                        <button type="button" class="btn btn-outline-primary" style="border-radius: 25px;">
+                            Arrondi
+                        </button>
+                        <button type="button" class="btn btn-success" style="box-shadow: 0 4px 8px rgba(0,0,0,0.2);">
+                            Ombre
+                        </button>
+                        <button type="button" class="btn btn-warning" style="transform: skew(-10deg);">
+                            Incliné
+                        </button>
+                    </div>
+                    
+                    <div class="code-block">
+&lt;!-- Boutons avec styles personnalisés --&gt;
+&lt;button type="button" class="btn btn-primary" style="background: linear-gradient(45deg, #ff6b6b, #4ecdc4); border: none;"&gt;
+    Gradient
+&lt;/button&gt;
+
+&lt;button type="button" class="btn btn-outline-primary" style="border-radius: 25px;"&gt;
+    Arrondi
+&lt;/button&gt;
+
+&lt;button type="button" class="btn btn-success" style="box-shadow: 0 4px 8px rgba(0,0,0,0.2);"&gt;
+    Ombre
+&lt;/button&gt;
+
+&lt;button type="button" class="btn btn-warning" style="transform: skew(-10deg);"&gt;
+    Incliné
+&lt;/button&gt;
+                    </div>
+                </div>
+
+                <!-- Résumé des classes -->
+                <div class="demo-section">
+                    <h3><i class="fas fa-list me-2"></i>Résumé des Classes Bootstrap</h3>
+                    
+                    <div class="row">
+                        <div class="col-md-6">
+                            <h5>Couleurs de base</h5>
+                            <ul class="list-unstyled">
+                                <li><code>btn-primary</code> - Bleu principal</li>
+                                <li><code>btn-secondary</code> - Gris secondaire</li>
+                                <li><code>btn-success</code> - Vert succès</li>
+                                <li><code>btn-danger</code> - Rouge danger</li>
+                                <li><code>btn-warning</code> - Jaune avertissement</li>
+                                <li><code>btn-info</code> - Bleu information</li>
+                                <li><code>btn-light</code> - Blanc clair</li>
+                                <li><code>btn-dark</code> - Noir foncé</li>
+                                <li><code>btn-link</code> - Style lien</li>
+                            </ul>
+                        </div>
+                        <div class="col-md-6">
+                            <h5>Variantes et tailles</h5>
+                            <ul class="list-unstyled">
+                                <li><code>btn-outline-*</code> - Version outline</li>
+                                <li><code>btn-sm</code> - Petite taille</li>
+                                <li><code>btn-lg</code> - Grande taille</li>
+                                <li><code>active</code> - État actif</li>
+                                <li><code>disabled</code> - État désactivé</li>
+                                <li><code>btn-group</code> - Groupe horizontal</li>
+                                <li><code>btn-group-vertical</code> - Groupe vertical</li>
+                            </ul>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+</body>
+</html>

@@ -24,8 +24,11 @@ class EventService:
     def get_event(self, event_id: int, db: Session) -> Optional[Event]:
         return db.get(Event, event_id)
     
-    def get_events(self, db: Session, skip: int = 0, limit: int = 100) -> List[Event]:
-        query = select(Event).offset(skip).limit(limit)
+    def get_events(self, db: Session, skip: int = 0, limit: int = 100, programme_id: Optional[int] = None) -> List[Event]:
+        query = select(Event)
+        if programme_id:
+            query = query.where(Event.programme_id == programme_id)
+        query = query.offset(skip).limit(limit)
         return db.exec(query).all()
     
     def update_event(self, event_id: int, event_data: EventUpdate, db: Session) -> Optional[Event]:

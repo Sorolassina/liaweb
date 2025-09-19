@@ -31,7 +31,7 @@
     </p>
 
     <!-- Bouton retour -->
-    <a href="/ACD/preinscriptions/form?programme=ACD" class="btn btn-outline-dark px-4 py-2" style="border-radius:12px;">
+    <a href="{{ url_for('preinscriptions_form') }}?programme={{ current_programme or 'ACD' }}" class="btn btn-outline-dark px-4 py-2" style="border-radius:12px;">
       ⬅ Retour à l’accueil
     </a>
   </div>

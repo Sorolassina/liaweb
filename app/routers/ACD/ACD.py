@@ -40,10 +40,11 @@ def _is_f(civ: Optional[str]) -> bool:
 def _is_h(civ: Optional[str]) -> bool:
     return (civ or "").strip().lower() in {"m","mr","monsieur","monsier"}
 
-@router.get("/dashboard", response_class=HTMLResponse)
+@router.get("/dashboard", name="programme_dashboard", response_class=HTMLResponse)
 def programme_acd_dashboard(request: Request, 
                             session: Session = Depends(get_session), 
-                            current_user = Depends(get_current_user)
+                            current_user = Depends(get_current_user),
+                            programme_id: Optional[int] = None
                             ):
     try:
         tz = ZoneInfo("Europe/Paris")
@@ -51,12 +52,17 @@ def programme_acd_dashboard(request: Request,
         tz = timezone.utc
     now = datetime.now(tz)
 
-    # --- Récup programme ACD ---
-    acd: Optional[Programme] = session.exec(select(Programme).where(Programme.code == "ACD")).first()
-    print(f"🔍 [DEBUG] Programme ACD trouvé: {acd}")
+    # --- Récup programme dynamique ---
+    if programme_id:
+        programme: Optional[Programme] = session.exec(select(Programme).where(Programme.id == programme_id)).first()
+        print(f"🔍 [DEBUG] Programme trouvé par ID {programme_id}: {programme}")
+    else:
+        # Fallback sur ACD si pas de programme_id spécifié
+        programme: Optional[Programme] = session.exec(select(Programme).where(Programme.code == "ACD")).first()
+        print(f"🔍 [DEBUG] Programme ACD par défaut trouvé: {programme}")
     
-    # Si le programme ACD n'existe pas, on utilise des valeurs par défaut
-    if not acd:
+    # Si le programme n'existe pas, on utilise des valeurs par défaut
+    if not programme:
         # Créer un objet programme factice avec des valeurs par défaut
         class ProgrammeFactice:
             def __init__(self):
@@ -67,18 +73,18 @@ def programme_acd_dashboard(request: Request,
                 self.cible_femmes_pct = None
                 self.id = None
         
-        acd = ProgrammeFactice()
+        programme = ProgrammeFactice()
         print(f"🔍 [DEBUG] Utilisation du programme factice")
 
-    # --- KPIs ACD ---
-    if acd.id:
+    # --- KPIs Programme ---
+    if programme.id:
         preins = session.exec(
-            select(func.count(Preinscription.id)).where(Preinscription.programme_id == acd.id)
+            select(func.count(Preinscription.id)).where(Preinscription.programme_id == programme.id)
         ).one() or 0
         print(f"🔍 [DEBUG] Préinscriptions: {preins}")
 
         insc = session.exec(
-            select(func.count(Inscription.id)).where(Inscription.programme_id == acd.id)
+            select(func.count(Inscription.id)).where(Inscription.programme_id == programme.id)
         ).one() or 0
         print(f"🔍 [DEBUG] Inscriptions: {insc}")
 
@@ -87,7 +93,7 @@ def programme_acd_dashboard(request: Request,
             select(func.count(Candidat.id))
             .join(Inscription, Inscription.candidat_id == Candidat.id)
             .join(DecisionJuryCandidat, DecisionJuryCandidat.candidat_id == Candidat.id)
-            .where(Inscription.programme_id == acd.id, DecisionJuryCandidat.decision == "VALIDE")
+            .where(Inscription.programme_id == programme.id, DecisionJuryCandidat.decision == "VALIDE")
         ).one() or 0
         print(f"🔍 [DEBUG] Candidats validés: {candidats_valides}")
 
@@ -96,7 +102,7 @@ def programme_acd_dashboard(request: Request,
             select(func.count(Candidat.id))
             .join(Inscription, Inscription.candidat_id == Candidat.id)
             .join(DecisionJuryCandidat, DecisionJuryCandidat.candidat_id == Candidat.id)
-            .where(Inscription.programme_id == acd.id, DecisionJuryCandidat.decision == "REORIENTE")
+            .where(Inscription.programme_id == programme.id, DecisionJuryCandidat.decision == "REORIENTE")
         ).one() or 0
         print(f"🔍 [DEBUG] Candidats reorientés: {candidats_reorientes}")
 
@@ -105,7 +111,7 @@ def programme_acd_dashboard(request: Request,
             select(func.count(Candidat.id))
             .join(Inscription, Inscription.candidat_id == Candidat.id)
             .join(DecisionJuryCandidat, DecisionJuryCandidat.candidat_id == Candidat.id)
-            .where(Inscription.programme_id == acd.id, DecisionJuryCandidat.decision == "REJETE")
+            .where(Inscription.programme_id == programme.id, DecisionJuryCandidat.decision == "REJETE")
         ).one() or 0
         print(f"🔍 [DEBUG] Candidats rejetés: {candidats_rejetes}")
 
@@ -115,7 +121,7 @@ def programme_acd_dashboard(request: Request,
             .join(Candidat, Candidat.id == Entreprise.candidat_id)
             .join(Inscription, Inscription.candidat_id == Candidat.id)
             .join(DecisionJuryCandidat, DecisionJuryCandidat.candidat_id == Candidat.id)
-            .where(Inscription.programme_id == acd.id, 
+            .where(Inscription.programme_id == programme.id, 
                    DecisionJuryCandidat.decision == "VALIDE",
                    Entreprise.qpv.is_(True))
         ).one() or 0
@@ -127,7 +133,7 @@ def programme_acd_dashboard(request: Request,
             .join(DecisionJuryCandidat, DecisionJuryCandidat.candidat_id == Candidat.id)
             .join(Preinscription, Preinscription.candidat_id == Candidat.id)
             .join(Eligibilite, Eligibilite.preinscription_id == Preinscription.id)
-            .where(Inscription.programme_id == acd.id, 
+            .where(Inscription.programme_id == programme.id, 
                    DecisionJuryCandidat.decision == "VALIDE",
                    Eligibilite.details_json.like('%"distance_m":%'))
             .where(~Eligibilite.details_json.like('%"distance_m": 0%'))  # Distance > 0 = QPV limite
@@ -141,7 +147,7 @@ def programme_acd_dashboard(request: Request,
             select(func.count(Candidat.id))
             .join(Inscription, Inscription.candidat_id == Candidat.id)
             .join(DecisionJuryCandidat, DecisionJuryCandidat.candidat_id == Candidat.id)
-            .where(Inscription.programme_id == acd.id, 
+            .where(Inscription.programme_id == programme.id, 
                    DecisionJuryCandidat.decision == "VALIDE")
             .where(func.lower(func.coalesce(Candidat.civilite,""))
                    .in_(["f","mme","madame","mlle","mademoiselle","madam"]))
@@ -152,7 +158,7 @@ def programme_acd_dashboard(request: Request,
             select(func.count(Candidat.id))
             .join(Inscription, Inscription.candidat_id == Candidat.id)
             .join(DecisionJuryCandidat, DecisionJuryCandidat.candidat_id == Candidat.id)
-            .where(Inscription.programme_id == acd.id, 
+            .where(Inscription.programme_id == programme.id, 
                    DecisionJuryCandidat.decision == "VALIDE")
             .where(func.lower(func.coalesce(Candidat.civilite,""))
                    .in_(["m","mr","monsieur","monsier"]))
@@ -183,12 +189,12 @@ def programme_acd_dashboard(request: Request,
     print(f"🔍 [ENTONNOIR] KPIs: {kpi}")
 
     # --- Pyramide des âges (candidats validés ACD) ---
-    if acd.id:
+    if programme.id:
         civ_dob = session.exec(
             select(Candidat.civilite, Candidat.date_naissance)
             .join(Inscription, Inscription.candidat_id == Candidat.id)
             .join(DecisionJuryCandidat, DecisionJuryCandidat.candidat_id == Candidat.id)
-            .where(Inscription.programme_id == acd.id, DecisionJuryCandidat.decision == "VALIDE")
+            .where(Inscription.programme_id == programme.id, DecisionJuryCandidat.decision == "VALIDE")
         ).all()
     else:
         civ_dob = []
@@ -204,7 +210,7 @@ def programme_acd_dashboard(request: Request,
     pyramid_female = [female[b] for b in bins]
 
     # --- Carte (candidats validés ACD avec lat/lng) ---
-    if acd.id:
+    if programme.id:
         # Priorité : adresse QPV/QPV limite, sinon adresse personnelle
         rows_geo = session.exec(
             select(Candidat.prenom, Candidat.nom, Candidat.civilite,
@@ -222,7 +228,7 @@ def programme_acd_dashboard(request: Request,
             .join(Entreprise, Entreprise.candidat_id == Candidat.id, isouter=True)
             .join(Preinscription, Preinscription.candidat_id == Candidat.id)
             .join(Eligibilite, Eligibilite.preinscription_id == Preinscription.id, isouter=True)
-            .where(Inscription.programme_id == acd.id, DecisionJuryCandidat.decision == "VALIDE")
+            .where(Inscription.programme_id == programme.id, DecisionJuryCandidat.decision == "VALIDE")
             .where(func.coalesce(Entreprise.lat, Candidat.lat).is_not(None), 
                    func.coalesce(Entreprise.lng, Candidat.lng).is_not(None))
         ).all()
@@ -264,11 +270,11 @@ def programme_acd_dashboard(request: Request,
 
     # --- Sessions à venir (séminaire, codev, webinaire) ---
     def next_sessions(t: TypeSession, limit=4):
-        if not acd.id:
+        if not programme.id:
             return []
         return session.exec(
             select(SessionProgramme)
-            .where(SessionProgramme.programme_id == acd.id, SessionProgramme.type_session == t)
+            .where(SessionProgramme.programme_id == programme.id, SessionProgramme.type_session == t)
             .where(SessionProgramme.debut >= now)
             .order_by(SessionProgramme.debut.asc()).limit(limit)
         ).all()
@@ -279,7 +285,7 @@ def programme_acd_dashboard(request: Request,
 
     # --- Présence moyenne par type (sur tout l'historique ACD) ---
     def avg_presence(t: TypeSession) -> Optional[float]:
-        if not acd.id:
+        if not programme.id:
             return None
         rows = session.exec(
             select(
@@ -287,7 +293,7 @@ def programme_acd_dashboard(request: Request,
                 func.count(SessionParticipant.id)
             )
             .join(SessionProgramme, SessionProgramme.id == SessionParticipant.session_id)
-            .where(SessionProgramme.programme_id == acd.id, SessionProgramme.type_session == t)
+            .where(SessionProgramme.programme_id == programme.id, SessionProgramme.type_session == t)
         ).first()
         if not rows or not rows[1]:
             return None
@@ -300,12 +306,12 @@ def programme_acd_dashboard(request: Request,
     }
 
     # --- RDV à venir (ACD) ---
-    if acd.id:
+    if programme.id:
         rdvs = session.exec(
             select(RendezVous, Inscription, Candidat)
             .join(Inscription, Inscription.id == RendezVous.inscription_id)
             .join(Candidat, Candidat.id == Inscription.candidat_id)
-            .where(Inscription.programme_id == acd.id)
+            .where(Inscription.programme_id == programme.id)
             .where(RendezVous.debut >= now)
             .order_by(RendezVous.debut.asc())
             .limit(8)
@@ -322,7 +328,7 @@ def programme_acd_dashboard(request: Request,
 
     # --- Atteinte des objectifs ACD (basé sur candidats validés) ---
     # n / objectif_total, %QPV, %Femmes
-    if acd.id:
+    if programme.id:
         agg = session.exec(
             select(
                 func.count(Candidat.id).label("n"),
@@ -333,7 +339,7 @@ def programme_acd_dashboard(request: Request,
             .join(Inscription, Inscription.candidat_id == Candidat.id)
             .join(DecisionJuryCandidat, DecisionJuryCandidat.candidat_id == Candidat.id)
             .join(Entreprise, Entreprise.candidat_id == Candidat.id, isouter=True)
-            .where(Inscription.programme_id == acd.id, DecisionJuryCandidat.decision == "VALIDE")
+            .where(Inscription.programme_id == programme.id, DecisionJuryCandidat.decision == "VALIDE")
         ).first()
 
         n = int((agg and agg[0]) or 0)
@@ -343,32 +349,32 @@ def programme_acd_dashboard(request: Request,
         f_pct   = round((n_f/n*100) if n else 0.0, 1)
         
         # Calculer l'atteinte des objectifs (pour les jauges)
-        qpv_objectif_atteint = round((qpv_pct / acd.cible_qpv_pct * 100.0) if acd.cible_qpv_pct and acd.cible_qpv_pct > 0 else 0.0, 1)
-        f_objectif_atteint = round((f_pct / acd.cible_femmes_pct * 100.0) if acd.cible_femmes_pct and acd.cible_femmes_pct > 0 else 0.0, 1)
+        qpv_objectif_atteint = round((qpv_pct / programme.cible_qpv_pct * 100.0) if programme.cible_qpv_pct and programme.cible_qpv_pct > 0 else 0.0, 1)
+        f_objectif_atteint = round((f_pct / programme.cible_femmes_pct * 100.0) if programme.cible_femmes_pct and programme.cible_femmes_pct > 0 else 0.0, 1)
     else:
         n = n_qpv = n_f = 0
         qpv_pct = f_pct = 0.0
         qpv_objectif_atteint = f_objectif_atteint = 0.0
 
     objectifs = {
-        "objectif_total": acd.objectif_total,
-        "cible_qpv_pct": acd.cible_qpv_pct,
-        "cible_femmes_pct": acd.cible_femmes_pct,
+        "objectif_total": programme.objectif_total,
+        "cible_qpv_pct": programme.cible_qpv_pct,
+        "cible_femmes_pct": programme.cible_femmes_pct,
         "n": n,
         "qpv_pct": qpv_pct,
         "f_pct": f_pct,
         "qpv_objectif_atteint": qpv_objectif_atteint,
         "f_objectif_atteint": f_objectif_atteint,
-        "total_pct": (round(n/acd.objectif_total*100,1) if acd.objectif_total and acd.objectif_total > 0 else 0.0)
+        "total_pct": (round(n/programme.objectif_total*100,1) if programme.objectif_total and programme.objectif_total > 0 else 0.0)
     }
 
     # --- Suivi mensuel (5 derniers enregistrements) ---
-    if acd.id:
+    if programme.id:
         suivis = session.exec(
             select(SuiviMensuel, Candidat)
             .join(Inscription, Inscription.id == SuiviMensuel.inscription_id)
             .join(Candidat, Candidat.id == Inscription.candidat_id)
-            .where(Inscription.programme_id == acd.id)
+            .where(Inscription.programme_id == programme.id)
             .order_by(SuiviMensuel.mois.desc(), SuiviMensuel.cree_le.desc())
             .limit(5)
         ).all()
@@ -387,7 +393,7 @@ def programme_acd_dashboard(request: Request,
             "request": request,
             "settings": settings,
             "utilisateur": current_user,
-            "programme": acd,
+            "programme": programme,
             "kpi": kpi,
             "funnel_labels": funnel_labels,
             "funnel_values": funnel_values,

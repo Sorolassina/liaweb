@@ -1,0 +1,579 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Démo Navigation Bootstrap</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" rel="stylesheet">
+    <style>
+        body {
+            background-color: #f8f9fa;
+            padding: 2rem 0;
+        }
+        .demo-section {
+            background: white;
+            border-radius: 8px;
+            padding: 2rem;
+            margin-bottom: 2rem;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        }
+        .demo-section h3 {
+            color: #495057;
+            margin-bottom: 1.5rem;
+            border-bottom: 2px solid #e9ecef;
+            padding-bottom: 0.5rem;
+        }
+        .nav-group {
+            margin-bottom: 2rem;
+        }
+        .nav-group h5 {
+            color: #6c757d;
+            margin-bottom: 1rem;
+            font-size: 1rem;
+        }
+        .code-block {
+            background: #f8f9fa;
+            border: 1px solid #e9ecef;
+            border-radius: 8px;
+            padding: 20px;
+            margin-top: 15px;
+            font-family: 'Courier New', monospace;
+            font-size: 14px;
+            line-height: 1.8;
+            color: #495057;
+            white-space: pre-wrap;
+            overflow-x: auto;
+        }
+        .demo-nav {
+            margin-bottom: 1rem;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="row">
+            <div class="col-12">
+                <h1 class="text-center mb-4">
+                    <i class="fas fa-compass me-2"></i>
+                    Démo Complète de la Navigation Bootstrap
+                </h1>
+                
+                <!-- Navbar -->
+                <div class="demo-section">
+                    <h3><i class="fas fa-bars me-2"></i>Navbar</h3>
+                    
+                    <div class="nav-group">
+                        <h5>Navbar basique</h5>
+                        <nav class="navbar navbar-expand-lg navbar-light bg-light demo-nav">
+                            <div class="container-fluid">
+                                <a class="navbar-brand" href="#">Brand</a>
+                                <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarNav">
+                                    <span class="navbar-toggler-icon"></span>
+                                </button>
+                                <div class="collapse navbar-collapse" id="navbarNav">
+                                    <ul class="navbar-nav">
+                                        <li class="nav-item">
+                                            <a class="nav-link active" href="#">Accueil</a>
+                                        </li>
+                                        <li class="nav-item">
+                                            <a class="nav-link" href="#">À propos</a>
+                                        </li>
+                                        <li class="nav-item">
+                                            <a class="nav-link" href="#">Contact</a>
+                                        </li>
+                                    </ul>
+                                </div>
+                            </div>
+                        </nav>
+                    </div>
+                    
+                    <div class="nav-group">
+                        <h5>Navbar avec couleurs</h5>
+                        <nav class="navbar navbar-expand-lg navbar-dark bg-primary demo-nav">
+                            <div class="container-fluid">
+                                <a class="navbar-brand" href="#">
+                                    <i class="fas fa-star me-1"></i>Brand
+                                </a>
+                                <div class="navbar-nav">
+                                    <a class="nav-link active" href="#">Accueil</a>
+                                    <a class="nav-link" href="#">Services</a>
+                                    <a class="nav-link" href="#">Portfolio</a>
+                                    <a class="nav-link" href="#">Contact</a>
+                                </div>
+                            </div>
+                        </nav>
+                    </div>
+                    
+                    <div class="nav-group">
+                        <h5>Navbar avec dropdown</h5>
+                        <nav class="navbar navbar-expand-lg navbar-dark bg-dark demo-nav">
+                            <div class="container-fluid">
+                                <a class="navbar-brand" href="#">Mon Site</a>
+                                <div class="navbar-nav">
+                                    <a class="nav-link" href="#">Accueil</a>
+                                    <div class="nav-item dropdown">
+                                        <a class="nav-link dropdown-toggle" href="#" role="button" data-bs-toggle="dropdown">
+                                            Services
+                                        </a>
+                                        <ul class="dropdown-menu">
+                                            <li><a class="dropdown-item" href="#">Web Design</a></li>
+                                            <li><a class="dropdown-item" href="#">Développement</a></li>
+                                            <li><hr class="dropdown-divider"></li>
+                                            <li><a class="dropdown-item" href="#">Consultation</a></li>
+                                        </ul>
+                                    </div>
+                                    <a class="nav-link" href="#">Contact</a>
+                                </div>
+                            </div>
+                        </nav>
+                    </div>
+                    
+                    <div class="code-block">
+&lt;!-- Navbar de base --&gt;
+&lt;nav class="navbar navbar-expand-lg navbar-light bg-light"&gt;
+    &lt;div class="container-fluid"&gt;
+        &lt;a class="navbar-brand" href="#"&gt;Brand&lt;/a&gt;
+        &lt;div class="navbar-nav"&gt;
+            &lt;a class="nav-link active" href="#"&gt;Accueil&lt;/a&gt;
+            &lt;a class="nav-link" href="#"&gt;À propos&lt;/a&gt;
+            &lt;a class="nav-link" href="#"&gt;Contact&lt;/a&gt;
+        &lt;/div&gt;
+    &lt;/div&gt;
+&lt;/nav&gt;
+
+&lt;!-- Navbar avec dropdown --&gt;
+&lt;nav class="navbar navbar-expand-lg navbar-dark bg-dark"&gt;
+    &lt;div class="container-fluid"&gt;
+        &lt;a class="navbar-brand" href="#"&gt;Mon Site&lt;/a&gt;
+        &lt;div class="navbar-nav"&gt;
+            &lt;a class="nav-link" href="#"&gt;Accueil&lt;/a&gt;
+            &lt;div class="nav-item dropdown"&gt;
+                &lt;a class="nav-link dropdown-toggle" href="#" data-bs-toggle="dropdown"&gt;Services&lt;/a&gt;
+                &lt;ul class="dropdown-menu"&gt;
+                    &lt;li&gt;&lt;a class="dropdown-item" href="#"&gt;Service 1&lt;/a&gt;&lt;/li&gt;
+                    &lt;li&gt;&lt;a class="dropdown-item" href="#"&gt;Service 2&lt;/a&gt;&lt;/li&gt;
+                &lt;/ul&gt;
+            &lt;/div&gt;
+        &lt;/div&gt;
+    &lt;/div&gt;
+&lt;/nav&gt;
+                    </div>
+                </div>
+
+                <!-- Navs -->
+                <div class="demo-section">
+                    <h3><i class="fas fa-list me-2"></i>Navs</h3>
+                    
+                    <div class="nav-group">
+                        <h5>Navs basiques</h5>
+                        <ul class="nav">
+                            <li class="nav-item">
+                                <a class="nav-link active" href="#">Actif</a>
+                            </li>
+                            <li class="nav-item">
+                                <a class="nav-link" href="#">Lien</a>
+                            </li>
+                            <li class="nav-item">
+                                <a class="nav-link" href="#">Lien</a>
+                            </li>
+                            <li class="nav-item">
+                                <a class="nav-link disabled" href="#">Désactivé</a>
+                            </li>
+                        </ul>
+                    </div>
+                    
+                    <div class="nav-group">
+                        <h5>Navs avec onglets</h5>
+                        <ul class="nav nav-tabs">
+                            <li class="nav-item">
+                                <a class="nav-link active" data-bs-toggle="tab" href="#tab1">Onglet 1</a>
+                            </li>
+                            <li class="nav-item">
+                                <a class="nav-link" data-bs-toggle="tab" href="#tab2">Onglet 2</a>
+                            </li>
+                            <li class="nav-item">
+                                <a class="nav-link" data-bs-toggle="tab" href="#tab3">Onglet 3</a>
+                            </li>
+                        </ul>
+                        <div class="tab-content">
+                            <div class="tab-pane fade show active" id="tab1">
+                                <div class="p-3 bg-light">Contenu de l'onglet 1</div>
+                            </div>
+                            <div class="tab-pane fade" id="tab2">
+                                <div class="p-3 bg-light">Contenu de l'onglet 2</div>
+                            </div>
+                            <div class="tab-pane fade" id="tab3">
+                                <div class="p-3 bg-light">Contenu de l'onglet 3</div>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div class="nav-group">
+                        <h5>Navs avec pills</h5>
+                        <ul class="nav nav-pills">
+                            <li class="nav-item">
+                                <a class="nav-link active" data-bs-toggle="pill" href="#pill1">Pill 1</a>
+                            </li>
+                            <li class="nav-item">
+                                <a class="nav-link" data-bs-toggle="pill" href="#pill2">Pill 2</a>
+                            </li>
+                            <li class="nav-item">
+                                <a class="nav-link" data-bs-toggle="pill" href="#pill3">Pill 3</a>
+                            </li>
+                        </ul>
+                        <div class="tab-content">
+                            <div class="tab-pane fade show active" id="pill1">
+                                <div class="p-3 bg-light">Contenu du pill 1</div>
+                            </div>
+                            <div class="tab-pane fade" id="pill2">
+                                <div class="p-3 bg-light">Contenu du pill 2</div>
+                            </div>
+                            <div class="tab-pane fade" id="pill3">
+                                <div class="p-3 bg-light">Contenu du pill 3</div>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div class="nav-group">
+                        <h5>Navs verticales</h5>
+                        <div class="row">
+                            <div class="col-3">
+                                <ul class="nav nav-pills flex-column">
+                                    <li class="nav-item">
+                                        <a class="nav-link active" data-bs-toggle="pill" href="#vpill1">Accueil</a>
+                                    </li>
+                                    <li class="nav-item">
+                                        <a class="nav-link" data-bs-toggle="pill" href="#vpill2">Profil</a>
+                                    </li>
+                                    <li class="nav-item">
+                                        <a class="nav-link" data-bs-toggle="pill" href="#vpill3">Messages</a>
+                                    </li>
+                                    <li class="nav-item">
+                                        <a class="nav-link" data-bs-toggle="pill" href="#vpill4">Paramètres</a>
+                                    </li>
+                                </ul>
+                            </div>
+                            <div class="col-9">
+                                <div class="tab-content">
+                                    <div class="tab-pane fade show active" id="vpill1">
+                                        <div class="p-3 bg-light">Contenu de l'accueil</div>
+                                    </div>
+                                    <div class="tab-pane fade" id="vpill2">
+                                        <div class="p-3 bg-light">Contenu du profil</div>
+                                    </div>
+                                    <div class="tab-pane fade" id="vpill3">
+                                        <div class="p-3 bg-light">Contenu des messages</div>
+                                    </div>
+                                    <div class="tab-pane fade" id="vpill4">
+                                        <div class="p-3 bg-light">Contenu des paramètres</div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div class="code-block">
+                        &lt;ul class="nav nav-tabs"&gt;<br>
+                        &nbsp;&nbsp;&lt;li class="nav-item"&gt;<br>
+                        &nbsp;&nbsp;&nbsp;&nbsp;&lt;a class="nav-link active" data-bs-toggle="tab" href="#tab1"&gt;Onglet 1&lt;/a&gt;<br>
+                        &nbsp;&nbsp;&lt;/li&gt;<br>
+                        &lt;/ul&gt;<br>
+                        &lt;div class="tab-content"&gt;<br>
+                        &nbsp;&nbsp;&lt;div class="tab-pane fade show active" id="tab1"&gt;Contenu&lt;/div&gt;<br>
+                        &lt;/div&gt;
+                    </div>
+                </div>
+
+                <!-- Breadcrumb -->
+                <div class="demo-section">
+                    <h3><i class="fas fa-route me-2"></i>Breadcrumb</h3>
+                    
+                    <div class="nav-group">
+                        <h5>Fil d'Ariane</h5>
+                        <nav aria-label="breadcrumb">
+                            <ol class="breadcrumb">
+                                <li class="breadcrumb-item"><a href="#">Accueil</a></li>
+                                <li class="breadcrumb-item"><a href="#">Catégorie</a></li>
+                                <li class="breadcrumb-item active" aria-current="page">Page actuelle</li>
+                            </ol>
+                        </nav>
+                    </div>
+                    
+                    <div class="nav-group">
+                        <h5>Breadcrumb avec icônes</h5>
+                        <nav aria-label="breadcrumb">
+                            <ol class="breadcrumb">
+                                <li class="breadcrumb-item">
+                                    <i class="fas fa-home me-1"></i>
+                                    <a href="#">Accueil</a>
+                                </li>
+                                <li class="breadcrumb-item">
+                                    <i class="fas fa-folder me-1"></i>
+                                    <a href="#">Documents</a>
+                                </li>
+                                <li class="breadcrumb-item">
+                                    <i class="fas fa-file me-1"></i>
+                                    <a href="#">Rapports</a>
+                                </li>
+                                <li class="breadcrumb-item active" aria-current="page">
+                                    <i class="fas fa-chart-bar me-1"></i>
+                                    Statistiques 2024
+                                </li>
+                            </ol>
+                        </nav>
+                    </div>
+                    
+                    <div class="code-block">
+                        &lt;nav aria-label="breadcrumb"&gt;<br>
+                        &nbsp;&nbsp;&lt;ol class="breadcrumb"&gt;<br>
+                        &nbsp;&nbsp;&nbsp;&nbsp;&lt;li class="breadcrumb-item"&gt;&lt;a href="#"&gt;Accueil&lt;/a&gt;&lt;/li&gt;<br>
+                        &nbsp;&nbsp;&nbsp;&nbsp;&lt;li class="breadcrumb-item"&gt;&lt;a href="#"&gt;Catégorie&lt;/a&gt;&lt;/li&gt;<br>
+                        &nbsp;&nbsp;&nbsp;&nbsp;&lt;li class="breadcrumb-item active"&gt;Page actuelle&lt;/li&gt;<br>
+                        &nbsp;&nbsp;&lt;/ol&gt;<br>
+                        &lt;/nav&gt;
+                    </div>
+                </div>
+
+                <!-- Pagination -->
+                <div class="demo-section">
+                    <h3><i class="fas fa-list-ol me-2"></i>Pagination</h3>
+                    
+                    <div class="nav-group">
+                        <h5>Pagination basique</h5>
+                        <nav aria-label="Page navigation">
+                            <ul class="pagination">
+                                <li class="page-item disabled">
+                                    <a class="page-link" href="#" tabindex="-1">Précédent</a>
+                                </li>
+                                <li class="page-item active">
+                                    <a class="page-link" href="#">1</a>
+                                </li>
+                                <li class="page-item">
+                                    <a class="page-link" href="#">2</a>
+                                </li>
+                                <li class="page-item">
+                                    <a class="page-link" href="#">3</a>
+                                </li>
+                                <li class="page-item">
+                                    <a class="page-link" href="#">Suivant</a>
+                                </li>
+                            </ul>
+                        </nav>
+                    </div>
+                    
+                    <div class="nav-group">
+                        <h5>Pagination avec icônes</h5>
+                        <nav aria-label="Page navigation">
+                            <ul class="pagination">
+                                <li class="page-item">
+                                    <a class="page-link" href="#" aria-label="Précédent">
+                                        <span aria-hidden="true">&laquo;</span>
+                                    </a>
+                                </li>
+                                <li class="page-item"><a class="page-link" href="#">1</a></li>
+                                <li class="page-item active">
+                                    <a class="page-link" href="#">2</a>
+                                </li>
+                                <li class="page-item"><a class="page-link" href="#">3</a></li>
+                                <li class="page-item">
+                                    <a class="page-link" href="#" aria-label="Suivant">
+                                        <span aria-hidden="true">&raquo;</span>
+                                    </a>
+                                </li>
+                            </ul>
+                        </nav>
+                    </div>
+                    
+                    <div class="nav-group">
+                        <h5>Pagination avec ellipses</h5>
+                        <nav aria-label="Page navigation">
+                            <ul class="pagination">
+                                <li class="page-item">
+                                    <a class="page-link" href="#" aria-label="Précédent">
+                                        <span aria-hidden="true">&laquo;</span>
+                                    </a>
+                                </li>
+                                <li class="page-item"><a class="page-link" href="#">1</a></li>
+                                <li class="page-item"><a class="page-link" href="#">2</a></li>
+                                <li class="page-item active">
+                                    <a class="page-link" href="#">3</a>
+                                </li>
+                                <li class="page-item"><a class="page-link" href="#">4</a></li>
+                                <li class="page-item"><a class="page-link" href="#">5</a></li>
+                                <li class="page-item">
+                                    <span class="page-link">...</span>
+                                </li>
+                                <li class="page-item"><a class="page-link" href="#">20</a></li>
+                                <li class="page-item">
+                                    <a class="page-link" href="#" aria-label="Suivant">
+                                        <span aria-hidden="true">&raquo;</span>
+                                    </a>
+                                </li>
+                            </ul>
+                        </nav>
+                    </div>
+                    
+                    <div class="nav-group">
+                        <h5>Pagination de différentes tailles</h5>
+                        <nav aria-label="Page navigation">
+                            <ul class="pagination pagination-sm">
+                                <li class="page-item"><a class="page-link" href="#">1</a></li>
+                                <li class="page-item active"><a class="page-link" href="#">2</a></li>
+                                <li class="page-item"><a class="page-link" href="#">3</a></li>
+                            </ul>
+                        </nav>
+                        <nav aria-label="Page navigation">
+                            <ul class="pagination">
+                                <li class="page-item"><a class="page-link" href="#">1</a></li>
+                                <li class="page-item active"><a class="page-link" href="#">2</a></li>
+                                <li class="page-item"><a class="page-link" href="#">3</a></li>
+                            </ul>
+                        </nav>
+                        <nav aria-label="Page navigation">
+                            <ul class="pagination pagination-lg">
+                                <li class="page-item"><a class="page-link" href="#">1</a></li>
+                                <li class="page-item active"><a class="page-link" href="#">2</a></li>
+                                <li class="page-item"><a class="page-link" href="#">3</a></li>
+                            </ul>
+                        </nav>
+                    </div>
+                    
+                    <div class="code-block">
+                        &lt;nav aria-label="Page navigation"&gt;<br>
+                        &nbsp;&nbsp;&lt;ul class="pagination"&gt;<br>
+                        &nbsp;&nbsp;&nbsp;&nbsp;&lt;li class="page-item disabled"&gt;<br>
+                        &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&lt;a class="page-link" href="#"&gt;Précédent&lt;/a&gt;<br>
+                        &nbsp;&nbsp;&nbsp;&nbsp;&lt;/li&gt;<br>
+                        &nbsp;&nbsp;&nbsp;&nbsp;&lt;li class="page-item active"&gt;<br>
+                        &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&lt;a class="page-link" href="#"&gt;1&lt;/a&gt;<br>
+                        &nbsp;&nbsp;&nbsp;&nbsp;&lt;/li&gt;<br>
+                        &nbsp;&nbsp;&lt;/ul&gt;<br>
+                        &lt;/nav&gt;
+                    </div>
+                </div>
+
+                <!-- Dropdown -->
+                <div class="demo-section">
+                    <h3><i class="fas fa-caret-down me-2"></i>Dropdown</h3>
+                    
+                    <div class="nav-group">
+                        <h5>Dropdown basique</h5>
+                        <div class="dropdown">
+                            <button class="btn btn-secondary dropdown-toggle" type="button" data-bs-toggle="dropdown">
+                                Dropdown
+                            </button>
+                            <ul class="dropdown-menu">
+                                <li><a class="dropdown-item" href="#">Action</a></li>
+                                <li><a class="dropdown-item" href="#">Autre action</a></li>
+                                <li><a class="dropdown-item" href="#">Quelque chose d'autre</a></li>
+                                <li><hr class="dropdown-divider"></li>
+                                <li><a class="dropdown-item" href="#">Lien séparé</a></li>
+                            </ul>
+                        </div>
+                    </div>
+                    
+                    <div class="nav-group">
+                        <h5>Dropdown avec icônes</h5>
+                        <div class="dropdown">
+                            <button class="btn btn-primary dropdown-toggle" type="button" data-bs-toggle="dropdown">
+                                <i class="fas fa-user me-1"></i>Mon Compte
+                            </button>
+                            <ul class="dropdown-menu">
+                                <li><a class="dropdown-item" href="#">
+                                    <i class="fas fa-user me-2"></i>Profil
+                                </a></li>
+                                <li><a class="dropdown-item" href="#">
+                                    <i class="fas fa-cog me-2"></i>Paramètres
+                                </a></li>
+                                <li><a class="dropdown-item" href="#">
+                                    <i class="fas fa-sign-out-alt me-2"></i>Déconnexion
+                                </a></li>
+                            </ul>
+                        </div>
+                    </div>
+                    
+                    <div class="nav-group">
+                        <h5>Dropdown avec headers</h5>
+                        <div class="dropdown">
+                            <button class="btn btn-info dropdown-toggle" type="button" data-bs-toggle="dropdown">
+                                Menu
+                            </button>
+                            <ul class="dropdown-menu">
+                                <li><h6 class="dropdown-header">Section 1</h6></li>
+                                <li><a class="dropdown-item" href="#">Action 1</a></li>
+                                <li><a class="dropdown-item" href="#">Action 2</a></li>
+                                <li><hr class="dropdown-divider"></li>
+                                <li><h6 class="dropdown-header">Section 2</h6></li>
+                                <li><a class="dropdown-item" href="#">Action 3</a></li>
+                                <li><a class="dropdown-item" href="#">Action 4</a></li>
+                            </ul>
+                        </div>
+                    </div>
+                    
+                    <div class="nav-group">
+                        <h5>Dropdown avec texte</h5>
+                        <div class="dropdown">
+                            <button class="btn btn-warning dropdown-toggle" type="button" data-bs-toggle="dropdown">
+                                Dropdown avec texte
+                            </button>
+                            <ul class="dropdown-menu">
+                                <li><span class="dropdown-item-text">Texte d'information</span></li>
+                                <li><a class="dropdown-item" href="#">Action</a></li>
+                                <li><a class="dropdown-item" href="#">Autre action</a></li>
+                            </ul>
+                        </div>
+                    </div>
+                    
+                    <div class="code-block">
+                        &lt;div class="dropdown"&gt;<br>
+                        &nbsp;&nbsp;&lt;button class="btn btn-secondary dropdown-toggle" type="button" data-bs-toggle="dropdown"&gt;<br>
+                        &nbsp;&nbsp;&nbsp;&nbsp;Dropdown<br>
+                        &nbsp;&nbsp;&lt;/button&gt;<br>
+                        &nbsp;&nbsp;&lt;ul class="dropdown-menu"&gt;<br>
+                        &nbsp;&nbsp;&nbsp;&nbsp;&lt;li&gt;&lt;a class="dropdown-item" href="#"&gt;Action&lt;/a&gt;&lt;/li&gt;<br>
+                        &nbsp;&nbsp;&nbsp;&nbsp;&lt;li&gt;&lt;hr class="dropdown-divider"&gt;&lt;/li&gt;<br>
+                        &nbsp;&nbsp;&nbsp;&nbsp;&lt;li&gt;&lt;a class="dropdown-item" href="#"&gt;Lien séparé&lt;/a&gt;&lt;/li&gt;<br>
+                        &nbsp;&nbsp;&lt;/ul&gt;<br>
+                        &lt;/div&gt;
+                    </div>
+                </div>
+
+                <!-- Résumé des classes -->
+                <div class="demo-section">
+                    <h3><i class="fas fa-list me-2"></i>Résumé des Classes Navigation</h3>
+                    
+                    <div class="row">
+                        <div class="col-md-6">
+                            <h5>Navbar</h5>
+                            <ul class="list-unstyled">
+                                <li><code>navbar</code> - Navbar de base</li>
+                                <li><code>navbar-brand</code> - Marque/logo</li>
+                                <li><code>navbar-nav</code> - Conteneur des liens</li>
+                                <li><code>nav-link</code> - Lien de navigation</li>
+                                <li><code>navbar-toggler</code> - Bouton mobile</li>
+                                <li><code>navbar-expand-*</code> - Responsive</li>
+                                <li><code>bg-*</code> - Couleurs de fond</li>
+                            </ul>
+                        </div>
+                        <div class="col-md-6">
+                            <h5>Navs et autres</h5>
+                            <ul class="list-unstyled">
+                                <li><code>nav</code> - Navigation de base</li>
+                                <li><code>nav-tabs</code> - Onglets</li>
+                                <li><code>nav-pills</code> - Pills</li>
+                                <li><code>breadcrumb</code> - Fil d'Ariane</li>
+                                <li><code>pagination</code> - Pagination</li>
+                                <li><code>dropdown</code> - Menu déroulant</li>
+                                <li><code>tab-content</code> - Contenu des onglets</li>
+                            </ul>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+</body>
+</html>

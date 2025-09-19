@@ -1,0 +1,484 @@
+{% extends "base.html" %}
+
+{% block title %}Modules E-Learning - {{ super() }}{% endblock %}
+
+{% block head_extra %}
+<style>
+  .modules-container {
+    width: 100%;
+    margin: 0 auto;
+    padding: 15px;
+    overflow: hidden;
+  }
+  
+  .modules-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 20px;
+    gap: 40px;
+    position: sticky;
+    top: 0;
+    background: white;
+    z-index: 100;
+    padding: 15px 0;
+    border-bottom: 1px solid #e9ecef;
+  }
+  
+  .header-left {
+    display: flex;
+    align-items: center;
+    gap: 15px;
+  }
+  
+  .header-right {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+  }
+  
+  .btn-primary {
+    background: linear-gradient(135deg, var(--primary-color) 0%, var(--secondary-color) 100%);
+    color: white;
+    border: none;
+    padding: 8px 16px;
+    border-radius: 6px;
+    font-size: 12px;
+    font-weight: 600;
+    cursor: pointer;
+    text-decoration: none;
+    display: inline-flex;
+    align-items: center;
+    gap: 5px;
+    transition: transform 0.2s ease;
+  }
+  
+  .btn-primary:hover {
+    transform: translateY(-1px);
+    color: white;
+  }
+  
+  .btn-secondary {
+    background: #6c757d;
+    color: white;
+    border: none;
+    padding: 8px 16px;
+    border-radius: 6px;
+    font-size: 12px;
+    font-weight: 600;
+    cursor: pointer;
+    text-decoration: none;
+    display: inline-flex;
+    align-items: center;
+    gap: 5px;
+    transition: background-color 0.3s ease;
+  }
+  
+  .btn-secondary:hover {
+    background: #5a6268;
+    color: white;
+  }
+  
+  .filters-section {
+    background: white;
+    border-radius: 8px;
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+    padding: 15px;
+    margin-bottom: 20px;
+  }
+  
+  .filters-row {
+    display: flex;
+    gap: 15px;
+    align-items: center;
+  }
+  
+  .filter-group {
+    display: flex;
+    flex-direction: column;
+    gap: 5px;
+  }
+  
+  .filter-group label {
+    font-size: 12px;
+    font-weight: 600;
+    color: #333;
+  }
+  
+  .filter-group select {
+    padding: 6px 10px;
+    border: 1px solid #e1e5e9;
+    border-radius: 4px;
+    font-size: 12px;
+  }
+  
+  .modules-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+    gap: 20px;
+  }
+  
+  .module-card {
+    background: white;
+    border-radius: 8px;
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+    padding: 20px;
+    transition: transform 0.2s ease, box-shadow 0.2s ease;
+  }
+  
+  .module-card:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 4px 8px rgba(0, 0, 0, 0.15);
+  }
+  
+  .module-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
+    margin-bottom: 15px;
+  }
+  
+  .module-title {
+    font-size: 16px;
+    font-weight: 600;
+    color: #333;
+    margin-bottom: 5px;
+  }
+  
+  .module-programme {
+    font-size: 11px;
+    color: #666;
+    background: #f8f9fa;
+    padding: 2px 6px;
+    border-radius: 3px;
+  }
+  
+  .module-status {
+    padding: 4px 8px;
+    border-radius: 4px;
+    font-size: 10px;
+    font-weight: 600;
+  }
+  
+  .status-brouillon {
+    background: #fff3cd;
+    color: #856404;
+  }
+  
+  .status-actif {
+    background: #d4edda;
+    color: #155724;
+  }
+  
+  .status-archive {
+    background: #f8d7da;
+    color: #721c24;
+  }
+  
+  .module-inactif {
+    opacity: 0.7;
+    border-left: 4px solid #dc3545;
+  }
+  
+  .module-inactif .module-title {
+    color: #6c757d;
+  }
+  
+  .module-description {
+    font-size: 12px;
+    color: #666;
+    margin-bottom: 15px;
+    line-height: 1.4;
+  }
+  
+  .module-stats {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 10px;
+    margin-bottom: 15px;
+  }
+  
+  .module-stat {
+    text-align: center;
+  }
+  
+  .module-stat-value {
+    font-size: 14px;
+    font-weight: bold;
+    color: var(--primary-color);
+  }
+  
+  .module-stat-label {
+    font-size: 10px;
+    color: #666;
+  }
+  
+  .module-difficulte {
+    display: flex;
+    align-items: center;
+    gap: 5px;
+    margin-bottom: 15px;
+  }
+  
+  .difficulte-label {
+    font-size: 11px;
+    color: #666;
+  }
+  
+  .difficulte-badge {
+    padding: 2px 6px;
+    border-radius: 3px;
+    font-size: 10px;
+    font-weight: 600;
+  }
+  
+  .difficulte-facile {
+    background: #d4edda;
+    color: #155724;
+  }
+  
+  .difficulte-moyen {
+    background: #fff3cd;
+    color: #856404;
+  }
+  
+  .difficulte-difficile {
+    background: #f8d7da;
+    color: #721c24;
+  }
+  
+  .module-actions {
+    display: flex;
+    gap: 8px;
+  }
+  
+  .btn-action {
+    flex: 1;
+    padding: 6px 12px;
+    border-radius: 4px;
+    font-size: 11px;
+    font-weight: 600;
+    text-decoration: none;
+    text-align: center;
+    transition: background-color 0.3s ease;
+  }
+  
+  .btn-view {
+    background: #e9ecef;
+    color: #495057;
+  }
+  
+  .btn-view:hover {
+    background: #dee2e6;
+    color: #495057;
+  }
+  
+  .btn-edit {
+    background: #007bff;
+    color: white;
+  }
+  
+  .btn-edit:hover {
+    background: #0056b3;
+    color: white;
+  }
+  
+  .empty-state {
+    text-align: center;
+    padding: 60px 20px;
+    color: #666;
+  }
+  
+  .empty-state i {
+    font-size: 64px;
+    margin-bottom: 20px;
+    color: #ccc;
+  }
+  
+  .empty-state h3 {
+    font-size: 18px;
+    margin-bottom: 10px;
+    color: #666;
+  }
+  
+  .empty-state p {
+    font-size: 14px;
+    margin-bottom: 25px;
+  }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="modules-container">
+  <div class="modules-header">
+    <div class="header-left">
+      <h1>
+        <i class="fas fa-book"></i> Modules E-Learning
+      </h1>
+    </div>
+    <div class="header-right">
+      <button href="{{ url_for('elearning_dashboard') }}" class="btn-retour" onclick="window.location.href='{{ url_for('elearning_dashboard') }}'">
+        <i class="fas fa-arrow-left"></i> Retour
+      </button>
+      <button href="{{ url_for('elearning_module_creer_form') }}" class="btn-primary" onclick="window.location.href='{{ url_for('elearning_module_creer_form') }}'">
+        <i class="fas fa-plus"></i> Nouveau Module
+      </button>
+    </div>
+  </div>
+  
+  <!-- Filtres -->
+  <div class="filters-section">
+    <div class="filters-row">
+      <div class="filter-group">
+        <label>Programme</label>
+        <select onchange="filterModules()">
+          <option value="">Tous les programmes</option>
+          {% for programme in programmes %}
+          <option value="{{ programme.id }}" {% if programme_id == programme.id %}selected{% endif %}>
+            {{ programme.nom }}
+          </option>
+          {% endfor %}
+        </select>
+      </div>
+      
+      <div class="filter-group">
+        <label>Statut</label>
+        <select onchange="filterModules()">
+          <option value="tous" {% if not statut_selected %}selected{% endif %}>Tous les statuts</option>
+          <option value="brouillon" {% if statut_selected == 'brouillon' %}selected{% endif %}>Brouillon</option>
+          <option value="actif" {% if statut_selected == 'actif' %}selected{% endif %}>Actif</option>
+          <option value="archive" {% if statut_selected == 'archive' %}selected{% endif %}>Archivé</option>
+        </select>
+      </div>
+      
+      <div class="filter-group">
+        <label>Difficulté</label>
+        <select onchange="filterModules()">
+          <option value="tous" {% if not difficulte_selected %}selected{% endif %}>Toutes les difficultés</option>
+          <option value="facile" {% if difficulte_selected == 'facile' %}selected{% endif %}>Facile</option>
+          <option value="moyen" {% if difficulte_selected == 'moyen' %}selected{% endif %}>Moyen</option>
+          <option value="difficile" {% if difficulte_selected == 'difficile' %}selected{% endif %}>Difficile</option>
+        </select>
+      </div>
+    </div>
+  </div>
+  
+  <!-- Liste des modules -->
+  {% if modules %}
+    <div class="modules-grid">
+      {% for module in modules %}
+      <div class="module-card {% if not module.actif %}module-inactif{% endif %}">
+        <div class="module-header">
+          <div>
+            <div class="module-title">{{ module.titre }}</div>
+            <div class="module-programme">{{ module.programme.nom }}</div>
+          </div>
+          <div class="module-status status-{{ module.statut }}">
+            {{ module.statut|title }}
+            {% if not module.actif %}
+            <br><small style="color: #dc3545;">(Inactif)</small>
+            {% endif %}
+          </div>
+        </div>
+        
+        {% if module.description %}
+        <div class="module-description">
+          {{ module.description[:100] }}{% if module.description|length > 100 %}...{% endif %}
+        </div>
+        {% endif %}
+        
+        <div class="module-stats">
+          <div class="module-stat">
+            <div class="module-stat-value">{{ module.ressources|length }}</div>
+            <div class="module-stat-label">Ressources</div>
+          </div>
+          <div class="module-stat">
+            <div class="module-stat-value">{{ module.duree_totale_minutes or 0 }}min</div>
+            <div class="module-stat-label">Durée</div>
+          </div>
+          <div class="module-stat">
+            <div class="module-stat-value">{{ module.progressions|length }}</div>
+            <div class="module-stat-label">Participants</div>
+          </div>
+        </div>
+        
+        <div class="module-difficulte">
+          <span class="difficulte-label">Difficulté :</span>
+          <span class="difficulte-badge difficulte-{{ module.difficulte }}">
+            {{ module.difficulte|title }}
+          </span>
+        </div>
+        
+        <div class="module-actions">
+          <button  class="btn-action btn-view" onclick="window.location.href='{{ url_for('elearning_module_detail', module_id=module.id) }}'">
+            <i class="fas fa-eye"></i> Voir
+          </button>
+                   
+          <button  class="btn-modifier" onclick="window.location.href='{{ url_for('elearning_module_edit_form', module_id=module.id) }}'">
+            <div>
+                <div class="pencil"></div>
+                <div class="folder">
+                    <div class="top">
+                        <svg viewBox="0 0 24 27">
+                            <path d="M1,0 L23,0 C23.5522847,-1.01453063e-16 24,0.44771525 24,1 L24,8.17157288 C24,8.70200585 23.7892863,9.21071368 23.4142136,9.58578644 L20.5857864,12.4142136 C20.2107137,12.7892863 20,13.2979941 20,13.8284271 L20,26 C20,26.5522847 19.5522847,27 19,27 L1,27 C0.44771525,27 6.76353751e-17,26.5522847 0,26 L0,1 C-6.76353751e-17,0.44771525 0.44771525,1.01453063e-16 1,0 Z"></path>
+                        </svg>
+                    </div>
+                    <div class="paper"></div>
+                </div>
+            </div>
+            Modifier
+          </button>  
+
+        </div>
+      </div>
+      {% endfor %}
+    </div>
+  {% else %}
+    <div class="empty-state">
+      <i class="fas fa-book"></i>
+      <h3>Aucun module e-learning</h3>
+      <p>Commencez par créer votre premier module de formation.</p>
+      <button href="{{ url_for('elearning_modules') }}?action=create" class="btn-primary" onclick="window.location.href='{{ url_for('elearning_modules') }}?action=create'">
+        <i class="fas fa-plus"></i> Créer le premier module
+      </button>
+    </div>
+  {% endif %}
+</div>
+
+<script>
+function filterModules() {
+  const programme = document.querySelector('select').value;
+  const statut = document.querySelectorAll('select')[1].value;
+  const difficulte = document.querySelectorAll('select')[2].value;
+  
+  console.log('🔍 DEBUG JS: programme=', programme, 'statut=', statut, 'difficulte=', difficulte);
+  
+  const url = new URL(window.location);
+  
+  // Gestion du filtre programme
+  if (programme && programme !== 'tous') {
+    url.searchParams.set('programme_id', programme);
+  } else {
+    url.searchParams.delete('programme_id');
+  }
+  
+  // Gestion du filtre statut
+  if (statut && statut !== 'tous') {
+    url.searchParams.set('statut', statut);
+  } else {
+    url.searchParams.delete('statut');
+  }
+  
+  // Gestion du filtre difficulté
+  if (difficulte && difficulte !== 'tous') {
+    url.searchParams.set('difficulte', difficulte);
+  } else {
+    url.searchParams.delete('difficulte');
+  }
+  
+  console.log('🔍 DEBUG JS: URL finale=', url.toString());
+  
+  window.location.href = url.toString();
+}
+</script>
+{% endblock %}

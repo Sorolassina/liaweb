@@ -1,0 +1,218 @@
+{% extends "base.html" %}
+
+{% block title %}{{ ressource.titre }} - E-learning{% endblock %}
+
+{% block head_extra %}
+<style>
+  .ressource-player {
+    background: white;
+    border-radius: 12px;
+    box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+    padding: 2rem;
+    margin: 2rem 0;
+  }
+  
+  .ressource-header {
+    border-bottom: 2px solid #e9ecef;
+    padding-bottom: 1rem;
+    margin-bottom: 2rem;
+  }
+  
+  .ressource-content {
+    min-height: 400px;
+  }
+  
+  .video-player {
+    width: 100%;
+    max-width: 800px;
+    height: 450px;
+    border-radius: 8px;
+  }
+  
+  .document-viewer {
+    width: 100%;
+    height: 600px;
+    border: 1px solid #dee2e6;
+    border-radius: 8px;
+  }
+  
+  .quiz-container {
+    background: #f8f9fa;
+    border-radius: 8px;
+    padding: 2rem;
+  }
+  
+  .url-container {
+    text-align: center;
+    padding: 3rem;
+  }
+  
+  .btn-back {
+    background: var(--secondary-color);
+    color: white;
+    border: none;
+    padding: 0.5rem 1rem;
+    border-radius: 6px;
+    text-decoration: none;
+    display: inline-block;
+    margin-bottom: 1rem;
+  }
+  
+  .btn-back:hover {
+    background: var(--primary-color);
+    color: white;
+    text-decoration: none;
+  }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="container">
+  <a href="javascript:history.back()" class="btn-back">
+    <i class="fas fa-arrow-left me-2"></i>
+    Retour
+  </a>
+  
+  <div class="ressource-player">
+    <div class="ressource-header">
+      <h1 class="mb-2">
+        <i class="fas fa-{% if ressource.type_ressource == 'video' %}play-circle{% elif ressource.type_ressource == 'document' %}file-pdf{% elif ressource.type_ressource == 'quiz' %}question-circle{% elif ressource.type_ressource == 'lien' %}external-link-alt{% elif ressource.type_ressource == 'audio' %}volume-up{% endif %} me-2"></i>
+        {{ ressource.titre }}
+      </h1>
+      
+      <div class="d-flex gap-3 mb-2">
+        <span class="badge bg-primary">{{ ressource.type_ressource | title }}</span>
+        {% if ressource.duree_minutes %}
+        <span class="badge bg-info">{{ ressource.duree_minutes }} minutes</span>
+        {% endif %}
+        {% if ressource.difficulte %}
+        <span class="badge bg-warning">{{ ressource.difficulte | title }}</span>
+        {% endif %}
+      </div>
+      
+      {% if ressource.description %}
+      <p class="text-muted">{{ ressource.description }}</p>
+      {% endif %}
+    </div>
+    
+    <div class="ressource-content">
+      {% if ressource.type_ressource == 'video' %}
+        {% if ressource.fichier_path %}
+        <video class="video-player" controls>
+          <source src="/media/{{ ressource.fichier_path }}" type="video/mp4">
+          Votre navigateur ne supporte pas la lecture vidéo.
+        </video>
+        {% elif ressource.url_contenu %}
+        <div class="url-container">
+          <h4>Vidéo externe</h4>
+          <p>Cette ressource pointe vers une vidéo externe.</p>
+          <a href="{{ ressource.url_contenu }}" target="_blank" class="btn btn-primary">
+            <i class="fas fa-external-link-alt me-2"></i>
+            Ouvrir la vidéo
+          </a>
+        </div>
+        {% else %}
+        <div class="alert alert-warning">
+          <i class="fas fa-exclamation-triangle me-2"></i>
+          Aucun contenu vidéo disponible pour cette ressource.
+        </div>
+        {% endif %}
+        
+      {% elif ressource.type_ressource == 'document' %}
+        {% if ressource.fichier_path %}
+        <iframe class="document-viewer" src="/media/{{ ressource.fichier_path }}"></iframe>
+        {% elif ressource.url_contenu %}
+        <div class="url-container">
+          <h4>Document externe</h4>
+          <p>Cette ressource pointe vers un document externe.</p>
+          <a href="{{ ressource.url_contenu }}" target="_blank" class="btn btn-primary">
+            <i class="fas fa-external-link-alt me-2"></i>
+            Ouvrir le document
+          </a>
+        </div>
+        {% else %}
+        <div class="alert alert-warning">
+          <i class="fas fa-exclamation-triangle me-2"></i>
+          Aucun document disponible pour cette ressource.
+        </div>
+        {% endif %}
+        
+      {% elif ressource.type_ressource == 'quiz' %}
+        <div class="quiz-container">
+          <h4>Quiz interactif</h4>
+          <p>Cette fonctionnalité sera bientôt disponible.</p>
+          <div class="alert alert-info">
+            <i class="fas fa-info-circle me-2"></i>
+            Les quiz interactifs sont en cours de développement.
+          </div>
+        </div>
+        
+      {% elif ressource.type_ressource == 'lien' %}
+        <div class="url-container">
+          <h4>Lien externe</h4>
+          <p>{{ ressource.description or "Cliquez sur le bouton ci-dessous pour accéder à la ressource." }}</p>
+          <a href="{{ ressource.url_contenu }}" target="_blank" class="btn btn-primary btn-lg">
+            <i class="fas fa-external-link-alt me-2"></i>
+            Accéder à la ressource
+          </a>
+        </div>
+        
+      {% elif ressource.type_ressource == 'audio' %}
+        {% if ressource.fichier_path %}
+        <div class="text-center">
+          <audio controls style="width: 100%; max-width: 500px;">
+            <source src="/media/{{ ressource.fichier_path }}" type="audio/mpeg">
+            Votre navigateur ne supporte pas la lecture audio.
+          </audio>
+        </div>
+        {% elif ressource.url_contenu %}
+        <div class="url-container">
+          <h4>Audio externe</h4>
+          <p>Cette ressource pointe vers un fichier audio externe.</p>
+          <a href="{{ ressource.url_contenu }}" target="_blank" class="btn btn-primary">
+            <i class="fas fa-external-link-alt me-2"></i>
+            Ouvrir l'audio
+          </a>
+        </div>
+        {% else %}
+        <div class="alert alert-warning">
+          <i class="fas fa-exclamation-triangle me-2"></i>
+          Aucun fichier audio disponible pour cette ressource.
+        </div>
+        {% endif %}
+        
+      {% else %}
+        <div class="alert alert-warning">
+          <i class="fas fa-exclamation-triangle me-2"></i>
+          Type de ressource non reconnu : {{ ressource.type_ressource }}
+        </div>
+      {% endif %}
+    </div>
+  </div>
+</div>
+
+<script>
+// Fonction pour marquer la ressource comme terminée
+function markAsCompleted() {
+  // À implémenter : API call pour marquer la progression
+  console.log('Ressource marquée comme terminée');
+}
+
+// Auto-play pour les vidéos
+document.addEventListener('DOMContentLoaded', function() {
+  const video = document.querySelector('video');
+  if (video) {
+    video.addEventListener('ended', function() {
+      markAsCompleted();
+    });
+  }
+  
+  const audio = document.querySelector('audio');
+  if (audio) {
+    audio.addEventListener('ended', function() {
+      markAsCompleted();
+    });
+  }
+});
+</script>
+{% endblock %}

@@ -88,7 +88,7 @@ def coerce_doc_type(value: Optional[str]):
 
 
 # --------- FORMULAIRE PUBLIC (pour les candidats) ---------
-@router.get("/preinscriptions/public-form", response_class=HTMLResponse)
+@router.get("/preinscriptions/public-form", name="preinscriptions_public_form", response_class=HTMLResponse)
 def preinscription_public_form(
     request: Request,
     session: Session = Depends(get_session),
@@ -114,7 +114,7 @@ def preinscription_public_form(
     )
 
 # --------- LISTE ADMIN (pour les administrateurs) ---------
-@router.get("/preinscriptions/form", response_class=HTMLResponse)
+@router.get("/preinscriptions/form", name="preinscriptions_form", response_class=HTMLResponse)
 def preinscriptions(
     request: Request,
     session: Session = Depends(get_session),
@@ -145,9 +145,12 @@ def preinscriptions(
 
     # KPI pour en-tête
     total = session.exec(select(func.count(Preinscription.id))).one() or 0
-    total_acd = (
+    
+    # Calculer le total pour le programme sélectionné (ou ACD par défaut)
+    programme_code = programme or "ACD"
+    total_programme = (
         session.exec(
-            select(func.count(Preinscription.id)).join(Programme).where(Programme.code == "ACD")
+            select(func.count(Preinscription.id)).join(Programme).where(Programme.code == programme_code)
         ).one()
         or 0
     )
@@ -178,7 +181,7 @@ def preinscriptions(
             "progs": progs,
             "current_programme": programme,
             "q": q or "",
-            "kpi": {"total": int(total), "acd": int(total_acd)},
+            "kpi": {"total": int(total), "programme": int(total_programme), "programme_code": programme_code},
             "pins": pins,
         },
     )
@@ -527,10 +530,10 @@ async def preinscription_public_submit(
         print(f"✅ [DEBUG] Préinscription terminée avec succès!")
         print(f"🎯 [DEBUG] Redirection vers: /ACD/preinscriptions/merci")
 
-    return RedirectResponse(url="/ACD/preinscriptions/merci", status_code=303)
+    return RedirectResponse(url=request.url_for("preinscriptions_merci"), status_code=303)
 
 # --------- PAGE MERCI ---------
-@router.get("/preinscriptions/merci", response_class=HTMLResponse)
+@router.get("/preinscriptions/merci", name="preinscriptions_merci", response_class=HTMLResponse)
 def preinscription_merci(request: Request):
     return templates.TemplateResponse(
         "ACD/preinscription_merci.html",

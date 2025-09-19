@@ -1,0 +1,648 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Démo Typographie Bootstrap</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" rel="stylesheet">
+    <style>
+        body {
+            background-color: #f8f9fa;
+            padding: 2rem 0;
+        }
+        .demo-section {
+            background: white;
+            border-radius: 8px;
+            padding: 2rem;
+            margin-bottom: 2rem;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        }
+        .demo-section h3 {
+            color: #495057;
+            margin-bottom: 1.5rem;
+            border-bottom: 2px solid #e9ecef;
+            padding-bottom: 0.5rem;
+        }
+        .typography-group {
+            margin-bottom: 2rem;
+        }
+        .typography-group h5 {
+            color: #6c757d;
+            margin-bottom: 1rem;
+            font-size: 1rem;
+        }
+        .code-block {
+            background: #f8f9fa;
+            border: 1px solid #e9ecef;
+            border-radius: 8px;
+            padding: 20px;
+            margin-top: 15px;
+            font-family: 'Courier New', monospace;
+            font-size: 14px;
+            line-height: 1.8;
+            color: #495057;
+            white-space: pre-wrap;
+            overflow-x: auto;
+        }
+        .demo-text {
+            margin-bottom: 1rem;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="row">
+            <div class="col-12">
+                <h1 class="text-center mb-4">
+                    <i class="fas fa-font me-2"></i>
+                    Démo Complète de la Typographie Bootstrap
+                </h1>
+                
+                <!-- Headings -->
+                <div class="demo-section">
+                    <h3><i class="fas fa-heading me-2"></i>Titres</h3>
+                    
+                    <div class="typography-group">
+                        <h5>Balises de titre</h5>
+                        <h1 class="demo-text">h1. Titre Bootstrap</h1>
+                        <h2 class="demo-text">h2. Titre Bootstrap</h2>
+                        <h3 class="demo-text">h3. Titre Bootstrap</h3>
+                        <h4 class="demo-text">h4. Titre Bootstrap</h4>
+                        <h5 class="demo-text">h5. Titre Bootstrap</h5>
+                        <h6 class="demo-text">h6. Titre Bootstrap</h6>
+                    </div>
+                    
+                    <div class="typography-group">
+                        <h5>Classes de titre</h5>
+                        <p class="h1 demo-text">h1. Titre Bootstrap</p>
+                        <p class="h2 demo-text">h2. Titre Bootstrap</p>
+                        <p class="h3 demo-text">h3. Titre Bootstrap</p>
+                        <p class="h4 demo-text">h4. Titre Bootstrap</p>
+                        <p class="h5 demo-text">h5. Titre Bootstrap</p>
+                        <p class="h6 demo-text">h6. Titre Bootstrap</p>
+                    </div>
+                    
+                    <div class="typography-group">
+                        <h5>Titres avec sous-titres</h5>
+                        <h3 class="demo-text">
+                            Titre principal
+                            <small class="text-muted">Sous-titre</small>
+                        </h3>
+                        <h4 class="demo-text">
+                            Titre principal
+                            <small class="text-muted">Sous-titre</small>
+                        </h4>
+                    </div>
+                    
+                    <div class="code-block">
+                        &lt;h1&gt;h1. Titre Bootstrap&lt;/h1&gt;<br>
+                        &lt;h2&gt;h2. Titre Bootstrap&lt;/h2&gt;<br>
+                        &lt;p class="h1"&gt;h1. Titre Bootstrap&lt;/p&gt;<br>
+                        &lt;p class="h2"&gt;h2. Titre Bootstrap&lt;/p&gt;<br><br>
+                        &lt;h3&gt;Titre principal &lt;small class="text-muted"&gt;Sous-titre&lt;/small&gt;&lt;/h3&gt;
+                    </div>
+                </div>
+
+                <!-- Display headings -->
+                <div class="demo-section">
+                    <h3><i class="fas fa-text-width me-2"></i>Titres d'Affichage</h3>
+                    
+                    <div class="typography-group">
+                        <h5>Classes display</h5>
+                        <h1 class="display-1 demo-text">Display 1</h1>
+                        <h1 class="display-2 demo-text">Display 2</h1>
+                        <h1 class="display-3 demo-text">Display 3</h1>
+                        <h1 class="display-4 demo-text">Display 4</h1>
+                        <h1 class="display-5 demo-text">Display 5</h1>
+                        <h1 class="display-6 demo-text">Display 6</h1>
+                    </div>
+                    
+                    <div class="code-block">
+                        &lt;h1 class="display-1"&gt;Display 1&lt;/h1&gt;<br>
+                        &lt;h1 class="display-2"&gt;Display 2&lt;/h1&gt;<br>
+                        &lt;h1 class="display-3"&gt;Display 3&lt;/h1&gt;<br>
+                        &lt;h1 class="display-4"&gt;Display 4&lt;/h1&gt;<br>
+                        &lt;h1 class="display-5"&gt;Display 5&lt;/h1&gt;<br>
+                        &lt;h1 class="display-6"&gt;Display 6&lt;/h1&gt;
+                    </div>
+                </div>
+
+                <!-- Lead -->
+                <div class="demo-section">
+                    <h3><i class="fas fa-paragraph me-2"></i>Texte Principal</h3>
+                    
+                    <div class="typography-group">
+                        <h5>Classe lead</h5>
+                        <p class="lead demo-text">
+                            Ceci est un paragraphe principal. Il se distingue des paragraphes réguliers par une taille de police plus grande et un espacement des lignes plus généreux.
+                        </p>
+                        <p class="demo-text">
+                            Ceci est un paragraphe normal. Il utilise la taille de police et l'espacement des lignes par défaut.
+                        </p>
+                    </div>
+                    
+                    <div class="code-block">
+                        &lt;p class="lead"&gt;<br>
+                        &nbsp;&nbsp;Ceci est un paragraphe principal...<br>
+                        &lt;/p&gt;<br>
+                        &lt;p&gt;<br>
+                        &nbsp;&nbsp;Ceci est un paragraphe normal...<br>
+                        &lt;/p&gt;
+                    </div>
+                </div>
+
+                <!-- Inline text elements -->
+                <div class="demo-section">
+                    <h3><i class="fas fa-bold me-2"></i>Éléments de Texte Inline</h3>
+                    
+                    <div class="typography-group">
+                        <h5>Mise en forme du texte</h5>
+                        <p class="demo-text">Vous pouvez utiliser la balise <mark>mark</mark> pour <mark>surligner</mark> le texte.</p>
+                        <p class="demo-text"><del>Cette ligne de texte est censée être traitée comme du texte supprimé.</del></p>
+                        <p class="demo-text"><s>Cette ligne de texte est censée être traitée comme n'étant plus précise.</s></p>
+                        <p class="demo-text"><ins>Cette ligne de texte est censée être traitée comme une addition au document.</ins></p>
+                        <p class="demo-text"><u>Cette ligne de texte sera rendue soulignée</u></p>
+                        <p class="demo-text"><small>Cette ligne de texte est censée être traitée comme du texte fin.</small></p>
+                        <p class="demo-text"><strong>Cette ligne a été rendue en gras.</strong></p>
+                        <p class="demo-text"><em>Cette ligne a été rendue en italique.</em></p>
+                    </div>
+                    
+                    <div class="code-block">
+                        &lt;p&gt;Vous pouvez utiliser la balise &lt;mark&gt;mark&lt;/mark&gt; pour surligner.&lt;/p&gt;<br>
+                        &lt;p&gt;&lt;del&gt;Texte supprimé&lt;/del&gt;&lt;/p&gt;<br>
+                        &lt;p&gt;&lt;s&gt;Texte barré&lt;/s&gt;&lt;/p&gt;<br>
+                        &lt;p&gt;&lt;ins&gt;Texte ajouté&lt;/ins&gt;&lt;/p&gt;<br>
+                        &lt;p&gt;&lt;u&gt;Texte souligné&lt;/u&gt;&lt;/p&gt;<br>
+                        &lt;p&gt;&lt;small&gt;Texte fin&lt;/small&gt;&lt;/p&gt;<br>
+                        &lt;p&gt;&lt;strong&gt;Texte gras&lt;/strong&gt;&lt;/p&gt;<br>
+                        &lt;p&gt;&lt;em&gt;Texte italique&lt;/em&gt;&lt;/p&gt;
+                    </div>
+                </div>
+
+                <!-- Abbreviations -->
+                <div class="demo-section">
+                    <h3><i class="fas fa-info-circle me-2"></i>Abréviations</h3>
+                    
+                    <div class="typography-group">
+                        <h5>Abréviations avec tooltips</h5>
+                        <p class="demo-text"><abbr title="attribute">attr</abbr></p>
+                        <p class="demo-text"><abbr title="HyperText Markup Language" class="initialism">HTML</abbr></p>
+                        <p class="demo-text">Le <abbr title="World Wide Web Consortium">W3C</abbr> est une communauté internationale.</p>
+                    </div>
+                    
+                    <div class="code-block">
+                        &lt;p&gt;&lt;abbr title="attribute"&gt;attr&lt;/abbr&gt;&lt;/p&gt;<br>
+                        &lt;p&gt;&lt;abbr title="HyperText Markup Language" class="initialism"&gt;HTML&lt;/abbr&gt;&lt;/p&gt;<br>
+                        &lt;p&gt;Le &lt;abbr title="World Wide Web Consortium"&gt;W3C&lt;/abbr&gt; est une communauté.&lt;/p&gt;
+                    </div>
+                </div>
+
+                <!-- Blockquotes -->
+                <div class="demo-section">
+                    <h3><i class="fas fa-quote-left me-2"></i>Citations</h3>
+                    
+                    <div class="typography-group">
+                        <h5>Citations de base</h5>
+                        <blockquote class="blockquote demo-text">
+                            <p>Une citation bien connue, contenue dans un élément blockquote.</p>
+                        </blockquote>
+                    </div>
+                    
+                    <div class="typography-group">
+                        <h5>Citations avec attribution</h5>
+                        <blockquote class="blockquote demo-text">
+                            <p>Une citation bien connue, contenue dans un élément blockquote.</p>
+                            <footer class="blockquote-footer">
+                                Quelqu'un de célèbre dans <cite title="Source Title">Source Title</cite>
+                            </footer>
+                        </blockquote>
+                    </div>
+                    
+                    <div class="typography-group">
+                        <h5>Citations alignées</h5>
+                        <blockquote class="blockquote text-center demo-text">
+                            <p>Une citation bien connue, contenue dans un élément blockquote.</p>
+                            <footer class="blockquote-footer">
+                                Quelqu'un de célèbre dans <cite title="Source Title">Source Title</cite>
+                            </footer>
+                        </blockquote>
+                        <blockquote class="blockquote text-end demo-text">
+                            <p>Une citation bien connue, contenue dans un élément blockquote.</p>
+                            <footer class="blockquote-footer">
+                                Quelqu'un de célèbre dans <cite title="Source Title">Source Title</cite>
+                            </footer>
+                        </blockquote>
+                    </div>
+                    
+                    <div class="code-block">
+                        &lt;blockquote class="blockquote"&gt;<br>
+                        &nbsp;&nbsp;&lt;p&gt;Une citation bien connue...&lt;/p&gt;<br>
+                        &lt;/blockquote&gt;<br><br>
+                        &lt;blockquote class="blockquote"&gt;<br>
+                        &nbsp;&nbsp;&lt;p&gt;Une citation bien connue...&lt;/p&gt;<br>
+                        &nbsp;&nbsp;&lt;footer class="blockquote-footer"&gt;<br>
+                        &nbsp;&nbsp;&nbsp;&nbsp;Quelqu'un de célèbre dans &lt;cite title="Source Title"&gt;Source Title&lt;/cite&gt;<br>
+                        &nbsp;&nbsp;&lt;/footer&gt;<br>
+                        &lt;/blockquote&gt;
+                    </div>
+                </div>
+
+                <!-- Lists -->
+                <div class="demo-section">
+                    <h3><i class="fas fa-list me-2"></i>Listes</h3>
+                    
+                    <div class="typography-group">
+                        <h5>Listes non ordonnées</h5>
+                        <ul class="demo-text">
+                            <li>Premier élément de liste</li>
+                            <li>Deuxième élément de liste
+                                <ul>
+                                    <li>Sous-élément 1</li>
+                                    <li>Sous-élément 2</li>
+                                </ul>
+                            </li>
+                            <li>Troisième élément de liste</li>
+                        </ul>
+                    </div>
+                    
+                    <div class="typography-group">
+                        <h5>Listes ordonnées</h5>
+                        <ol class="demo-text">
+                            <li>Premier élément de liste</li>
+                            <li>Deuxième élément de liste
+                                <ol>
+                                    <li>Sous-élément 1</li>
+                                    <li>Sous-élément 2</li>
+                                </ol>
+                            </li>
+                            <li>Troisième élément de liste</li>
+                        </ol>
+                    </div>
+                    
+                    <div class="typography-group">
+                        <h5>Listes sans style</h5>
+                        <ul class="list-unstyled demo-text">
+                            <li>Premier élément de liste</li>
+                            <li>Deuxième élément de liste
+                                <ul>
+                                    <li>Sous-élément 1</li>
+                                    <li>Sous-élément 2</li>
+                                </ul>
+                            </li>
+                            <li>Troisième élément de liste</li>
+                        </ul>
+                    </div>
+                    
+                    <div class="typography-group">
+                        <h5>Listes inline</h5>
+                        <ul class="list-inline demo-text">
+                            <li class="list-inline-item">Premier élément</li>
+                            <li class="list-inline-item">Deuxième élément</li>
+                            <li class="list-inline-item">Troisième élément</li>
+                        </ul>
+                    </div>
+                    
+                    <div class="code-block">
+                        &lt;ul&gt;<br>
+                        &nbsp;&nbsp;&lt;li&gt;Premier élément&lt;/li&gt;<br>
+                        &nbsp;&nbsp;&lt;li&gt;Deuxième élément&lt;/li&gt;<br>
+                        &lt;/ul&gt;<br><br>
+                        &lt;ul class="list-unstyled"&gt;<br>
+                        &nbsp;&nbsp;&lt;li&gt;Premier élément&lt;/li&gt;<br>
+                        &lt;/ul&gt;<br><br>
+                        &lt;ul class="list-inline"&gt;<br>
+                        &nbsp;&nbsp;&lt;li class="list-inline-item"&gt;Premier élément&lt;/li&gt;<br>
+                        &nbsp;&nbsp;&lt;li class="list-inline-item"&gt;Deuxième élément&lt;/li&gt;<br>
+                        &lt;/ul&gt;
+                    </div>
+                </div>
+
+                <!-- Description lists -->
+                <div class="demo-section">
+                    <h3><i class="fas fa-list-alt me-2"></i>Listes de Description</h3>
+                    
+                    <div class="typography-group">
+                        <h5>Listes de description de base</h5>
+                        <dl class="demo-text">
+                            <dt>Terme de description</dt>
+                            <dd>Description du terme.</dd>
+                            <dt>Terme de description</dt>
+                            <dd>Description du terme.</dd>
+                        </dl>
+                    </div>
+                    
+                    <div class="typography-group">
+                        <h5>Listes de description horizontales</h5>
+                        <dl class="row demo-text">
+                            <dt class="col-sm-3">Terme de description</dt>
+                            <dd class="col-sm-9">Description du terme.</dd>
+                            <dt class="col-sm-3">Terme de description</dt>
+                            <dd class="col-sm-9">Description du terme.</dd>
+                            <dt class="col-sm-3">Terme de description</dt>
+                            <dd class="col-sm-9">Description du terme.</dd>
+                        </dl>
+                    </div>
+                    
+                    <div class="code-block">
+                        &lt;dl&gt;<br>
+                        &nbsp;&nbsp;&lt;dt&gt;Terme de description&lt;/dt&gt;<br>
+                        &nbsp;&nbsp;&lt;dd&gt;Description du terme.&lt;/dd&gt;<br>
+                        &lt;/dl&gt;<br><br>
+                        &lt;dl class="row"&gt;<br>
+                        &nbsp;&nbsp;&lt;dt class="col-sm-3"&gt;Terme de description&lt;/dt&gt;<br>
+                        &nbsp;&nbsp;&lt;dd class="col-sm-9"&gt;Description du terme.&lt;/dd&gt;<br>
+                        &lt;/dl&gt;
+                    </div>
+                </div>
+
+                <!-- Text colors -->
+                <div class="demo-section">
+                    <h3><i class="fas fa-palette me-2"></i>Couleurs de Texte</h3>
+                    
+                    <div class="typography-group">
+                        <h5>Classes de couleur</h5>
+                        <p class="text-primary demo-text">text-primary</p>
+                        <p class="text-secondary demo-text">text-secondary</p>
+                        <p class="text-success demo-text">text-success</p>
+                        <p class="text-danger demo-text">text-danger</p>
+                        <p class="text-warning demo-text">text-warning</p>
+                        <p class="text-info demo-text">text-info</p>
+                        <p class="text-light bg-dark demo-text">text-light</p>
+                        <p class="text-dark demo-text">text-dark</p>
+                        <p class="text-muted demo-text">text-muted</p>
+                        <p class="text-white bg-dark demo-text">text-white</p>
+                    </div>
+                    
+                    <div class="code-block">
+                        &lt;p class="text-primary"&gt;text-primary&lt;/p&gt;<br>
+                        &lt;p class="text-secondary"&gt;text-secondary&lt;/p&gt;<br>
+                        &lt;p class="text-success"&gt;text-success&lt;/p&gt;<br>
+                        &lt;p class="text-danger"&gt;text-danger&lt;/p&gt;<br>
+                        &lt;p class="text-warning"&gt;text-warning&lt;/p&gt;<br>
+                        &lt;p class="text-info"&gt;text-info&lt;/p&gt;<br>
+                        &lt;p class="text-light bg-dark"&gt;text-light&lt;/p&gt;<br>
+                        &lt;p class="text-dark"&gt;text-dark&lt;/p&gt;<br>
+                        &lt;p class="text-muted"&gt;text-muted&lt;/p&gt;<br>
+                        &lt;p class="text-white bg-dark"&gt;text-white&lt;/p&gt;
+                    </div>
+                </div>
+
+                <!-- Text alignment -->
+                <div class="demo-section">
+                    <h3><i class="fas fa-align-left me-2"></i>Alignement du Texte</h3>
+                    
+                    <div class="typography-group">
+                        <h5>Alignement horizontal</h5>
+                        <p class="text-start demo-text">text-start - Texte aligné à gauche</p>
+                        <p class="text-center demo-text">text-center - Texte centré</p>
+                        <p class="text-end demo-text">text-end - Texte aligné à droite</p>
+                    </div>
+                    
+                    <div class="typography-group">
+                        <h5>Alignement responsive</h5>
+                        <p class="text-start text-md-center text-lg-end demo-text">Alignement responsive - gauche sur xs, centré sur md, droite sur lg</p>
+                    </div>
+                    
+                    <div class="code-block">
+                        &lt;p class="text-start"&gt;text-start - Texte aligné à gauche&lt;/p&gt;<br>
+                        &lt;p class="text-center"&gt;text-center - Texte centré&lt;/p&gt;<br>
+                        &lt;p class="text-end"&gt;text-end - Texte aligné à droite&lt;/p&gt;<br><br>
+                        &lt;p class="text-start text-md-center text-lg-end"&gt;<br>
+                        &nbsp;&nbsp;Alignement responsive&lt;/p&gt;
+                    </div>
+                </div>
+
+                <!-- Text wrapping and overflow -->
+                <div class="demo-section">
+                    <h3><i class="fas fa-text-width me-2"></i>Retour à la Ligne et Débordement</h3>
+                    
+                    <div class="typography-group">
+                        <h5>Gestion du texte long</h5>
+                        <div class="badge bg-primary text-wrap demo-text" style="width: 6rem;">
+                            Ce badge devrait s'enrouler sur plusieurs lignes pour s'adapter à la largeur disponible.
+                        </div>
+                        <div class="text-nowrap bg-light demo-text" style="width: 8rem;">
+                            Ce texte ne devrait pas s'enrouler.
+                        </div>
+                    </div>
+                    
+                    <div class="typography-group">
+                        <h5>Débordement de texte</h5>
+                        <div class="text-truncate demo-text" style="width: 200px;">
+                            Ce texte est trop long pour la largeur disponible et sera tronqué avec des points de suspension.
+                        </div>
+                    </div>
+                    
+                    <div class="code-block">
+                        &lt;div class="badge bg-primary text-wrap" style="width: 6rem;"&gt;<br>
+                        &nbsp;&nbsp;Ce badge devrait s'enrouler...<br>
+                        &lt;/div&gt;<br><br>
+                        &lt;div class="text-nowrap bg-light" style="width: 8rem;"&gt;<br>
+                        &nbsp;&nbsp;Ce texte ne devrait pas s'enrouler.<br>
+                        &lt;/div&gt;<br><br>
+                        &lt;div class="text-truncate" style="width: 200px;"&gt;<br>
+                        &nbsp;&nbsp;Ce texte sera tronqué...<br>
+                        &lt;/div&gt;
+                    </div>
+                </div>
+
+                <!-- Word break -->
+                <div class="demo-section">
+                    <h3><i class="fas fa-cut me-2"></i>Césure des Mots</h3>
+                    
+                    <div class="typography-group">
+                        <h5>Classes de césure</h5>
+                        <p class="text-break demo-text">
+                            mmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmm
+                        </p>
+                    </div>
+                    
+                    <div class="code-block">
+                        &lt;p class="text-break"&gt;<br>
+                        &nbsp;&nbsp;mmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmm<br>
+                        &lt;/p&gt;
+                    </div>
+                </div>
+
+                <!-- Font size -->
+                <div class="demo-section">
+                    <h3><i class="fas fa-font me-2"></i>Taille de Police</h3>
+                    
+                    <div class="typography-group">
+                        <h5>Classes de taille</h5>
+                        <p class="fs-1 demo-text">fs-1 - Taille 1</p>
+                        <p class="fs-2 demo-text">fs-2 - Taille 2</p>
+                        <p class="fs-3 demo-text">fs-3 - Taille 3</p>
+                        <p class="fs-4 demo-text">fs-4 - Taille 4</p>
+                        <p class="fs-5 demo-text">fs-5 - Taille 5</p>
+                        <p class="fs-6 demo-text">fs-6 - Taille 6</p>
+                    </div>
+                    
+                    <div class="code-block">
+                        &lt;p class="fs-1"&gt;fs-1 - Taille 1&lt;/p&gt;<br>
+                        &lt;p class="fs-2"&gt;fs-2 - Taille 2&lt;/p&gt;<br>
+                        &lt;p class="fs-3"&gt;fs-3 - Taille 3&lt;/p&gt;<br>
+                        &lt;p class="fs-4"&gt;fs-4 - Taille 4&lt;/p&gt;<br>
+                        &lt;p class="fs-5"&gt;fs-5 - Taille 5&lt;/p&gt;<br>
+                        &lt;p class="fs-6"&gt;fs-6 - Taille 6&lt;/p&gt;
+                    </div>
+                </div>
+
+                <!-- Font weight and italics -->
+                <div class="demo-section">
+                    <h3><i class="fas fa-bold me-2"></i>Poids et Style de Police</h3>
+                    
+                    <div class="typography-group">
+                        <h5>Poids de police</h5>
+                        <p class="fw-bold demo-text">fw-bold - Texte en gras</p>
+                        <p class="fw-bolder demo-text">fw-bolder - Texte plus gras</p>
+                        <p class="fw-semibold demo-text">fw-semibold - Texte semi-gras</p>
+                        <p class="fw-normal demo-text">fw-normal - Texte normal</p>
+                        <p class="fw-light demo-text">fw-light - Texte fin</p>
+                        <p class="fw-lighter demo-text">fw-lighter - Texte plus fin</p>
+                    </div>
+                    
+                    <div class="typography-group">
+                        <h5>Style de police</h5>
+                        <p class="fst-italic demo-text">fst-italic - Texte en italique</p>
+                        <p class="fst-normal demo-text">fst-normal - Texte normal</p>
+                    </div>
+                    
+                    <div class="code-block">
+                        &lt;p class="fw-bold"&gt;fw-bold - Texte en gras&lt;/p&gt;<br>
+                        &lt;p class="fw-bolder"&gt;fw-bolder - Texte plus gras&lt;/p&gt;<br>
+                        &lt;p class="fw-semibold"&gt;fw-semibold - Texte semi-gras&lt;/p&gt;<br>
+                        &lt;p class="fw-normal"&gt;fw-normal - Texte normal&lt;/p&gt;<br>
+                        &lt;p class="fw-light"&gt;fw-light - Texte fin&lt;/p&gt;<br>
+                        &lt;p class="fw-lighter"&gt;fw-lighter - Texte plus fin&lt;/p&gt;<br><br>
+                        &lt;p class="fst-italic"&gt;fst-italic - Texte en italique&lt;/p&gt;<br>
+                        &lt;p class="fst-normal"&gt;fst-normal - Texte normal&lt;/p&gt;
+                    </div>
+                </div>
+
+                <!-- Line height -->
+                <div class="demo-section">
+                    <h3><i class="fas fa-align-justify me-2"></i>Hauteur de Ligne</h3>
+                    
+                    <div class="typography-group">
+                        <h5>Classes de hauteur de ligne</h5>
+                        <p class="lh-1 demo-text">lh-1 - Hauteur de ligne 1. Lorem ipsum dolor sit amet, consectetur adipiscing elit. Sed do eiusmod tempor incididunt ut labore et dolore magna aliqua.</p>
+                        <p class="lh-sm demo-text">lh-sm - Hauteur de ligne petite. Lorem ipsum dolor sit amet, consectetur adipiscing elit. Sed do eiusmod tempor incididunt ut labore et dolore magna aliqua.</p>
+                        <p class="lh-base demo-text">lh-base - Hauteur de ligne de base. Lorem ipsum dolor sit amet, consectetur adipiscing elit. Sed do eiusmod tempor incididunt ut labore et dolore magna aliqua.</p>
+                        <p class="lh-lg demo-text">lh-lg - Hauteur de ligne grande. Lorem ipsum dolor sit amet, consectetur adipiscing elit. Sed do eiusmod tempor incididunt ut labore et dolore magna aliqua.</p>
+                    </div>
+                    
+                    <div class="code-block">
+                        &lt;p class="lh-1"&gt;lh-1 - Hauteur de ligne 1...&lt;/p&gt;<br>
+                        &lt;p class="lh-sm"&gt;lh-sm - Hauteur de ligne petite...&lt;/p&gt;<br>
+                        &lt;p class="lh-base"&gt;lh-base - Hauteur de ligne de base...&lt;/p&gt;<br>
+                        &lt;p class="lh-lg"&gt;lh-lg - Hauteur de ligne grande...&lt;/p&gt;
+                    </div>
+                </div>
+
+                <!-- Monospace -->
+                <div class="demo-section">
+                    <h3><i class="fas fa-terminal me-2"></i>Police Monospace</h3>
+                    
+                    <div class="typography-group">
+                        <h5>Code et texte monospace</h5>
+                        <p class="demo-text">Utilisez <code>&lt;code&gt;</code> pour le code inline.</p>
+                        <p class="demo-text">Utilisez <kbd>Ctrl + C</kbd> pour copier.</p>
+                        <p class="demo-text">Utilisez <samp>samp</samp> pour la sortie d'un programme.</p>
+                        <p class="demo-text">Utilisez <var>var</var> pour les variables.</p>
+                        <pre class="demo-text"><code>&lt;p&gt;Exemple de code dans un bloc pre&lt;/p&gt;</code></pre>
+                    </div>
+                    
+                    <div class="code-block">
+                        &lt;p&gt;Utilisez &lt;code&gt;&amp;lt;code&amp;gt;&lt;/code&gt; pour le code inline.&lt;/p&gt;<br>
+                        &lt;p&gt;Utilisez &lt;kbd&gt;Ctrl + C&lt;/kbd&gt; pour copier.&lt;/p&gt;<br>
+                        &lt;p&gt;Utilisez &lt;samp&gt;samp&lt;/samp&gt; pour la sortie d'un programme.&lt;/p&gt;<br>
+                        &lt;p&gt;Utilisez &lt;var&gt;var&lt;/var&gt; pour les variables.&lt;/p&gt;<br>
+                        &lt;pre&gt;&lt;code&gt;&amp;lt;p&amp;gt;Exemple de code...&amp;lt;/p&amp;gt;&lt;/code&gt;&lt;/pre&gt;
+                    </div>
+                </div>
+
+                <!-- Résumé des classes -->
+                <div class="demo-section">
+                    <h3><i class="fas fa-list me-2"></i>Résumé des Classes Typographie</h3>
+                    
+                    <div class="row">
+                        <div class="col-md-6">
+                            <h5>Titres et texte</h5>
+                            <ul class="list-unstyled">
+                                <li><code>h1-h6</code> - Titres</li>
+                                <li><code>display-1</code> à <code>display-6</code> - Titres d'affichage</li>
+                                <li><code>lead</code> - Paragraphe principal</li>
+                                <li><code>mark</code> - Texte surligné</li>
+                                <li><code>del</code> - Texte supprimé</li>
+                                <li><code>s</code> - Texte barré</li>
+                                <li><code>ins</code> - Texte ajouté</li>
+                                <li><code>u</code> - Texte souligné</li>
+                                <li><code>small</code> - Texte fin</li>
+                                <li><code>strong</code> - Texte gras</li>
+                                <li><code>em</code> - Texte italique</li>
+                            </ul>
+                        </div>
+                        <div class="col-md-6">
+                            <h5>Couleurs et alignement</h5>
+                            <ul class="list-unstyled">
+                                <li><code>text-primary</code> - Couleur primaire</li>
+                                <li><code>text-secondary</code> - Couleur secondaire</li>
+                                <li><code>text-success</code> - Couleur succès</li>
+                                <li><code>text-danger</code> - Couleur danger</li>
+                                <li><code>text-warning</code> - Couleur avertissement</li>
+                                <li><code>text-info</code> - Couleur information</li>
+                                <li><code>text-light</code> - Couleur claire</li>
+                                <li><code>text-dark</code> - Couleur sombre</li>
+                                <li><code>text-muted</code> - Couleur atténuée</li>
+                                <li><code>text-white</code> - Couleur blanche</li>
+                                <li><code>text-start</code> - Alignement gauche</li>
+                                <li><code>text-center</code> - Alignement centre</li>
+                                <li><code>text-end</code> - Alignement droite</li>
+                            </ul>
+                        </div>
+                    </div>
+                    <div class="row">
+                        <div class="col-md-6">
+                            <h5>Taille et poids</h5>
+                            <ul class="list-unstyled">
+                                <li><code>fs-1</code> à <code>fs-6</code> - Tailles de police</li>
+                                <li><code>fw-bold</code> - Poids gras</li>
+                                <li><code>fw-bolder</code> - Poids plus gras</li>
+                                <li><code>fw-semibold</code> - Poids semi-gras</li>
+                                <li><code>fw-normal</code> - Poids normal</li>
+                                <li><code>fw-light</code> - Poids fin</li>
+                                <li><code>fw-lighter</code> - Poids plus fin</li>
+                                <li><code>fst-italic</code> - Style italique</li>
+                                <li><code>fst-normal</code> - Style normal</li>
+                            </ul>
+                        </div>
+                        <div class="col-md-6">
+                            <h5>Listes et autres</h5>
+                            <ul class="list-unstyled">
+                                <li><code>list-unstyled</code> - Liste sans style</li>
+                                <li><code>list-inline</code> - Liste inline</li>
+                                <li><code>list-inline-item</code> - Élément inline</li>
+                                <li><code>blockquote</code> - Citation</li>
+                                <li><code>blockquote-footer</code> - Pied de citation</li>
+                                <li><code>initialism</code> - Abréviation</li>
+                                <li><code>text-wrap</code> - Retour à la ligne</li>
+                                <li><code>text-nowrap</code> - Pas de retour à la ligne</li>
+                                <li><code>text-truncate</code> - Troncature</li>
+                                <li><code>text-break</code> - Césure</li>
+                                <li><code>lh-1</code> - Hauteur de ligne 1</li>
+                                <li><code>lh-sm</code> - Hauteur de ligne petite</li>
+                                <li><code>lh-base</code> - Hauteur de ligne de base</li>
+                                <li><code>lh-lg</code> - Hauteur de ligne grande</li>
+                            </ul>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+</body>
+</html>

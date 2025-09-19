@@ -351,12 +351,47 @@ class SessionParticipant(SQLModel, table=True):
     inscription: "Inscription" = Relationship()
 
 class SuiviMensuel(SQLModel, table=True):
+    """Suivi mensuel des candidats avec métriques business"""
     id: Optional[int] = Field(default=None, primary_key=True)
     inscription_id: int = Field(foreign_key="inscription.id", index=True)
     mois: date                                    # par convention, jour = 1er du mois
-    score_objectifs: Optional[float] = None       # 0..100
-    commentaire: Optional[str] = None
+    
+    # Métriques business principales
+    chiffre_affaires_actuel: Optional[float] = None      # CA en euros
+    
+    # Évolution des employés
+    nb_stagiaires: Optional[int] = None
+    nb_alternants: Optional[int] = None
+    nb_cdd: Optional[int] = None
+    nb_cdi: Optional[int] = None
+    
+    # Subventions et financements
+    montant_subventions_obtenues: Optional[float] = None  # en euros
+    organismes_financeurs: Optional[str] = None           # liste des organismes
+    
+    # Dettes
+    montant_dettes_effectuees: Optional[float] = None      # dettes payées
+    montant_dettes_encours: Optional[float] = None       # dettes en cours
+    montant_dettes_envisagees: Optional[float] = None     # dettes prévues
+    
+    # Levée de fonds equity
+    montant_equity_effectue: Optional[float] = None       # levée réalisée
+    montant_equity_encours: Optional[float] = None        # levée en cours
+    
+    # Informations entreprise
+    statut_juridique: Optional[str] = None                # SAS, SARL, etc.
+    adresse_entreprise: Optional[str] = None             # nouvelle adresse si changement
+    
+    # Situation socioprofessionnelle
+    situation_socioprofessionnelle: Optional[str] = None # statut du candidat
+    
+    # Métriques générales (conservées pour compatibilité)
+    score_objectifs: Optional[float] = None             # 0..100 (score global)
+    commentaire: Optional[str] = None                    # commentaires libres
+    
+    # Métadonnées
     cree_le: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
+    modifie_le: Optional[datetime] = None
 
     inscription: "Inscription" = Relationship()
 

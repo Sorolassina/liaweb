@@ -33,6 +33,8 @@ from .password_recovery import router as password_recovery_router
 from .seminaire import router as seminaire_router
 from .event import router as event_router
 from .codev import router as codev_router
+from .elearning import router as elearning_router
+from .suivi_mensuel import router as suivi_mensuel_router
 
 # Configuration des routers avec préfixes et tags
 router_configs = [
@@ -54,6 +56,8 @@ router_configs = [
     (seminaire_router, "/seminaires", ["seminaires"]),
     (event_router, "/events", ["events"]),
     (codev_router, "/codev", ["codev"]),
+    (elearning_router, "/elearning", ["e-learning"]),
+    (suivi_mensuel_router, "/suivi-mensuel", ["suivi_mensuel"]),
 
     
     # Gestion des données principales
@@ -96,5 +100,7 @@ __all__ = [
     "seminaire_router",
     "event_router",
     "codev_router",
+    "elearning_router",
+    "suivi_mensuel_router",
     "router_configs",
 ]

@@ -1100,3 +1100,315 @@ body {
     left: 0 !important;
   }
 }
+/* Style Bouton retour modules */
+.btn-retour {
+  width: 15em;
+  height: 2.2em;
+  border-radius: 0.5em;
+  font-size: 15px;
+  font-family: inherit;
+  border: none;
+  position: relative;
+  overflow: hidden;
+  z-index: 1;
+  box-shadow: 6px 6px 12px #c5c5c5,
+              -6px -6px 12px #ffffff;
+  background: transparent;
+  cursor: pointer;
+  color: inherit;
+  
+}
+
+.btn-retour::before {
+content: '';
+width: 0;
+height: 2.2em;
+border-radius: 0.5em;
+position: absolute;
+top: 0;
+left: 0;
+background-image: linear-gradient(to right, #0fd850 5%, #f9f047 100%);
+transition: .5s ease;
+display: block;
+z-index: -1;
+}
+
+.btn-retour:hover::before {
+  width: 15em;
+}
+
+/* Style Bouton modifier */
+
+.btn-modifier {
+  --color: #fff;
+  --background: #404660;
+  --background-hover: #3A4059;
+  --background-left: #2B3044;
+  --folder: #F3E9CB;
+  --folder-inner: #BEB393;
+  --paper: #FFFFFF;
+  --paper-lines: #BBC1E1;
+  --paper-behind: #E1E6F9;
+  --pencil-cap: #fff;
+  --pencil-top: #275EFE;
+  --pencil-middle: #fff;
+  --pencil-bottom: #5C86FF;
+  --shadow: rgba(13, 15, 25, .2);
+  border: none;
+  outline: none;
+  cursor: pointer;
+  position: relative;
+  border-radius: 5px;
+  font-size: 10px;
+  font-weight: 500;
+  line-height: 8px;
+  -webkit-appearance: none;
+  -webkit-tap-highlight-color: transparent;
+  padding: 8px 15px 8px 35px;
+  transition: background 0.3s;
+  color: var(--color);
+  background: var(--bg, var(--background));
+}
+
+.btn-modifier > div {
+  top: 0;
+  left: 0;
+  bottom: 0;
+  width: 28px;
+  position: absolute;
+  overflow: hidden;
+  border-radius: 5px 0 0 5px;
+  background: var(--background-left);
+}
+
+.btn-modifier > div .folder {
+  width: 12px;
+  height: 6px;
+  position: absolute;
+  left: 8px;
+  top: 7px;
+}
+
+.btn-modifier > div .folder .top {
+  left: 0;
+  top: 0;
+  z-index: 2;
+  position: absolute;
+  transform: translateX(var(--fx, 0));
+  transition: transform 0.4s ease var(--fd, 0.3s);
+}
+
+.btn-modifier > div .folder .top svg {
+  width: 12px;
+  height: 14px;
+  display: block;
+  fill: var(--folder);
+  transform-origin: 0 50%;
+  transition: transform 0.3s ease var(--fds, 0.45s);
+  transform: perspective(120px) rotateY(var(--fr, 0deg));
+}
+
+.btn-modifier > div .folder:before, .btn-modifier > div .folder:after,
+.btn-modifier > div .folder .paper {
+  content: "";
+  position: absolute;
+  left: var(--l, 0);
+  top: var(--t, 0);
+  width: var(--w, 100%);
+  height: var(--h, 100%);
+  border-radius: 1px;
+  background: var(--b, var(--folder-inner));
+}
+
+.btn-modifier > div .folder:before {
+  box-shadow: 0 1.5px 3px var(--shadow), 0 2.5px 5px var(--shadow), 0 3.5px 7px var(--shadow);
+  transform: translateX(var(--fx, 0));
+  transition: transform 0.4s ease var(--fd, 0.3s);
+}
+
+.btn-modifier > div .folder:after,
+.btn-modifier > div .folder .paper {
+  --l: 1px;
+  --t: 1px;
+  --w: 10px;
+  --h: 12px;
+  --b: var(--paper-behind);
+}
+
+.btn-modifier > div .folder:after {
+  transform: translate(var(--pbx, 0), var(--pby, 0));
+  transition: transform 0.4s ease var(--pbd, 0s);
+}
+
+.btn-modifier > div .folder .paper {
+  z-index: 1;
+  --b: var(--paper);
+}
+
+.btn-modifier > div .folder .paper:before, .btn-modifier > div .folder .paper:after {
+  content: "";
+  width: var(--wp, 7px);
+  height: 1px;
+  border-radius: 1px;
+  transform: scaleY(0.5);
+  left: 2px;
+  top: var(--tp, 2px);
+  position: absolute;
+  background: var(--paper-lines);
+  box-shadow: 0 6px 0 0 var(--paper-lines), 0 12px 0 0 var(--paper-lines);
+}
+
+.btn-modifier > div .folder .paper:after {
+  --tp: 3px;
+  --wp: 5px;
+}
+
+.btn-modifier > div .pencil {
+  height: 1px;
+  width: 2px;
+  border-radius: 1px 1px 0 0;
+  top: 4px;
+  left: 105%;
+  position: absolute;
+  z-index: 3;
+  transform-origin: 50% 10px;
+  background: var(--pencil-cap);
+  transform: translateX(var(--pex, 0)) rotate(35deg);
+  transition: transform 0.4s ease var(--pbd, 0s);
+}
+
+.btn-modifier > div .pencil:before, .btn-modifier > div .pencil:after {
+  content: "";
+  position: absolute;
+  display: block;
+  background: var(--b, linear-gradient(var(--pencil-top) 55%, var(--pencil-middle) 55.1%, var(--pencil-middle) 60%, var(--pencil-bottom) 60.1%));
+  width: var(--w, 3px);
+  height: var(--h, 10px);
+  border-radius: var(--br, 1px 1px 0 0);
+  top: var(--t, 1px);
+  left: var(--l, -1px);
+}
+
+.btn-modifier > div .pencil:before {
+  -webkit-clip-path: polygon(0 5%, 3px 5%, 3px 8px, 50% 10px, 0 8px);
+  clip-path: polygon(0 5%, 3px 5%, 3px 8px, 50% 10px, 0 8px);
+}
+
+.btn-modifier > div .pencil:after {
+  --b: none;
+  --w: 2px;
+  --h: 3px;
+  --br: 0 1px 1px 0;
+  --t: 2px;
+  --l: 2px;
+  border-top: 1px solid var(--pencil-top);
+  border-right: 1px solid var(--pencil-top);
+}
+
+.btn-modifier:before, .btn-modifier:after {
+  content: "";
+  position: absolute;
+  width: 5px;
+  height: 1px;
+  border-radius: 1px;
+  background: var(--color);
+  transform-origin: 5px 1px;
+  transform: translateX(var(--cx, 0)) scale(0.5) rotate(var(--r, -45deg));
+  top: 13px;
+  right: 8px;
+  transition: transform 0.3s;
+}
+
+.btn-modifier:after {
+  --r: 45deg;
+}
+
+.btn-modifier:hover {
+  --cx: 2px;
+  --bg: var(--background-hover);
+  --fx: -40px;
+  --fr: -60deg;
+  --fd: .15s;
+  --fds: 0s;
+  --pbx: 3px;
+  --pby: -3px;
+  --pbd: .15s;
+  --pex: -24px;
+}
+
+/* Style Bouton Télécharger*/
+/* From Uiverse.io by barisdogansutcu */ 
+.btn-download {
+  position: relative;
+  border-width: 0;
+  color: white;
+  font-size: 15px;
+  font-weight: 600;
+  cursor: pointer;
+  border-radius: 4px;
+  z-index: 1;
+}
+
+.btn-download .docs {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  min-height: 40px;
+  padding: 0 10px;
+  border-radius: 4px;
+  z-index: 1;
+  background-color: #242a35;
+  border: solid 1px #e8e8e82d;
+  transition: all 0.5s cubic-bezier(0.77, 0, 0.175, 1);
+}
+
+.btn-download:hover {
+  box-shadow:
+    rgba(0, 0, 0, 0.25) 0px 54px 55px,
+    rgba(0, 0, 0, 0.12) 0px -12px 30px,
+    rgba(0, 0, 0, 0.12) 0px 4px 6px,
+    rgba(0, 0, 0, 0.17) 0px 12px 13px,
+    rgba(0, 0, 0, 0.09) 0px -3px 5px;
+}
+
+.download {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  max-width: 90%;
+  margin: 0 auto;
+  z-index: -1;
+  border-radius: 4px;
+  transform: translateY(0%);
+  background-color: #01e056;
+  border: solid 1px #01e0572d;
+  transition: all 0.5s cubic-bezier(0.77, 0, 0.175, 1);
+}
+
+.btn-download:hover .download {
+  transform: translateY(100%);
+}
+
+.download svg polyline,
+.download svg line {
+  animation: docs 1s infinite;
+}
+
+@keyframes docs {
+  0% {
+    transform: translateY(0%);
+  }
+
+  50% {
+    transform: translateY(-15%);
+  }
+
+  100% {
+    transform: translateY(0%);
+  }
+}
+
+

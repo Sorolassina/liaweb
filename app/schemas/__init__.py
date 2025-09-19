@@ -56,6 +56,19 @@ from .codev import (
     PlanificationSeance, EngagementCandidat, RetourExperience
 )
 
+# Schémas e-learning
+from .elearning import (
+    RessourceElearningCreate, RessourceElearningUpdate, RessourceElearningResponse,
+    ModuleElearningCreate, ModuleElearningUpdate, ModuleElearningResponse,
+    ProgressionElearningCreate, ProgressionElearningUpdate, ProgressionElearningResponse,
+    ObjectifElearningCreate, ObjectifElearningUpdate, ObjectifElearningResponse,
+    QuizElearningCreate, QuizElearningUpdate, QuizElearningResponse,
+    ReponseQuizCreate, ReponseQuizResponse,
+    CertificatElearningCreate, CertificatElearningResponse,
+    StatistiquesElearningCandidat, StatistiquesElearningProgramme,
+    RapportProgressionElearning
+)
+
 __all__ = [
     # Utilisateurs
     "UserBase", "UserCreate", "UserUpdate", "UserResponse",
@@ -109,4 +122,15 @@ __all__ = [
     "ParticipationSeanceResponse",
     "StatistiquesCycleCodev", "StatistiquesGroupeCodev",
     "PlanificationSeance", "EngagementCandidat", "RetourExperience",
+    
+    # E-learning
+    "RessourceElearningCreate", "RessourceElearningUpdate", "RessourceElearningResponse",
+    "ModuleElearningCreate", "ModuleElearningUpdate", "ModuleElearningResponse",
+    "ProgressionElearningCreate", "ProgressionElearningUpdate", "ProgressionElearningResponse",
+    "ObjectifElearningCreate", "ObjectifElearningUpdate", "ObjectifElearningResponse",
+    "QuizElearningCreate", "QuizElearningUpdate", "QuizElearningResponse",
+    "ReponseQuizCreate", "ReponseQuizResponse",
+    "CertificatElearningCreate", "CertificatElearningResponse",
+    "StatistiquesElearningCandidat", "StatistiquesElearningProgramme",
+    "RapportProgressionElearning",
 ]

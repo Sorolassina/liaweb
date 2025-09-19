@@ -15,7 +15,7 @@ from app_lia_web.app.templates import templates
 
 router = APIRouter()
 
-@router.get("/rendez-vous", response_class=HTMLResponse)
+@router.get("/rendez-vous", name="rendez_vous_list", response_class=HTMLResponse)
 def rendez_vous_list(
     request: Request,
     session: Session = Depends(get_session),

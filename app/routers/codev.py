@@ -49,23 +49,29 @@ def codev_access_required(current_user: User):
 async def codev_dashboard(
     request: Request,
     session: Session = Depends(get_session),
-    current_user: User = Depends(get_current_user)
+    current_user: User = Depends(get_current_user),
+    programme_id: Optional[int] = None
 ):
     """Tableau de bord du codéveloppement"""
     codev_access_required(current_user)
     
-    # Récupérer les cycles actifs
+    # Récupérer les cycles actifs (filtrés par programme si spécifié)
+    query = select(CycleCodev).where(
+        CycleCodev.statut.in_([StatutCycleCodev.PLANIFIE.value, StatutCycleCodev.EN_COURS.value])
+    )
+    
+    if programme_id:
+        query = query.where(CycleCodev.programme_id == programme_id)
+    
     cycles_actifs = session.exec(
-        select(CycleCodev)
-        .where(CycleCodev.statut.in_([StatutCycleCodev.PLANIFIE.value, StatutCycleCodev.EN_COURS.value]))
-        .order_by(CycleCodev.date_debut.desc())
+        query.order_by(CycleCodev.date_debut.desc())
     ).all()
     
-    # Récupérer les prochaines séances
-    prochaines_seances = CodevService.get_prochaines_seances(session, limit=5)
+    # Récupérer les prochaines séances (filtrées par programme si spécifié)
+    prochaines_seances = CodevService.get_prochaines_seances(session, limit=5, programme_id=programme_id)
     
-    # Récupérer les engagements en cours
-    engagements_en_cours = CodevService.get_engagements_en_cours(session)
+    # Récupérer les engagements en cours (filtrés par programme si spécifié)
+    engagements_en_cours = CodevService.get_engagements_en_cours(session, programme_id=programme_id)
     
     return templates.TemplateResponse(
         "codev/dashboard.html",

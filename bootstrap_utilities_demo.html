@@ -1,0 +1,765 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Démo Utilitaires Bootstrap</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" rel="stylesheet">
+    <style>
+        body {
+            background-color: #f8f9fa;
+            padding: 2rem 0;
+        }
+        .demo-section {
+            background: white;
+            border-radius: 8px;
+            padding: 2rem;
+            margin-bottom: 2rem;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        }
+        .demo-section h3 {
+            color: #495057;
+            margin-bottom: 1.5rem;
+            border-bottom: 2px solid #e9ecef;
+            padding-bottom: 0.5rem;
+        }
+        .utility-group {
+            margin-bottom: 2rem;
+        }
+        .utility-group h5 {
+            color: #6c757d;
+            margin-bottom: 1rem;
+            font-size: 1rem;
+        }
+        .code-block {
+            background: #f8f9fa;
+            border: 1px solid #e9ecef;
+            border-radius: 8px;
+            padding: 20px;
+            margin-top: 15px;
+            font-family: 'Courier New', monospace;
+            font-size: 14px;
+            line-height: 1.8;
+            color: #495057;
+            white-space: pre-wrap;
+            overflow-x: auto;
+        }
+        .demo-box {
+            background: #e9ecef;
+            border: 1px solid #dee2e6;
+            padding: 1rem;
+            margin-bottom: 1rem;
+            text-align: center;
+        }
+        .demo-box-dark {
+            background: #343a40;
+            color: white;
+            border: 1px solid #495057;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="row">
+            <div class="col-12">
+                <h1 class="text-center mb-4">
+                    <i class="fas fa-tools me-2"></i>
+                    Démo Complète des Utilitaires Bootstrap
+                </h1>
+                
+                <!-- Background -->
+                <div class="demo-section">
+                    <h3><i class="fas fa-paint-brush me-2"></i>Couleurs de Fond</h3>
+                    
+                    <div class="utility-group">
+                        <h5>Couleurs de fond</h5>
+                        <div class="row">
+                            <div class="col-md-3">
+                                <div class="bg-primary text-white demo-box">bg-primary</div>
+                            </div>
+                            <div class="col-md-3">
+                                <div class="bg-secondary text-white demo-box">bg-secondary</div>
+                            </div>
+                            <div class="col-md-3">
+                                <div class="bg-success text-white demo-box">bg-success</div>
+                            </div>
+                            <div class="col-md-3">
+                                <div class="bg-danger text-white demo-box">bg-danger</div>
+                            </div>
+                        </div>
+                        <div class="row">
+                            <div class="col-md-3">
+                                <div class="bg-warning text-dark demo-box">bg-warning</div>
+                            </div>
+                            <div class="col-md-3">
+                                <div class="bg-info text-white demo-box">bg-info</div>
+                            </div>
+                            <div class="col-md-3">
+                                <div class="bg-light text-dark demo-box">bg-light</div>
+                            </div>
+                            <div class="col-md-3">
+                                <div class="bg-dark text-white demo-box">bg-dark</div>
+                            </div>
+                        </div>
+                        <div class="row">
+                            <div class="col-md-3">
+                                <div class="bg-white text-dark demo-box">bg-white</div>
+                            </div>
+                            <div class="col-md-3">
+                                <div class="bg-transparent text-dark demo-box">bg-transparent</div>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div class="code-block">
+                        &lt;div class="bg-primary text-white"&gt;bg-primary&lt;/div&gt;<br>
+                        &lt;div class="bg-secondary text-white"&gt;bg-secondary&lt;/div&gt;<br>
+                        &lt;div class="bg-success text-white"&gt;bg-success&lt;/div&gt;<br>
+                        &lt;div class="bg-danger text-white"&gt;bg-danger&lt;/div&gt;<br>
+                        &lt;div class="bg-warning text-dark"&gt;bg-warning&lt;/div&gt;<br>
+                        &lt;div class="bg-info text-white"&gt;bg-info&lt;/div&gt;<br>
+                        &lt;div class="bg-light text-dark"&gt;bg-light&lt;/div&gt;<br>
+                        &lt;div class="bg-dark text-white"&gt;bg-dark&lt;/div&gt;<br>
+                        &lt;div class="bg-white text-dark"&gt;bg-white&lt;/div&gt;<br>
+                        &lt;div class="bg-transparent text-dark"&gt;bg-transparent&lt;/div&gt;
+                    </div>
+                </div>
+
+                <!-- Borders -->
+                <div class="demo-section">
+                    <h3><i class="fas fa-square me-2"></i>Bordures</h3>
+                    
+                    <div class="utility-group">
+                        <h5>Bordures de base</h5>
+                        <div class="row">
+                            <div class="col-md-3">
+                                <div class="border demo-box">border</div>
+                            </div>
+                            <div class="col-md-3">
+                                <div class="border-top demo-box">border-top</div>
+                            </div>
+                            <div class="col-md-3">
+                                <div class="border-end demo-box">border-end</div>
+                            </div>
+                            <div class="col-md-3">
+                                <div class="border-bottom demo-box">border-bottom</div>
+                            </div>
+                        </div>
+                        <div class="row">
+                            <div class="col-md-3">
+                                <div class="border-start demo-box">border-start</div>
+                            </div>
+                            <div class="col-md-3">
+                                <div class="border-0 demo-box">border-0</div>
+                            </div>
+                            <div class="col-md-3">
+                                <div class="border border-primary demo-box">border-primary</div>
+                            </div>
+                            <div class="col-md-3">
+                                <div class="border border-success border-3 demo-box">border-success border-3</div>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div class="utility-group">
+                        <h5>Rayons de bordure</h5>
+                        <div class="row">
+                            <div class="col-md-3">
+                                <div class="rounded demo-box">rounded</div>
+                            </div>
+                            <div class="col-md-3">
+                                <div class="rounded-top demo-box">rounded-top</div>
+                            </div>
+                            <div class="col-md-3">
+                                <div class="rounded-end demo-box">rounded-end</div>
+                            </div>
+                            <div class="col-md-3">
+                                <div class="rounded-bottom demo-box">rounded-bottom</div>
+                            </div>
+                        </div>
+                        <div class="row">
+                            <div class="col-md-3">
+                                <div class="rounded-start demo-box">rounded-start</div>
+                            </div>
+                            <div class="col-md-3">
+                                <div class="rounded-circle demo-box">rounded-circle</div>
+                            </div>
+                            <div class="col-md-3">
+                                <div class="rounded-pill demo-box">rounded-pill</div>
+                            </div>
+                            <div class="col-md-3">
+                                <div class="rounded-0 demo-box">rounded-0</div>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div class="code-block">
+                        &lt;div class="border"&gt;border&lt;/div&gt;<br>
+                        &lt;div class="border-top"&gt;border-top&lt;/div&gt;<br>
+                        &lt;div class="border border-primary"&gt;border-primary&lt;/div&gt;<br>
+                        &lt;div class="border border-success border-3"&gt;border-success border-3&lt;/div&gt;<br><br>
+                        &lt;div class="rounded"&gt;rounded&lt;/div&gt;<br>
+                        &lt;div class="rounded-circle"&gt;rounded-circle&lt;/div&gt;<br>
+                        &lt;div class="rounded-pill"&gt;rounded-pill&lt;/div&gt;
+                    </div>
+                </div>
+
+                <!-- Spacing -->
+                <div class="demo-section">
+                    <h3><i class="fas fa-ruler me-2"></i>Espacement</h3>
+                    
+                    <div class="utility-group">
+                        <h5>Marges</h5>
+                        <div class="demo-box m-1">m-1</div>
+                        <div class="demo-box m-2">m-2</div>
+                        <div class="demo-box m-3">m-3</div>
+                        <div class="demo-box m-4">m-4</div>
+                        <div class="demo-box m-5">m-5</div>
+                    </div>
+                    
+                    <div class="utility-group">
+                        <h5>Padding</h5>
+                        <div class="demo-box p-1">p-1</div>
+                        <div class="demo-box p-2">p-2</div>
+                        <div class="demo-box p-3">p-3</div>
+                        <div class="demo-box p-4">p-4</div>
+                        <div class="demo-box p-5">p-5</div>
+                    </div>
+                    
+                    <div class="utility-group">
+                        <h5>Marges directionnelles</h5>
+                        <div class="demo-box mt-3 mb-3">mt-3 mb-3</div>
+                        <div class="demo-box ms-3 me-3">ms-3 me-3</div>
+                        <div class="demo-box mx-3">mx-3</div>
+                        <div class="demo-box my-3">my-3</div>
+                    </div>
+                    
+                    <div class="utility-group">
+                        <h5>Padding directionnel</h5>
+                        <div class="demo-box pt-3 pb-3">pt-3 pb-3</div>
+                        <div class="demo-box ps-3 pe-3">ps-3 pe-3</div>
+                        <div class="demo-box px-3">px-3</div>
+                        <div class="demo-box py-3">py-3</div>
+                    </div>
+                    
+                    <div class="code-block">
+                        &lt;div class="m-3"&gt;m-3&lt;/div&gt;<br>
+                        &lt;div class="p-3"&gt;p-3&lt;/div&gt;<br>
+                        &lt;div class="mt-3 mb-3"&gt;mt-3 mb-3&lt;/div&gt;<br>
+                        &lt;div class="ms-3 me-3"&gt;ms-3 me-3&lt;/div&gt;<br>
+                        &lt;div class="mx-3"&gt;mx-3&lt;/div&gt;<br>
+                        &lt;div class="my-3"&gt;my-3&lt;/div&gt;<br><br>
+                        &lt;div class="pt-3 pb-3"&gt;pt-3 pb-3&lt;/div&gt;<br>
+                        &lt;div class="ps-3 pe-3"&gt;ps-3 pe-3&lt;/div&gt;<br>
+                        &lt;div class="px-3"&gt;px-3&lt;/div&gt;<br>
+                        &lt;div class="py-3"&gt;py-3&lt;/div&gt;
+                    </div>
+                </div>
+
+                <!-- Sizing -->
+                <div class="demo-section">
+                    <h3><i class="fas fa-expand-arrows-alt me-2"></i>Dimensions</h3>
+                    
+                    <div class="utility-group">
+                        <h5>Largeur</h5>
+                        <div class="demo-box w-25">w-25</div>
+                        <div class="demo-box w-50">w-50</div>
+                        <div class="demo-box w-75">w-75</div>
+                        <div class="demo-box w-100">w-100</div>
+                        <div class="demo-box w-auto">w-auto</div>
+                    </div>
+                    
+                    <div class="utility-group">
+                        <h5>Hauteur</h5>
+                        <div class="row">
+                            <div class="col-md-6">
+                                <div class="demo-box h-25" style="height: 200px;">h-25</div>
+                            </div>
+                            <div class="col-md-6">
+                                <div class="demo-box h-50" style="height: 200px;">h-50</div>
+                            </div>
+                        </div>
+                        <div class="row">
+                            <div class="col-md-6">
+                                <div class="demo-box h-75" style="height: 200px;">h-75</div>
+                            </div>
+                            <div class="col-md-6">
+                                <div class="demo-box h-100" style="height: 200px;">h-100</div>
+                            </div>
+                        </div>
+                        <div class="demo-box h-auto">h-auto</div>
+                    </div>
+                    
+                    <div class="utility-group">
+                        <h5>Largeur et hauteur max/min</h5>
+                        <div class="demo-box mw-100" style="width: 200px;">mw-100</div>
+                        <div class="demo-box mh-100" style="height: 100px;">mh-100</div>
+                    </div>
+                    
+                    <div class="code-block">
+                        &lt;div class="w-25"&gt;w-25&lt;/div&gt;<br>
+                        &lt;div class="w-50"&gt;w-50&lt;/div&gt;<br>
+                        &lt;div class="w-75"&gt;w-75&lt;/div&gt;<br>
+                        &lt;div class="w-100"&gt;w-100&lt;/div&gt;<br>
+                        &lt;div class="w-auto"&gt;w-auto&lt;/div&gt;<br><br>
+                        &lt;div class="h-25"&gt;h-25&lt;/div&gt;<br>
+                        &lt;div class="h-50"&gt;h-50&lt;/div&gt;<br>
+                        &lt;div class="h-75"&gt;h-75&lt;/div&gt;<br>
+                        &lt;div class="h-100"&gt;h-100&lt;/div&gt;<br>
+                        &lt;div class="h-auto"&gt;h-auto&lt;/div&gt;<br><br>
+                        &lt;div class="mw-100"&gt;mw-100&lt;/div&gt;<br>
+                        &lt;div class="mh-100"&gt;mh-100&lt;/div&gt;
+                    </div>
+                </div>
+
+                <!-- Display -->
+                <div class="demo-section">
+                    <h3><i class="fas fa-eye me-2"></i>Affichage</h3>
+                    
+                    <div class="utility-group">
+                        <h5>Classes d'affichage</h5>
+                        <div class="demo-box d-inline">d-inline</div>
+                        <div class="demo-box d-inline">d-inline</div>
+                        <div class="demo-box d-inline-block">d-inline-block</div>
+                        <div class="demo-box d-inline-block">d-inline-block</div>
+                        <div class="demo-box d-block">d-block</div>
+                        <div class="demo-box d-flex">d-flex</div>
+                        <div class="demo-box d-grid">d-grid</div>
+                        <div class="demo-box d-table">d-table</div>
+                        <div class="demo-box d-table-cell">d-table-cell</div>
+                        <div class="demo-box d-table-row">d-table-row</div>
+                    </div>
+                    
+                    <div class="utility-group">
+                        <h5>Affichage responsive</h5>
+                        <div class="demo-box d-none d-md-block">Visible sur md+</div>
+                        <div class="demo-box d-block d-md-none">Visible sur xs-sm</div>
+                        <div class="demo-box d-none d-lg-flex">Flex sur lg+</div>
+                    </div>
+                    
+                    <div class="code-block">
+                        &lt;div class="d-inline"&gt;d-inline&lt;/div&gt;<br>
+                        &lt;div class="d-block"&gt;d-block&lt;/div&gt;<br>
+                        &lt;div class="d-flex"&gt;d-flex&lt;/div&gt;<br>
+                        &lt;div class="d-grid"&gt;d-grid&lt;/div&gt;<br>
+                        &lt;div class="d-table"&gt;d-table&lt;/div&gt;<br><br>
+                        &lt;div class="d-none d-md-block"&gt;Visible sur md+&lt;/div&gt;<br>
+                        &lt;div class="d-block d-md-none"&gt;Visible sur xs-sm&lt;/div&gt;<br>
+                        &lt;div class="d-none d-lg-flex"&gt;Flex sur lg+&lt;/div&gt;
+                    </div>
+                </div>
+
+                <!-- Flexbox -->
+                <div class="demo-section">
+                    <h3><i class="fas fa-expand-arrows-alt me-2"></i>Flexbox</h3>
+                    
+                    <div class="utility-group">
+                        <h5>Direction et wrap</h5>
+                        <div class="d-flex flex-row demo-box">
+                            <div class="p-2 demo-box-dark">Flex item 1</div>
+                            <div class="p-2 demo-box-dark">Flex item 2</div>
+                            <div class="p-2 demo-box-dark">Flex item 3</div>
+                        </div>
+                        <div class="d-flex flex-row-reverse demo-box">
+                            <div class="p-2 demo-box-dark">Flex item 1</div>
+                            <div class="p-2 demo-box-dark">Flex item 2</div>
+                            <div class="p-2 demo-box-dark">Flex item 3</div>
+                        </div>
+                        <div class="d-flex flex-column demo-box">
+                            <div class="p-2 demo-box-dark">Flex item 1</div>
+                            <div class="p-2 demo-box-dark">Flex item 2</div>
+                            <div class="p-2 demo-box-dark">Flex item 3</div>
+                        </div>
+                    </div>
+                    
+                    <div class="utility-group">
+                        <h5>Justification</h5>
+                        <div class="d-flex justify-content-start demo-box">
+                            <div class="p-2 demo-box-dark">Start</div>
+                            <div class="p-2 demo-box-dark">Item</div>
+                        </div>
+                        <div class="d-flex justify-content-center demo-box">
+                            <div class="p-2 demo-box-dark">Center</div>
+                            <div class="p-2 demo-box-dark">Item</div>
+                        </div>
+                        <div class="d-flex justify-content-end demo-box">
+                            <div class="p-2 demo-box-dark">End</div>
+                            <div class="p-2 demo-box-dark">Item</div>
+                        </div>
+                        <div class="d-flex justify-content-between demo-box">
+                            <div class="p-2 demo-box-dark">Between</div>
+                            <div class="p-2 demo-box-dark">Item</div>
+                        </div>
+                        <div class="d-flex justify-content-around demo-box">
+                            <div class="p-2 demo-box-dark">Around</div>
+                            <div class="p-2 demo-box-dark">Item</div>
+                        </div>
+                    </div>
+                    
+                    <div class="utility-group">
+                        <h5>Alignement</h5>
+                        <div class="d-flex align-items-start demo-box" style="height: 100px;">
+                            <div class="p-2 demo-box-dark">Align start</div>
+                            <div class="p-2 demo-box-dark">Item</div>
+                        </div>
+                        <div class="d-flex align-items-center demo-box" style="height: 100px;">
+                            <div class="p-2 demo-box-dark">Align center</div>
+                            <div class="p-2 demo-box-dark">Item</div>
+                        </div>
+                        <div class="d-flex align-items-end demo-box" style="height: 100px;">
+                            <div class="p-2 demo-box-dark">Align end</div>
+                            <div class="p-2 demo-box-dark">Item</div>
+                        </div>
+                    </div>
+                    
+                    <div class="utility-group">
+                        <h5>Alignement automatique</h5>
+                        <div class="d-flex demo-box">
+                            <div class="p-2 demo-box-dark">Flex item</div>
+                            <div class="p-2 demo-box-dark">Flex item</div>
+                            <div class="p-2 ms-auto demo-box-dark">Flex item (ms-auto)</div>
+                        </div>
+                        <div class="d-flex demo-box">
+                            <div class="p-2 me-auto demo-box-dark">Flex item (me-auto)</div>
+                            <div class="p-2 demo-box-dark">Flex item</div>
+                            <div class="p-2 demo-box-dark">Flex item</div>
+                        </div>
+                    </div>
+                    
+                    <div class="code-block">
+                        &lt;div class="d-flex flex-row"&gt;<br>
+                        &nbsp;&nbsp;&lt;div class="p-2"&gt;Flex item 1&lt;/div&gt;<br>
+                        &nbsp;&nbsp;&lt;div class="p-2"&gt;Flex item 2&lt;/div&gt;<br>
+                        &lt;/div&gt;<br><br>
+                        &lt;div class="d-flex justify-content-center"&gt;<br>
+                        &nbsp;&nbsp;&lt;div class="p-2"&gt;Center&lt;/div&gt;<br>
+                        &lt;/div&gt;<br><br>
+                        &lt;div class="d-flex align-items-center"&gt;<br>
+                        &nbsp;&nbsp;&lt;div class="p-2"&gt;Align center&lt;/div&gt;<br>
+                        &lt;/div&gt;<br><br>
+                        &lt;div class="d-flex"&gt;<br>
+                        &nbsp;&nbsp;&lt;div class="p-2 ms-auto"&gt;Flex item (ms-auto)&lt;/div&gt;<br>
+                        &lt;/div&gt;
+                    </div>
+                </div>
+
+                <!-- Position -->
+                <div class="demo-section">
+                    <h3><i class="fas fa-crosshairs me-2"></i>Position</h3>
+                    
+                    <div class="utility-group">
+                        <h5>Positionnement</h5>
+                        <div class="position-relative demo-box" style="height: 200px; background: #f8f9fa;">
+                            <div class="position-static demo-box-dark">position-static</div>
+                            <div class="position-relative demo-box-dark" style="top: 20px; left: 20px;">position-relative</div>
+                            <div class="position-absolute demo-box-dark" style="top: 50px; right: 20px;">position-absolute</div>
+                            <div class="position-fixed demo-box-dark" style="top: 10px; right: 10px;">position-fixed</div>
+                            <div class="position-sticky demo-box-dark" style="top: 0;">position-sticky</div>
+                        </div>
+                    </div>
+                    
+                    <div class="code-block">
+                        &lt;div class="position-static"&gt;position-static&lt;/div&gt;<br>
+                        &lt;div class="position-relative"&gt;position-relative&lt;/div&gt;<br>
+                        &lt;div class="position-absolute"&gt;position-absolute&lt;/div&gt;<br>
+                        &lt;div class="position-fixed"&gt;position-fixed&lt;/div&gt;<br>
+                        &lt;div class="position-sticky"&gt;position-sticky&lt;/div&gt;
+                    </div>
+                </div>
+
+                <!-- Shadows -->
+                <div class="demo-section">
+                    <h3><i class="fas fa-square me-2"></i>Ombres</h3>
+                    
+                    <div class="utility-group">
+                        <h5>Classes d'ombres</h5>
+                        <div class="row">
+                            <div class="col-md-3">
+                                <div class="shadow-none demo-box">shadow-none</div>
+                            </div>
+                            <div class="col-md-3">
+                                <div class="shadow-sm demo-box">shadow-sm</div>
+                            </div>
+                            <div class="col-md-3">
+                                <div class="shadow demo-box">shadow</div>
+                            </div>
+                            <div class="col-md-3">
+                                <div class="shadow-lg demo-box">shadow-lg</div>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div class="code-block">
+                        &lt;div class="shadow-none"&gt;shadow-none&lt;/div&gt;<br>
+                        &lt;div class="shadow-sm"&gt;shadow-sm&lt;/div&gt;<br>
+                        &lt;div class="shadow"&gt;shadow&lt;/div&gt;<br>
+                        &lt;div class="shadow-lg"&gt;shadow-lg&lt;/div&gt;
+                    </div>
+                </div>
+
+                <!-- Overflow -->
+                <div class="demo-section">
+                    <h3><i class="fas fa-scroll me-2"></i>Débordement</h3>
+                    
+                    <div class="utility-group">
+                        <h5>Gestion du débordement</h5>
+                        <div class="overflow-auto demo-box" style="height: 100px;">
+                            <div style="height: 200px;">overflow-auto - Contenu qui déborde avec scroll automatique</div>
+                        </div>
+                        <div class="overflow-hidden demo-box" style="height: 100px;">
+                            <div style="height: 200px;">overflow-hidden - Contenu qui déborde mais caché</div>
+                        </div>
+                        <div class="overflow-visible demo-box" style="height: 100px;">
+                            <div style="height: 200px;">overflow-visible - Contenu qui déborde et reste visible</div>
+                        </div>
+                        <div class="overflow-scroll demo-box" style="height: 100px;">
+                            <div style="height: 200px;">overflow-scroll - Contenu avec scroll forcé</div>
+                        </div>
+                    </div>
+                    
+                    <div class="code-block">
+                        &lt;div class="overflow-auto"&gt;overflow-auto&lt;/div&gt;<br>
+                        &lt;div class="overflow-hidden"&gt;overflow-hidden&lt;/div&gt;<br>
+                        &lt;div class="overflow-visible"&gt;overflow-visible&lt;/div&gt;<br>
+                        &lt;div class="overflow-scroll"&gt;overflow-scroll&lt;/div&gt;
+                    </div>
+                </div>
+
+                <!-- Text -->
+                <div class="demo-section">
+                    <h3><i class="fas fa-font me-2"></i>Texte</h3>
+                    
+                    <div class="utility-group">
+                        <h5>Couleurs de texte</h5>
+                        <p class="text-primary demo-text">text-primary</p>
+                        <p class="text-secondary demo-text">text-secondary</p>
+                        <p class="text-success demo-text">text-success</p>
+                        <p class="text-danger demo-text">text-danger</p>
+                        <p class="text-warning demo-text">text-warning</p>
+                        <p class="text-info demo-text">text-info</p>
+                        <p class="text-light bg-dark demo-text">text-light</p>
+                        <p class="text-dark demo-text">text-dark</p>
+                        <p class="text-muted demo-text">text-muted</p>
+                        <p class="text-white bg-dark demo-text">text-white</p>
+                    </div>
+                    
+                    <div class="utility-group">
+                        <h5>Alignement du texte</h5>
+                        <p class="text-start demo-text">text-start - Texte aligné à gauche</p>
+                        <p class="text-center demo-text">text-center - Texte centré</p>
+                        <p class="text-end demo-text">text-end - Texte aligné à droite</p>
+                    </div>
+                    
+                    <div class="utility-group">
+                        <h5>Retour à la ligne et débordement</h5>
+                        <div class="badge bg-primary text-wrap demo-text" style="width: 6rem;">
+                            Ce badge devrait s'enrouler sur plusieurs lignes pour s'adapter à la largeur disponible.
+                        </div>
+                        <div class="text-nowrap bg-light demo-text" style="width: 8rem;">
+                            Ce texte ne devrait pas s'enrouler.
+                        </div>
+                        <div class="text-truncate demo-text" style="width: 200px;">
+                            Ce texte est trop long pour la largeur disponible et sera tronqué avec des points de suspension.
+                        </div>
+                    </div>
+                    
+                    <div class="utility-group">
+                        <h5>Césure des mots</h5>
+                        <p class="text-break demo-text">
+                            mmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmm
+                        </p>
+                    </div>
+                    
+                    <div class="code-block">
+                        &lt;p class="text-primary"&gt;text-primary&lt;/p&gt;<br>
+                        &lt;p class="text-secondary"&gt;text-secondary&lt;/p&gt;<br>
+                        &lt;p class="text-success"&gt;text-success&lt;/p&gt;<br>
+                        &lt;p class="text-danger"&gt;text-danger&lt;/p&gt;<br>
+                        &lt;p class="text-warning"&gt;text-warning&lt;/p&gt;<br>
+                        &lt;p class="text-info"&gt;text-info&lt;/p&gt;<br>
+                        &lt;p class="text-light bg-dark"&gt;text-light&lt;/p&gt;<br>
+                        &lt;p class="text-dark"&gt;text-dark&lt;/p&gt;<br>
+                        &lt;p class="text-muted"&gt;text-muted&lt;/p&gt;<br>
+                        &lt;p class="text-white bg-dark"&gt;text-white&lt;/p&gt;<br><br>
+                        &lt;p class="text-start"&gt;text-start - Texte aligné à gauche&lt;/p&gt;<br>
+                        &lt;p class="text-center"&gt;text-center - Texte centré&lt;/p&gt;<br>
+                        &lt;p class="text-end"&gt;text-end - Texte aligné à droite&lt;/p&gt;<br><br>
+                        &lt;div class="badge bg-primary text-wrap" style="width: 6rem;"&gt;<br>
+                        &nbsp;&nbsp;Ce badge devrait s'enrouler...&lt;/div&gt;<br>
+                        &lt;div class="text-nowrap bg-light" style="width: 8rem;"&gt;<br>
+                        &nbsp;&nbsp;Ce texte ne devrait pas s'enrouler.&lt;/div&gt;<br>
+                        &lt;div class="text-truncate" style="width: 200px;"&gt;<br>
+                        &nbsp;&nbsp;Ce texte sera tronqué...&lt;/div&gt;<br><br>
+                        &lt;p class="text-break"&gt;<br>
+                        &nbsp;&nbsp;mmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmm<br>
+                        &lt;/p&gt;
+                    </div>
+                </div>
+
+                <!-- Vertical align -->
+                <div class="demo-section">
+                    <h3><i class="fas fa-align-center me-2"></i>Alignement Vertical</h3>
+                    
+                    <div class="utility-group">
+                        <h5>Alignement vertical</h5>
+                        <div class="demo-box">
+                            <span class="align-baseline">baseline</span>
+                            <span class="align-top">top</span>
+                            <span class="align-middle">middle</span>
+                            <span class="align-bottom">bottom</span>
+                            <span class="align-text-top">text-top</span>
+                            <span class="align-text-bottom">text-bottom</span>
+                        </div>
+                    </div>
+                    
+                    <div class="code-block">
+                        &lt;span class="align-baseline"&gt;baseline&lt;/span&gt;<br>
+                        &lt;span class="align-top"&gt;top&lt;/span&gt;<br>
+                        &lt;span class="align-middle"&gt;middle&lt;/span&gt;<br>
+                        &lt;span class="align-bottom"&gt;bottom&lt;/span&gt;<br>
+                        &lt;span class="align-text-top"&gt;text-top&lt;/span&gt;<br>
+                        &lt;span class="align-text-bottom"&gt;text-bottom&lt;/span&gt;
+                    </div>
+                </div>
+
+                <!-- Visibility -->
+                <div class="demo-section">
+                    <h3><i class="fas fa-eye-slash me-2"></i>Visibilité</h3>
+                    
+                    <div class="utility-group">
+                        <h5>Classes de visibilité</h5>
+                        <div class="visible demo-box">visible</div>
+                        <div class="invisible demo-box">invisible</div>
+                    </div>
+                    
+                    <div class="code-block">
+                        &lt;div class="visible"&gt;visible&lt;/div&gt;<br>
+                        &lt;div class="invisible"&gt;invisible&lt;/div&gt;
+                    </div>
+                </div>
+
+                <!-- Résumé des classes -->
+                <div class="demo-section">
+                    <h3><i class="fas fa-list me-2"></i>Résumé des Classes Utilitaires</h3>
+                    
+                    <div class="row">
+                        <div class="col-md-6">
+                            <h5>Couleurs et bordures</h5>
+                            <ul class="list-unstyled">
+                                <li><code>bg-primary</code> - Fond primaire</li>
+                                <li><code>bg-secondary</code> - Fond secondaire</li>
+                                <li><code>bg-success</code> - Fond succès</li>
+                                <li><code>bg-danger</code> - Fond danger</li>
+                                <li><code>bg-warning</code> - Fond avertissement</li>
+                                <li><code>bg-info</code> - Fond information</li>
+                                <li><code>bg-light</code> - Fond clair</li>
+                                <li><code>bg-dark</code> - Fond sombre</li>
+                                <li><code>bg-white</code> - Fond blanc</li>
+                                <li><code>bg-transparent</code> - Fond transparent</li>
+                                <li><code>border</code> - Bordure</li>
+                                <li><code>border-top</code> - Bordure haut</li>
+                                <li><code>border-end</code> - Bordure droite</li>
+                                <li><code>border-bottom</code> - Bordure bas</li>
+                                <li><code>border-start</code> - Bordure gauche</li>
+                                <li><code>border-0</code> - Pas de bordure</li>
+                                <li><code>border-primary</code> - Bordure primaire</li>
+                                <li><code>border-success</code> - Bordure succès</li>
+                                <li><code>border-3</code> - Bordure épaisse</li>
+                            </ul>
+                        </div>
+                        <div class="col-md-6">
+                            <h5>Rayons et ombres</h5>
+                            <ul class="list-unstyled">
+                                <li><code>rounded</code> - Arrondi</li>
+                                <li><code>rounded-top</code> - Arrondi haut</li>
+                                <li><code>rounded-end</code> - Arrondi droite</li>
+                                <li><code>rounded-bottom</code> - Arrondi bas</li>
+                                <li><code>rounded-start</code> - Arrondi gauche</li>
+                                <li><code>rounded-circle</code> - Cercle</li>
+                                <li><code>rounded-pill</code> - Pilule</li>
+                                <li><code>rounded-0</code> - Pas d'arrondi</li>
+                                <li><code>shadow-none</code> - Pas d'ombre</li>
+                                <li><code>shadow-sm</code> - Ombre petite</li>
+                                <li><code>shadow</code> - Ombre normale</li>
+                                <li><code>shadow-lg</code> - Ombre grande</li>
+                            </ul>
+                        </div>
+                    </div>
+                    <div class="row">
+                        <div class="col-md-6">
+                            <h5>Espacement</h5>
+                            <ul class="list-unstyled">
+                                <li><code>m-*</code> - Marges</li>
+                                <li><code>p-*</code> - Padding</li>
+                                <li><code>mt-*, mb-*</code> - Marges verticales</li>
+                                <li><code>ms-*, me-*</code> - Marges horizontales</li>
+                                <li><code>mx-*</code> - Marges horizontales</li>
+                                <li><code>my-*</code> - Marges verticales</li>
+                                <li><code>pt-*, pb-*</code> - Padding vertical</li>
+                                <li><code>ps-*, pe-*</code> - Padding horizontal</li>
+                                <li><code>px-*</code> - Padding horizontal</li>
+                                <li><code>py-*</code> - Padding vertical</li>
+                            </ul>
+                        </div>
+                        <div class="col-md-6">
+                            <h5>Dimensions</h5>
+                            <ul class="list-unstyled">
+                                <li><code>w-25</code> - Largeur 25%</li>
+                                <li><code>w-50</code> - Largeur 50%</li>
+                                <li><code>w-75</code> - Largeur 75%</li>
+                                <li><code>w-100</code> - Largeur 100%</li>
+                                <li><code>w-auto</code> - Largeur auto</li>
+                                <li><code>h-25</code> - Hauteur 25%</li>
+                                <li><code>h-50</code> - Hauteur 50%</li>
+                                <li><code>h-75</code> - Hauteur 75%</li>
+                                <li><code>h-100</code> - Hauteur 100%</li>
+                                <li><code>h-auto</code> - Hauteur auto</li>
+                                <li><code>mw-100</code> - Largeur max 100%</li>
+                                <li><code>mh-100</code> - Hauteur max 100%</li>
+                            </ul>
+                        </div>
+                    </div>
+                    <div class="row">
+                        <div class="col-md-6">
+                            <h5>Affichage et position</h5>
+                            <ul class="list-unstyled">
+                                <li><code>d-inline</code> - Affichage inline</li>
+                                <li><code>d-block</code> - Affichage block</li>
+                                <li><code>d-flex</code> - Affichage flex</li>
+                                <li><code>d-grid</code> - Affichage grid</li>
+                                <li><code>d-table</code> - Affichage table</li>
+                                <li><code>d-none</code> - Masqué</li>
+                                <li><code>position-static</code> - Position statique</li>
+                                <li><code>position-relative</code> - Position relative</li>
+                                <li><code>position-absolute</code> - Position absolue</li>
+                                <li><code>position-fixed</code> - Position fixe</li>
+                                <li><code>position-sticky</code> - Position collante</li>
+                            </ul>
+                        </div>
+                        <div class="col-md-6">
+                            <h5>Flexbox et autres</h5>
+                            <ul class="list-unstyled">
+                                <li><code>flex-row</code> - Direction ligne</li>
+                                <li><code>flex-column</code> - Direction colonne</li>
+                                <li><code>justify-content-start</code> - Justification début</li>
+                                <li><code>justify-content-center</code> - Justification centre</li>
+                                <li><code>justify-content-end</code> - Justification fin</li>
+                                <li><code>justify-content-between</code> - Justification entre</li>
+                                <li><code>justify-content-around</code> - Justification autour</li>
+                                <li><code>align-items-start</code> - Alignement début</li>
+                                <li><code>align-items-center</code> - Alignement centre</li>
+                                <li><code>align-items-end</code> - Alignement fin</li>
+                                <li><code>ms-auto</code> - Marge gauche auto</li>
+                                <li><code>me-auto</code> - Marge droite auto</li>
+                            </ul>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+</body>
+</html>

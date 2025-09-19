@@ -25,17 +25,21 @@ event_service = EventService()
 async def liste_events(
     request: Request,
     db: Session = Depends(get_session),
-    current_user: User = Depends(get_current_user)
+    current_user: User = Depends(get_current_user),
+    programme_id: Optional[int] = None
 ):
     """Liste des événements"""
-    events = event_service.get_events(db)
+    events = event_service.get_events(db, programme_id=programme_id)
     stats = event_service.get_event_stats(db)
+    programmes = db.exec(select(Programme).where(Programme.actif == True)).all()
     
     return templates.TemplateResponse("events/liste.html", {
         "request": request,
         "events": events,
         "stats": stats,
-        "utilisateur": current_user
+        "programmes": programmes,
+        "utilisateur": current_user,
+        "programme_id": programme_id
     })
 
 @router.get("/nouveau", name="form_event", response_class=HTMLResponse)

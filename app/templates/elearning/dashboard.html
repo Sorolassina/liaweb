@@ -1,0 +1,332 @@
+{% extends "base.html" %}
+
+{% block title %}E-Learning - {{ super() }}{% endblock %}
+
+{% block head_extra %}
+<style>
+  .elearning-container {
+    width: 100%;
+    margin: 0 auto;
+    padding: 15px;
+    overflow: hidden;
+  }
+  
+  .elearning-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 20px;
+    gap: 40px;
+    position: sticky;
+    top: 0;
+    background: white;
+    z-index: 100;
+    padding: 15px 0;
+    border-bottom: 1px solid #e9ecef;
+  }
+  
+  .header-left {
+    display: flex;
+    align-items: center;
+    gap: 15px;
+  }
+  
+  .header-right {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+  }
+  
+  .btn-primary {
+    background: var(--primary-color) ;
+    color: white;
+    border: none;
+    padding: 8px 16px;
+    border-radius: 6px;
+    font-size: 12px;
+    font-weight: 600;
+    cursor: pointer;
+    text-decoration: none;
+    display: inline-flex;
+    align-items: center;
+    gap: 5px;
+    transition: transform 0.2s ease;
+  }
+  
+  .btn-primary:hover {
+    transform: translateY(-1px);
+    color: white;
+  }
+  
+  .stats-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+    gap: 10px;
+    margin-bottom: 10px;
+    
+  }
+  
+  .stat-card {
+    background: white;
+    border-radius: 8px;
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+    padding: 5px;
+    text-align: center;
+    height: 90%;
+    background: #f0f2f5;
+    cursor: pointer;
+  }
+  
+  .stat-icon {
+    font-size: 22px;
+    margin-bottom: 5px;
+    color: var(--primary-color);
+  }
+  
+  .stat-number {
+    font-size: 18px;
+    font-weight: bold;
+    margin-bottom: 5px;
+    color: #333;
+  }
+  
+  .stat-label {
+    font-size: 10px;
+    color: #666;
+    margin-bottom: 10px;
+  }
+  
+  .stat-details {
+    font-size: 8px;
+    color: #888;
+  }
+  
+  .programmes-section {
+    background: white;
+    border-radius: 8px;
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+    padding: 0px;
+  }
+  
+  .section-title {
+    font-size: 18px;
+    font-weight: 600;
+    margin-bottom: 15px;
+    color: #333;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
+  
+  .programme-card {
+    border: 1px solid #e9ecef;
+    border-radius: 6px;
+    padding: 15px;
+    margin: 15px 15px 15px 15px;
+    transition: box-shadow 0.3s ease;
+  }
+  
+  .programme-card:hover {
+    box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+    cursor: pointer;
+  }
+  
+  .programme-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 10px;
+  }
+  
+  .programme-title {
+    font-size: 14px;
+    font-weight: 600;
+    color: #333;
+  }
+  
+  .programme-stats {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 15px;
+    margin-top: 10px;
+  }
+  
+  .programme-stat {
+    text-align: center;
+  }
+  
+  .programme-stat-value {
+    font-size: 16px;
+    font-weight: bold;
+    color: var(--primary-color);
+  }
+  
+  .programme-stat-label {
+    font-size: 10px;
+    color: #666;
+  }
+  
+  .progress-bar {
+    width: 100%;
+    height: 6px;
+    background: #e9ecef;
+    border-radius: 3px;
+    overflow: hidden;
+    margin-top: 8px;
+  }
+  
+  .progress-fill {
+    height: 100%;
+    background: linear-gradient(135deg, var(--primary-color) 0%, var(--secondary-color) 100%);
+    transition: width 0.3s ease;
+  }
+  
+  .empty-state {
+    text-align: center;
+    padding: 40px 20px;
+    color: #666;
+  }
+  
+  .empty-state i {
+    font-size: 48px;
+    margin-bottom: 15px;
+    color: #ccc;
+  }
+  
+  .empty-state h3 {
+    font-size: 16px;
+    margin-bottom: 8px;
+    color: #666;
+  }
+  
+  .empty-state p {
+    font-size: 12px;
+    margin-bottom: 20px;
+  }
+
+  .container.container-fluid.p-4{
+    width: 100%;
+    position: sticky;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    z-index: 100;
+    
+  }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="elearning-container" style="position: sticky;">
+  <div class="elearning-header">
+    <div class="header-left">
+      <h1>
+        <i class="fas fa-graduation-cap"></i> E-Learning
+      </h1>
+    </div>
+    <div class="header-right">
+      <a href="{{ url_for('elearning_modules') }}" class="btn-primary">
+        <i class="fas fa-book"></i> Modules
+      </a>
+      <a href="{{ url_for('elearning_modules') }}?action=create" class="btn-primary">
+        <i class="fas fa-plus"></i> Nouveau Module
+      </a>
+    </div>
+  </div>
+  
+  <!-- Statistiques générales -->
+  <div class="stats-grid">
+    <div class="stat-card">
+      <div class="stat-icon">
+        <i class="fas fa-users"></i>
+      </div>
+      <div class="stat-number">{{ stats_programmes|sum(attribute='candidats_inscrits') }}</div>
+      <div class="stat-label">Candidats Inscrits</div>
+      <!--<div class="stat-details">Tous programmes confondus</div>-->
+    </div>
+    
+    <div class="stat-card">
+      <div class="stat-icon">
+        <i class="fas fa-user-check"></i>
+      </div>
+      <div class="stat-number">{{ stats_programmes|sum(attribute='candidats_actifs') }}</div>
+      <div class="stat-label">Candidats Actifs</div>
+      <!--<div class="stat-details">En cours de formation</div>-->
+    </div>
+    
+    <div class="stat-card">
+      <div class="stat-icon">
+        <i class="fas fa-clock"></i>
+      </div>
+      <div class="stat-number">{{ "%.1f"|format(stats_programmes|sum(attribute='temps_moyen_minutes') / 60) }}h</div>
+      <div class="stat-label">Temps Moyen</div>
+      <!--<div class="stat-details">Par candidat</div>-->
+    </div>
+    
+    <div class="stat-card">
+      <div class="stat-icon">
+        <i class="fas fa-chart-line"></i>
+      </div>
+      <div class="stat-number">{{ "%.1f"|format(stats_programmes|sum(attribute='taux_completion') / stats_programmes|length) if stats_programmes else 0 }}%</div>
+      <div class="stat-label">Taux Complétion</div>
+      <!--<div class="stat-details">Moyenne générale</div>-->
+    </div>
+  </div>
+  
+  <!-- Programmes -->
+  <div class="programmes-section" style="position: sticky; overflow-y: auto;height: 60%;">
+    <div class="section-title" style="position: sticky; top: 0; left: 0; right: 0; z-index: 100;background: #f0f2f5;">
+      <i class="fas fa-list"></i> Programmes E-Learning
+    </div>
+    
+    {% if stats_programmes %}
+      {% for stats in stats_programmes %}
+      <div class="programme-card">
+        <div class="programme-header">
+          <div class="programme-title">{{ stats.programme_nom }}</div>
+          <div class="progress-bar">
+            <div class="progress-fill" style="width: {{ stats.taux_completion }}%"></div>
+          </div>
+        </div>
+        
+        <div class="programme-stats">
+          <div class="programme-stat">
+            <div class="programme-stat-value">{{ stats.candidats_inscrits }}</div>
+            <div class="programme-stat-label">Inscrits</div>
+          </div>
+          <div class="programme-stat">
+            <div class="programme-stat-value">{{ stats.candidats_actifs }}</div>
+            <div class="programme-stat-label">Actifs</div>
+          </div>
+          <div class="programme-stat">
+            <div class="programme-stat-value">{{ "%.1f"|format(stats.temps_moyen_minutes / 60) }}h</div>
+            <div class="programme-stat-label">Temps Moyen</div>
+          </div>
+        </div>
+        
+        {% if stats.modules_populaires %}
+        <div style="margin-top: 10px;">
+          <div style="font-size: 11px; color: #666; margin-bottom: 5px;">Modules populaires :</div>
+          {% for module in stats.modules_populaires[:3] %}
+          <span style="font-size: 10px; background: #f8f9fa; padding: 2px 6px; border-radius: 3px; margin-right: 5px;">
+            {{ module.titre }} ({{ module.participations }})
+          </span>
+          {% endfor %}
+        </div>
+        {% endif %}
+      </div>
+      {% endfor %}
+    {% else %}
+      <div class="empty-state">
+        <i class="fas fa-graduation-cap"></i>
+        <h3>Aucun programme e-learning</h3>
+        <p>Commencez par créer des modules de formation pour vos programmes.</p>
+        <a href="{{ url_for('elearning_modules') }}?action=create" class="btn-primary">
+          <i class="fas fa-plus" style="font-size: 12px;"></i> Créer le premier module
+        </a>
+      </div>
+    {% endif %}
+  </div>
+</div>
+{% endblock %}

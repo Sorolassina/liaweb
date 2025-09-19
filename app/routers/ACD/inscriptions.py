@@ -33,7 +33,49 @@ router = APIRouter()
 def _prog_by_code(session: Session, code: str) -> Programme | None:
     return session.exec(select(Programme).where(Programme.code == code)).first()
 
-@router.get("/inscriptions/form", response_class=HTMLResponse)
+@router.get("/inscriptions", name="inscriptions_list", response_class=HTMLResponse)
+def inscriptions_list(
+    request: Request,
+    session: Session = Depends(get_session),
+    current_user=Depends(get_current_user),
+    programme: str = Query("ACD"),
+    q: Optional[str] = Query(None),
+):
+    """Liste des inscriptions"""
+    prog = _prog_by_code(session, programme)
+    if not prog:
+        raise HTTPException(status_code=404, detail="Programme non trouvé")
+    
+    # Récupérer les inscriptions
+    stmt = (
+        select(Inscription, Candidat, Programme)
+        .join(Candidat, Candidat.id == Inscription.candidat_id)
+        .join(Programme, Programme.id == Inscription.programme_id)
+        .where(Inscription.programme_id == prog.id)
+    )
+    
+    if q:
+        like = f"%{q}%"
+        stmt = stmt.where(
+            (Candidat.nom.ilike(like))
+            | (Candidat.prenom.ilike(like))
+            | (Candidat.email.ilike(like))
+        )
+    
+    inscriptions = session.exec(stmt.order_by(Inscription.cree_le.desc())).all()
+    
+    return templates.TemplateResponse(
+        "ACD/inscriptions_list.html",
+        {
+            "request": request,
+            "inscriptions": inscriptions,
+            "programme": programme,
+            "q": q or "",
+            "utilisateur": current_user,
+        }
+    )
+
+@router.get("/inscriptions/form", name="inscriptions_form", response_class=HTMLResponse)
 def inscriptions_ui(
     request: Request,
     session: Session = Depends(get_session),
@@ -237,7 +279,7 @@ def create_from_pre(
         )
     ).first()
     if exists:
-        return RedirectResponse(url=f"ACD/inscriptions/form?programme={prog.code}&pre_id={pre.id}", status_code=303)
+        return RedirectResponse(url=request.url_for("inscriptions_form", programme=prog.code, pre_id=pre.id), status_code=303)
 
     ins = Inscription(programme_id=pre.programme_id, candidat_id=pre.candidat_id, statut=pre.statut)
     session.add(ins); session.flush()
@@ -253,7 +295,7 @@ def create_from_pre(
         session.add(av)
 
     session.commit()
-    return RedirectResponse(url=f"ACD/inscriptions/form?programme={prog.code}&pre_id={pre.id}", status_code=303)
+    return RedirectResponse(url=request.url_for("inscriptions_form", programme=prog.code, pre_id=pre.id), status_code=303)
 
 
 # Mise à jour infos candidat/entreprise
@@ -452,7 +494,7 @@ def update_infos(
     )
     
     prog = session.get(Programme, pre.programme_id)
-    return RedirectResponse(url=f"/ACD/inscriptions/form?programme={prog.code}&pre_id={pre.id}&success=infos_updated", status_code=303)
+    return RedirectResponse(url=request.url_for("inscriptions_form", programme=prog.code, pre_id=pre.id, success="infos_updated"), status_code=303)
 
 
 # Recalcul eligibilité
@@ -520,7 +562,7 @@ def elig_recalc(
         
         print(f"🎉 [RECALC] Recalcul terminé avec succès")
         
-        return RedirectResponse(url=f"/ACD/inscriptions/form?programme={prog.code}&pre_id={pre.id}", status_code=303)
+        return RedirectResponse(url=request.url_for("inscriptions_form", programme=prog.code, pre_id=pre.id), status_code=303)
         
     except Exception as e:
         print(f"❌ [RECALC] Erreur lors du recalcul: {e}")
@@ -609,11 +651,11 @@ def add_document(
         if preinscription:
             programme = session.get(Programme, preinscription.programme_id)
             return RedirectResponse(
-                url=f"/ACD/inscriptions/form?programme={programme.code}&pre_id={preinscription.id}&success=document_added",
+                url=request.url_for("inscriptions_form", programme=programme.code, pre_id=preinscription.id, success="document_added"),
                 status_code=303
             )
         else:
-            return RedirectResponse(url="/ACD/inscriptions?success=document_added", status_code=303)
+            return RedirectResponse(url=request.url_for("inscriptions_list", programme=prog.code, success="document_added"), status_code=303)
             
     except Exception as e:
         print(f"❌ [DOC] Erreur lors de l'ajout: {e}")
@@ -653,11 +695,11 @@ def delete_document(
         if preinscription:
             programme = session.get(Programme, preinscription.programme_id)
             return RedirectResponse(
-                url=f"/ACD/inscriptions/form?programme={programme.code}&pre_id={preinscription.id}&success=document_deleted",
+                url=request.url_for("inscriptions_form", programme=programme.code, pre_id=preinscription.id, success="document_deleted"),
                 status_code=303
             )
         else:
-            return RedirectResponse(url="/ACD/inscriptions?success=document_deleted", status_code=303)
+            return RedirectResponse(url=request.url_for("inscriptions_list", programme=prog.code, success="document_deleted"), status_code=303)
         
     except Exception as e:
         print(f"❌ [DOC] Erreur lors de la suppression: {e}")
@@ -694,7 +736,7 @@ def etape_advance(
     ins = session.get(Inscription, av.inscription_id)
     prog = session.get(Programme, ins.programme_id)
     pre = session.exec(select(Preinscription).where(Preinscription.programme_id==prog.id, Preinscription.candidat_id==ins.candidat_id)).first()
-    return RedirectResponse(url=f"ACD/inscriptions?programme={prog.code}&pre_id={pre.id if pre else ''}", status_code=303)
+    return RedirectResponse(url=request.url_for("inscriptions_list", programme=prog.code, pre_id=pre.id if pre else ""), status_code=303)
 
 
 # --------- GESTION DES DÉCISIONS DU JURY ---------
@@ -841,7 +883,7 @@ def create_jury_decision(
     # Redirection vers la page d'inscription
     prog = session.exec(select(Programme).join(Preinscription).where(Preinscription.candidat_id == candidat_id)).first()
     pre = session.exec(select(Preinscription).where(Preinscription.candidat_id == candidat_id)).first()
-    return RedirectResponse(url=f"/ACD/inscriptions/form?programme={prog.code if prog else 'ACD'}&pre_id={pre.id if pre else ''}&success=decision_created", status_code=303)
+    return RedirectResponse(url=request.url_for("inscriptions_form", programme=prog.code if prog else "ACD", pre_id=pre.id if pre else "", success="decision_created"), status_code=303)
 
 
 @router.post("/inscriptions/jury/decision/{decision_id}/delete")
@@ -889,7 +931,7 @@ def delete_jury_decision(
     # Redirection vers la page d'inscription
     prog = session.exec(select(Programme).join(Preinscription).where(Preinscription.candidat_id == candidat_id)).first()
     pre = session.exec(select(Preinscription).where(Preinscription.candidat_id == candidat_id)).first()
-    return RedirectResponse(url=f"/ACD/inscriptions/form?programme={prog.code if prog else 'ACD'}&pre_id={pre.id if pre else ''}&success=decision_deleted", status_code=303)
+    return RedirectResponse(url=request.url_for("inscriptions_form", programme=prog.code if prog else "ACD", pre_id=pre.id if pre else "", success="decision_deleted"), status_code=303)
 
 
 # --------- INTÉGRATION QPV ET SIRET ---------
@@ -1356,7 +1398,7 @@ async def download_siret_document(
         )
 
 # Routes pour servir les fichiers documents
-@router.get("/inscriptions/document/{document_id}/view")
+@router.get("/inscriptions/document/{document_id}/view", name="inscriptions_document_view")
 def view_document(
     document_id: int,
     session: Session = Depends(get_session),
@@ -1402,7 +1444,7 @@ def view_document(
         raise HTTPException(status_code=500, detail=f"Erreur lors de l'affichage du document: {str(e)}")
 
 
-@router.get("/inscriptions/document/{document_id}/download")
+@router.get("/inscriptions/document/{document_id}/download", name="inscriptions_document_download")
 def download_document(
     document_id: int,
     session: Session = Depends(get_session),

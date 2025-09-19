@@ -22,7 +22,7 @@ router = APIRouter()
 
 
 # --------- GESTION DES DÉCISIONS DU JURY ---------
-@router.get("/jury-decisions", response_class=HTMLResponse)
+@router.get("/jury-decisions", name="jury_decisions_list", response_class=HTMLResponse)
 def jury_decisions_list(
     request: Request,
     session: Session = Depends(get_session),
@@ -186,7 +186,7 @@ def create_jury_decision(
         }
     )
     
-    return RedirectResponse(url=f"/ACD/jury-decisions?jury_id={jury_id}&success=decision_created", status_code=303)
+    return RedirectResponse(url=request.url_for("jury_decisions_list", jury_id=jury_id, success="decision_created"), status_code=303)
 
 
 @router.post("/jury-decisions/{decision_id}/update")
@@ -247,7 +247,7 @@ def update_jury_decision(
         }
     )
     
-    return RedirectResponse(url=f"/ACD/jury-decisions?jury_id={decision_obj.jury_id}&success=decision_updated", status_code=303)
+    return RedirectResponse(url=request.url_for("jury_decisions_list", jury_id=decision_obj.jury_id, success="decision_updated"), status_code=303)
 
 
 @router.post("/jury-decisions/{decision_id}/delete")
@@ -293,4 +293,4 @@ def delete_jury_decision(
         }
     )
     
-    return RedirectResponse(url=f"/ACD/jury-decisions?jury_id={jury_id}&success=decision_deleted", status_code=303)
+    return RedirectResponse(url=request.url_for("jury_decisions_list", jury_id=jury_id, success="decision_deleted"), status_code=303)

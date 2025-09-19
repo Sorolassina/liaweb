@@ -1,0 +1,504 @@
+{% extends "base.html" %}
+
+{% block title %}Statistiques E-learning{% endblock %}
+
+{% block head_extra %}
+<style>
+  .stats-header {
+    background: linear-gradient(135deg, var(--primary-color) 0%, var(--secondary-color) 100%);
+    color: white;
+    padding: 2rem 0;
+    margin-bottom: 2rem;
+  }
+
+  .stats-card {
+    background: white;
+    border-radius: 12px;
+    padding: 1.5rem;
+    box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+    margin-bottom: 1.5rem;
+    transition: transform 0.2s ease;
+  }
+
+  .stats-card:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 6px 12px rgba(0, 0, 0, 0.15);
+  }
+
+  .stat-number {
+    font-size: 2.5rem;
+    font-weight: bold;
+    color: var(--primary-color);
+    margin-bottom: 0.5rem;
+  }
+
+  .stat-label {
+    color: #6c757d;
+    font-size: 0.9rem;
+    margin-bottom: 0.5rem;
+  }
+
+  .stat-change {
+    font-size: 0.8rem;
+    font-weight: 600;
+  }
+
+  .stat-change.positive {
+    color: #28a745;
+  }
+
+  .stat-change.negative {
+    color: #dc3545;
+  }
+
+  .chart-container {
+    background: white;
+    border-radius: 12px;
+    padding: 1.5rem;
+    box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+    margin-bottom: 1.5rem;
+  }
+
+  .progress-bar {
+    height: 8px;
+    background: #e9ecef;
+    border-radius: 4px;
+    overflow: hidden;
+    margin: 0.5rem 0;
+  }
+
+  .progress-fill {
+    height: 100%;
+    background: linear-gradient(90deg, var(--primary-color), var(--secondary-color));
+    transition: width 0.3s ease;
+    border-radius: 4px;
+  }
+
+  .table-modern {
+    background: white;
+    border-radius: 12px;
+    overflow: hidden;
+    box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+  }
+
+  .table-modern thead {
+    background: linear-gradient(135deg, var(--primary-color), var(--secondary-color));
+    color: white;
+  }
+
+  .table-modern th {
+    border: none;
+    padding: 1rem;
+    font-weight: 600;
+  }
+
+  .table-modern td {
+    border: none;
+    padding: 1rem;
+    border-bottom: 1px solid #f8f9fa;
+  }
+
+  .table-modern tbody tr:hover {
+    background: #f8f9fa;
+  }
+
+  .badge-modern {
+    padding: 0.5rem 1rem;
+    border-radius: 20px;
+    font-weight: 600;
+    font-size: 0.8rem;
+  }
+
+  .badge-success-modern {
+    background: #d4edda;
+    color: #155724;
+  }
+
+  .badge-warning-modern {
+    background: #fff3cd;
+    color: #856404;
+  }
+
+  .badge-danger-modern {
+    background: #f8d7da;
+    color: #721c24;
+  }
+
+  .filter-section {
+    background: white;
+    border-radius: 12px;
+    padding: 1.5rem;
+    box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+    margin-bottom: 2rem;
+  }
+
+  .btn-filter {
+    background: linear-gradient(135deg, var(--primary-color), var(--secondary-color));
+    color: white;
+    border: none;
+    padding: 0.5rem 1rem;
+    border-radius: 6px;
+    font-weight: 600;
+  }
+
+  .btn-filter:hover {
+    background: linear-gradient(135deg, var(--secondary-color), var(--primary-color));
+    color: white;
+  }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="container-fluid">
+  <!-- En-tête des statistiques -->
+  <div class="stats-header">
+    <div class="container">
+      <!-- Bouton retour -->
+      <div class="row mb-3">
+        <div class="col-12">
+          <a href="{{ url_for('elearning_dashboard') }}" class="btn btn-outline-light btn-sm">
+            <i class="fas fa-arrow-left me-2"></i>
+            Retour au dashboard
+          </a>
+        </div>
+      </div>
+      
+      <div class="row align-items-center">
+        <div class="col-md-8">
+          <h1 class="mb-2">
+            <i class="fas fa-chart-bar me-2"></i>
+            Statistiques E-learning
+          </h1>
+          <p class="mb-0 opacity-75">Analyse des performances et de l'engagement des apprenants</p>
+        </div>
+        <div class="col-md-4 text-end">
+          <div class="d-flex align-items-center justify-content-end gap-2">
+            <button class="btn btn-outline-light btn-sm" onclick="exportStats()">
+              <i class="fas fa-download me-1"></i>
+              Exporter
+            </button>
+            <button class="btn btn-outline-light btn-sm" onclick="refreshStats()">
+              <i class="fas fa-sync me-1"></i>
+              Actualiser
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="container">
+    <!-- Filtres -->
+    <div class="filter-section">
+      <div class="row align-items-center">
+        <div class="col-md-3">
+          <label class="form-label">Programme</label>
+          <select class="form-select" id="programmeFilter">
+            <option value="">Tous les programmes</option>
+            {% for programme in programmes %}
+            <option value="{{ programme.id }}">{{ programme.nom }}</option>
+            {% endfor %}
+          </select>
+        </div>
+        <div class="col-md-3">
+          <label class="form-label">Période</label>
+          <select class="form-select" id="periodeFilter">
+            <option value="7">7 derniers jours</option>
+            <option value="30" selected>30 derniers jours</option>
+            <option value="90">3 derniers mois</option>
+            <option value="365">12 derniers mois</option>
+          </select>
+        </div>
+        <div class="col-md-3">
+          <label class="form-label">Type de ressource</label>
+          <select class="form-select" id="typeFilter">
+            <option value="">Tous les types</option>
+            <option value="video">Vidéo</option>
+            <option value="document">Document</option>
+            <option value="quiz">Quiz</option>
+            <option value="lien">Lien</option>
+            <option value="audio">Audio</option>
+          </select>
+        </div>
+        <div class="col-md-3">
+          <button class="btn btn-filter w-100" onclick="applyFilters()">
+            <i class="fas fa-filter me-2"></i>
+            Appliquer les filtres
+          </button>
+        </div>
+      </div>
+    </div>
+
+    <!-- Statistiques globales -->
+    <div class="row">
+      <div class="col-md-3 mb-3">
+        <div class="stats-card text-center">
+          <div class="stat-number">{{ stats_globales.total_modules }}</div>
+          <div class="stat-label">Modules créés</div>
+          <div class="stat-change positive">
+            <i class="fas fa-arrow-up me-1"></i>
+            +{{ stats_globales.modules_croissance }}% ce mois
+          </div>
+        </div>
+      </div>
+      <div class="col-md-3 mb-3">
+        <div class="stats-card text-center">
+          <div class="stat-number">{{ stats_globales.total_ressources }}</div>
+          <div class="stat-label">Ressources disponibles</div>
+          <div class="stat-change positive">
+            <i class="fas fa-arrow-up me-1"></i>
+            +{{ stats_globales.ressources_croissance }}% ce mois
+          </div>
+        </div>
+      </div>
+      <div class="col-md-3 mb-3">
+        <div class="stats-card text-center">
+          <div class="stat-number">{{ stats_globales.total_candidats }}</div>
+          <div class="stat-label">Candidats actifs</div>
+          <div class="stat-change positive">
+            <i class="fas fa-arrow-up me-1"></i>
+            +{{ stats_globales.candidats_croissance }}% ce mois
+          </div>
+        </div>
+      </div>
+      <div class="col-md-3 mb-3">
+        <div class="stats-card text-center">
+          <div class="stat-number">{{ stats_globales.temps_total_heures }}</div>
+          <div class="stat-label">Heures de formation</div>
+          <div class="stat-change positive">
+            <i class="fas fa-arrow-up me-1"></i>
+            +{{ stats_globales.temps_croissance }}% ce mois
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Graphiques -->
+    <div class="row">
+      <div class="col-md-6 mb-3">
+        <div class="chart-container">
+          <h5 class="mb-3">
+            <i class="fas fa-chart-pie me-2"></i>
+            Répartition par type de ressource
+          </h5>
+          <canvas id="ressourcesChart" width="400" height="200"></canvas>
+        </div>
+      </div>
+      <div class="col-md-6 mb-3">
+        <div class="chart-container">
+          <h5 class="mb-3">
+            <i class="fas fa-chart-line me-2"></i>
+            Progression mensuelle
+          </h5>
+          <canvas id="progressionChart" width="400" height="200"></canvas>
+        </div>
+      </div>
+    </div>
+
+    <!-- Top modules -->
+    <div class="row">
+      <div class="col-md-6 mb-3">
+        <div class="stats-card">
+          <h5 class="mb-3">
+            <i class="fas fa-trophy me-2"></i>
+            Modules les plus populaires
+          </h5>
+          {% for module in top_modules %}
+          <div class="d-flex justify-content-between align-items-center mb-2">
+            <div class="flex-grow-1">
+              <strong>{{ module.titre }}</strong>
+              <small class="d-block text-muted">{{ module.programme.nom if module.programme else "Sans programme" }}</small>
+            </div>
+            <div class="text-end">
+              <span class="badge-modern badge-success-modern">{{ module.completions }} complétions</span>
+            </div>
+          </div>
+          <div class="progress-bar">
+            <div class="progress-fill" style="width: {{ (module.completions / top_modules[0].completions * 100) if top_modules else 0 }}%"></div>
+          </div>
+          {% endfor %}
+        </div>
+      </div>
+      
+      <div class="col-md-6 mb-3">
+        <div class="stats-card">
+          <h5 class="mb-3">
+            <i class="fas fa-users me-2"></i>
+            Candidats les plus actifs
+          </h5>
+          {% for candidat in top_candidats %}
+          <div class="d-flex justify-content-between align-items-center mb-2">
+            <div class="flex-grow-1">
+              <strong>{{ candidat.nom }} {{ candidat.prenom }}</strong>
+              <small class="d-block text-muted">{{ candidat.programme.nom if candidat.programme else "Sans programme" }}</small>
+            </div>
+            <div class="text-end">
+              <span class="badge-modern badge-success-modern">{{ candidat.temps_total }} min</span>
+            </div>
+          </div>
+          <div class="progress-bar">
+            <div class="progress-fill" style="width: {{ (candidat.temps_total / top_candidats[0].temps_total * 100) if top_candidats else 0 }}%"></div>
+          </div>
+          {% endfor %}
+        </div>
+      </div>
+    </div>
+
+    <!-- Tableau détaillé -->
+    <div class="row">
+      <div class="col-12">
+        <div class="table-modern">
+          <table class="table table-hover mb-0">
+            <thead>
+              <tr>
+                <th>Programme</th>
+                <th>Modules</th>
+                <th>Ressources</th>
+                <th>Candidats</th>
+                <th>Temps moyen</th>
+                <th>Taux de completion</th>
+                <th>Score moyen</th>
+              </tr>
+            </thead>
+            <tbody>
+              {% for programme_stats in stats_par_programme %}
+              <tr>
+                <td>
+                  <strong>{{ programme_stats.programme.nom }}</strong>
+                  <small class="d-block text-muted">{{ programme_stats.programme.description or "Aucune description" }}</small>
+                </td>
+                <td>
+                  <span class="badge-modern badge-success-modern">{{ programme_stats.nb_modules }}</span>
+                </td>
+                <td>
+                  <span class="badge-modern badge-warning-modern">{{ programme_stats.nb_ressources }}</span>
+                </td>
+                <td>
+                  <span class="badge-modern badge-success-modern">{{ programme_stats.nb_candidats }}</span>
+                </td>
+                <td>{{ programme_stats.temps_moyen }} min</td>
+                <td>
+                  <div class="d-flex align-items-center">
+                    <div class="progress-bar me-2" style="width: 100px;">
+                      <div class="progress-fill" style="width: {{ programme_stats.taux_completion }}%"></div>
+                    </div>
+                    <span>{{ programme_stats.taux_completion }}%</span>
+                  </div>
+                </td>
+                <td>
+                  <span class="badge-modern {{ 'badge-success-modern' if programme_stats.score_moyen >= 80 else 'badge-warning-modern' if programme_stats.score_moyen >= 60 else 'badge-danger-modern' }}">
+                    {{ programme_stats.score_moyen }}%
+                  </span>
+                </td>
+              </tr>
+              {% endfor %}
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+<script>
+// Graphique des ressources par type
+const ressourcesCtx = document.getElementById('ressourcesChart').getContext('2d');
+const ressourcesChart = new Chart(ressourcesCtx, {
+  type: 'doughnut',
+  data: {
+    labels: ['Vidéo', 'Document', 'Quiz', 'Lien', 'Audio'],
+    datasets: [{
+      data: [{{ stats_ressources.video }}, {{ stats_ressources.document }}, {{ stats_ressources.quiz }}, {{ stats_ressources.lien }}, {{ stats_ressources.audio }}],
+      backgroundColor: [
+        '#3b82f6',
+        '#ef4444',
+        '#10b981',
+        '#f59e0b',
+        '#8b5cf6'
+      ],
+      borderWidth: 0
+    }]
+  },
+  options: {
+    responsive: true,
+    maintainAspectRatio: false,
+    plugins: {
+      legend: {
+        position: 'bottom'
+      }
+    }
+  }
+});
+
+// Graphique de progression mensuelle
+const progressionCtx = document.getElementById('progressionChart').getContext('2d');
+const progressionChart = new Chart(progressionCtx, {
+  type: 'line',
+  data: {
+    labels: ['Jan', 'Fév', 'Mar', 'Avr', 'Mai', 'Jun'],
+    datasets: [{
+      label: 'Completions',
+      data: [12, 19, 3, 5, 2, 3],
+      borderColor: 'rgb(59, 130, 246)',
+      backgroundColor: 'rgba(59, 130, 246, 0.1)',
+      tension: 0.4,
+      fill: true
+    }, {
+      label: 'Temps (heures)',
+      data: [8, 15, 2, 4, 1, 2],
+      borderColor: 'rgb(16, 185, 129)',
+      backgroundColor: 'rgba(16, 185, 129, 0.1)',
+      tension: 0.4,
+      fill: true
+    }]
+  },
+  options: {
+    responsive: true,
+    maintainAspectRatio: false,
+    scales: {
+      y: {
+        beginAtZero: true
+      }
+    }
+  }
+});
+
+function applyFilters() {
+  const programme = document.getElementById('programmeFilter').value;
+  const periode = document.getElementById('periodeFilter').value;
+  const type = document.getElementById('typeFilter').value;
+  
+  // Recharger la page avec les filtres
+  const params = new URLSearchParams();
+  if (programme) params.append('programme', programme);
+  if (periode) params.append('periode', periode);
+  if (type) params.append('type', type);
+  
+  window.location.href = `{{ url_for('elearning_statistiques') }}?${params.toString()}`;
+}
+
+function exportStats() {
+  // Implémenter l'export des statistiques
+  alert('Fonction d\'export à implémenter');
+}
+
+function refreshStats() {
+  location.reload();
+}
+
+// Animation des barres de progression
+document.addEventListener('DOMContentLoaded', function() {
+  const progressBars = document.querySelectorAll('.progress-fill');
+  
+  progressBars.forEach(bar => {
+    const width = bar.style.width;
+    bar.style.width = '0%';
+    
+    setTimeout(() => {
+      bar.style.width = width;
+    }, 500);
+  });
+});
+</script>
+{% endblock %}

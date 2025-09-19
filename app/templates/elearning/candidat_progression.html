@@ -1,0 +1,353 @@
+{% extends "base.html" %}
+
+{% block title %}Progression E-learning - {{ candidat.nom }} {{ candidat.prenom }}{% endblock %}
+
+{% block head_extra %}
+<style>
+  .candidat-header {
+    background: linear-gradient(135deg, var(--primary-color) 0%, var(--secondary-color) 100%);
+    color: white;
+    padding: 2rem 0;
+    margin-bottom: 2rem;
+  }
+
+  .stats-card {
+    background: white;
+    border-radius: 12px;
+    padding: 1.5rem;
+    box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+    margin-bottom: 1.5rem;
+  }
+
+  .module-progress-card {
+    background: white;
+    border-radius: 8px;
+    padding: 1rem;
+    margin-bottom: 1rem;
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+    transition: transform 0.2s ease;
+  }
+
+  .module-progress-card:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 4px 8px rgba(0, 0, 0, 0.15);
+  }
+
+  .progress-bar {
+    height: 8px;
+    background: #e9ecef;
+    border-radius: 4px;
+    overflow: hidden;
+    margin: 0.5rem 0;
+  }
+
+  .module-progress-fill {
+    height: 100%;
+    background: linear-gradient(90deg, var(--primary-color), var(--secondary-color));
+    transition: width 0.3s ease;
+    border-radius: 4px;
+  }
+
+  .ressource-item {
+    display: flex;
+    align-items: center;
+    padding: 0.5rem;
+    margin: 0.25rem 0;
+    border-radius: 6px;
+    background: #f8f9fa;
+  }
+
+  .ressource-item.completed {
+    background: #d4edda;
+    color: #155724;
+  }
+
+  .ressource-item.in-progress {
+    background: #fff3cd;
+    color: #856404;
+  }
+
+  .ressource-item.not-started {
+    background: #f8d7da;
+    color: #721c24;
+  }
+
+  .status-icon {
+    width: 20px;
+    height: 20px;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    margin-right: 0.5rem;
+    font-size: 0.8rem;
+  }
+
+  .status-completed {
+    background: #28a745;
+    color: white;
+  }
+
+  .status-in-progress {
+    background: #ffc107;
+    color: #212529;
+  }
+
+  .status-not-started {
+    background: #dc3545;
+    color: white;
+  }
+
+  .time-spent {
+    font-size: 0.8rem;
+    color: #6c757d;
+    margin-left: auto;
+  }
+
+  .certificate-badge {
+    background: linear-gradient(135deg, #ffd700, #ffed4e);
+    color: #8b4513;
+    padding: 0.25rem 0.5rem;
+    border-radius: 12px;
+    font-size: 0.7rem;
+    font-weight: 600;
+  }
+
+  .stats-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+    gap: 1rem;
+    margin-bottom: 2rem;
+  }
+
+  .stat-item {
+    text-align: center;
+    padding: 1rem;
+    background: white;
+    border-radius: 8px;
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+  }
+
+  .stat-number {
+    font-size: 2rem;
+    font-weight: bold;
+    color: var(--primary-color);
+  }
+
+  .stat-label {
+    color: #6c757d;
+    font-size: 0.9rem;
+  }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="container-fluid">
+  <!-- En-tête du candidat -->
+  <div class="candidat-header">
+    <div class="container">
+      <!-- Bouton retour -->
+      <div class="row mb-3">
+        <div class="col-12">
+          <a href="{{ url_for('elearning_dashboard') }}" class="btn btn-outline-light btn-sm">
+            <i class="fas fa-arrow-left me-2"></i>
+            Retour au dashboard
+          </a>
+        </div>
+      </div>
+      
+      <div class="row align-items-center">
+        <div class="col-md-8">
+          <h1 class="mb-2">
+            <i class="fas fa-user-graduate me-2"></i>
+            {{ candidat.nom }} {{ candidat.prenom }}
+          </h1>
+          <p class="mb-0 opacity-75">
+            Programme: {{ candidat.programme.nom if candidat.programme else "Non spécifié" }}
+          </p>
+        </div>
+        <div class="col-md-4 text-end">
+          <div class="d-flex align-items-center justify-content-end">
+            <div class="me-3">
+              <small class="d-block opacity-75">Progression globale</small>
+              <div class="progress-bar" style="width: 200px;">
+                <div class="module-progress-fill" style="width: {{ progression_globale }}%"></div>
+              </div>
+              <small class="text-white-50">{{ progression_globale }}% complété</small>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="container">
+    <!-- Statistiques globales -->
+    <div class="stats-grid">
+      <div class="stat-item">
+        <div class="stat-number">{{ modules_completes }}</div>
+        <div class="stat-label">Modules complétés</div>
+      </div>
+      <div class="stat-item">
+        <div class="stat-number">{{ ressources_completes }}</div>
+        <div class="stat-label">Ressources terminées</div>
+      </div>
+      <div class="stat-item">
+        <div class="stat-number">{{ temps_total_minutes }}</div>
+        <div class="stat-label">Minutes de formation</div>
+      </div>
+      <div class="stat-item">
+        <div class="stat-number">{{ score_moyen }}%</div>
+        <div class="stat-label">Score moyen</div>
+      </div>
+    </div>
+
+    <!-- Modules et progression -->
+    <div class="row">
+      <div class="col-12">
+        <h4 class="mb-3">
+          <i class="fas fa-list me-2"></i>
+          Progression par module
+        </h4>
+        
+        {% if modules_progression %}
+          {% for module_prog in modules_progression %}
+          <div class="module-progress-card">
+            <div class="d-flex justify-content-between align-items-start mb-2">
+              <div class="flex-grow-1">
+                <h6 class="mb-1">{{ module_prog.module.titre }}</h6>
+                <p class="text-muted small mb-0">{{ module_prog.module.description or "Aucune description" }}</p>
+              </div>
+              <div class="text-end">
+                <div class="d-flex align-items-center gap-2">
+                  {% if module_prog.certificat %}
+                  <span class="certificate-badge">
+                    <i class="fas fa-certificate me-1"></i>
+                    Certificat obtenu
+                  </span>
+                  {% endif %}
+                  <span class="badge bg-{{ 'success' if module_prog.progression_percentage == 100 else 'warning' if module_prog.progression_percentage > 0 else 'secondary' }}">
+                    {{ module_prog.progression_percentage }}%
+                  </span>
+                </div>
+              </div>
+            </div>
+            
+            <div class="progress-bar">
+              <div class="module-progress-fill" style="width: {{ module_prog.progression_percentage }}%"></div>
+            </div>
+            
+            <div class="mt-2">
+              <small class="text-muted">
+                {{ module_prog.ressources_terminees }}/{{ module_prog.total_ressources }} ressources terminées
+                {% if module_prog.temps_total %}
+                • {{ module_prog.temps_total }} minutes
+                {% endif %}
+              </small>
+            </div>
+            
+            <!-- Détail des ressources -->
+            <div class="mt-3">
+              <button class="btn btn-sm btn-outline-primary" type="button" data-bs-toggle="collapse" 
+                      data-bs-target="#ressources-{{ module_prog.module.id }}" aria-expanded="false">
+                <i class="fas fa-chevron-down me-1"></i>
+                Voir les ressources
+              </button>
+              
+              <div class="collapse mt-2" id="ressources-{{ module_prog.module.id }}">
+                {% for ressource_prog in module_prog.ressources %}
+                <div class="ressource-item {{ 'completed' if ressource_prog.statut == 'termine' else 'in-progress' if ressource_prog.statut == 'en_cours' else 'not-started' }}">
+                  <div class="status-icon status-{{ 'completed' if ressource_prog.statut == 'termine' else 'in-progress' if ressource_prog.statut == 'en_cours' else 'not-started' }}">
+                    {% if ressource_prog.statut == 'termine' %}
+                      <i class="fas fa-check"></i>
+                    {% elif ressource_prog.statut == 'en_cours' %}
+                      <i class="fas fa-play"></i>
+                    {% else %}
+                      <i class="fas fa-clock"></i>
+                    {% endif %}
+                  </div>
+                  
+                  <div class="flex-grow-1">
+                    <strong>{{ ressource_prog.ressource.titre }}</strong>
+                    <small class="d-block text-muted">{{ ressource_prog.ressource.type_ressource | title }}</small>
+                  </div>
+                  
+                  <div class="time-spent">
+                    {% if ressource_prog.temps_consacre_minutes %}
+                      {{ ressource_prog.temps_consacre_minutes }} min
+                    {% endif %}
+                    {% if ressource_prog.score %}
+                      • Score: {{ ressource_prog.score }}%
+                    {% endif %}
+                  </div>
+                </div>
+                {% endfor %}
+              </div>
+            </div>
+          </div>
+          {% endfor %}
+        {% else %}
+          <div class="text-center py-5">
+            <i class="fas fa-graduation-cap text-muted mb-3" style="font-size: 3rem;"></i>
+            <h5 class="text-muted">Aucune progression enregistrée</h5>
+            <p class="text-muted">Ce candidat n'a pas encore commencé de formation e-learning.</p>
+          </div>
+        {% endif %}
+      </div>
+    </div>
+
+    <!-- Certificats obtenus -->
+    {% if certificats %}
+    <div class="row mt-4">
+      <div class="col-12">
+        <h4 class="mb-3">
+          <i class="fas fa-certificate me-2"></i>
+          Certificats obtenus
+        </h4>
+        
+        <div class="row">
+          {% for certificat in certificats %}
+          <div class="col-md-6 mb-3">
+            <div class="stats-card">
+              <div class="d-flex align-items-center">
+                <i class="fas fa-certificate text-warning fa-2x me-3"></i>
+                <div class="flex-grow-1">
+                  <h6 class="mb-1">{{ certificat.titre }}</h6>
+                  <p class="text-muted small mb-0">
+                    Obtenu le {{ certificat.date_obtention.strftime('%d/%m/%Y') }}
+                  </p>
+                  {% if certificat.module %}
+                  <small class="text-muted">Module: {{ certificat.module.titre }}</small>
+                  {% endif %}
+                </div>
+                <button class="btn btn-sm btn-outline-primary">
+                  <i class="fas fa-download me-1"></i>
+                  Télécharger
+                </button>
+              </div>
+            </div>
+          </div>
+          {% endfor %}
+        </div>
+      </div>
+    </div>
+    {% endif %}
+  </div>
+</div>
+
+<script>
+// Animation des barres de progression
+document.addEventListener('DOMContentLoaded', function() {
+  const progressBars = document.querySelectorAll('.module-progress-fill');
+  
+  progressBars.forEach(bar => {
+    const width = bar.style.width;
+    bar.style.width = '0%';
+    
+    setTimeout(() => {
+      bar.style.width = width;
+    }, 500);
+  });
+});
+</script>
+{% endblock %}

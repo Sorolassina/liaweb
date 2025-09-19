@@ -30,18 +30,26 @@ seminaire_service = SeminaireService()
 async def liste_seminaires(
     request: Request,
     db: Session = Depends(get_session),
-    current_user: User = Depends(get_current_user)
+    current_user: User = Depends(get_current_user),
+    programme_id: Optional[int] = None
 ):
     """Page de liste des séminaires"""
-    seminaires = seminaire_service.get_seminaires(db)
+    filters = {}
+    if programme_id:
+        filters['programme_id'] = programme_id
+    
+    seminaires = seminaire_service.get_seminaires(db, filters)
     stats = seminaire_service.get_seminaire_stats(db)
+    programmes = db.exec(select(Programme).where(Programme.actif == True)).all()
     
     return templates.TemplateResponse("seminaires/liste.html", {
         "request": request,
         "seminaires": seminaires,
         "stats": stats,
+        "programmes": programmes,
         "current_user": current_user,
-        "utilisateur": current_user
+        "utilisateur": current_user,
+        "programme_id": programme_id
     })
 
 @router.get("/nouveau", name="form_seminaire", response_class=HTMLResponse)
