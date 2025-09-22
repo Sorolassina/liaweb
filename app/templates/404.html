@@ -192,9 +192,9 @@
             <p class="muted">Elle a peut-être été déplacée, renommée ou n'existe pas.</p>
 
             <div class="actions">
-                <a href="/" class="btn btn-lia">← Retour à l'accueil</a>
-                <a href="/admin" class="btn btn-outline">Aller à l'administration</a>
-                <a href="/contact" class="btn btn-outline">Contacter le support</a>
+                <a href="{{ url_for('accueil') }}" class="btn btn-lia submenu-item">← Retour à l'accueil</a>
+                <a href="{{ url_for('admin_dashboard') }}" class="btn btn-outline submenu-item">Aller à l'administration</a>
+                <a href="{{ url_for('accueil') }}" class="btn btn-outline submenu-item">Contacter le support</a>
             </div>
 
             <form class="search-box" method="get" action="/recherche">

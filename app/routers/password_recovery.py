@@ -24,7 +24,7 @@ router = APIRouter()
 recovery_service = PasswordRecoveryService()
 
 
-@router.get("/mot-de-passe-oublie", response_class=HTMLResponse)
+@router.get("/mot-de-passe-oublie", response_class=HTMLResponse, name="request_password_recovery_get")
 async def forgot_password_page(request: Request):
     """Page de demande de récupération de mot de passe"""
     return templates.TemplateResponse(
@@ -39,7 +39,7 @@ async def forgot_password_page(request: Request):
     )
 
 
-@router.post("/mot-de-passe-oublie", response_class=HTMLResponse)
+@router.post("/mot-de-passe-oublie", response_class=HTMLResponse, name="request_password_recovery_post")
 async def request_password_recovery(
     request: Request,
     email: str = Form(...),
@@ -89,7 +89,7 @@ async def request_password_recovery(
         )
 
 
-@router.get("/verification-code", response_class=HTMLResponse)
+@router.get("/verification-code", response_class=HTMLResponse, name="verify_recovery_code_get")
 async def verify_code_page(request: Request, email: Optional[str] = None, success: Optional[str] = None):
     """Page de vérification du code de récupération"""
     return templates.TemplateResponse(
@@ -106,7 +106,7 @@ async def verify_code_page(request: Request, email: Optional[str] = None, succes
     )
 
 
-@router.post("/verification-code", response_class=HTMLResponse)
+@router.post("/verification-code", response_class=HTMLResponse, name="verify_recovery_code_post")
 async def verify_recovery_code(
     request: Request,
     email: str = Form(...),
@@ -155,7 +155,7 @@ async def verify_recovery_code(
         )
 
 
-@router.get("/reinitialiser-mot-de-passe", response_class=HTMLResponse)
+@router.get("/reinitialiser-mot-de-passe", response_class=HTMLResponse, name="reset_password_get")
 async def reset_password_page(request: Request, email: Optional[str] = None, code: Optional[str] = None):
     """Page de réinitialisation du mot de passe"""
     if not email or not code:
@@ -175,7 +175,7 @@ async def reset_password_page(request: Request, email: Optional[str] = None, cod
     )
 
 
-@router.post("/reinitialiser-mot-de-passe", response_class=HTMLResponse)
+@router.post("/reinitialiser-mot-de-passe", response_class=HTMLResponse, name="reset_password_post")
 async def reset_password(
     request: Request,
     email: str = Form(...),
@@ -261,7 +261,7 @@ async def reset_password(
 
 
 # Routes API pour intégration avec d'autres systèmes
-@router.post("/api/password-recovery/request", response_model=PasswordRecoveryResponse)
+@router.post("/api/password-recovery/request", response_model=PasswordRecoveryResponse, name="api_request_password_recovery_post")
 async def api_request_password_recovery(
     request_data: PasswordRecoveryRequest,
     request: Request,
@@ -285,7 +285,7 @@ async def api_request_password_recovery(
         )
 
 
-@router.post("/api/password-recovery/verify", response_model=PasswordRecoveryResponse)
+@router.post("/api/password-recovery/verify", response_model=PasswordRecoveryResponse, name="api_verify_recovery_code_post")
 async def api_verify_recovery_code(
     request_data: PasswordRecoveryVerify,
     session: Session = Depends(get_session)
@@ -307,7 +307,7 @@ async def api_verify_recovery_code(
         )
 
 
-@router.post("/api/password-recovery/reset", response_model=PasswordRecoveryResponse)
+@router.post("/api/password-recovery/reset", response_model=PasswordRecoveryResponse, name="api_reset_password_post")
 async def api_reset_password(
     request_data: PasswordReset,
     session: Session = Depends(get_session)
@@ -334,7 +334,7 @@ async def api_reset_password(
         )
 
 
-@router.post("/api/password-recovery/cleanup")
+@router.post("/api/password-recovery/cleanup", name="api_cleanup_expired_codes")
 async def cleanup_expired_codes(session: Session = Depends(get_session)):
     """API pour nettoyer les codes expirés (utilisé par un cron job)"""
     try:

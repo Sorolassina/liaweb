@@ -1,6 +1,5 @@
 # app/routers/emargement_router.py
 from fastapi import APIRouter, Depends, HTTPException, Request
-from fastapi.templating import Jinja2Templates
 from sqlmodel import Session, select
 from typing import Optional
 import logging
@@ -12,74 +11,12 @@ from app_lia_web.core.security import get_current_user, get_current_user_optiona
 from app_lia_web.app.models.base import User, RendezVous, EmargementRDV, Candidat, Inscription
 from app_lia_web.core.config import settings
 from app_lia_web.core.utils import EmailUtils
+from app_lia_web.app.templates import templates
 
 logger = logging.getLogger(__name__)
 
 router = APIRouter()
-templates = Jinja2Templates(directory="app/templates")
 
-@router.get("/emargement/{rdv_id}")
-async def page_emargement_conseiller(
-    request: Request,
-    rdv_id: int,
-    session: Session = Depends(get_session),
-    current_user: User = Depends(get_current_user)
-):
-    """Page d'émargement pour le conseiller"""
-    logger.info(f"📝 Page émargement conseiller - RDV ID: {rdv_id}, User: {current_user.email}")
-    
-    try:
-        # Récupérer le RDV avec toutes les relations
-        rdv = session.get(RendezVous, rdv_id)
-        if not rdv:
-            raise HTTPException(status_code=404, detail="Rendez-vous non trouvé")
-        
-        # Charger les relations
-        inscription = session.get(Inscription, rdv.inscription_id)
-        if not inscription:
-            raise HTTPException(status_code=404, detail="Inscription non trouvée")
-        
-        candidat = session.get(Candidat, inscription.candidat_id)
-        if not candidat:
-            raise HTTPException(status_code=404, detail="Candidat non trouvé")
-        
-        # Vérifier les permissions
-        if current_user.role not in ["administrateur", "coordinateur"] and rdv.conseiller_id != current_user.id:
-            raise HTTPException(status_code=403, detail="Vous n'avez pas l'autorisation de voir ce rendez-vous")
-        
-        # Récupérer l'émargement existant
-        emargement_query = select(EmargementRDV).where(EmargementRDV.rdv_id == rdv_id)
-        emargement = session.exec(emargement_query).first()
-        
-        # Si pas d'émargement, en créer un
-        if not emargement:
-            emargement = EmargementRDV(
-                rdv_id=rdv_id,
-                type_signataire="conseiller",
-                signataire_id=current_user.id,
-                candidat_id=candidat.id
-            )
-            session.add(emargement)
-            session.commit()
-            session.refresh(emargement)
-        
-        logger.info(f"✅ Page émargement chargée pour RDV {rdv_id}")
-        
-        return templates.TemplateResponse("emargement/conseiller.html", {
-            "request": request,
-            "rdv": rdv,
-            "candidat": candidat,
-            "emargement": emargement,
-            "utilisateur": current_user,
-            "settings": settings
-        })
-        
-    except HTTPException as e:
-        logger.error(f"❌ HTTPException dans page_emargement_conseiller: {e.detail}")
-        raise
-    except Exception as e:
-        logger.error(f"💥 Erreur inattendue dans page_emargement_conseiller: {str(e)}")
-        raise HTTPException(status_code=500, detail=f"Erreur interne: {str(e)}")
 
 @router.get("/emargement/{rdv_id}/candidat/{token}")
 async def page_emargement_candidat(

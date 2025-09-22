@@ -1,0 +1,616 @@
+{% extends "admin/base_admin.html" %}
+{% block admin_content %}
+
+<!-- Notifications -->
+{% if request.query_params.get('success') == '1' %}
+  <div class="alert alert-success alert-dismissible fade show" role="alert">
+    <i class="fa fa-check-circle me-2"></i>
+    {% if request.query_params.get('action') == 'add' %}
+      Programme créé avec succès !
+    {% elif request.query_params.get('action') == 'update' %}
+      Programme mis à jour avec succès !
+    {% elif request.query_params.get('action') == 'delete' %}
+      Programme supprimé avec succès !
+    {% elif request.query_params.get('action') == 'add_member' %}
+      Membre d'équipe ajouté avec succès !
+    {% elif request.query_params.get('action') == 'remove_member' %}
+      Membre d'équipe retiré avec succès !
+    {% elif request.query_params.get('action') == 'add_step' %}
+      Étape ajoutée avec succès !
+    {% elif request.query_params.get('action') == 'update_step' %}
+      Étape mise à jour avec succès !
+    {% elif request.query_params.get('action') == 'remove_step' %}
+      Étape supprimée avec succès !
+    {% endif %}
+    <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+  </div>
+{% endif %}
+
+<div class="d-flex justify-content-between align-items-center mb-3">
+  <h5 class="m-0">Programmes</h5>
+  <a class="submenu-item" href="{{ url_for('admin_programmes_new') }}">
+    <i class="fa fa-plus me-2"></i>Nouveau programme
+  </a>
+</div>
+
+<div class="card-neumo p-3">
+  <div class="users-table-containerP">
+    <table class="table align-middle">
+    <thead>
+      <tr>
+        <th>Code</th>
+        <th>Statut</th>
+        <th>Responsable</th>
+        <th class="text-end">Actions</th>
+      </tr>
+    </thead>
+    <tbody>
+      {% for p in progs %}
+      <tr>
+        <td>
+          <span class="badge bg-primary fs-6">{{ p.code }}</span>
+        </td>
+        
+        <td>
+          {% if p.actif %}
+            <span class="badge bg-success">
+              <i class="fa fa-check me-1"></i>Actif
+            </span>
+          {% else %}
+            <span class="badge bg-secondary">
+              <i class="fa fa-pause me-1"></i>Inactif
+            </span>
+          {% endif %}
+        </td>
+        <td>
+          {% if p.responsable %}
+            <div class="d-flex align-items-center">
+              {% if p.responsable.photo_profil %}
+                <img src="{{ p.responsable.photo_profil }}?v={{ p.responsable.id }}&t={{ timestamp }}" alt="Photo" class="rounded-circle me-2" width="24" height="24" style="object-fit: cover;">
+              {% else %}
+                <div class="rounded-circle bg-secondary d-flex align-items-center justify-content-center me-2" style="width: 24px; height: 24px;">
+                  <i class="fa fa-user text-white" style="font-size: 0.7rem;"></i>
+                </div>
+              {% endif %}
+              <span class="small">{{ p.responsable.nom_complet }}</span>
+            </div>
+          {% else %}
+            <span class="text-muted">—</span>
+          {% endif %}
+        </td>
+        <td class="text-end">
+          <div class="btn-group btn-group-sm">
+            <a class="submenu-item" href="{{ url_for('admin_programmes_edit', programme_id=p.id) }}" title="Modifier">
+              <i class="fa fa-edit"></i>
+            </a>
+            <button type="button" class="btn btn-outline-info" data-bs-toggle="modal" data-bs-target="#viewModal{{ p.id }}" title="Voir les détails">
+              <i class="fa fa-eye"></i>
+            </button>
+            <button type="button" class="btn btn-outline-warning" data-bs-toggle="modal" data-bs-target="#teamModal{{ p.id }}" title="Gérer l'équipe">
+              <i class="fa fa-users"></i>
+            </button>
+            <button type="button" class="btn btn-outline-info" data-bs-toggle="modal" data-bs-target="#stepsModal{{ p.id }}" title="Gérer les étapes">
+              <i class="fa fa-list-ol"></i>
+            </button>
+            <button type="button" class="btn btn-outline-danger" data-bs-toggle="modal" data-bs-target="#deleteModal{{ p.id }}" title="Supprimer">
+              <i class="fa fa-trash"></i>
+            </button>
+          </div>
+        </td>
+      </tr>
+      {% else %}
+      <tr>
+        <td colspan="4" class="text-center text-muted py-4">
+          <i class="fa fa-info-circle me-2"></i>Aucun programme trouvé
+        </td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+  </div>
+</div>
+
+<!-- Modals de visualisation -->
+{% for p in progs %}
+<div class="modal fade" id="viewModal{{ p.id }}" tabindex="-1">
+  <div class="modal-dialog modal-lg">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h5 class="modal-title">
+          <i class="fa fa-info-circle me-2"></i>Détails du programme {{ p.code }}
+        </h5>
+        <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+      </div>
+      <div class="modal-body">
+        <div class="row">
+          <div class="col-md-6">
+            <h6>Informations générales</h6>
+            <table class="table table-sm">
+              <tr><td><strong>Code :</strong></td><td><span class="badge bg-primary">{{ p.code }}</span></td></tr>
+              <tr><td><strong>Nom :</strong></td><td>{{ p.nom }}</td></tr>
+              <tr><td><strong>Statut :</strong></td><td>
+                {% if p.actif %}
+                  <span class="badge bg-success">Actif</span>
+                {% else %}
+                  <span class="badge bg-secondary">Inactif</span>
+                {% endif %}
+              </td></tr>
+              <tr><td><strong>Objectif :</strong></td><td>{{ p.objectif or '—' }}</td></tr>
+            </table>
+          </div>
+                     <div class="col-md-6">
+             <h6>Critères d'éligibilité</h6>
+             <table class="table table-sm">
+                <tr><td><strong>CA minimum :</strong></td><td>{{ p.ca_seuil_min if p.ca_seuil_min else '—' }}k€</td></tr>
+                <tr><td><strong>CA maximum :</strong></td><td>{{ p.ca_seuil_max if p.ca_seuil_max else '—' }}k€</td></tr>
+               <tr><td><strong>Ancienneté :</strong></td><td>{{ p.anciennete_min_annees or '—' }} an{{ 's' if p.anciennete_min_annees and p.anciennete_min_annees > 1 else '' }}</td></tr>
+               <tr><td><strong>Responsable :</strong></td><td>{{ p.responsable.nom_complet if p.responsable else '—' }}</td></tr>
+             </table>
+           </div>
+         </div>
+         {% if p.date_debut or p.date_fin %}
+         <div class="row mt-3">
+           <div class="col-12">
+             <h6>Période</h6>
+             <table class="table table-sm">
+               <tr><td><strong>Date de début :</strong></td><td>{{ p.date_debut.strftime('%d/%m/%Y') if p.date_debut else '—' }}</td></tr>
+               <tr><td><strong>Date de fin :</strong></td><td>{{ p.date_fin.strftime('%d/%m/%Y') if p.date_fin else '—' }}</td></tr>
+             </table>
+           </div>
+         </div>
+         {% endif %}
+         {% if p.objectif_total or p.cible_qpv_pct or p.cible_femmes_pct %}
+         <div class="row mt-3">
+           <div class="col-12">
+             <h6>Objectifs quantitatifs</h6>
+             <table class="table table-sm">
+               <tr><td><strong>Objectif total :</strong></td><td>{{ p.objectif_total or '—' }} candidats</td></tr>
+               <tr><td><strong>Cible QPV :</strong></td><td>{{ p.cible_qpv_pct or '—' }}%</td></tr>
+               <tr><td><strong>Cible femmes :</strong></td><td>{{ p.cible_femmes_pct or '—' }}%</td></tr>
+             </table>
+           </div>
+         </div>
+         {% endif %}
+      </div>
+      <div class="modal-footer">
+        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Fermer</button>
+        <a href="{{ url_for('admin_programmes_edit', programme_id=p.id) }}" class="submenu-item">
+          <i class="fa fa-edit me-2"></i>Modifier
+        </a>
+      </div>
+    </div>
+  </div>
+</div>
+{% endfor %}
+
+<!-- Modals de gestion d'équipe -->
+{% for p in progs %}
+<div class="modal fade" id="teamModal{{ p.id }}" tabindex="-1" aria-labelledby="teamModalLabel{{ p.id }}" aria-hidden="true">
+  <div class="modal-dialog modal-lg">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h5 class="modal-title" id="teamModalLabel{{ p.id }}">
+          <i class="fa fa-users me-2"></i>Gestion de l'équipe - {{ p.code }}
+        </h5>
+        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+      </div>
+      <div class="modal-body">
+        <!-- Formulaire d'ajout d'utilisateur -->
+        <div class="card mb-3">
+          <div class="card-header">
+            <h6 class="mb-0"><i class="fa fa-plus me-2"></i>Ajouter un membre</h6>
+          </div>
+          <div class="card-body">
+            <form method="post" action="{{ url_for('admin_programmes_add_member', programme_id=p.id) }}" id="addMemberForm{{ p.id }}">
+              <div class="row g-3">
+                                 <div class="col-md-6">
+                   <label class="form-label">Utilisateur <span class="text-danger">*</span></label>
+                                       <select name="utilisateur_id" class="form-select" required onchange="updateRoleOptions({{ p.id }}, this.value)" data-programme-id="{{ p.id }}">
+                      <option value="">— Sélectionner un utilisateur —</option>
+                      {% for user in users_disponibles_par_programme[p.id] %}
+                        <option value="{{ user.id }}">{{ user.nom_complet }} ({{ user.email }})</option>
+                      {% endfor %}
+                    </select>
+                 </div>
+                 <div class="col-md-4">
+                   <label class="form-label">Rôle <span class="text-danger">*</span></label>
+                                       <select name="role_programme" class="form-select" required id="roleSelect{{ p.id }}" data-members="{{ membres_equipe_par_programme[p.id] | tojson }}">
+                     <option value="">— Sélectionner un rôle —</option>
+                     {% for role in UserRole %}
+                       {% set role_names = {
+                         'DIRECTEUR_TECHNIQUE': 'Directeur technique',
+                         'RESPONSABLE_PROGRAMME': 'Responsable programme',
+                         'CONSEILLER': 'Conseiller',
+                         'COORDINATEUR': 'Coordinateur',
+                         'FORMATEUR': 'Formateur',
+                         'EVALUATEUR': 'Évaluateur',
+                         'ACCOMPAGNATEUR': 'Accompagnateur',
+                         'ADMINISTRATEUR': 'Administrateur',
+                         'DRH': 'DRH',
+                         'RESPONSABLE_STRUCTURE': 'Responsable structure',
+                         'COACH_EXTERNE': 'Coach externe',
+                         'JURY_EXTERNE': 'Jury externe',
+                         'CANDIDAT': 'Candidat'
+                       } %}
+                       <option value="{{ role.value }}">{{ role_names.get(role.name, role.name.replace('_', ' ').title()) }}</option>
+                     {% endfor %}
+                   </select>
+                 </div>
+                <div class="col-md-2 d-flex align-items-end">
+                  <button type="submit" class="btn btn-primary btn-sm w-100">
+                    <i class="fa fa-plus me-1"></i>Ajouter
+                  </button>
+                </div>
+              </div>
+            </form>
+          </div>
+        </div>
+        
+        <!-- Tableau des membres -->
+        <div class="table-responsive">
+          <table class="table align-middle">
+            <thead>
+              <tr>
+                <th>Utilisateur</th>
+                <th>Rôle</th>
+                <th>Statut</th>
+                <th>Période</th>
+                <th class="text-end" width="100">Actions</th>
+              </tr>
+            </thead>
+            <tbody>
+              {% for pu in p.utilisateurs %}
+              <tr>
+                <td>
+                  <div class="d-flex align-items-center">
+                    {% if pu.utilisateur.photo_profil %}
+                      <img src="{{ pu.utilisateur.photo_profil }}?v={{ pu.utilisateur.id }}&t={{ timestamp }}" alt="Photo" class="rounded-circle me-2" width="32" height="32" style="object-fit: cover;">
+                    {% else %}
+                      <div class="rounded-circle bg-secondary d-flex align-items-center justify-content-center me-2" style="width: 32px; height: 32px;">
+                        <i class="fa fa-user text-white" style="font-size: 0.8rem;"></i>
+                      </div>
+                    {% endif %}
+                    <div>
+                      <div class="fw-bold">{{ pu.utilisateur.nom_complet }}</div>
+                      <small class="text-muted">{{ pu.utilisateur.email }}</small>
+                    </div>
+                  </div>
+                </td>
+                <td>
+                  <span class="badge bg-primary">{{ pu.role_programme.replace('_', ' ').title() }}</span>
+                </td>
+                <td>
+                  {% if pu.actif %}
+                    <span class="badge bg-success">
+                      <i class="fa fa-check me-1"></i>Actif
+                    </span>
+                  {% else %}
+                    <span class="badge bg-secondary">
+                      <i class="fa fa-pause me-1"></i>Inactif
+                    </span>
+                  {% endif %}
+                </td>
+                <td>
+                  {% if pu.date_debut or pu.date_fin %}
+                    <small>
+                      {% if pu.date_debut %}{{ pu.date_debut.strftime('%d/%m/%Y') }}{% endif %}
+                      {% if pu.date_debut and pu.date_fin %} - {% endif %}
+                      {% if pu.date_fin %}{{ pu.date_fin.strftime('%d/%m/%Y') }}{% endif %}
+                    </small>
+                  {% else %}
+                    <span class="text-muted">—</span>
+                  {% endif %}
+                </td>
+                <td class="text-end">
+                  <div class="btn-group btn-group-sm">
+                    <button class="btn btn-outline-primary" title="Modifier" onclick="editMember({{ p.id }}, {{ pu.id }})">
+                      <i class="fa fa-edit"></i>
+                    </button>
+                    <form method="post" action="{{ url_for('admin_programmes_remove_member', programme_id=p.id, utilisateur_id=pu.utilisateur_id) }}" class="d-inline">
+                      <button type="submit" class="btn btn-outline-danger" title="Retirer" 
+                              onclick="return confirm('Retirer cet utilisateur du programme ?')">
+                        <i class="fa fa-times"></i>
+                      </button>
+                    </form>
+                  </div>
+                </td>
+              </tr>
+              {% else %}
+              <tr>
+                <td colspan="5" class="text-center text-muted py-4">
+                  <i class="fa fa-info-circle me-2"></i>Aucun membre d'équipe assigné
+                </td>
+              </tr>
+              {% endfor %}
+            </tbody>
+          </table>
+        </div>
+      </div>
+      <div class="modal-footer">
+        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Fermer</button>
+      </div>
+    </div>
+  </div>
+</div>
+{% endfor %}
+
+<!-- Modals de gestion des étapes -->
+{% for p in progs %}
+<div class="modal fade" id="stepsModal{{ p.id }}" tabindex="-1" aria-labelledby="stepsModalLabel{{ p.id }}" aria-hidden="true">
+  <div class="modal-dialog modal-lg">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h5 class="modal-title" id="stepsModalLabel{{ p.id }}">
+          <i class="fa fa-list-ol me-2"></i>Gestion des étapes - {{ p.code }}
+        </h5>
+        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+      </div>
+      <div class="modal-body">
+        <!-- Formulaire d'ajout d'étape -->
+        <div class="card mb-3">
+          <div class="card-header">
+            <h6 class="mb-0"><i class="fa fa-plus me-2"></i>Ajouter une étape</h6>
+          </div>
+          <div class="card-body">
+            <form method="post" action="{{ url_for('admin_programmes_add_step', programme_id=p.id) }}" id="addStepForm{{ p.id }}">
+              <div class="row g-3">
+                <div class="col-md-3">
+                  <label class="form-label">Code <span class="text-danger">*</span></label>
+                  <input type="text" name="code" class="form-control" required placeholder="ex: ETAPE1">
+                </div>
+                <div class="col-md-4">
+                  <label class="form-label">Libellé <span class="text-danger">*</span></label>
+                  <input type="text" name="libelle" class="form-control" required placeholder="Nom de l'étape">
+                </div>
+                <div class="col-md-2">
+                  <label class="form-label">Ordre <span class="text-danger">*</span></label>
+                  <input type="number" name="ordre" class="form-control" required min="1" placeholder="1">
+                </div>
+                <div class="col-md-2">
+                  <label class="form-label">Type</label>
+                  <select name="type_etape" class="form-select">
+                    <option value="">— Type —</option>
+                    <option value="validation">Validation</option>
+                    <option value="formation">Formation</option>
+                    <option value="evaluation">Évaluation</option>
+                    <option value="jury">Jury</option>
+                    <option value="accompagnement">Accompagnement</option>
+                  </select>
+                </div>
+                <div class="col-md-1">
+                  <label class="form-label">&nbsp;</label>
+                  <button type="submit" class="btn btn-primary w-100">
+                    <i class="fa fa-plus"></i>
+                  </button>
+                </div>
+              </div>
+              <div class="row mt-2">
+                <div class="col-12">
+                  <div class="form-check">
+                    <input class="form-check-input" type="checkbox" name="active" id="active{{ p.id }}" checked>
+                    <label class="form-check-label" for="active{{ p.id }}">
+                      Étape active
+                    </label>
+                  </div>
+                </div>
+              </div>
+            </form>
+          </div>
+        </div>
+
+        <!-- Liste des étapes actuelles -->
+        <div class="card">
+          <div class="card-header">
+            <h6 class="mb-0"><i class="fa fa-list me-2"></i>Étapes actuelles</h6>
+          </div>
+          <div class="card-body">
+            {% if etapes_par_programme[p.id] %}
+              <div class="table-responsive">
+                <table class="table table-sm">
+                  <thead>
+                    <tr>
+                      <th>Ordre</th>
+                      <th>Code</th>
+                      <th>Libellé</th>
+                      <th>Type</th>
+                      <th>Statut</th>
+                      <th class="text-end">Actions</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {% for etape in etapes_par_programme[p.id] %}
+                    <tr>
+                      <td>
+                        <span class="badge bg-secondary">{{ etape.ordre }}</span>
+                      </td>
+                      <td>
+                        <code>{{ etape.code }}</code>
+                      </td>
+                      <td>{{ etape.libelle }}</td>
+                      <td>
+                        {% if etape.type_etape %}
+                          <span class="badge bg-info">{{ etape.type_etape.title() }}</span>
+                        {% else %}
+                          <span class="text-muted">—</span>
+                        {% endif %}
+                      </td>
+                      <td>
+                        {% if etape.active %}
+                          <span class="badge bg-success">Active</span>
+                        {% else %}
+                          <span class="badge bg-secondary">Inactive</span>
+                        {% endif %}
+                      </td>
+                      <td class="text-end">
+                        <div class="btn-group btn-group-sm">
+                          <button type="button" class="btn btn-outline-primary" onclick="editStep({{ p.id }}, {{ etape.id }})" title="Modifier">
+                            <i class="fa fa-edit"></i>
+                          </button>
+                          <form method="post" action="{{ url_for('admin_etapes_delete', etape_id=etape.id) }}" class="d-inline">
+                            <button type="submit" class="btn btn-outline-danger" onclick="return confirm('Supprimer cette étape ?')" title="Supprimer">
+                              <i class="fa fa-trash"></i>
+                            </button>
+                          </form>
+                        </div>
+                      </td>
+                    </tr>
+                    {% endfor %}
+                  </tbody>
+                </table>
+              </div>
+            {% else %}
+              <p class="text-muted mb-0">Aucune étape définie</p>
+            {% endif %}
+          </div>
+        </div>
+      </div>
+      <div class="modal-footer">
+        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Fermer</button>
+      </div>
+    </div>
+  </div>
+</div>
+{% endfor %}
+
+<!-- Modals de suppression -->
+{% for p in progs %}
+<div class="modal fade" id="deleteModal{{ p.id }}" tabindex="-1">
+  <div class="modal-dialog">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h5 class="modal-title text-danger">
+          <i class="fa fa-exclamation-triangle me-2"></i>Confirmer la suppression
+        </h5>
+        <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+      </div>
+      <div class="modal-body">
+        <p>Êtes-vous sûr de vouloir supprimer le programme <strong>{{ p.code }} - {{ p.nom }}</strong> ?</p>
+        <div class="alert alert-warning">
+          <i class="fa fa-warning me-2"></i>
+          <strong>Attention :</strong> Cette action est irréversible et supprimera également toutes les étapes du pipeline associées.
+        </div>
+      </div>
+      <div class="modal-footer">
+        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Annuler</button>
+        <form method="post" action="{{ url_for('admin_programmes_delete', programme_id=p.id) }}" class="d-inline">
+          <button type="submit" class="btn btn-danger">
+            <i class="fa fa-trash me-2"></i>Supprimer définitivement
+          </button>
+        </form>
+      </div>
+    </div>
+  </div>
+</div>
+{% endfor %}
+
+{% endblock %}
+
+{% block scripts %}
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+  // Auto-dismiss alerts after 3 seconds
+  setTimeout(function() {
+    const alerts = document.querySelectorAll('.alert-success');
+    alerts.forEach(function(alert) {
+      const bsAlert = new bootstrap.Alert(alert);
+      bsAlert.close();
+    });
+  }, 3000);
+  
+  // Ouvrir automatiquement le modal d'équipe si on vient d'ajouter ou retirer un membre
+  const urlParams = new URLSearchParams(window.location.search);
+  if (urlParams.get('success') === '1' && (urlParams.get('action') === 'add_member' || urlParams.get('action') === 'remove_member')) {
+    const progId = urlParams.get('prog_id');
+    if (progId) {
+      const modal = document.getElementById(`teamModal${progId}`);
+      if (modal) {
+        const bsModal = new bootstrap.Modal(modal);
+        bsModal.show();
+        
+        // Réinitialiser le formulaire
+        const form = modal.querySelector('form');
+        if (form) {
+          form.reset();
+        }
+        
+        // Réinitialiser les options de rôle
+        const roleSelect = modal.querySelector('select[name="role_programme"]');
+        if (roleSelect) {
+          Array.from(roleSelect.options).forEach(option => {
+            option.disabled = false;
+            option.style.display = '';
+          });
+        }
+      }
+    }
+  }
+  
+  // Ouvrir automatiquement le modal d'étapes si on vient d'ajouter, modifier ou supprimer une étape
+  if (urlParams.get('success') === '1' && (urlParams.get('action') === 'add_step' || urlParams.get('action') === 'update_step' || urlParams.get('action') === 'remove_step')) {
+    const progId = urlParams.get('prog_id');
+    if (progId) {
+      const modal = document.getElementById(`stepsModal${progId}`);
+      if (modal) {
+        const bsModal = new bootstrap.Modal(modal);
+        bsModal.show();
+        
+        // Réinitialiser le formulaire
+        const form = modal.querySelector('form');
+        if (form) {
+          form.reset();
+        }
+      }
+    }
+  }
+  
+  // Gestion des modals d'équipe
+  const teamModals = document.querySelectorAll('[id^="teamModal"]');
+  teamModals.forEach(function(modal) {
+    modal.addEventListener('hidden.bs.modal', function () {
+      // Optionnel: recharger la page pour voir les changements
+      // window.location.reload();
+    });
+  });
+});
+
+// Fonction pour éditer un membre (placeholder pour l'instant)
+function editMember(programmeId, memberId) {
+  console.log('Éditer le membre:', memberId, 'du programme:', programmeId);
+  // TODO: Implémenter l'édition des membres
+  alert('Fonctionnalité d\'édition à implémenter');
+}
+
+// Fonction pour éditer une étape (placeholder pour l'instant)
+function editStep(programmeId, stepId) {
+  console.log('Éditer l\'étape:', stepId, 'du programme:', programmeId);
+  // TODO: Implémenter l'édition des étapes
+  alert('Fonctionnalité d\'édition à implémenter');
+}
+
+// Fonction pour mettre à jour les options de rôle selon l'utilisateur sélectionné
+function updateRoleOptions(programmeId, userId) {
+  const roleSelect = document.getElementById(`roleSelect${programmeId}`);
+  const membersData = roleSelect.getAttribute('data-members');
+  const currentMembers = JSON.parse(membersData);
+  
+  // Récupérer les rôles déjà utilisés par cet utilisateur dans ce programme
+  const usedRoles = new Set();
+  currentMembers.forEach(member => {
+    if (member.utilisateur_id == userId) {
+      usedRoles.add(member.role_programme);
+    }
+  });
+  
+  // Filtrer les options de rôle
+  Array.from(roleSelect.options).forEach(option => {
+    if (option.value && usedRoles.has(option.value)) {
+      option.disabled = true;
+      option.style.display = 'none';
+    } else {
+      option.disabled = false;
+      option.style.display = '';
+    }
+  });
+}
+</script>
+{% endblock %}

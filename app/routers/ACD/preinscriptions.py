@@ -18,6 +18,8 @@ from sqlmodel import Session, select
 
 from app_lia_web.core.database import get_session
 from app_lia_web.core.config import settings
+from app_lia_web.core.path_config import path_config
+from app_lia_web.app.services.file_upload_service import FileUploadService
 from app_lia_web.core.security import get_current_user
 from app_lia_web.app.templates import templates
 
@@ -103,7 +105,7 @@ def preinscription_public_form(
     programmes_actifs = session.exec(select(Programme).where(Programme.actif.is_(True)).order_by(Programme.code)).all()
     
     return templates.TemplateResponse(
-        "ACD/preinscription_public_form.html",
+        "programme/preinscription_public_form.html",
         {
             "request": request,
             "settings": settings,
@@ -172,7 +174,7 @@ def preinscriptions(
             )
 
     return templates.TemplateResponse(
-        "ACD/preinscriptions_list.html",
+        "programme/preinscriptions_list.html",
         {
             "request": request,
             "settings": settings,
@@ -229,7 +231,7 @@ async def preinscription_public_submit(
         
         # Retourner une page d'erreur claire au lieu d'une exception
         return templates.TemplateResponse(
-            "ACD/preinscription_public_form.html",
+            "programme/preinscription_public_form.html",
             {
                 "request": request,
                 "settings": settings,
@@ -277,7 +279,7 @@ async def preinscription_public_submit(
         # Retourner une erreur claire
         programmes_actifs = session.exec(select(Programme).where(Programme.actif.is_(True)).order_by(Programme.code)).all()
         return templates.TemplateResponse(
-            "ACD/preinscription_public_form.html",
+            "programme/preinscription_public_form.html",
             {
                 "request": request,
                 "settings": settings,
@@ -304,7 +306,7 @@ async def preinscription_public_submit(
         # Retourner une erreur claire
         programmes_actifs = session.exec(select(Programme).where(Programme.actif.is_(True)).order_by(Programme.code)).all()
         return templates.TemplateResponse(
-            "ACD/preinscription_public_form.html",
+            "programme/preinscription_public_form.html",
             {
                 "request": request,
                 "settings": settings,
@@ -379,12 +381,20 @@ async def preinscription_public_submit(
             field_name="photo_profil",
         )
         ext = os.path.splitext(photo_profil.filename)[1].lower() or ".jpg"
-        photo_path = base_dir / f"photo_profil_{pre.id}{ext}"
-        save_upload(photo_path, photo_profil)
-        cand.photo_profil = f"Preinscrits/{prog.code or 'UNK'}/{pre.id}/photo_profil_{pre.id}{ext}"
+        unique_filename = f"photo_profil_{pre.id}{ext}"
+        subfolder = f"Preinscrits/{prog.code or 'UNK'}/{pre.id}"
+        
+        # Utiliser FileUploadService pour sauvegarder le fichier
+        file_info = await FileUploadService.save_file(
+            photo_profil,
+            "media",
+            unique_filename,
+            subfolder=subfolder
+        )
+        
+        cand.photo_profil = file_info["relative_path"]
         if settings.DEBUG:
-            print(f"💾 [DEBUG] Photo sauvegardée: {photo_path}")
-            print(f"📸 [DEBUG] Chemin relatif sauvegardé: {cand.photo_profil}")
+            print(f"💾 [DEBUG] Photo sauvegardée: {file_info['relative_path']}")
 
     # Documents dynamiques
     form = await request.form()
@@ -433,14 +443,19 @@ async def preinscription_public_submit(
 
         ext = os.path.splitext(file.filename)[1].lower() or ""
         safe_title = safe_name(title or os.path.splitext(file.filename)[0])
-        final_path = base_dir / f"{safe_title}_{doc.id}{ext}"
-        save_upload(final_path, file)  # type: ignore[arg-type]
-
-        doc.chemin_fichier = str(final_path)
-        try:
-            doc.taille_octets = final_path.stat().st_size
-        except Exception:
-            pass
+        unique_filename = f"{safe_title}_{doc.id}{ext}"
+        subfolder = f"Preinscrits/{prog.code or 'UNK'}/{pre.id}"
+        
+        # Utiliser FileUploadService pour sauvegarder le fichier
+        file_info = await FileUploadService.save_file(
+            file,
+            "media",
+            unique_filename,
+            subfolder=subfolder
+        )
+        
+        doc.chemin_fichier = file_info["relative_path"]
+        doc.taille_octets = file_info["size"]
 
     anciennete = entreprise_age_annees(ent.date_creation)
     verdict, details = evaluate_eligibilite(
@@ -536,6 +551,6 @@ async def preinscription_public_submit(
 @router.get("/preinscriptions/merci", name="preinscriptions_merci", response_class=HTMLResponse)
 def preinscription_merci(request: Request):
     return templates.TemplateResponse(
-        "ACD/preinscription_merci.html",
+        "programme/preinscription_merci.html",
         {"request": request, "settings": settings},
     )

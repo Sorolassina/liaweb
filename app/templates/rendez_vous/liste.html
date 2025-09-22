@@ -3,30 +3,178 @@
 {% block title %}Gestion des Rendez-vous{% endblock %}
 
 {% block content %}
-<div class="container-fluid h-100 d-flex flex-column">
-    <!-- En-tête fixe -->
-    <div class="row flex-shrink-0">
-        <div class="col-12">
-            <div class="card-header d-flex justify-content-between align-items-center bg-white border-bottom sticky-top" style="z-index: 1000;">
-                <h3 class="card-title mb-0">
-                    <i class="fas fa-calendar-alt me-2"></i>
-                    Gestion des Rendez-vous
-                </h3>
-                <a href="/rendez-vous/creer" class="btn btn-primary">
-                    <i class="fas fa-plus me-1"></i>
-                    Nouveau Rendez-vous
-                </a>
-            </div>
+<style>
+/* Styles pour rendre la page plus compacte */
+.compact-page {
+    font-size: 0.85rem;
+}
+
+.compact-page .card-header {
+    padding: 0.5rem 0.75rem;
+    font-size: 0.9rem;
+}
+
+.compact-page .card-body {
+    padding: 0.75rem;
+}
+
+.compact-page .table {
+    font-size: 0.8rem;
+}
+
+.compact-page .table th {
+    padding: 0.4rem 0.5rem;
+    font-size: 0.75rem;
+    font-weight: 600;
+}
+
+.compact-page .table td {
+    padding: 0.4rem 0.5rem;
+    vertical-align: middle;
+}
+
+.compact-page .btn-group-sm .btn {
+    padding: 0.25rem 0.4rem;
+    font-size: 0.7rem;
+}
+
+.compact-page .btn-group-sm .btn i {
+    font-size: 0.7rem;
+}
+
+.compact-page .badge {
+    font-size: 0.6rem;
+    padding: 0.2rem 0.4rem;
+}
+
+.compact-page .stats-compact {
+    padding: 0.5rem;
+    margin-bottom: 0.5rem;
+}
+
+.compact-page .stats-compact h5 {
+    font-size: 0.9rem;
+    margin-bottom: 0.25rem;
+}
+
+.compact-page .stats-compact .fa-lg {
+    font-size: 1rem !important;
+}
+
+.compact-page .form-control-sm {
+    font-size: 0.75rem;
+    padding: 0.25rem 0.5rem;
+}
+
+.compact-page .form-select-sm {
+    font-size: 0.75rem;
+    padding: 0.25rem 0.5rem;
+}
+
+.compact-page .btn-sm {
+    font-size: 0.7rem;
+    padding: 0.25rem 0.5rem;
+}
+
+.compact-page .pagination {
+    font-size: 0.8rem;
+}
+
+.compact-page .pagination .page-link {
+    padding: 0.25rem 0.5rem;
+}
+
+.compact-page .entete-card {
+    padding: 0.75rem 1rem !important;
+}
+
+.compact-page .entete-card h3 {
+    font-size: 1.2rem !important;
+}
+
+.compact-page .entete-card p {
+    font-size: 0.8rem !important;
+}
+
+.compact-page .toolbar {
+    font-size: 0.8rem;
+}
+
+.compact-page .toolbar .icon {
+    font-size: 0.8rem;
+}
+
+.compact-page .info-box-sm {
+    padding: 0.4rem;
+    margin-bottom: 0.5rem;
+}
+
+.compact-page .info-box-sm .info-box-icon {
+    width: 2.5rem;
+    height: 2.5rem;
+    font-size: 0.8rem;
+}
+
+.compact-page .info-box-sm .info-box-content {
+    padding-left: 0.5rem;
+}
+
+.compact-page .info-box-sm .info-box-text {
+    font-size: 0.7rem;
+    font-weight: 500;
+}
+
+.compact-page .info-box-sm .info-box-number {
+    font-size: 0.9rem;
+    font-weight: 600;
+}
+
+.compact-page .table strong {
+    font-size: 0.8rem;
+    font-weight: 600;
+}
+
+.compact-page .table small {
+    font-size: 0.7rem;
+}
+
+.compact-page .form-label {
+    font-size: 0.75rem;
+    font-weight: 500;
+    margin-bottom: 0.25rem;
+}
+</style>
+
+<!-- Entête -->
+<div class="entete-card compact-page" style="padding: 15px 20px;">
+    <div class="row align-items-center";">
+      <div class="col-md-8 d-flex justify-content-between align-items-center" style=" width: 100%;">
+        <div>
+          <h3 class="mb-0" style="font-size: 1.4rem;">
+              <i class="fas fa-calendar-alt me-2"></i>Rendez-vous
+          </h3>
+          <p class="mb-0 opacity-75" style="font-size: 0.9rem;">
+              Gestion des données des rendez-vous du programme
+          </p>
         </div>
+        <div class="toolbar">
+          <a href="{{ url_for('rendez_vous_create_form') }}" class="submenu-item {% if request.url.path == url_for('rendez_vous_create_form') %}active{% endif %}">
+            <div class="icon"><i class="fas fa-calendar-plus"></i></div><div>+ Rendez-vous</div>
+          </a>
+          
+        </div>
+      </div>
     </div>
-    
+</div>
+
+<div class="container-fluid h-100 d-flex flex-column compact-page" style="overflow-y: auto;">
     <!-- Contenu principal avec défilement -->
     <div class="row flex-grow-1 overflow-hidden">
         <div class="col-12 h-100">
             <div class="card h-100 d-flex flex-column">
                 
                 <!-- Statistiques compactes -->
-                <div class="card-body border-bottom flex-shrink-0">
+                <div class="card-body border-bottom flex-shrink-0 compact-page">
                     <div class="row">
                         <div class="col-md-3">
                             <div class="info-box-sm">
@@ -76,7 +224,7 @@
                 </div>
 
                 <!-- Filtres simplifiés -->
-                <div class="card-body flex-shrink-0">
+                <div class="card-body flex-shrink-0 compact-page">
                     <form method="get" class="mb-3">
                         <div class="row">
                             <div class="col-md-6">
@@ -96,8 +244,8 @@
                             <div class="col-md-3">
                                 <label class="form-label">&nbsp;</label>
                                 <div class="d-grid">
-                                    <button type="submit" class="btn btn-outline-primary">
-                                        <i class="fas fa-search me-1"></i>Rechercher
+                                    <button type="submit" class="submenu-item">
+                                        <i class="fas fa-search me-0"></i>Rechercher
                                     </button>
                                 </div>
                             </div>
@@ -105,7 +253,7 @@
                     </form>
 
                     <!-- Tableau des rendez-vous avec bande déroulante -->
-                    <div class="table-responsive flex-grow-1" style="max-height: calc(100vh - 450px); overflow-y: auto; border: 1px solid #dee2e6; border-radius: 0.375rem;">
+                    <div class="table-responsive flex-grow-1 compact-page" style="max-height: calc(100vh - 450px); overflow-y: auto; border: 1px solid #dee2e6; border-radius: 0.375rem;">
                         <table class="table table-striped table-hover mb-0" style="table-layout: fixed; width: 100%;">
                             <thead class="sticky-top bg-light" style="position: sticky; top: 0; z-index: 10;">
                                 <tr>
@@ -161,87 +309,84 @@
                                     </td>
                                     <td>
                                         <div class="btn-group btn-group-sm">
-                                            <a href="/rendez-vous/{{ rdv.id }}" class="btn btn-outline-primary" title="Voir">
+                                            <a href="{{ url_for('rendez_vous_detail', rdv_id=rdv.id) }}" class="btn btn-outline-primary submenu-item" title="Voir">
                                                 <i class="fas fa-eye"></i>
                                             </a>
-                                            <a href="/rendez-vous/{{ rdv.id }}" class="btn btn-outline-secondary" title="Modifier">
-                                                <i class="fas fa-edit"></i>
-                                            </a>
-                        {% if rdv.statut == 'planifie' %}
-                        <a href="/emargement/{{ rdv.id }}" class="btn btn-outline-warning btn-emargement" title="Émargement" data-rdv-id="{{ rdv.id }}">
-                            <i class="fas fa-signature"></i>
-                            <span class="badge bg-secondary ms-1 signature-status" style="font-size: 0.6rem;">...</span>
-                        </a>
-                        <a href="/video-rdv/{{ rdv.id }}/commencer" class="btn btn-success btn-commencer-rdv" title="Commencer RDV vidéo" target="_blank" data-rdv-id="{{ rdv.id }}" style="display: none;">
-                            <i class="fas fa-video"></i>
-                        </a>
-                        <a href="/video-rdv/{{ rdv.id }}/invitation/candidat" class="btn btn-info btn-lien-candidat" title="Lien candidat" target="_blank" data-rdv-id="{{ rdv.id }}" style="display: none;">
-                            <i class="fas fa-link"></i>
-                        </a>
-                        <button type="button" class="btn btn-primary btn-envoyer-email" title="Envoyer invitation par email" onclick="envoyerInvitationEmail({{ rdv.id }})" data-rdv-id="{{ rdv.id }}" style="display: none;">
-                            <i class="fas fa-envelope"></i>
-                        </button>
-                        {% elif rdv.statut == 'en_cours' %}
-                        <a href="/video-rdv/{{ rdv.id }}/rejoindre" class="btn btn-warning" title="Continuer le rendez-vous vidéo en cours" target="_blank">
-                            <i class="fas fa-video"></i>
-                        </a>
-                        <a href="/video-rdv/{{ rdv.id }}/invitation/candidat" class="btn btn-info" title="Lien candidat" target="_blank">
-                            <i class="fas fa-link"></i>
-                        </a>
-                        <button type="button" class="btn btn-primary" title="Envoyer invitation par email" onclick="envoyerInvitationEmail({{ rdv.id }})">
-                            <i class="fas fa-envelope"></i>
-                        </button>
-                        <button type="button" class="btn btn-outline-danger" title="Terminer RDV" onclick="terminerRDV({{ rdv.id }})">
-                            <i class="fas fa-stop"></i>
-                        </button>
-                        {% elif rdv.statut == 'termine' %}
-                        <button type="button" class="btn btn-outline-info" title="Voir les notes" onclick="voirNotes({{ rdv.id }})">
-                            <i class="fas fa-sticky-note"></i>
-                            {% if rdv.notes and rdv.notes.strip() %}
-                                <span class="badge bg-success ms-1" style="font-size: 0.6rem;">✓</span>
-                            {% endif %}
-                        </button>
-                        {% endif %}
-                                            <form method="post" action="/rendez-vous/{{ rdv.id }}/supprimer" class="d-inline" onsubmit="return confirm('Êtes-vous sûr de vouloir supprimer ce rendez-vous ?')">
-                                                <button type="submit" class="btn btn-outline-danger" title="Supprimer">
-                                                    <i class="fas fa-trash"></i>
+                                            
+                                            {% if rdv.statut == 'planifie' %}
+                                                <a href="{{ url_for('emargement_rdv', rdv_id=rdv.id) }}" class="submenu-item" title="Émargement" data-rdv-id="{{ rdv.id }}">
+                                                    <i class="fas fa-signature"></i>
+                                                    <span class="badge bg-secondary ms-1 signature-status" style="font-size: 0.6rem;">...</span>
+                                                </a>
+                                                <a href="{{ url_for('video_rdv_start', rdv_id=rdv.id) }}" class="submenu-item" title="Commencer RDV vidéo" target="_blank" data-rdv-id="{{ rdv.id }}" style="display: none;">
+                                                    <i class="fas fa-video"></i>
+                                                </a>
+                                                <a href="{{ url_for('video_rdv_candidate_link', rdv_id=rdv.id, token='candidat') }}" class="submenu-item" title="Lien candidat" target="_blank" data-rdv-id="{{ rdv.id }}" style="display: none;">
+                                                    <i class="fas fa-link"></i>
+                                                </a>
+                                                <button type="button" class="btn btn-primary btn-envoyer-email" title="Envoyer invitation par email" onclick="envoyerInvitationEmail({{ rdv.id }})" data-rdv-id="{{ rdv.id }}" style="display: none;">
+                                                    <i class="fas fa-envelope"></i>
                                                 </button>
-                                            </form>
+                                            {% elif rdv.statut == 'en_cours' %}
+                                                <a href="{{ url_for('video_rdv_join', rdv_id=rdv.id) }}" class="submenu-item" title="Continuer le rendez-vous vidéo en cours" target="_blank">
+                                                    <i class="fas fa-video"></i>
+                                                </a>
+                                                <a href="{{ url_for('video_rdv_candidate_link', rdv_id=rdv.id, token='candidat') }}" class="submenu-item" title="Lien candidat" target="_blank">
+                                                    <i class="fas fa-link"></i>
+                                                </a>
+                                                <a class="submenu-item" title="Envoyer invitation par email" onclick="envoyerInvitationEmail({{ rdv.id }})">
+                                                    <i class="fas fa-envelope"></i>
+                                                </a>
+                                                <a class="submenu-item" title="Terminer RDV" onclick="terminerRDV({{ rdv.id }})">
+                                                    <i class="fas fa-stop"></i>
+                                                </a>
+                                            {% elif rdv.statut == 'termine' %}
+                                                <a href="#" class="submenu-item" title="Voir les notes" onclick="voirNotes({{ rdv.id }})">
+                                                    <i class="fas fa-sticky-note"></i>
+                                                    {% if rdv.notes and rdv.notes.strip() %}
+                                                        <span class="badge bg-success ms-1" style="font-size: 0.6rem;">✓</span>
+                                                    {% endif %}
+                                                </a>
+                                            {% endif %}
+                                            
+                                            <a href="#" class="submenu-item" title="Supprimer" onclick="supprimerRDV({{ rdv.id }})">
+                                                <i class="fas fa-trash" style="color: red;"></i>
+                                            </a>
                                         </div>
                                     </td>
                                 </tr>
-                                {% else %}
+                            {% else %}
                                 <tr>
                                     <td colspan="9" class="text-center text-muted py-4">
                                         <i class="fas fa-calendar-times fa-2x mb-2"></i><br>
                                         Aucun rendez-vous trouvé
                                     </td>
                                 </tr>
-                                {% endfor %}
-                            </tbody>
-                        </table>
-                    </div>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
 
-                    <!-- Pagination -->
-                    {% if has_next or has_prev %}
+                <!-- Pagination -->
+                {% if has_next or has_prev %}
                     <nav aria-label="Pagination des rendez-vous">
                         <ul class="pagination justify-content-center">
                             {% if has_prev %}
-                            <li class="page-item">
-                                <a class="page-link" href="?page={{ page - 1 }}{% for key, value in filters.items() %}{% if value %}&{{ key }}={{ value }}{% endif %}{% endfor %}">Précédent</a>
-                            </li>
+                                <li class="page-item">
+                                    <a class="page-link" href="?page={{ page - 1 }}{% for key, value in filters.items() %}{% if value %}&{{ key }}={{ value }}{% endif %}{% endfor %}">Précédent</a>
+                                </li>
                             {% endif %}
                             <li class="page-item active">
                                 <span class="page-link">{{ page }}</span>
                             </li>
                             {% if has_next %}
-                            <li class="page-item">
-                                <a class="page-link" href="?page={{ page + 1 }}{% for key, value in filters.items() %}{% if value %}&{{ key }}={{ value }}{% endif %}{% endfor %}">Suivant</a>
-                            </li>
+                                <li class="page-item">
+                                    <a class="page-link" href="?page={{ page + 1 }}{% for key, value in filters.items() %}{% if value %}&{{ key }}={{ value }}{% endif %}{% endfor %}">Suivant</a>
+                                </li>
                             {% endif %}
                         </ul>
                     </nav>
-                    {% endif %}
+                {% endif %}
                 </div>
             </div>
         </div>
@@ -763,6 +908,20 @@ function envoyerInvitationEmail(rdvId) {
             button.innerHTML = originalContent;
             button.disabled = false;
         });
+    }
+}
+
+// Fonction pour supprimer un RDV (définie globalement)
+function supprimerRDV(rdvId) {
+    if (confirm('Êtes-vous sûr de vouloir supprimer ce rendez-vous ?')) {
+        // Créer un formulaire temporaire pour la soumission POST
+        const form = document.createElement('form');
+        form.method = 'POST';
+        form.action = '/rendez-vous/' + rdvId + '/supprimer';
+        
+        // Ajouter le formulaire au DOM et le soumettre
+        document.body.appendChild(form);
+        form.submit();
     }
 }
 </script>

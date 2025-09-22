@@ -309,22 +309,31 @@
 {% endblock %}
 
 {% block content %}
-<div class="modules-container">
-  <div class="modules-header">
-    <div class="header-left">
-      <h1>
-        <i class="fas fa-book"></i> Modules E-Learning
-      </h1>
-    </div>
-    <div class="header-right">
-      <button href="{{ url_for('elearning_dashboard') }}" class="btn-retour" onclick="window.location.href='{{ url_for('elearning_dashboard') }}'">
-        <i class="fas fa-arrow-left"></i> Retour
-      </button>
-      <button href="{{ url_for('elearning_module_creer_form') }}" class="btn-primary" onclick="window.location.href='{{ url_for('elearning_module_creer_form') }}'">
-        <i class="fas fa-plus"></i> Nouveau Module
-      </button>
+
+<!-- Entête -->
+<div class="entete-card" style="padding: 15px 20px;">
+  <div class="row align-items-center";">
+    <div class="col-md-8 d-flex justify-content-between align-items-center" style=" width: 100%;">
+      <div>
+        <h3 class="mb-0" style="font-size: 1.4rem;">
+          <i class="fa fa-users-cog me-2"></i>Elearning
+        </h3>
+        <p class="mb-0 opacity-75" style="font-size: 0.9rem;">
+            Gestion des données des modules e-learning
+        </p>
+      </div>
+      
+      <div class="toolbar d-flex gap-2">
+        <a href="{{ url_for('elearning_dashboard') }}" class="submenu-item">
+          <div class="icon"><i class="fas fa-arrow-circle-left"></i></div><div>Retour</div>
+        </a>
+        <a href="{{ url_for('elearning_module_creer_form') }}" class="submenu-item">
+          <div class="icon"><i class="fas fa-book"></i></div><div> + Module</div>
+        </a>
+      </div>
     </div>
   </div>
+</div>
   
   <!-- Filtres -->
   <div class="filters-section">
@@ -410,24 +419,13 @@
         </div>
         
         <div class="module-actions">
-          <button  class="btn-action btn-view" onclick="window.location.href='{{ url_for('elearning_module_detail', module_id=module.id) }}'">
+          <a href="{{ url_for('elearning_module_detail', module_id=module.id) }}" class="submenu-item">
             <i class="fas fa-eye"></i> Voir
-          </button>
+          </a>
                    
-          <button  class="btn-modifier" onclick="window.location.href='{{ url_for('elearning_module_edit_form', module_id=module.id) }}'">
-            <div>
-                <div class="pencil"></div>
-                <div class="folder">
-                    <div class="top">
-                        <svg viewBox="0 0 24 27">
-                            <path d="M1,0 L23,0 C23.5522847,-1.01453063e-16 24,0.44771525 24,1 L24,8.17157288 C24,8.70200585 23.7892863,9.21071368 23.4142136,9.58578644 L20.5857864,12.4142136 C20.2107137,12.7892863 20,13.2979941 20,13.8284271 L20,26 C20,26.5522847 19.5522847,27 19,27 L1,27 C0.44771525,27 6.76353751e-17,26.5522847 0,26 L0,1 C-6.76353751e-17,0.44771525 0.44771525,1.01453063e-16 1,0 Z"></path>
-                        </svg>
-                    </div>
-                    <div class="paper"></div>
-                </div>
-            </div>
-            Modifier
-          </button>  
+          <a href="{{ url_for('elearning_module_edit_form', module_id=module.id) }}" class="submenu-item">
+            <i class="fas fa-pencil-alt"></i> Modifier
+          </a>  
 
         </div>
       </div>

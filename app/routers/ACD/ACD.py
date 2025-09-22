@@ -388,7 +388,7 @@ def programme_acd_dashboard(request: Request,
 
     # --- Rendu ---
     return templates.TemplateResponse(
-        "ACD/programme_acd_dashboard.html",
+        "programme/programme_acd_dashboard.html",
         {
             "request": request,
             "settings": settings,

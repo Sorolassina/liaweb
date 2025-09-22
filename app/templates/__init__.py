@@ -6,15 +6,23 @@ from pathlib import Path
 import sys
 import os
 from datetime import datetime
+import logging
+
+# Configuration du logger
+logger = logging.getLogger(__name__)
 
 # Ajouter le répertoire parent au path pour les imports
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__)))))
 
 try:
     from core.config import settings
+    from core.path_config import path_config
+    from app.services.file_upload_service import FileUploadService
 except ImportError:
     # Fallback si l'import échoue
     settings = None
+    path_config = None
+    FileUploadService = None
 
 # Configuration des templates
 if settings:
@@ -25,9 +33,6 @@ else:
     TEMPLATES_DIR = BASE_DIR / "app" / "templates"
 
 templates = Jinja2Templates(directory=str(TEMPLATES_DIR))
-
-# Ajouter la fonction now() au contexte global
-templates.env.globals['now'] = datetime.now
 
 
 
@@ -169,6 +174,33 @@ def get_current_programme_title(request):
     else:
         return "LIA-Gestion coaching"
 
+def get_current_programme_from_session(request):
+    """Récupère le code du programme actuel depuis request.state (middleware)"""
+    if not request:
+        return "PUBLIC"
+    
+    try:
+        # Priorité 1 : Depuis request.state (middleware)
+        if hasattr(request, 'state') and hasattr(request.state, 'program_schema'):
+            programme = request.state.program_schema.upper()
+            logger.info(f"Programme récupéré depuis request.state: {programme}")
+            return programme
+    except Exception as e:
+        logger.warning(f"Erreur lors de la récupération depuis request.state: {e}")
+    
+    try:
+        # Priorité 2 : Depuis la session (fallback)
+        if hasattr(request, 'session') and 'current_programme' in request.session:
+            programme = request.session['current_programme']
+            logger.info(f"Programme récupéré depuis session: {programme}")
+            return programme
+    except Exception as e:
+        logger.warning(f"Erreur lors de la récupération depuis session: {e}")
+    
+    logger.info("Aucun programme trouvé, utilisation de PUBLIC par défaut")
+    return "PUBLIC"
+
+
 def format_number_french(value, decimals=2):
     """Formate un nombre avec la virgule comme séparateur décimal (format français)"""
     if value is None:
@@ -198,7 +230,7 @@ templates.env.filters["format_candidat_name"] = format_candidat_name
 templates.env.filters["format_email"] = format_email
 templates.env.filters["format_number_french"] = format_number_french
 
-def get_programmes():
+def get_active_programmes():
     """Récupère tous les programmes actifs pour le menu (lazy loading)"""
     try:
         from app_lia_web.core.database import get_session
@@ -216,19 +248,136 @@ def get_programmes():
         print(f"Erreur lors de la récupération des programmes: {e}")
         return []
 
+def get_current_time():
+    """Fonction pour obtenir l'heure actuelle dans les templates"""
+    return datetime.now()
+
+def get_company_logo_url():
+    """Obtenir l'URL du logo de l'entreprise via path_config"""
+    if path_config and settings:
+        try:
+            # Utiliser le chemin configuré dans settings
+            logo_path = settings.COMPANY_LOGO_PATH
+            # Extraire le nom du fichier depuis le chemin
+            logo_filename = logo_path.split('/')[-1]  # "logo.png"
+            
+            # Utiliser path_config pour gérer les sous-dossiers
+            return path_config.get_company_logo_url(logo_filename)
+        except Exception:
+            pass
+    
+    # Fallback vers le chemin configuré dans settings
+    if settings:
+        return settings.COMPANY_LOGO_PATH
+    return "/static/images/logo.png"
+
+def get_company_logo_path():
+    """Obtenir le chemin physique du logo de l'entreprise"""
+    if path_config and settings:
+        try:
+            # Utiliser le chemin configuré dans settings
+            logo_path = settings.COMPANY_LOGO_PATH
+            # Extraire le nom du fichier depuis le chemin
+            logo_filename = logo_path.split('/')[-1]  # "logo.png"
+            
+            # Utiliser path_config optimisé avec sous-dossier compagnie
+            return path_config.get_company_logo_path(logo_filename)
+        except Exception:
+            pass
+    # Fallback
+    return None
+
+def company_logo_exists():
+    """Vérifier si le logo de l'entreprise existe"""
+    if path_config and settings:
+        try:
+            # Utiliser le chemin configuré dans settings
+            logo_path = settings.COMPANY_LOGO_PATH
+            # Extraire le nom du fichier depuis le chemin
+            logo_filename = logo_path.split('/')[-1]  # "logo.png"
+            
+            # Utiliser path_config optimisé
+            return path_config.company_file_exists(logo_filename, "compagnie")
+        except Exception:
+            pass
+    return False
+
+def get_company_file_url(filename: str, subfolder: str = "compagnie") -> str:
+    """Obtenir l'URL d'un fichier de l'entreprise depuis le dossier media/compagnie/"""
+    if path_config:
+        try:
+            return path_config.get_company_file_url(filename, subfolder)
+        except Exception:
+            pass
+    return f"/media/{subfolder}/{filename}"
+
+def get_company_file_path(filename: str, subfolder: str = "compagnie") -> str:
+    """Obtenir le chemin physique d'un fichier de l'entreprise"""
+    if path_config:
+        try:
+            return path_config.get_company_file_path(filename, subfolder)
+        except Exception:
+            pass
+    return None
+
+def company_file_exists(filename: str, subfolder: str = "compagnie") -> bool:
+    """Vérifier si un fichier de l'entreprise existe"""
+    if path_config:
+        try:
+            return path_config.company_file_exists(filename, subfolder)
+        except Exception:
+            pass
+    return False
+
+def list_company_files(subfolder: str = "compagnie") -> list:
+    """Lister les fichiers dans le dossier compagnie"""
+    if path_config:
+        try:
+            return path_config.list_company_files(subfolder)
+        except Exception:
+            pass
+    return []
+
 # Configuration globale des templates
 if settings:
     templates.env.auto_reload = bool(settings.DEBUG)
     templates.env.globals.update(
+        # === INFORMATIONS DE L'ENTREPRISE ===
         app_name=settings.APP_NAME,
         app_version=settings.VERSION,
+        app_author=settings.AUTHOR,
+        company_name=settings.COMPANY_NAME,
+        company_description=settings.COMPANY_DESCRIPTION,
+        company_address=settings.COMPANY_ADDRESS,
+        company_phone=settings.COMPANY_PHONE,
+        company_website=settings.COMPANY_WEBSITE,
+        company_logo=get_company_logo_url,
+        company_logo_exists=company_logo_exists,
+        company_email=settings.ADMIN_EMAIL,
+        
+        # === THÈME ET DESIGN ===
         is_debug=settings.DEBUG,
         theme_primary=settings.THEME_PRIMARY,
         theme_secondary=settings.THEME_SECONDARY,
         theme_white=settings.THEME_WHITE,
-        now=datetime.now,
+        
+        # === FONCTIONS UTILITAIRES ===
+        now=get_current_time,
+        datetime=datetime,
         format_candidat_name=format_candidat_name,
         format_email=format_email,
         get_current_programme_title=get_current_programme_title,
-        programmes=get_programmes,  # ← Fonction au lieu de résultat
+        get_current_programme_from_session=get_current_programme_from_session,
+        get_programmes=get_active_programmes,  # ← Fonction pour éviter les conflits
+        get_company_logo_url=get_company_logo_url,
+        get_company_logo_path=get_company_logo_path,
+        get_company_file_url=get_company_file_url,
+        get_company_file_path=get_company_file_path,
+        company_file_exists=company_file_exists,
+        list_company_files=list_company_files,
+
+        
+        # === INFORMATIONS TECHNIQUES ===
+        environment=settings.ENVIRONMENT,
+        max_file_size_mb=settings.MAX_UPLOAD_SIZE_MB,
     )

@@ -9,7 +9,7 @@ from .auth import router as auth_router
 from .programmes import router as programmes_router
 from .candidats import router as candidats_router
 from .ACD.preinscriptions import router as preinscriptions_router
-from .inscriptions import router as inscriptions_router
+# from .inscriptions import router as inscriptions_router  # Supprimé car doublon avec ACD_inscriptions_router
 from .documents import router as documents_router
 from .jury import router as jury_router
 
@@ -20,7 +20,7 @@ from .pages import router as pages_router
 from .accueil import router as accueil_router
 from .ACD.ACD import router as ACD_router
 from .ACD.preinscriptions import router as ACD_preinscriptions_router
-from .ACD.inscriptions import router as ACD_inscriptions_router
+from .inscriptions import router as inscriptions_router
 from .ACD.admin import router as ACD_admin_router
 from .ACD.jury_decisions import router as ACD_jury_decisions_router
 from .ACD.route_qpv import router as ACD_qpv_router
@@ -35,6 +35,7 @@ from .event import router as event_router
 from .codev import router as codev_router
 from .elearning import router as elearning_router
 from .suivi_mensuel import router as suivi_mensuel_router
+from .admin_schemas import router as admin_schemas_router
 
 # Configuration des routers avec préfixes et tags
 router_configs = [
@@ -44,7 +45,7 @@ router_configs = [
     (accueil_router,"/accueil",  ["accueil"]),
     (ACD_router,"/ACD",  ["ACD"]),
     (ACD_preinscriptions_router, "/ACD", ["ACD_preinscriptions"]),
-    (ACD_inscriptions_router, "/ACD", ["ACD_inscriptions"]),
+    (inscriptions_router, "/inscriptions", ["inscriptions"]),
     (ACD_admin_router, "/admin", ["Admin"]),
     (ACD_jury_decisions_router, "/ACD", ["ACD_jury_decisions"]),
     (ACD_qpv_router, "/ACD", ["ACD_qpv"]),
@@ -58,13 +59,14 @@ router_configs = [
     (codev_router, "/codev", ["codev"]),
     (elearning_router, "/elearning", ["e-learning"]),
     (suivi_mensuel_router, "/suivi-mensuel", ["suivi_mensuel"]),
+    (admin_schemas_router, "/admin", ["admin_schemas"]),
 
     
     # Gestion des données principales
     (programmes_router, "/programmes", ["programmes"]),
     (candidats_router, "/candidats", ["candidats"]),
     (preinscriptions_router, "/preinscriptions", ["preinscriptions"]),
-    (inscriptions_router, "/inscriptions", ["inscriptions"]),
+    # (inscriptions_router, "/inscriptions", ["inscriptions"]),  # Supprimé car doublon avec ACD_inscriptions_router
     (documents_router, "/documents", ["documents"]),
     (jury_router, "/jury", ["jury"]),
     
@@ -86,7 +88,7 @@ __all__ = [
     "programmes_router",
     "candidats_router",
     "preinscriptions_router",
-    "inscriptions_router", 
+    "inscriptions_router",  # Supprimé car doublon avec ACD_inscriptions_router 
     "documents_router",
     "jury_router",
     "dashboard_router",
@@ -102,5 +104,6 @@ __all__ = [
     "codev_router",
     "elearning_router",
     "suivi_mensuel_router",
+    "admin_schemas_router",
     "router_configs",
 ]

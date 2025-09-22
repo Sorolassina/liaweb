@@ -1,0 +1,309 @@
+{% extends "base.html" %}
+
+{% block title %}Gestion des Schémas par Programme{% endblock %}
+
+{% block content %}
+<div class="container-fluid mt-4">
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <h2><i class="fas fa-database me-2"></i>Gestion des Schémas par Programme</h2>
+        <div class="d-flex gap-2">
+            <button class="btn btn-primary" onclick="createAllSchemas()">
+                <i class="fas fa-plus me-2"></i>Créer tous les schémas
+            </button>
+            <button class="btn btn-info" onclick="refreshStats()">
+                <i class="fas fa-sync me-2"></i>Actualiser
+            </button>
+        </div>
+    </div>
+
+    <!-- Informations générales -->
+    <div class="alert alert-info">
+        <h5><i class="fas fa-info-circle me-2"></i>À propos des schémas par programme</h5>
+        <p class="mb-0">
+            Chaque programme dispose de son propre schéma de base de données pour isoler les données.
+            Les modèles existants sont utilisés, pas de nouveaux modèles.
+        </p>
+    </div>
+
+    <!-- Tableau des programmes et leurs schémas -->
+    <div class="card">
+        <div class="card-header">
+            <h5 class="mb-0"><i class="fas fa-list me-2"></i>Programmes et Schémas</h5>
+        </div>
+        <div class="card-body">
+            <div class="table-responsive">
+                <table class="table table-hover">
+                    <thead>
+                        <tr>
+                            <th>Programme</th>
+                            <th>Code</th>
+                            <th>Schéma</th>
+                            <th>Tables</th>
+                            <th>Total Enregistrements</th>
+                            <th>Statut</th>
+                            <th>Actions</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for programme in programmes %}
+                        <tr>
+                            <td>
+                                <strong>{{ programme.nom }}</strong>
+                            </td>
+                            <td>
+                                <span class="badge bg-primary">{{ programme.code }}</span>
+                            </td>
+                            <td>
+                                <code>{{ programme.code.lower() }}</code>
+                            </td>
+                            <td>
+                                {% set stats = schema_stats.get(programme.code, {}) %}
+                                <span class="badge bg-info">{{ stats.keys() | list | length }}</span>
+                            </td>
+                            <td>
+                                {% set total = schema_stats.get(programme.code, {}).values() | sum %}
+                                <span class="badge bg-success">{{ total }}</span>
+                            </td>
+                            <td>
+                                {% if schema_stats.get(programme.code) %}
+                                    <span class="badge bg-success">Actif</span>
+                                {% else %}
+                                    <span class="badge bg-warning">Non créé</span>
+                                {% endif %}
+                            </td>
+                            <td>
+                                <div class="btn-group btn-group-sm">
+                                    {% if schema_stats.get(programme.code) %}
+                                        <button class="btn btn-outline-info" onclick="showSchemaStats('{{ programme.code }}')" title="Statistiques">
+                                            <i class="fas fa-chart-bar"></i>
+                                        </button>
+                                        <button class="btn btn-outline-warning" onclick="migrateData('{{ programme.code }}')" title="Migrer les données">
+                                            <i class="fas fa-exchange-alt"></i>
+                                        </button>
+                                        <button class="btn btn-outline-secondary" onclick="backupSchema('{{ programme.code }}')" title="Sauvegarder">
+                                            <i class="fas fa-download"></i>
+                                        </button>
+                                        <button class="btn btn-outline-danger" onclick="dropSchema('{{ programme.code }}')" title="Supprimer">
+                                            <i class="fas fa-trash"></i>
+                                        </button>
+                                    {% else %}
+                                        <button class="btn btn-outline-success" onclick="createSchema('{{ programme.code }}')" title="Créer">
+                                            <i class="fas fa-plus"></i>
+                                        </button>
+                                    {% endif %}
+                                </div>
+                            </td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+
+    <!-- Détails des statistiques par programme -->
+    {% for programme in programmes %}
+    {% if schema_stats.get(programme.code) %}
+    <div class="card mt-3" id="stats-{{ programme.code }}" style="display: none;">
+        <div class="card-header">
+            <h5 class="mb-0">
+                <i class="fas fa-chart-bar me-2"></i>Statistiques - {{ programme.nom }}
+            </h5>
+        </div>
+        <div class="card-body">
+            <div class="row">
+                {% for table, count in schema_stats[programme.code].items() %}
+                <div class="col-md-3 mb-3">
+                    <div class="card bg-light">
+                        <div class="card-body text-center">
+                            <h6 class="card-title">{{ table }}</h6>
+                            <h4 class="text-primary">{{ count }}</h4>
+                            <small class="text-muted">enregistrements</small>
+                        </div>
+                    </div>
+                </div>
+                {% endfor %}
+            </div>
+        </div>
+    </div>
+    {% endif %}
+    {% endfor %}
+</div>
+
+<!-- Modal de confirmation pour la suppression -->
+<div class="modal fade" id="confirmDropModal" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">Confirmer la suppression</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <p>Êtes-vous sûr de vouloir supprimer le schéma <strong id="programToDrop"></strong> ?</p>
+                <div class="form-check">
+                    <input class="form-check-input" type="checkbox" id="backupBeforeDrop" checked>
+                    <label class="form-check-label" for="backupBeforeDrop">
+                        Sauvegarder les données avant suppression
+                    </label>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Annuler</button>
+                <button type="button" class="btn btn-danger" id="confirmDropBtn">Supprimer</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+let currentProgram = null;
+
+function createSchema(programCode) {
+    if (confirm(`Créer le schéma pour le programme ${programCode} ?`)) {
+        fetch(`/admin/schemas/create/${programCode}`, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+            }
+        })
+        .then(response => response.json())
+        .then(data => {
+            if (data.status === 'success') {
+                alert('✅ ' + data.message);
+                location.reload();
+            } else {
+                alert('❌ Erreur: ' + data.detail);
+            }
+        })
+        .catch(error => {
+            console.error('Erreur:', error);
+            alert('❌ Erreur lors de la création du schéma');
+        });
+    }
+}
+
+function createAllSchemas() {
+    if (confirm('Créer tous les schémas manquants ?')) {
+        const programmes = {{ programmes | tojson }};
+        let completed = 0;
+        
+        programmes.forEach(programme => {
+            fetch(`/admin/schemas/create/${programme.code}`, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                }
+            })
+            .then(response => response.json())
+            .then(data => {
+                completed++;
+                if (completed === programmes.length) {
+                    alert('✅ Tous les schémas ont été créés');
+                    location.reload();
+                }
+            })
+            .catch(error => {
+                console.error('Erreur:', error);
+                completed++;
+            });
+        });
+    }
+}
+
+function migrateData(programCode) {
+    if (confirm(`Migrer les données existantes vers le schéma ${programCode} ?`)) {
+        fetch(`/admin/schemas/migrate/${programCode}`, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+            }
+        })
+        .then(response => response.json())
+        .then(data => {
+            if (data.status === 'success') {
+                alert('✅ ' + data.message);
+                location.reload();
+            } else {
+                alert('❌ Erreur: ' + data.detail);
+            }
+        })
+        .catch(error => {
+            console.error('Erreur:', error);
+            alert('❌ Erreur lors de la migration');
+        });
+    }
+}
+
+function showSchemaStats(programCode) {
+    const statsDiv = document.getElementById(`stats-${programCode}`);
+    if (statsDiv.style.display === 'none') {
+        statsDiv.style.display = 'block';
+    } else {
+        statsDiv.style.display = 'none';
+    }
+}
+
+function backupSchema(programCode) {
+    if (confirm(`Sauvegarder le schéma ${programCode} en fichiers Excel ?`)) {
+        fetch(`/admin/schemas/backup/${programCode}`, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+            }
+        })
+        .then(response => response.json())
+        .then(data => {
+            if (data.status === 'success') {
+                alert('✅ ' + data.message);
+            } else {
+                alert('❌ Erreur: ' + data.detail);
+            }
+        })
+        .catch(error => {
+            console.error('Erreur:', error);
+            alert('❌ Erreur lors de la sauvegarde');
+        });
+    }
+}
+
+function dropSchema(programCode) {
+    currentProgram = programCode;
+    document.getElementById('programToDrop').textContent = programCode;
+    const modal = new bootstrap.Modal(document.getElementById('confirmDropModal'));
+    modal.show();
+}
+
+document.getElementById('confirmDropBtn').addEventListener('click', function() {
+    const backupData = document.getElementById('backupBeforeDrop').checked;
+    
+    fetch(`/admin/schemas/drop/${currentProgram}`, {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+            backup_data: backupData
+        })
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.status === 'success') {
+            alert('✅ ' + data.message);
+            location.reload();
+        } else {
+            alert('❌ Erreur: ' + data.detail);
+        }
+    })
+    .catch(error => {
+        console.error('Erreur:', error);
+        alert('❌ Erreur lors de la suppression');
+    });
+    
+    bootstrap.Modal.getInstance(document.getElementById('confirmDropModal')).hide();
+});
+
+function refreshStats() {
+    location.reload();
+}
+</script>
+{% endblock %}

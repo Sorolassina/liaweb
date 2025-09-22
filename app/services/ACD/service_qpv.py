@@ -16,9 +16,10 @@ from selenium.webdriver.support import expected_conditions as EC
 from fastapi import Request
 
 from app_lia_web.core.config import settings
-from app_lia_web.core.file_encoded import encode_file_to_base64
+from app_lia_web.app.services.file_upload_service import FileUploadService
 from app_lia_web.app.schemas.ACD.schema_qpv import Adresse
 
+FileUploadService = FileUploadService()
 
 async def verif_qpv(address_coords, request: Request):
 
@@ -177,7 +178,7 @@ async def verif_qpv(address_coords, request: Request):
 
         # Vérifie si l’image existe avant d’essayer de l’encoder
         if os.path.exists(image_file):
-            encoded_image = encode_file_to_base64(image_file)
+            encoded_image = FileUploadService.encode_file_to_base64(image_file)
         else:
             encoded_image = None  # Si l’image n’existe pas
 
@@ -240,7 +241,7 @@ async def verif_qpv(address_coords, request: Request):
 
         # Vérifie si l’image existe avant d’essayer de l’encoder
         if os.path.exists(image_file):
-            encoded_image = encode_file_to_base64(image_file)
+            encoded_image = FileUploadService.encode_file_to_base64(image_file)
         else:
             encoded_image = None  # Si l’image n’existe pas
             

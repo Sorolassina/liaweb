@@ -1,6 +1,5 @@
 from fastapi import APIRouter, Request, HTTPException, Depends
 from fastapi.responses import HTMLResponse, RedirectResponse
-from fastapi.templating import Jinja2Templates
 from sqlmodel import Session, select
 from typing import Optional
 import os, secrets, string, time
@@ -46,7 +45,7 @@ def sanitize_name(name: Optional[str]) -> str:
     return "".join(c for c in name if c in allowed)[:48]
 
 # ===== Routes =====
-@router.get("/video-rdv/{rdv_id}/commencer", response_class=HTMLResponse)
+@router.get("/video-rdv/{rdv_id}/commencer", response_class=HTMLResponse, name="video_rdv_start")
 def commencer_rdv_video(
     request: Request,
     rdv_id: int,
@@ -169,7 +168,7 @@ def commencer_rdv_video(
         logger.error(f"💥 Traceback: {traceback.format_exc()}")
         raise HTTPException(status_code=500, detail=f"Erreur interne: {str(e)}")
 
-@router.get("/video-rdv/{rdv_id}/invitation/{token}")
+@router.get("/video-rdv/{rdv_id}/invitation/{token}", name="video_rdv_candidate_link")
 def generer_lien_invitation(
     request: Request,
     rdv_id: int,
@@ -245,7 +244,7 @@ def generer_lien_invitation(
         logger.error(f"💥 Erreur inattendue dans generer_lien_invitation: {str(e)}")
         raise HTTPException(status_code=500, detail=f"Erreur interne: {str(e)}")
 
-@router.get("/video-rdv/{rdv_id}/rejoindre", response_class=HTMLResponse)
+@router.get("/video-rdv/{rdv_id}/rejoindre", response_class=HTMLResponse, name="video_rdv_join")
 def rejoindre_rdv_video(
     request: Request,
     rdv_id: int,

@@ -1,0 +1,318 @@
+{% extends "base.html" %}
+
+{% block title %}Mon Profil - {{ company_name }}{% endblock %}
+
+{% block content %}
+
+<div class="container-fluid px-0" style="background-color: #f0f2f5; height: 100%;">
+  <div class="row g-0">
+    <!-- Sidebar -->
+    <div class="col-md-3 col-lg-2 d-md-block bg-light sidebar">
+      <div class="position-sticky pt-3">
+        <ul class="nav flex-column">
+          <li class="nav-item">
+            <a class="nav-link {% if request.url.path == url_for('profil') %}active{% endif %}" href="{{ url_for('profil') }}">
+              <i class="fas fa-user"></i> Informations personnelles
+            </a>
+          </li>
+          <li class="nav-item">
+            <a class="nav-link" href="#" data-bs-toggle="modal" data-bs-target="#changePasswordModal">
+              <i class="fas fa-key"></i> Changer le mot de passe
+            </a>
+          </li>
+          <li class="nav-item">
+            <a class="nav-link" href="#" data-bs-toggle="modal" data-bs-target="#changePhotoModal">
+              <i class="fas fa-camera"></i> Changer la photo
+            </a>
+          </li>
+        </ul>
+      </div>
+    </div>
+
+    <!-- Main content -->
+    <main class="col-md-9 col-lg-10 px-4">
+      <div class="d-flex justify-content-between flex-wrap flex-md-nowrap align-items-center pt-3 pb-2 mb-3 border-bottom">
+        <h1 class="h2">
+          <i class="fas fa-user-circle me-2"></i>Mon Profil
+        </h1>
+        <div class="btn-toolbar mb-2 mb-md-0">
+          <div class="btn-group me-2">
+            <button type="button" class="btn btn-outline-primary" data-bs-toggle="modal" data-bs-target="#editProfileModal">
+              <i class="fas fa-edit me-1"></i>Modifier
+            </button>
+          </div>
+        </div>
+      </div>
+
+      <!-- Messages d'alerte -->
+      {% if request.query_params.get('success') %}
+        <div class="alert alert-success alert-dismissible fade show" role="alert">
+          {% if request.query_params.get('success') == 'profile_updated' %}
+            <i class="fas fa-check-circle me-2"></i>Profil mis à jour avec succès !
+          {% elif request.query_params.get('success') == 'password_changed' %}
+            <i class="fas fa-check-circle me-2"></i>Mot de passe changé avec succès !
+          {% elif request.query_params.get('success') == 'photo_updated' %}
+            <i class="fas fa-check-circle me-2"></i>Photo de profil mise à jour avec succès !
+          {% endif %}
+          <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+        </div>
+      {% endif %}
+
+      {% if request.query_params.get('error') %}
+        <div class="alert alert-danger alert-dismissible fade show" role="alert">
+          {% if request.query_params.get('error') == 'email_exists' %}
+            <i class="fas fa-exclamation-triangle me-2"></i>Cette adresse email est déjà utilisée par un autre utilisateur.
+          {% elif request.query_params.get('error') == 'password_mismatch' %}
+            <i class="fas fa-exclamation-triangle me-2"></i>Les nouveaux mots de passe ne correspondent pas.
+          {% elif request.query_params.get('error') == 'wrong_current_password' %}
+            <i class="fas fa-exclamation-triangle me-2"></i>Le mot de passe actuel est incorrect.
+          {% elif request.query_params.get('error') == 'invalid_file_type' %}
+            <i class="fas fa-exclamation-triangle me-2"></i>Type de fichier non autorisé. Seules les images sont acceptées.
+          {% elif request.query_params.get('error') == 'update_failed' %}
+            <i class="fas fa-exclamation-triangle me-2"></i>Erreur lors de la mise à jour du profil.
+          {% elif request.query_params.get('error') == 'password_change_failed' %}
+            <i class="fas fa-exclamation-triangle me-2"></i>Erreur lors du changement de mot de passe.
+          {% elif request.query_params.get('error') == 'photo_update_failed' %}
+            <i class="fas fa-exclamation-triangle me-2"></i>Erreur lors de la mise à jour de la photo.
+          {% endif %}
+          <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+        </div>
+      {% endif %}
+
+      <!-- Informations du profil -->
+      <div class="row g-4">
+        <div class="col-lg-4">
+          <div class="card h-100">
+            <div class="card-body text-center d-flex flex-column justify-content-center">
+              {% if utilisateur.photo_profil %}
+                <img src="{{ utilisateur.photo_profil }}?v={{ timestamp }}" alt="Photo de profil" class="rounded-circle mb-3 mx-auto" width="150" height="150" style="object-fit: cover;">
+              {% else %}
+                <div class="bg-primary rounded-circle d-inline-flex align-items-center justify-content-center mb-3 mx-auto" style="width: 150px; height: 150px;">
+                  <i class="fas fa-user text-white" style="font-size: 4rem;"></i>
+                </div>
+              {% endif %}
+              <h5 class="card-title">{{ utilisateur.nom_complet }}</h5>
+              <p class="text-muted">{{ utilisateur.role | title }}</p>
+              <button type="button" class="btn btn-outline-primary btn-sm" data-bs-toggle="modal" data-bs-target="#changePhotoModal">
+                <i class="fas fa-camera me-1"></i>Changer la photo
+              </button>
+            </div>
+          </div>
+        </div>
+
+        <div class="col-lg-8">
+          <div class="card h-100">
+            <div class="card-header">
+              <h5 class="mb-0">
+                <i class="fas fa-info-circle me-2"></i>Informations personnelles
+              </h5>
+            </div>
+            <div class="card-body">
+              <div class="row g-3">
+                <div class="col-md-6">
+                  <label class="form-label fw-bold">Nom complet</label>
+                  <p class="form-control-plaintext">{{ utilisateur.nom_complet }}</p>
+                </div>
+                <div class="col-md-6">
+                  <label class="form-label fw-bold">Email</label>
+                  <p class="form-control-plaintext">{{ utilisateur.email }}</p>
+                </div>
+                <div class="col-md-6">
+                  <label class="form-label fw-bold">Téléphone</label>
+                  <p class="form-control-plaintext">{{ utilisateur.telephone or 'Non renseigné' }}</p>
+                </div>
+                <div class="col-md-6">
+                  <label class="form-label fw-bold">Rôle</label>
+                  <p class="form-control-plaintext">
+                    <span class="badge bg-primary">{{ utilisateur.role | title }}</span>
+                  </p>
+                </div>
+                <div class="col-md-6">
+                  <label class="form-label fw-bold">Statut</label>
+                  <p class="form-control-plaintext">
+                    {% if utilisateur.actif %}
+                      <span class="badge bg-success">Actif</span>
+                    {% else %}
+                      <span class="badge bg-danger">Inactif</span>
+                    {% endif %}
+                  </p>
+                </div>
+                <div class="col-md-6">
+                  <label class="form-label fw-bold">Membre depuis</label>
+                  <p class="form-control-plaintext">{{ utilisateur.cree_le.strftime('%d/%m/%Y') }}</p>
+                </div>
+                {% if utilisateur.modifie_le %}
+                <div class="col-md-6">
+                  <label class="form-label fw-bold">Dernière modification</label>
+                  <p class="form-control-plaintext">{{ utilisateur.modifie_le.strftime('%d/%m/%Y à %H:%M') }}</p>
+                </div>
+                {% endif %}
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </main>
+  </div>
+</div>
+
+
+<!-- Modal de modification du profil -->
+<div class="modal fade" id="editProfileModal" tabindex="-1">
+  <div class="modal-dialog">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h5 class="modal-title">Modifier mes informations</h5>
+        <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+      </div>
+      <form method="post" action="{{ url_for('profil_update') }}">
+        <div class="modal-body">
+          <div class="mb-3">
+            <label for="nom_complet" class="form-label">Nom complet *</label>
+            <input type="text" class="form-control" id="nom_complet" name="nom_complet" value="{{ utilisateur.nom_complet }}" required>
+          </div>
+          <div class="mb-3">
+            <label for="email" class="form-label">Email *</label>
+            <input type="email" class="form-control" id="email" name="email" value="{{ utilisateur.email }}" required>
+          </div>
+          <div class="mb-3">
+            <label for="telephone" class="form-label">Téléphone</label>
+            <input type="tel" class="form-control" id="telephone" name="telephone" value="{{ utilisateur.telephone or '' }}">
+          </div>
+        </div>
+        <div class="modal-footer">
+          <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Annuler</button>
+          <button type="submit" class="btn btn-primary">
+            <i class="fas fa-save me-1"></i>Sauvegarder
+          </button>
+        </div>
+      </form>
+    </div>
+  </div>
+</div>
+
+<!-- Modal de changement de mot de passe -->
+<div class="modal fade" id="changePasswordModal" tabindex="-1">
+  <div class="modal-dialog">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h5 class="modal-title">Changer le mot de passe</h5>
+        <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+      </div>
+      <form method="post" action="{{ url_for('profil_change_password') }}">
+        <div class="modal-body">
+          <div class="mb-3">
+            <label for="current_password" class="form-label">Mot de passe actuel *</label>
+            <input type="password" class="form-control" id="current_password" name="current_password" required>
+          </div>
+          <div class="mb-3">
+            <label for="new_password" class="form-label">Nouveau mot de passe *</label>
+            <input type="password" class="form-control" id="new_password" name="new_password" required minlength="6">
+            <div class="form-text">Minimum 6 caractères</div>
+          </div>
+          <div class="mb-3">
+            <label for="confirm_password" class="form-label">Confirmer le nouveau mot de passe *</label>
+            <input type="password" class="form-control" id="confirm_password" name="confirm_password" required minlength="6">
+          </div>
+        </div>
+        <div class="modal-footer">
+          <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Annuler</button>
+          <button type="submit" class="btn btn-warning">
+            <i class="fas fa-key me-1"></i>Changer le mot de passe
+          </button>
+        </div>
+      </form>
+    </div>
+  </div>
+</div>
+
+<!-- Modal de changement de photo -->
+<div class="modal fade" id="changePhotoModal" tabindex="-1">
+  <div class="modal-dialog">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h5 class="modal-title">Changer la photo de profil</h5>
+        <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+      </div>
+      <form method="post" action="{{ url_for('profil_photo') }}" enctype="multipart/form-data">
+        <div class="modal-body">
+          <div class="text-center mb-3">
+            {% if utilisateur.photo_profil %}
+              <img src="{{ utilisateur.photo_profil }}?v={{ timestamp }}" alt="Photo actuelle" class="rounded-circle mb-2" width="100" height="100" style="object-fit: cover;">
+            {% else %}
+              <div class="bg-primary rounded-circle d-inline-flex align-items-center justify-content-center mb-2" style="width: 100px; height: 100px;">
+                <i class="fas fa-user text-white" style="font-size: 2.5rem;"></i>
+              </div>
+            {% endif %}
+            <p class="text-muted">Photo actuelle</p>
+          </div>
+          <div class="mb-3">
+            <label for="photo_profil" class="form-label">Nouvelle photo *</label>
+            <input type="file" class="form-control" id="photo_profil" name="photo_profil" accept="image/*" required>
+            <div class="form-text">Formats acceptés : JPG, PNG, GIF. Taille maximale : 5MB</div>
+          </div>
+        </div>
+        <div class="modal-footer">
+          <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Annuler</button>
+          <button type="submit" class="btn btn-primary">
+            <i class="fas fa-camera me-1"></i>Changer la photo
+          </button>
+        </div>
+      </form>
+    </div>
+  </div>
+</div>
+
+<script>
+// Validation du formulaire de changement de mot de passe
+document.getElementById('changePasswordModal').addEventListener('show.bs.modal', function () {
+  const form = this.querySelector('form');
+  form.addEventListener('submit', function(e) {
+    const newPassword = document.getElementById('new_password').value;
+    const confirmPassword = document.getElementById('confirm_password').value;
+    
+    if (newPassword !== confirmPassword) {
+      e.preventDefault();
+      alert('Les nouveaux mots de passe ne correspondent pas !');
+      return false;
+    }
+    
+    if (newPassword.length < 6) {
+      e.preventDefault();
+      alert('Le nouveau mot de passe doit contenir au moins 6 caractères !');
+      return false;
+    }
+  });
+});
+
+// Validation du formulaire de changement de photo
+document.getElementById('changePhotoModal').addEventListener('show.bs.modal', function () {
+  const form = this.querySelector('form');
+  form.addEventListener('submit', function(e) {
+    const fileInput = document.getElementById('photo_profil');
+    const file = fileInput.files[0];
+    
+    if (!file) {
+      e.preventDefault();
+      alert('Veuillez sélectionner une photo !');
+      return false;
+    }
+    
+    // Vérifier la taille du fichier (5MB max)
+    if (file.size > 5 * 1024 * 1024) {
+      e.preventDefault();
+      alert('La photo est trop volumineuse. Taille maximale : 5MB');
+      return false;
+    }
+    
+    // Vérifier le type de fichier
+    if (!file.type.startsWith('image/')) {
+      e.preventDefault();
+      alert('Veuillez sélectionner un fichier image valide !');
+      return false;
+    }
+  });
+});
+</script>
+
+{% endblock %}

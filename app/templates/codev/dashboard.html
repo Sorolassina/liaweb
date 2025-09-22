@@ -4,14 +4,7 @@
 
 {% block head_extra %}
 <style>
-  .codev-card {
-    background: linear-gradient(135deg, var(--primary-color) 0%, #e6b800 100%);
-    color: var(--secondary-color);
-    border-radius: 15px;
-    padding: 1.5rem;
-    margin-bottom: 1rem;
-    box-shadow: 0 4px 15px rgba(0,0,0,0.1);
-  }
+  /* From Uiverse.io by lenfear23 */ 
   
   .codev-stat {
     background: rgba(255,255,255,0.1);
@@ -84,28 +77,27 @@
 
 {% block content %}
 <!--<div class="container-fluid">-->
-  <!-- En-tête -->
-  <div class="row mb-0">
-    <div class="col-12">
-      <div class="codev-card" style="padding: 15px 20px;">
-        <div class="row align-items-center">
-          <div class="col-md-8">
-            <h3 class="mb-0" style="font-size: 1.4rem;">
-              <i class="fa fa-users-cog me-2"></i>Codéveloppement
-            </h3>
-            <p class="mb-0 opacity-75" style="font-size: 0.9rem;">
-              Accompagnement collectif par groupes de travail
-            </p>
-          </div>
-          <div class="col-md-4 text-end">
-            <a href="{{ url_for('codev_cycles_creer') }}" class="btn btn-light">
-              <i class="fa fa-plus me-1"></i>Nouveau Cycle
-            </a>
-          </div>
+  <!-- Entête -->
+  <div class="entete-card" style="padding: 15px 20px;">
+    <div class="row align-items-center";">
+    <div class="col-md-8 d-flex justify-content-between align-items-center" style=" width: 100%;">
+        <div>
+        <h3 class="mb-0" style="font-size: 1.4rem;">
+            <i class="fas fa-users"></i> Codéveloppement
+        </h3>
+        <p class="mb-0 opacity-75" style="font-size: 0.9rem;">
+            Gestion des données des cycles de codéveloppement du programme
+        </p>
         </div>
-      </div>
+        <div class="toolbar">
+        <a href="{{ url_for('codev_cycles_creer') }}" class="submenu-item">
+            <div class="icon"><i class="fas fa-users"></i></div><div>cycle</div>
+        </a>
+        
+        </div>
     </div>
-  </div>
+    </div>
+</div>
 
   <!-- Statistiques rapides -->
   <div class="row mb-0">
@@ -264,23 +256,23 @@
         <div class="card-body">
           <div class="row">
             <div class="col-md-3">
-              <a href="{{ url_for('codev_cycles_creer') }}" class="btn btn-primary w-100 mb-2">
-                <i class="fa fa-plus me-2"></i>Nouveau Cycle
+              <a href="{{ url_for('codev_cycles_creer') }}" class="submenu-item">
+                <i class="fa fa-plus me-2"></i> Cycle
               </a>
             </div>
             <div class="col-md-3">
-              <a href="{{ url_for('codev_groupes') }}" class="btn btn-outline-primary w-100 mb-2">
-                <i class="fa fa-users me-2"></i>Gérer les Groupes
+              <a href="{{ url_for('codev_groupes') }}" class="submenu-item">
+                <i class="fa fa-users me-2"></i> Gérer les Groupes
               </a>
             </div>
             <div class="col-md-3">
-              <a href="{{ url_for('codev_seances') }}" class="btn btn-outline-primary w-100 mb-2">
-                <i class="fa fa-calendar me-2"></i>Planifier Séances
+              <a href="{{ url_for('codev_seances') }}" class="submenu-item">
+                <i class="fa fa-calendar me-2"></i> Planifier Séances
               </a>
             </div>
             <div class="col-md-3">
-              <a href="{{ url_for('codev_statistiques') }}" class="btn btn-outline-primary w-100 mb-2">
-                <i class="fa fa-chart-bar me-2"></i>Statistiques
+              <a href="{{ url_for('codev_statistiques') }}" class="submenu-item">
+                <i class="fa fa-chart-pie"></i> Statistiques
               </a>
             </div>
           </div>

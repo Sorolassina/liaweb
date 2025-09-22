@@ -46,9 +46,9 @@
     </div>
 
     <div class="actions">
-      <a href="/accueil" class="btn btn-lia">← Retour à l’accueil</a>
-      <a href="javascript:location.reload()" class="btn btn-outline">Réessayer</a>
-      <a href="/contact" class="btn btn-outline">Contacter le support</a>
+      <a href="{{ url_for('accueil') }}" class="btn btn-lia submenu-item">← Retour à l'accueil</a>
+      <a href="javascript:location.reload()" class="btn btn-outline submenu-item">Réessayer</a>
+      <a href="{{ url_for('accueil') }}" class="btn btn-outline submenu-item">Contacter le support</a>
     </div>
 
     <div class="hint">

@@ -336,7 +336,7 @@ a:hover {
 
 /* Sidebar Neumorphism */
 .sidebar {
-  width: 280px;
+  width: 220px;
   height: 100vh;
   background: #f0f0f0;
   position: fixed;
@@ -405,7 +405,7 @@ a:hover {
   padding: 6px 12px 6px 18px;
   border-radius: 6px;
   box-shadow: var(--shadow-sm);
-  font-size: 12px;
+  font-size: 20px;
   margin-bottom: 3px;
   transition: all 0.2s ease;
 }
@@ -485,7 +485,6 @@ a:hover {
   overflow-y: auto;
   padding: 1rem;
   transition: left .25s ease;
-  border: 1px solid black;
   box-sizing: border-box;
 }
 
@@ -503,7 +502,7 @@ a:hover {
   position: fixed;
   top: 0;
   right: 0;
-  left: 280px;
+  left: 220px;
   z-index: 999;
 }
 
@@ -649,7 +648,7 @@ a:hover {
   --shadow-lg: 10px 10px 28px rgba(0,0,0,.14), -10px -10px 28px rgba(255,255,255,.85);
   
   /* Largeurs de sidebar paramétrables */
-  --sidebar-width: 280px;
+  --sidebar-width: 220px;
   --sidebar-width-collapsed: 60px;
 }
 
@@ -711,6 +710,7 @@ body {
   display: flex;
   flex-direction: column;
   padding: 20px 0;
+  
 }
 
 .sidebar.hide-scrollbars::-webkit-scrollbar {
@@ -826,23 +826,26 @@ body {
   display: flex;
   align-items: center;
   gap: 8px;
-  background: var(--gray-light);
-  color: var(--gray-dark);
+  background: var(--primary-color);
+  color: var(--secondary-color);
   text-decoration: none;
   padding: 6px 12px 6px 18px;
   border-radius: 6px;
   box-shadow: var(--shadow-sm);
   font-size: 12px;
+  transition: all 0.3s ease;
 }
 
 .submenu-item:hover {
-  background: color-mix(in srgb, var(--gray-light) 80%, var(--primary-light) 20%);
-  color: var(--secondary-color);
+  background: var(--secondary-color);
+  color: var(--primary-color);
+  transform: translateY(-2px);
+  box-shadow: var(--shadow-md);
 }
 
 .submenu-item.active {
-  background: var(--primary-color);
-  color: var(--secondary-color);
+  background: var(--secondary-color);
+  color: var(--primary-color);
 }
 
 .submenu-item .icon {
@@ -1010,8 +1013,6 @@ body {
 #content {
   -ms-overflow-style: none;
   scrollbar-width: none;
- 
-  border: 1px solid black;
   margin: 0px 0px 0px 0px;
   padding: 0px 0px 0px 0px;
 }
@@ -1395,6 +1396,22 @@ z-index: -1;
 .download svg polyline,
 .download svg line {
   animation: docs 1s infinite;
+}
+
+.entete-card {
+  background: linear-gradient(135deg, var(--primary-color) 0%, #e6b800 100%);
+  color: var(--secondary-color);
+  border-radius: 15px;
+  padding: 1.5rem;
+  margin-bottom: 1rem;
+  box-shadow: 0 4px 15px rgba(0,0,0,0.1);
+  position: sticky;
+  top: 0;
+  z-index: 10000;
+}
+
+.container-fluid.p-4 {
+  padding-top: 0 !important;
 }
 
 @keyframes docs {

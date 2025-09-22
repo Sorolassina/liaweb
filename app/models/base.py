@@ -323,8 +323,6 @@ class RendezVous(SQLModel, table=True):
     inscription: "Inscription" = Relationship()
     conseiller: Optional["User"] = Relationship()
 
-
-
 class SessionProgramme(SQLModel, table=True):
     id: Optional[int] = Field(default=None, primary_key=True)
     programme_id: int = Field(foreign_key="programme.id", index=True)
@@ -395,7 +393,6 @@ class SuiviMensuel(SQLModel, table=True):
 
     inscription: "Inscription" = Relationship()
 
-
 class Partenaire(SQLModel, table=True):
     """Partenaires pour la réorientation des candidats"""
     id: Optional[int] = Field(default=None, primary_key=True)
@@ -411,7 +408,6 @@ class Partenaire(SQLModel, table=True):
     
     # Relations
     reorientations: List["ReorientationCandidat"] = Relationship(back_populates="partenaire")
-
 
 class DecisionJuryCandidat(SQLModel, table=True):
     """Décisions du jury pour chaque candidat"""
@@ -438,7 +434,6 @@ class DecisionJuryCandidat(SQLModel, table=True):
     promotion: Optional["Promotion"] = Relationship()
     partenaire: Optional["Partenaire"] = Relationship()
 
-
 class ReorientationCandidat(SQLModel, table=True):
     """Historique des réorientations"""
     id: Optional[int] = Field(default=None, primary_key=True)
@@ -453,7 +448,6 @@ class ReorientationCandidat(SQLModel, table=True):
     candidat: "Candidat" = Relationship()
     partenaire: "Partenaire" = Relationship(back_populates="reorientations")
     decision_jury: "DecisionJuryCandidat" = Relationship()
-
 
 class Groupe(SQLModel, table=True):
     """Groupes de codéveloppement"""

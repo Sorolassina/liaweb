@@ -228,7 +228,7 @@
             </div>
             {% endif %}
             
-            <form method="POST" action="/verification-code">
+            <form method="POST" action="{{ url_for('verify_recovery_code_post') }}">
                 <input type="hidden" name="email" value="{{ email or '' }}">
                 
                 <div class="form-group">
@@ -260,7 +260,7 @@
             </form>
             
             <div class="back-links">
-                <a href="/mot-de-passe-oublie">
+                <a href="{{ url_for('request_password_recovery_get') }}">
                     <i class="fas fa-arrow-left"></i> Nouveau code
                 </a>
                 <a href="/">

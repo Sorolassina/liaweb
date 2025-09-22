@@ -1,0 +1,266 @@
+{% extends "admin/base_admin.html" %}
+{% block admin_content %}
+
+<!-- Messages flash -->
+{% if request.query_params.get('success') %}
+<div class="alert alert-success alert-dismissible fade show" role="alert">
+  <i class="fa fa-check-circle me-2"></i>
+  {% if request.query_params.get('action') == 'add' %}
+    Promotion créée avec succès !
+  {% elif request.query_params.get('action') == 'update' %}
+    Promotion modifiée avec succès !
+  {% elif request.query_params.get('action') == 'toggle' %}
+    Statut de la promotion modifié avec succès !
+  {% elif request.query_params.get('action') == 'delete' %}
+    Promotion supprimée avec succès !
+  {% else %}
+    Opération réussie !
+  {% endif %}
+  <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+</div>
+{% endif %}
+
+{% if request.query_params.get('error') %}
+<div class="alert alert-danger alert-dismissible fade show" role="alert">
+  <i class="fa fa-exclamation-triangle me-2"></i>
+  {{ request.query_params.get('message', 'Une erreur est survenue') }}
+  <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+</div>
+{% endif %}
+
+<div class="d-flex justify-content-between align-items-center mb-3">
+  <h5 class="m-0">
+    <i class="fa fa-graduation-cap me-2"></i>Gestion des promotions
+  </h5>
+  <button class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#addPromotionModal">
+    <i class="fa fa-plus me-2"></i>Nouvelle promotion
+  </button>
+</div>
+
+<!-- Modal d'ajout de promotion -->
+<div class="modal fade" id="addPromotionModal" tabindex="-1">
+  <div class="modal-dialog">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h5 class="modal-title">
+          <i class="fa fa-plus me-2"></i>Nouvelle promotion
+        </h5>
+        <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+      </div>
+      <form method="post" action="{{ url_for('admin_promotions_add') }}">
+        <div class="modal-body">
+          <div class="row g-3">
+            <div class="col-12">
+              <label class="form-label">Programme <span class="text-danger">*</span></label>
+              <select name="programme_id" class="form-select" required>
+                <option value="">— Sélectionnez un programme —</option>
+                {% for prog in programmes %}
+                  <option value="{{ prog.id }}">{{ prog.code }} - {{ prog.nom }}</option>
+                {% endfor %}
+              </select>
+            </div>
+            <div class="col-12">
+              <label class="form-label">Libellé de la promotion <span class="text-danger">*</span></label>
+              <input type="text" name="libelle" class="form-control" required placeholder="Ex: Promotion 2024 A">
+            </div>
+            <div class="col-md-6">
+              <label class="form-label">Capacité</label>
+              <input type="number" name="capacite" class="form-control" placeholder="Ex: 20" min="1">
+            </div>
+            <div class="col-md-6">
+              <label class="form-label">Statut</label>
+              <select name="actif" class="form-select">
+                <option value="on" selected>Active</option>
+                <option value="off">Inactive</option>
+              </select>
+            </div>
+            <div class="col-md-6">
+              <label class="form-label">Date de début</label>
+              <input type="date" name="date_debut" class="form-control">
+            </div>
+            <div class="col-md-6">
+              <label class="form-label">Date de fin</label>
+              <input type="date" name="date_fin" class="form-control">
+            </div>
+          </div>
+        </div>
+        <div class="modal-footer">
+          <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Annuler</button>
+          <button type="submit" class="btn btn-primary">
+            <i class="fa fa-save me-2"></i>Créer la promotion
+          </button>
+        </div>
+      </form>
+    </div>
+  </div>
+</div>
+
+<!-- Liste des promotions -->
+<div class="card-neumo p-3">
+  <div class="users-table-container">
+    <table class="table align-middle">
+      <thead>
+        <tr>
+          <th>Libellé</th>
+          <th>Programme</th>
+          <th>Capacité</th>
+          <th>Période</th>
+          <th>Statut</th>
+          <th class="text-end">Actions</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for promo in promotions %}
+        <tr>
+          <td>
+            <div class="fw-bold">{{ promo.libelle }}</div>
+            <small class="text-muted">ID: {{ promo.id }}</small>
+          </td>
+          <td>
+            {% if promo.programme %}
+              <span class="badge bg-primary">{{ promo.programme.code }}</span>
+              <div class="small text-muted">{{ promo.programme.nom }}</div>
+            {% else %}
+              <span class="text-muted">Programme supprimé</span>
+            {% endif %}
+          </td>
+          <td>
+            {% if promo.capacite %}
+              <span class="badge bg-info">{{ promo.capacite }} places</span>
+            {% else %}
+              <span class="text-muted">—</span>
+            {% endif %}
+          </td>
+          <td>
+            {% if promo.date_debut or promo.date_fin %}
+              <div class="small">
+                {% if promo.date_debut %}
+                  <div><strong>Début:</strong> {{ promo.date_debut.strftime('%d/%m/%Y') }}</div>
+                {% endif %}
+                {% if promo.date_fin %}
+                  <div><strong>Fin:</strong> {{ promo.date_fin.strftime('%d/%m/%Y') }}</div>
+                {% endif %}
+              </div>
+            {% else %}
+              <span class="text-muted">—</span>
+            {% endif %}
+          </td>
+          <td>
+            {% if promo.actif %}
+              <span class="badge bg-success">
+                <i class="fa fa-check me-1"></i>Active
+              </span>
+            {% else %}
+              <span class="badge bg-secondary">
+                <i class="fa fa-pause me-1"></i>Inactive
+              </span>
+            {% endif %}
+          </td>
+          <td class="text-end">
+            <div class="btn-group btn-group-sm">
+              <button class="btn btn-outline-primary" data-bs-toggle="modal" data-bs-target="#editPromotionModal{{ promo.id }}" title="Modifier">
+                <i class="fa fa-edit"></i>
+              </button>
+              <button class="btn btn-outline-warning" onclick="togglePromotion({{ promo.id }})" title="{% if promo.actif %}Désactiver{% else %}Activer{% endif %}">
+                <i class="fa fa-{% if promo.actif %}pause{% else %}play{% endif %}"></i>
+              </button>
+              <button class="btn btn-outline-danger" onclick="deletePromotion({{ promo.id }}, '{{ promo.libelle }}')" title="Supprimer">
+                <i class="fa fa-trash"></i>
+              </button>
+            </div>
+          </td>
+        </tr>
+        {% else %}
+        <tr>
+          <td colspan="6" class="text-center text-muted py-4">
+            <i class="fa fa-graduation-cap me-2"></i>Aucune promotion créée
+          </td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</div>
+
+<!-- Modals d'édition pour chaque promotion -->
+{% for promo in promotions %}
+<div class="modal fade" id="editPromotionModal{{ promo.id }}" tabindex="-1">
+  <div class="modal-dialog">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h5 class="modal-title">
+          <i class="fa fa-edit me-2"></i>Modifier la promotion
+        </h5>
+        <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+      </div>
+      <form method="post" action="{{ url_for('admin_promotions_update', promotion_id=promo.id) }}">
+        <div class="modal-body">
+          <div class="row g-3">
+            <div class="col-12">
+              <label class="form-label">Programme <span class="text-danger">*</span></label>
+              <select name="programme_id" class="form-select" required>
+                {% for prog in programmes %}
+                  <option value="{{ prog.id }}" {% if promo.programme_id == prog.id %}selected{% endif %}>{{ prog.code }} - {{ prog.nom }}</option>
+                {% endfor %}
+              </select>
+            </div>
+            <div class="col-12">
+              <label class="form-label">Libellé de la promotion <span class="text-danger">*</span></label>
+              <input type="text" name="libelle" class="form-control" value="{{ promo.libelle }}" required>
+            </div>
+            <div class="col-md-6">
+              <label class="form-label">Capacité</label>
+              <input type="number" name="capacite" class="form-control" value="{{ promo.capacite or '' }}" min="1">
+            </div>
+            <div class="col-md-6">
+              <label class="form-label">Statut</label>
+              <select name="actif" class="form-select">
+                <option value="on" {% if promo.actif %}selected{% endif %}>Active</option>
+                <option value="off" {% if not promo.actif %}selected{% endif %}>Inactive</option>
+              </select>
+            </div>
+            <div class="col-md-6">
+              <label class="form-label">Date de début</label>
+              <input type="date" name="date_debut" class="form-control" value="{{ promo.date_debut.strftime('%Y-%m-%d') if promo.date_debut else '' }}">
+            </div>
+            <div class="col-md-6">
+              <label class="form-label">Date de fin</label>
+              <input type="date" name="date_fin" class="form-control" value="{{ promo.date_fin.strftime('%Y-%m-%d') if promo.date_fin else '' }}">
+            </div>
+          </div>
+        </div>
+        <div class="modal-footer">
+          <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Annuler</button>
+          <button type="submit" class="btn btn-primary">
+            <i class="fa fa-save me-2"></i>Enregistrer
+          </button>
+        </div>
+      </form>
+    </div>
+  </div>
+</div>
+{% endfor %}
+
+<script>
+function togglePromotion(promotionId) {
+  if (confirm('Êtes-vous sûr de vouloir changer le statut de cette promotion ?')) {
+    const form = document.createElement('form');
+    form.method = 'POST';
+    form.action = `/admin/promotions/${promotionId}/toggle`;
+    document.body.appendChild(form);
+    form.submit();
+  }
+}
+
+function deletePromotion(promotionId, promotionLibelle) {
+  if (confirm(`Êtes-vous sûr de vouloir supprimer la promotion "${promotionLibelle}" ?\n\nCette action est irréversible.`)) {
+    const form = document.createElement('form');
+    form.method = 'POST';
+    form.action = `/admin/promotions/${promotionId}/delete`;
+    document.body.appendChild(form);
+    form.submit();
+  }
+}
+</script>
+
+{% endblock %}

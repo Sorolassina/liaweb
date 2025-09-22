@@ -3,20 +3,27 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-  <title>{% block title %}{% if current_programme and current_programme != 'ACD' %}{{ current_programme }} - LIA{% else %}{{ get_current_programme_title(request) }}{% endif %}{% endblock %}</title>
+  <title>{% block title %}{% if current_programme and current_programme != 'ACD' %}{{ current_programme }} - {{ company_name }}{% else %}{{ get_current_programme_title(request) }} - {{ company_name }}{% endif %}{% endblock %}</title>
+  
+  <!-- Métadonnées de l'entreprise -->
+  <meta name="description" content="{{ company_description }}">
+  <meta name="author" content="{{ app_author }}">
+  <meta name="company" content="{{ company_name }}">
+  <meta name="version" content="{{ app_version }}">
 
   <!-- Bootstrap + Icons -->
   <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet"/>
   <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.2/css/all.min.css" rel="stylesheet"/>
 
   <!-- CSS consolidé -->
-  <link href="{{ url_for('static', path='css/styles.css') }}?v={{ now().strftime('%Y%m%d%H%M') }}" rel="stylesheet"/>
+  <link href="{{ url_for('static', path='css/styles.css') }}?v={{ datetime.now().strftime('%Y%m%d%H%M') }}" rel="stylesheet"/>
 
   <!-- Variables dynamiques depuis le backend -->
   <style>
     :root {
       {% if settings and settings.THEME_PRIMARY %}--primary-color: {{ settings.THEME_PRIMARY }};{% endif %}
       {% if settings and settings.THEME_SECONDARY %}--secondary-color: {{ settings.THEME_SECONDARY }};{% endif %}
+      {% if settings and settings.THEME_WHITE %}--white-color: {{ settings.THEME_WHITE }};{% endif %}
     }
   </style>
 
@@ -46,11 +53,11 @@
 
     <!-- Menu étendu -->
     <div class="menu">
-      <a href="/accueil" class="submenu-item {% if '/accueil' in request.url.path %}active{% endif %}">
+      <a href="{{ url_for('accueil') }}?programme=public" class="submenu-item {% if '/accueil' in request.url.path %}active{% endif %}">
         <div class="icon"><i class="fas fa-home"></i></div><div>ACCUEIL</div>
       </a>
       <!-- Programmes dynamiques -->
-      {% for programme in programmes() %}
+      {% for programme in get_programmes() %}
       <div id="acc-{{ programme.code|lower }}" class="accordion-menu">
         <div class="accordion-header" onclick="toggleAccordion('acc-{{ programme.code|lower }}')">
           <div class="icon">
@@ -69,32 +76,41 @@
           <div>{{ programme.code }}</div>
           <div class="accordion-arrow"><i class="fas fa-chevron-down"></i></div>
         </div>
-        <div class="accordion-content">
-          <a href="{{ url_for('programme_dashboard') }}?programme_id={{ programme.id }}" class="submenu-item {% if request.url.path == '/{{ programme.code }}/dashboard' %}active{% endif %}">
+        <div class="accordion-content" >
+          <a href="{{ url_for('programme_dashboard') }}?programme={{ programme.code }}" class="submenu-item {% if request.url.path == '/{{ programme.code }}/dashboard' %}active{% endif %}"
+          style="margin:5px 5px 5px 5px;">
             <div class="icon"><i class="fas fa-tachometer-alt"></i></div><div>Tableau de bord</div>
           </a>
-          <a href="{{ url_for('preinscriptions_form') }}?programme={{ programme.code }}" class="submenu-item {% if '/{{ programme.code }}/preinscriptions' in request.url.path %}active{% endif %}">
+          <a href="{{ url_for('preinscriptions_form') }}?programme={{ programme.code }}" class="submenu-item {% if '/{{ programme.code }}/preinscriptions' in request.url.path %}active{% endif %}"
+          style="margin:5px 5px 5px 5px;">
             <div class="icon"><i class="fas fa-building"></i></div><div>Préinscriptions</div>
           </a>
-          <a href="{{ url_for('inscriptions_form') }}?programme={{ programme.code }}" class="submenu-item {% if '/{{ programme.code }}/inscriptions' in request.url.path %}active{% endif %}">
+          <a href="{{ url_for('form_inscriptions_display') }}?programme={{ programme.code }}" class="submenu-item {% if '/{{ programme.code }}/inscriptions' in request.url.path %}active{% endif %}"
+          style="margin:5px 5px 5px 5px;">
             <div class="icon"><i class="fas fa-project-diagram"></i></div><div>Inscriptions</div>
           </a>
-          <a href="{{ url_for('rendez_vous_list') }}?programme_id={{ programme.id }}" class="submenu-item {% if '/rendez-vous' in request.url.path %}active{% endif %}">
+          <a href="{{ url_for('rendez_vous_list') }}?programme={{ programme.code }}" class="submenu-item {% if '/rendez-vous' in request.url.path %}active{% endif %}"
+          style="margin:5px 5px 5px 5px;">
             <div class="icon"><i class="fas fa-calendar-alt"></i></div><div>Rendez-vous</div>
           </a>
-          <a href="{{ url_for('liste_seminaires') }}?programme_id={{ programme.id }}" class="submenu-item {% if '/seminaires' in request.url.path %}active{% endif %}">
+          <a href="{{ url_for('liste_seminaires') }}?programme={{ programme.code }}" class="submenu-item {% if '/seminaires' in request.url.path %}active{% endif %}"
+          style="margin:5px 5px 5px 5px;">
             <div class="icon"><i class="fas fa-chalkboard-teacher"></i></div><div>Séminaires</div>
           </a>
-          <a href="{{ url_for('liste_events') }}?programme_id={{ programme.id }}" class="submenu-item {% if '/events' in request.url.path %}active{% endif %}">
+          <a href="{{ url_for('liste_events') }}?programme={{ programme.code }}" class="submenu-item {% if '/events' in request.url.path %}active{% endif %}"
+          style="margin:5px 5px 5px 5px;">
             <div class="icon"><i class="fas fa-calendar-check"></i></div><div>Événements</div>
           </a>
-          <a href="{{url_for('codev_dashboard')}}?programme_id={{ programme.id }}" class="submenu-item {% if '/codev' in request.url.path %}active{% endif %}">
+          <a href="{{url_for('codev_dashboard')}}?programme={{ programme.code }}" class="submenu-item {% if '/codev' in request.url.path %}active{% endif %}"
+          style="margin:5px 5px 5px 5px;">
             <div class="icon"><i class="fas fa-users-cog"></i></div><div>Codev</div>
           </a>
-          <a href="{{url_for('elearning_modules')}}?programme_id={{ programme.id }}" class="submenu-item {% if '/elearning' in request.url.path %}active{% endif %}">
+          <a href="{{url_for('elearning_modules')}}?programme={{ programme.code }}" class="submenu-item {% if '/elearning' in request.url.path %}active{% endif %}"
+          style="margin:5px 5px 5px 5px;">
             <div class="icon"><i class="fas fa-laptop"></i></div><div>E-learning</div>
           </a>
-          <a href="{{url_for('liste_candidats_valides')}}" class="submenu-item {% if '/suivi-mensuel' in request.url.path %}active{% endif %}">
+          <a href="{{url_for('liste_candidats_valides')}}?programme={{ programme.code }}" class="submenu-item {% if '/suivi-mensuel' in request.url.path %}active{% endif %}"
+          style="margin:5px 5px 5px 5px;">
             <div class="icon"><i class="fas fa-chart-line"></i></div><div>Suivi mensuel</div>
           </a>
         </div>
@@ -109,11 +125,11 @@
 
     <!-- Menu réduit : icônes -->
     <div class="menu-icons">
-      <a href="/accueil" class="icon-button" title="Accueil">
+      <a href="{{ url_for('accueil') }}?programme=public" class="icon-button" title="Accueil">
         <i class="fas fa-home"></i>
       </a>
       <!-- Programmes dynamiques -->
-      {% for programme in programmes() %}
+      {% for programme in get_programmes() %}
       <button class="icon-button" onclick="toggleProgrammeMenu(event, this, '{{ programme.code }}')" title="{{ programme.code }}">
         {% if programme.code == 'ACD' %}
           <i class="fas fa-graduation-cap"></i>
@@ -149,9 +165,9 @@
           <span>{{ utilisateur.nom_complet }}</span>
         </a>
         <ul class="dropdown-menu dropdown-menu-dark text-small shadow" aria-labelledby="dropdownUser1">
-          <li><a class="dropdown-item" href="/dashboard/profile">Profile</a></li>
+          <li><a class="dropdown-item" href="{{ url_for('profil') }}?programme=public">Profile</a></li>
           <li><hr class="dropdown-divider"></li>
-          <li><a class="dropdown-item" href="/auth/logout">Sign out</a></li>
+          <li><a class="dropdown-item" href="{{ url_for('accueil') }}?programme=public">Sign out</a></li>
         </ul>
       </div>
       <div style="margin-top: 10px; font-size: 10px;">
@@ -163,7 +179,19 @@
 
   <!-- ===== HEADER ===== -->
   <div class="header-neumorphism">
-    <div class="logo"><img src="/static/images/logo.png" alt="Logo"></div>
+    <div class="logo">
+      {% if company_logo_exists() %}
+        <img src="{{ get_company_logo_url() }}" alt="{{ company_name }}" style="height:40px;">
+        <div class="company-name-header" style="font-size:18px; font-weight:bold; color:var(--primary-color);">{{ company_name }}</div>
+      {% else %}
+        <div class="company-name-header" style="font-size:18px; font-weight:bold; color:var(--primary-color);">{{ company_name }}</div>
+      {% endif %}
+      <div class="current-programme-indicator" style="margin-left: 15px;">
+        <span class="programme-badge" style="background: var(--primary-color); color: white; padding: 4px 8px; border-radius: 12px; font-size: 12px; font-weight: bold;">
+          {{ get_current_programme_from_session(request) }}
+        </span>
+      </div>
+    </div>
     <div class="username-title">{% if current_programme and current_programme != 'ACD' %}{{ current_programme }}{% else %}{{ get_current_programme_title(request) }}{% endif %}</div>
     <div class="user-info">
       <span class="user-role">{{ utilisateur.nom_complet | title }} ({{ utilisateur.role | title }})</span>
@@ -186,9 +214,9 @@
   <!-- ===== FOOTER GLOBAL ===== -->
   <div class="footer-neumorphism">
     <div class="d-flex justify-content-between align-items-center flex-wrap gap-2">
-      <span class="text-muted small">© 2025 MycreoAcademy - LIA-Gestion coaching</span>
-      <span class="text-muted small">Version 1.0.0</span>
-      <span class="text-muted small">Développé par MycreoAcademy</span>
+      <span class="text-muted small">© {{ now().year }} {{ company_name }} - {{ company_description }}</span>
+      <span class="text-muted small">Version {{ app_version }}</span>
+      <span class="text-muted small">Développé par {{ app_author }}</span>
     </div>
   </div>
   {% endif %}
@@ -199,7 +227,17 @@
   <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 
   <script>
-    // Alias rétro-compatibilité : l’admin appelle "toggleOverlay", la base fournit "openOverlay"
+    // Informations de l'entreprise (pour debugging)
+    console.log('🏢 Informations entreprise:', {
+      name: '{{ company_name }}',
+      description: '{{ company_description }}',
+      version: '{{ app_version }}',
+      author: '{{ app_author }}',
+      logo_exists: {{ company_logo_exists() | lower }},
+      logo_url: '{{ get_company_logo_url() }}'
+    });
+    
+    // Alias rétro-compatibilité : l'admin appelle "toggleOverlay", la base fournit "openOverlay"
     window.toggleOverlay = window.toggleOverlay || function(html, anchorEl){
       if (typeof openOverlay === 'function') { openOverlay(html, anchorEl); }
       else { console.error('openOverlay n’est pas défini'); }
@@ -294,68 +332,74 @@
       }, 0);
     }
 
+    // ===== FONCTIONS DE GÉNÉRATION DE MENUS =====
+    
     function htmlMoreMenu(){
       return `
         <div class="more-menu-title">Plus d'options</div>
-        <a href="/messages"><i class="fas fa-bullhorn"></i><span>Communication</span></a>
+        <a href="{{ url_for('accueil') }}?programme=public"><i class="fas fa-bullhorn"></i><span>Communication</span></a>
         {% if utilisateur and (utilisateur.email == "sorolassina58@gmail.com" or utilisateur.role == "general_manager") %}
-        <a href="/admin/"><i class="fas fa-cogs"></i><span>Administration</span></a>
+        <a href="{{ url_for('admin_dashboard') }}?programme=public"><i class="fas fa-cogs"></i><span>Administration</span></a>
         {% endif %}
-        <a href="/reports"><i class="fas fa-file-alt"></i><span>Reports</span></a>
-        <a href="/knowledge-base"><i class="fas fa-book"></i><span>Knowledge Base</span></a>
+        <a href="{{ url_for('accueil') }}?programme=public"><i class="fas fa-file-alt"></i><span>Reports</span></a>
+        <a href="{{ url_for('accueil') }}?programme=public"><i class="fas fa-book"></i><span>Knowledge Base</span></a>
       `;
     }
+    
     function htmlProgrammeMenu(programmeCode){
-      const baseUrl = `/${programmeCode}`;
-      // Mapping des codes de programme vers leurs IDs (à adapter selon votre base de données)
-      const programmeIds = {
-        'ACD': 1,
-        'ACI': 2, 
-        'ACT': 3,
-        'ACR': 4
-      };
-      const programmeId = programmeIds[programmeCode] || 1; // Par défaut ACD
-      
+      // Génère le menu pour un programme spécifique
+      // Utilise le paramètre programme de manière cohérente pour toutes les routes
       return `
         <div class="more-menu-title">${programmeCode}</div>
-        <a href="{{ url_for('programme_dashboard') }}?programme_id=${programmeId}"><i class="fas fa-tachometer-alt"></i><span>Tableau de bord</span></a>
+        <a href="{{ url_for('programme_dashboard') }}?programme=${programmeCode}"><i class="fas fa-tachometer-alt"></i><span>Tableau de bord</span></a>
         <a href="{{ url_for('preinscriptions_form') }}?programme=${programmeCode}"><i class="fas fa-building"></i><span>Préinscriptions</span></a>
-        <a href="{{ url_for('inscriptions_form') }}?programme=${programmeCode}"><i class="fas fa-project-diagram"></i><span>Inscriptions</span></a>
-        <a href="{{ url_for('rendez_vous_list') }}?programme_id=${programmeId}"><i class="fas fa-calendar-alt"></i><span>Rendez-vous</span></a>
-        <a href="{{ url_for('liste_seminaires') }}?programme_id=${programmeId}"><i class="fas fa-chalkboard-teacher"></i><span>Séminaires</span></a>
-        <a href="{{ url_for('liste_events') }}?programme_id=${programmeId}"><i class="fas fa-calendar-check"></i><span>Événements</span></a>
-        <a href="{{url_for('codev_dashboard')}}?programme_id=${programmeId}"><i class="fas fa-users-cog"></i><span>Codev</span></a>
-        <a href="{{url_for('elearning_modules')}}?programme_id=${programmeId}"><i class="fas fa-laptop"></i><span>E-learning</span></a>
-        <a href="{{url_for('liste_candidats_valides')}}"><i class="fas fa-chart-line"></i><span>Suivi mensuel</span></a>
+        <a href="{{ url_for('form_inscriptions_display') }}?programme=${programmeCode}"><i class="fas fa-project-diagram"></i><span>Inscriptions</span></a>
+        <a href="{{ url_for('rendez_vous_list') }}?programme=${programmeCode}"><i class="fas fa-calendar-alt"></i><span>Rendez-vous</span></a>
+        <a href="{{ url_for('liste_seminaires') }}?programme=${programmeCode}"><i class="fas fa-chalkboard-teacher"></i><span>Séminaires</span></a>
+        <a href="{{ url_for('liste_events') }}?programme=${programmeCode}"><i class="fas fa-calendar-check"></i><span>Événements</span></a>
+        <a href="{{url_for('codev_dashboard')}}?programme=${programmeCode}"><i class="fas fa-users-cog"></i><span>Codev</span></a>
+        <a href="{{url_for('elearning_modules')}}?programme=${programmeCode}"><i class="fas fa-laptop"></i><span>E-learning</span></a>
+        <a href="{{url_for('liste_candidats_valides')}}?programme=${programmeCode}"><i class="fas fa-chart-line"></i><span>Suivi mensuel</span></a>
       `;
     }
+    
     function htmlCommunication(){
       return `
         <div class="more-menu-title">Communication</div>
-        <a href="/messages"><i class="fas fa-comments"></i><span>Messages</span></a>
+        <a href="{{ url_for('accueil') }}?programme=public"><i class="fas fa-comments"></i><span>Messages</span></a>
       `;
     }
+    
     function htmlMoreCollapsed(){
       return `
         <div class="more-menu-title">Plus d'options</div>
-        <a href="/messages"><i class="fas fa-bullhorn"></i><span>Communication</span></a>
+        <a href="{{ url_for('accueil') }}?programme=public"><i class="fas fa-bullhorn"></i><span>Communication</span></a>
         {% if utilisateur and (utilisateur.email == "sorolassina58@gmail.com" or utilisateur.role == "general_manager") %}
-        <a href="/admin"><i class="fas fa-cogs"></i><span>Administration</span></a>
+        <a href="{{ url_for('admin_dashboard') }}?programme=public"><i class="fas fa-cogs"></i><span>Administration</span></a>
         {% endif %}
-        <a href="/knowledge-base"><i class="fas fa-book"></i><span>Documentation</span></a>
+        <a href="{{ url_for('accueil') }}?programme=public"><i class="fas fa-book"></i><span>Documentation</span></a>
       `;
     }
 
-    function toggleMoreMenu(evt, btn){ if(evt) evt.stopPropagation(); toggleOverlay(htmlMoreMenu(), btn || evt.currentTarget); }
+    // ===== FONCTIONS DE TOGGLE DES MENUS =====
+    
+    function toggleMoreMenu(evt, btn){ 
+      if(evt) evt.stopPropagation(); 
+      toggleOverlay(htmlMoreMenu(), btn || evt.currentTarget); 
+    }
+    
     function toggleProgrammeMenu(evt, btn, programmeCode){ 
       if(evt) evt.stopPropagation(); 
       toggleOverlay(htmlProgrammeMenu(programmeCode), btn || evt.currentTarget); 
     }
-    // Fonctions spécifiques maintenues pour compatibilité (dépréciées)
-    function toggleACDMenu(evt, btn){ toggleProgrammeMenu(evt, btn, 'ACD'); }
-    function toggleACIMenu(evt, btn){ toggleProgrammeMenu(evt, btn, 'ACI'); }
-    function toggleACTMenu(evt, btn){ toggleProgrammeMenu(evt, btn, 'ACT'); }
-    function toggleMoreMenuCollapsed(evt, btn){ if(evt) evt.stopPropagation(); toggleOverlay(htmlMoreCollapsed(), btn || evt.currentTarget); }
+    
+    function toggleMoreMenuCollapsed(evt, btn){ 
+      if(evt) evt.stopPropagation(); 
+      toggleOverlay(htmlMoreCollapsed(), btn || evt.currentTarget); 
+    }
+    
+    // ===== EVENT LISTENERS GLOBAUX =====
+    // Fermer les menus lors du redimensionnement ou du scroll
     window.addEventListener('resize', closeAnyOverlay);
     window.addEventListener('scroll', closeAnyOverlay, { passive:true });
 
@@ -364,8 +408,8 @@
       if (evt) evt.stopPropagation();
       const html = `
         <div class="more-menu-title">{% if utilisateur %}{{ utilisateur.nom_complet }}{% else %}Utilisateur{% endif %}</div>
-        <a href="/dashboard/profile"><i class="fas fa-id-badge"></i><span>Profil</span></a>
-        <a href="/auth/logout"><i class="fas fa-right-from-bracket"></i><span>Déconnexion</span></a>
+        <a href="{{ url_for('profil') }}?programme=public"><i class="fas fa-id-badge"></i><span>Profil</span></a>
+        <a href="{{ url_for('accueil') }}?programme=public"><i class="fas fa-right-from-bracket"></i><span>Déconnexion</span></a>
       `;
       toggleOverlay(html, btn || (evt && evt.currentTarget));
     }

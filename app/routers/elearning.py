@@ -85,7 +85,7 @@ async def elearning_dashboard(
         }
     )
 
-@router.get("/modules", response_class=HTMLResponse)
+@router.get("/modules", response_class=HTMLResponse, name="elearning_modules")
 async def elearning_modules(
     request: Request,
     programme_id: Optional[int] = None,
@@ -276,7 +276,7 @@ async def elearning_module_creer(
             }
         )
 
-@router.get("/modules/{module_id}", response_class=HTMLResponse)
+@router.get("/modules/{module_id}", response_class=HTMLResponse, name="elearning_module_detail")
 async def elearning_module_detail(
     module_id: int,
     request: Request,
@@ -374,7 +374,7 @@ async def start_ressource(
     )
 
 # Routes pour la gestion des ressources
-@router.get("/ressources/creer", response_class=HTMLResponse)
+@router.get("/ressources/creer", response_class=HTMLResponse, name="elearning_ressource_creer_form")
 async def elearning_ressource_creer_form(
     request: Request,
     current_user: User = Depends(get_current_user),

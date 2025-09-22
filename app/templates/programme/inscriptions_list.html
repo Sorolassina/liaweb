@@ -1,0 +1,222 @@
+{% extends "base.html" %}
+
+{% block title %}Liste des Inscriptions{% endblock %}
+
+{% block content %}
+<div class="container-fluid">
+    <div class="row">
+        <div class="col-12">
+            <div class="card">
+                <div class="card-header d-flex justify-content-between align-items-center">
+                    <h5 class="mb-0">
+                        <i class="fas fa-project-diagram me-2"></i>
+                        Liste des Inscriptions - {{ programme or 'Tous les programmes' }}
+                    </h5>
+                    <div class="d-flex gap-2">
+                        <a href="{{ url_for('form_inscriptions_display') }}?programme={{ programme or 'ACD' }}" class="btn btn-primary btn-sm">
+                            <i class="fas fa-plus me-1"></i>Nouvelle Inscription
+                        </a>
+                    </div>
+                </div>
+                
+                <div class="card-body">
+                    <!-- Filtres -->
+                    <div class="row mb-3">
+                        <div class="col-md-6">
+                            <form method="get" class="d-flex gap-2">
+                                <input type="hidden" name="programme" value="{{ programme or 'ACD' }}">
+                                <input type="text" name="q" class="form-control form-control-sm" 
+                                       placeholder="Rechercher par nom, email..." 
+                                       value="{{ q or '' }}">
+                                <button type="submit" class="btn btn-outline-primary btn-sm">
+                                    <i class="fas fa-search"></i>
+                                </button>
+                                {% if q %}
+                                <a href="?programme={{ programme or 'ACD' }}" class="btn btn-outline-secondary btn-sm">
+                                    <i class="fas fa-times"></i>
+                                </a>
+                                {% endif %}
+                            </form>
+                        </div>
+                    </div>
+
+                    <!-- Statistiques -->
+                    <div class="row mb-3">
+                        <div class="col-md-3">
+                            <div class="info-box bg-primary text-white">
+                                <div class="info-box-content">
+                                    <span class="info-box-text">Total Inscriptions</span>
+                                    <span class="info-box-number">{{ inscriptions|length }}</span>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="col-md-3">
+                            <div class="info-box bg-success text-white">
+                                <div class="info-box-content">
+                                    <span class="info-box-text">Validées</span>
+                                    <span class="info-box-number">
+                                        {{ inscriptions|selectattr('statut', 'equalto', 'VALIDE')|list|length }}
+                                    </span>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="col-md-3">
+                            <div class="info-box bg-warning text-white">
+                                <div class="info-box-content">
+                                    <span class="info-box-text">En cours</span>
+                                    <span class="info-box-number">
+                                        {{ inscriptions|selectattr('statut', 'equalto', 'EN_COURS')|list|length }}
+                                    </span>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="col-md-3">
+                            <div class="info-box bg-danger text-white">
+                                <div class="info-box-content">
+                                    <span class="info-box-text">Rejetées</span>
+                                    <span class="info-box-number">
+                                        {{ inscriptions|selectattr('statut', 'equalto', 'REJETE')|list|length }}
+                                    </span>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Table des inscriptions -->
+                    <div class="table-responsive">
+                        <table class="table table-striped table-hover">
+                            <thead class="table-dark">
+                                <tr>
+                                    <th>ID</th>
+                                    <th>Candidat</th>
+                                    <th>Email</th>
+                                    <th>Programme</th>
+                                    <th>Statut</th>
+                                    <th>Date</th>
+                                    <th>Actions</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% for inscription in inscriptions %}
+                                <tr>
+                                    <td>{{ inscription.id }}</td>
+                                    <td>
+                                        {% if inscription.candidat %}
+                                            {{ inscription.candidat.nom }} {{ inscription.candidat.prenom }}
+                                        {% else %}
+                                            <span class="text-muted">N/A</span>
+                                        {% endif %}
+                                    </td>
+                                    <td>
+                                        {% if inscription.candidat %}
+                                            {{ inscription.candidat.email }}
+                                        {% else %}
+                                            <span class="text-muted">N/A</span>
+                                        {% endif %}
+                                    </td>
+                                    <td>
+                                        {% if inscription.programme %}
+                                            {{ inscription.programme.nom }}
+                                        {% else %}
+                                            <span class="text-muted">N/A</span>
+                                        {% endif %}
+                                    </td>
+                                    <td>
+                                        <span class="badge 
+                                            {% if inscription.statut == 'VALIDE' %}bg-success
+                                            {% elif inscription.statut == 'EN_COURS' %}bg-warning
+                                            {% elif inscription.statut == 'REJETE' %}bg-danger
+                                            {% else %}bg-secondary{% endif %}">
+                                            {{ inscription.statut.value if inscription.statut else 'N/A' }}
+                                        </span>
+                                    </td>
+                                    <td>
+                                        {% if inscription.cree_le %}
+                                            {{ inscription.cree_le.strftime('%d/%m/%Y') }}
+                                        {% else %}
+                                            <span class="text-muted">N/A</span>
+                                        {% endif %}
+                                    </td>
+                                    <td>
+                                        <div class="btn-group btn-group-sm">
+                                            <a href="{{ url_for('form_inscriptions_display') }}?programme={{ inscription.programme.code if inscription.programme else 'ACD' }}&pre_id={{ inscription.id }}" 
+                                               class="btn btn-outline-primary" title="Voir/Modifier">
+                                                <i class="fas fa-eye"></i>
+                                            </a>
+                                        </div>
+                                    </td>
+                                </tr>
+                                {% else %}
+                                <tr>
+                                    <td colspan="7" class="text-center text-muted py-4">
+                                        <i class="fas fa-inbox fa-2x mb-2"></i><br>
+                                        Aucune inscription trouvée
+                                    </td>
+                                </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+
+                    <!-- Pagination (si nécessaire) -->
+                    {% if inscriptions|length >= 50 %}
+                    <nav aria-label="Pagination des inscriptions">
+                        <ul class="pagination justify-content-center">
+                            <li class="page-item disabled">
+                                <span class="page-link">Précédent</span>
+                            </li>
+                            <li class="page-item active">
+                                <span class="page-link">1</span>
+                            </li>
+                            <li class="page-item disabled">
+                                <span class="page-link">Suivant</span>
+                            </li>
+                        </ul>
+                    </nav>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<style>
+.info-box {
+    padding: 15px;
+    border-radius: 8px;
+    margin-bottom: 10px;
+}
+
+.info-box-content {
+    text-align: center;
+}
+
+.info-box-text {
+    display: block;
+    font-size: 0.9rem;
+    font-weight: 500;
+    margin-bottom: 5px;
+}
+
+.info-box-number {
+    display: block;
+    font-size: 1.5rem;
+    font-weight: bold;
+}
+
+.table th {
+    font-size: 0.9rem;
+    font-weight: 600;
+}
+
+.table td {
+    font-size: 0.85rem;
+    vertical-align: middle;
+}
+
+.btn-group-sm .btn {
+    padding: 0.25rem 0.5rem;
+    font-size: 0.75rem;
+}
+</style>
+{% endblock %}

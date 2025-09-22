@@ -3,19 +3,121 @@
 {% block title %}Créer un Rendez-vous{% endblock %}
 
 {% block content %}
-<div class="container-fluid">
+<style>
+/* Styles pour rendre la page plus compacte */
+.compact-page {
+    font-size: 0.85rem;
+}
+
+.compact-page .card-header {
+    padding: 0.5rem 0.75rem;
+    font-size: 0.9rem;
+}
+
+.compact-page .card-body {
+    padding: 0.75rem;
+}
+
+.compact-page .form-label {
+    font-size: 0.75rem;
+    font-weight: 500;
+    margin-bottom: 0.25rem;
+}
+
+.compact-page .form-control {
+    font-size: 0.8rem;
+    padding: 0.4rem 0.6rem;
+}
+
+.compact-page .form-select {
+    font-size: 0.8rem;
+    padding: 0.4rem 0.6rem;
+}
+
+.compact-page .form-text {
+    font-size: 0.7rem;
+    margin-top: 0.25rem;
+}
+
+.compact-page .btn {
+    font-size: 0.8rem;
+    padding: 0.4rem 0.8rem;
+}
+
+.compact-page .btn i {
+    font-size: 0.8rem;
+}
+
+.compact-page .alert {
+    padding: 0.5rem 0.75rem;
+    font-size: 0.8rem;
+}
+
+.compact-page .alert h6 {
+    font-size: 0.85rem;
+    margin-bottom: 0.25rem;
+}
+
+.compact-page .alert strong {
+    font-size: 0.75rem;
+    font-weight: 600;
+}
+
+.compact-page .mb-3 {
+    margin-bottom: 0.75rem !important;
+}
+
+.compact-page .mb-1 {
+    margin-bottom: 0.25rem !important;
+}
+
+.compact-page .me-1 {
+    margin-right: 0.25rem !important;
+}
+
+.compact-page .me-2 {
+    margin-right: 0.5rem !important;
+}
+
+.compact-page .card-title {
+    font-size: 1.1rem;
+    margin-bottom: 0;
+}
+
+.compact-page .card-title i {
+    font-size: 1rem;
+}
+
+.compact-page .row {
+    margin-bottom: 0.5rem;
+}
+
+.compact-page .col-md-6,
+.compact-page .col-md-4,
+.compact-page .col-12 {
+    padding-left: 0.5rem;
+    padding-right: 0.5rem;
+}
+
+.compact-page textarea {
+    font-size: 0.8rem;
+    line-height: 1.4;
+}
+</style>
+
+<div class="container-fluid compact-page" style="position: sticky;overflow: hidden;">
     <div class="row">
         <div class="col-12">
             <div class="card">
-                <div class="card-header">
+                <div class="card-header compact-page">
                     <h3 class="card-title mb-0">
                         <i class="fas fa-plus me-2"></i>
                         Créer un Nouveau Rendez-vous
                     </h3>
                 </div>
                 
-                <div class="card-body">
-                    <form method="post" action="/rendez-vous/creer">
+                <div class="card-body compact-page">
+                    <form method="post" action="{{ url_for('rendez_vous_create') }}">
                         <div class="row">
                             <div class="col-md-6">
                                 <div class="mb-3">
@@ -130,7 +232,7 @@
 
                         <!-- Informations du candidat sélectionné -->
                         {% if candidat %}
-                        <div class="alert alert-info" id="candidat-info">
+                        <div class="alert alert-info compact-page" id="candidat-info">
                             <h6><i class="fas fa-user me-2"></i>Informations du candidat</h6>
                             <div class="row">
                                 <div class="col-md-6">
@@ -146,7 +248,7 @@
                             </div>
                         </div>
                         {% else %}
-                        <div class="alert alert-info" id="candidat-info" style="display: none;">
+                        <div class="alert alert-info compact-page" id="candidat-info" style="display: none;">
                             <h6><i class="fas fa-user me-2"></i>Informations du candidat</h6>
                             <div class="row">
                                 <div class="col-md-6">
@@ -160,12 +262,12 @@
                         </div>
                         {% endif %}
 
-                        <div class="d-flex justify-content-between">
-                            <a href="/rendez-vous" class="btn btn-secondary">
+                        <div class="d-flex justify-content-between compact-page">
+                            <a href="{{ url_for('rendez_vous_list') }}" class="btn btn-secondary submenu-item">
                                 <i class="fas fa-arrow-left me-1"></i>
                                 Retour à la liste
                             </a>
-                            <button type="submit" class="btn btn-primary">
+                            <button type="submit" class="submenu-item">
                                 <i class="fas fa-save me-1"></i>
                                 Créer le rendez-vous
                             </button>

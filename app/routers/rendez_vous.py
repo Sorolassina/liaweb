@@ -1,19 +1,22 @@
 # app/routers/rendez_vous.py
 from datetime import datetime, date
 from typing import Optional, List
+import logging
 from fastapi import APIRouter, Depends, Request, Query, Form, HTTPException
 from fastapi.responses import HTMLResponse, RedirectResponse, JSONResponse
 from sqlmodel import Session, select
 
 from app_lia_web.core.database import get_session
 from app_lia_web.core.security import get_current_user
-from app_lia_web.app.models.base import User, Programme, Inscription, Candidat, Entreprise, RendezVous
+from app_lia_web.core.config import settings
+from app_lia_web.app.models.base import User, Programme, Inscription, Candidat, Entreprise, RendezVous, EmargementRDV
 from app_lia_web.app.models.enums import TypeRDV, StatutRDV, UserRole
 from app_lia_web.app.schemas.rendez_vous_schemas import RendezVousCreate, RendezVousUpdate, RendezVousFilter
 from app_lia_web.app.services.rendez_vous_service import RendezVousService
 from app_lia_web.app.templates import templates
 
 router = APIRouter()
+logger = logging.getLogger(__name__)
 
 @router.get("/rendez-vous", name="rendez_vous_list", response_class=HTMLResponse)
 def rendez_vous_list(
@@ -85,7 +88,7 @@ def rendez_vous_list(
         "has_prev": page > 1
     })
 
-@router.get("/rendez-vous/creer", response_class=HTMLResponse)
+@router.get("/rendez-vous/creer", response_class=HTMLResponse, name="rendez_vous_create_form")
 def rendez_vous_create_form(
     request: Request,
     session: Session = Depends(get_session),
@@ -180,7 +183,7 @@ def rendez_vous_create_form(
         "statuts_rdv": [s.value for s in StatutRDV]
     })
 
-@router.post("/rendez-vous/creer")
+@router.post("/rendez-vous/creer", name="rendez_vous_create")
 def rendez_vous_create(
     request: Request,
     session: Session = Depends(get_session),
@@ -217,7 +220,7 @@ def rendez_vous_create(
     except Exception as e:
         raise HTTPException(status_code=400, detail=f"Erreur lors de la création du rendez-vous: {str(e)}")
 
-@router.get("/rendez-vous/{rdv_id}", response_class=HTMLResponse)
+@router.get("/rendez-vous/{rdv_id}", response_class=HTMLResponse, name="rendez_vous_detail")
 def rendez_vous_detail(
     rdv_id: int,
     request: Request,
@@ -247,7 +250,7 @@ def rendez_vous_detail(
         "statuts_rdv": [s.value for s in StatutRDV]
     })
 
-@router.post("/rendez-vous/{rdv_id}/modifier")
+@router.post("/rendez-vous/{rdv_id}/modifier", name="rendez_vous_update")
 def rendez_vous_update(
     rdv_id: int,
     request: Request,
@@ -285,7 +288,7 @@ def rendez_vous_update(
     except Exception as e:
         raise HTTPException(status_code=400, detail=f"Erreur lors de la modification du rendez-vous: {str(e)}")
 
-@router.post("/rendez-vous/{rdv_id}/supprimer")
+@router.post("/rendez-vous/{rdv_id}/supprimer", name="rendez_vous_delete")
 def rendez_vous_delete(
     rdv_id: int,
     request: Request,
@@ -302,7 +305,7 @@ def rendez_vous_delete(
     
     return RedirectResponse(url="/rendez-vous", status_code=303)
 
-@router.get("/rendez-vous/api/search")
+@router.get("/rendez-vous/api/search", name="rendez_vous_api_search")
 def rendez_vous_api_search(
     session: Session = Depends(get_session),
     current_user: User = Depends(get_current_user),
@@ -334,7 +337,7 @@ def rendez_vous_api_search(
     
     return {"rendez_vous": rendez_vous}
 
-@router.get("/rendez-vous/api/statistiques")
+@router.get("/rendez-vous/api/statistiques", name="rendez_vous_api_stats")
 def rendez_vous_api_stats(
     session: Session = Depends(get_session),
     current_user: User = Depends(get_current_user),
@@ -352,3 +355,67 @@ def rendez_vous_api_stats(
     )
     
     return stats
+
+@router.get("/emargement/{rdv_id}", name="emargement_rdv")
+async def page_emargement_conseiller(
+    request: Request,
+    rdv_id: int,
+    session: Session = Depends(get_session),
+    current_user: User = Depends(get_current_user)
+):
+    """Page d'émargement pour le conseiller"""
+    logger.info(f"📝 Page émargement conseiller - RDV ID: {rdv_id}, User: {current_user.email}")
+    
+    try:
+        # Récupérer le RDV avec toutes les relations
+        rdv = session.get(RendezVous, rdv_id)
+        if not rdv:
+            raise HTTPException(status_code=404, detail="Rendez-vous non trouvé")
+        
+        # Charger les relations
+        inscription = session.get(Inscription, rdv.inscription_id)
+        if not inscription:
+            raise HTTPException(status_code=404, detail="Inscription non trouvée")
+        
+        candidat = session.get(Candidat, inscription.candidat_id)
+        if not candidat:
+            raise HTTPException(status_code=404, detail="Candidat non trouvé")
+        
+        # Vérifier les permissions
+        if current_user.role not in ["administrateur", "coordinateur"] and rdv.conseiller_id != current_user.id:
+            raise HTTPException(status_code=403, detail="Vous n'avez pas l'autorisation de voir ce rendez-vous")
+        
+        # Récupérer l'émargement existant
+        emargement_query = select(EmargementRDV).where(EmargementRDV.rdv_id == rdv_id)
+        emargement = session.exec(emargement_query).first()
+        
+        # Si pas d'émargement, en créer un
+        if not emargement:
+            emargement = EmargementRDV(
+                rdv_id=rdv_id,
+                type_signataire="conseiller",
+                signataire_id=current_user.id,
+                candidat_id=candidat.id
+            )
+            session.add(emargement)
+            session.commit()
+            session.refresh(emargement)
+        
+        logger.info(f"✅ Page émargement chargée pour RDV {rdv_id}")
+        
+        return templates.TemplateResponse("emargement/conseiller.html", {
+            "request": request,
+            "rdv": rdv,
+            "candidat": candidat,
+            "emargement": emargement,
+            "utilisateur": current_user,
+            "settings": settings
+        })
+        
+    except HTTPException as e:
+        logger.error(f"❌ HTTPException dans page_emargement_conseiller: {e.detail}")
+        raise
+    except Exception as e:
+        logger.error(f"💥 Erreur inattendue dans page_emargement_conseiller: {str(e)}")
+        raise HTTPException(status_code=500, detail=f"Erreur interne: {str(e)}")
+

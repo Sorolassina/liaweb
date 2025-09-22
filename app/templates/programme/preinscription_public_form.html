@@ -1,0 +1,587 @@
+{% extends "base_public.html" %}
+{% block head_extra %}
+<style>
+  .card-neumo{ 
+    background:var(--white-color); 
+    border-radius:18px; 
+    box-shadow:var(--shadow);
+    border:1px solid color-mix(in srgb, var(--secondary-color) 8%, transparent); 
+    transition: transform .2s ease, box-shadow .2s ease;
+    max-width: 960px;
+    margin: 0 auto;
+  }
+  .card-neumo:hover{ transform: translateY(-2px); box-shadow: var(--shadow-lg); }
+  .section-title{ color:var(--secondary-color); font-weight:900; margin:0 0 1.2rem; font-size: 1.4rem; text-align: center; }
+  .hint{ font-size:.9rem; color: var(--gray-dark); margin-top: .25rem; }
+
+  .form-label { font-weight: 600; color: var(--secondary-color); margin-bottom: .5rem; }
+  .form-control, .form-select {
+    border-radius: 12px; border: 1px solid color-mix(in srgb, var(--secondary-color) 20%, transparent);
+    transition: border-color .2s ease, box-shadow .2s ease;
+  }
+  .form-control:focus, .form-select:focus {
+    border-color: var(--primary-color);
+    box-shadow: 0 0 0 0.2rem color-mix(in srgb, var(--primary-color) 25%, transparent);
+  }
+  
+  /* États de validation */
+  .form-control.is-valid, .form-select.is-valid {
+    border-color: var(--success-color) !important;
+    box-shadow: 0 0 0 0.2rem color-mix(in srgb, var(--success-color) 25%, transparent) !important;
+  }
+  
+  .form-control.is-invalid, .form-select.is-invalid {
+    border-color: var(--danger-color) !important;
+    box-shadow: 0 0 0 0.2rem color-mix(in srgb, var(--danger-color) 25%, transparent) !important;
+  }
+  
+  .field-error {
+    color: var(--danger-color);
+    font-size: 0.875rem;
+    margin-top: 0.25rem;
+    display: flex;
+    align-items: center;
+    gap: 0.25rem;
+  }
+  
+  .btn-primary { background: var(--primary-color); border: none; border-radius: 12px; padding: 12px 24px; font-weight: 600; }
+  .btn-outline { border-radius: 12px; }
+
+  /* Bloc avatar */
+  .avatar-uploader{
+    display:flex; gap:16px; align-items:center; background:var(--white-color);
+    border:1px dashed color-mix(in srgb, var(--secondary-color) 25%, transparent);
+    padding:14px; border-radius:16px;
+  }
+  .avatar-preview{
+    width:100px;height:100px;border-radius:12px;overflow:hidden;flex:0 0 auto;
+    box-shadow: var(--shadow);
+    background:var(--light-color) center/cover no-repeat;
+  }
+  .avatar-preview img{ width:100%; height:100%; object-fit:cover; display:block; }
+  .avatar-actions{ display:flex; flex-direction:column; gap:8px; }
+
+  /* Repeater Documents */
+  .doc-row{
+    display:grid; grid-template-columns: 1fr 1fr 1.5fr auto; gap:10px; align-items:center;
+    padding:10px; border-radius:12px; background:var(--light-color); border:1px solid color-mix(in srgb, var(--secondary-color) 10%, transparent);
+  }
+  .doc-row + .doc-row{ margin-top:10px; }
+  .doc-row .remove{
+    border:0; background:var(--white-color); border-radius:10px; width:38px; height:38px;
+    display:flex; align-items:center; justify-content:center; box-shadow: var(--shadow-sm);
+  }
+  .doc-row .remove:hover{ background:color-mix(in srgb, var(--secondary-color) 5%, transparent); }
+  .docs-help{ font-size:.9rem; color:var(--gray-dark); }
+
+  @media (max-width: 768px){
+    .doc-row{ grid-template-columns: 1fr; }
+  }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="card-neumo p-4">
+  <h3 class="section-title">Préinscription {{ programme.code if programme else "" }}{% if programme and programme.nom %} — {{ programme.nom }}{% endif %}</h3>
+  {% if error %}
+    <div class="alert alert-danger" style="border-radius: 12px; border-left: 4px solid var(--danger-color); background-color: color-mix(in srgb, var(--danger-color) 10%, transparent); color: var(--danger-color); padding: 1rem; margin-bottom: 1.5rem;">
+      <div style="display: flex; align-items: center; gap: 0.5rem;">
+        <i class="fas fa-exclamation-triangle" style="font-size: 1.2rem;"></i>
+        <strong>Erreur :</strong>
+      </div>
+      <div style="margin-top: 0.5rem; margin-left: 1.7rem;">
+        {{ error }}
+      </div>
+      <div style="margin-top: 1rem; margin-left: 1.7rem; font-size: 0.9rem; color: var(--danger-color);">
+        <strong>Que faire ?</strong>
+        <ul style="margin-top: 0.5rem; margin-bottom: 0;">
+          <li>Contactez l'administrateur du système</li>
+          <li>Ou essayez de recharger la page</li>
+          <li>Ou utilisez un autre programme si disponible</li>
+        </ul>
+      </div>
+    </div>
+  {% else %}
+  <form method="post" enctype="multipart/form-data"
+        action="/ACD/preinscriptions/submit" class="needs-validation" novalidate>
+    
+    <!-- Sélection du programme -->
+    {% if not invite %}
+    <div class="card mb-4">
+      <div class="card-header bg-primary text-white">
+        <h5 class="mb-0"><i class="fas fa-graduation-cap me-2"></i>Sélection du programme</h5>
+      </div>
+      <div class="card-body">
+        <label class="form-label">Programme</label>
+        <select name="programme_code" class="form-select" required>
+          {% if programme %}
+            <option value="{{ programme.code }}">{{ programme.code }} — {{ programme.nom }}</option>
+          {% else %}
+            <option value="">— Choisir un programme —</option>
+            {% if programmes_actifs %}
+              {% for prog in programmes_actifs %}
+                <option value="{{ prog.code }}">{{ prog.code }} — {{ prog.nom }}</option>
+              {% endfor %}
+            {% else %}
+             
+            {% endif %}
+          {% endif %}
+        </select>
+        {% if not programmes_actifs %}
+          <div class="hint text-warning mt-2">
+            <i class="fas fa-exclamation-triangle me-1"></i>
+            Aucun programme actif trouvé. Les programmes affichés sont des exemples.
+          </div>
+        {% endif %}
+      </div>
+    </div>
+    {% endif %}
+
+    <!-- Accordion pour organiser les informations -->
+    <div class="accordion" id="preinscriptionAccordion">
+      
+      <!-- Informations personnelles -->
+      <div class="accordion-item">
+        <h2 class="accordion-header" id="headingPersonal">
+          <button class="accordion-button" type="button" data-bs-toggle="collapse" data-bs-target="#collapsePersonal" aria-expanded="true" aria-controls="collapsePersonal">
+            <i class="fas fa-user me-2"></i>Informations personnelles
+          </button>
+        </h2>
+        <div id="collapsePersonal" class="accordion-collapse collapse show" aria-labelledby="headingPersonal" data-bs-parent="#preinscriptionAccordion">
+          <div class="accordion-body">
+            <!-- Photo de profil -->
+            <div class="mb-4">
+              <label class="form-label">Photo de profil (optionnel)</label>
+              <div class="avatar-uploader">
+                <div class="avatar-preview" id="avatarPreview">
+                  <img id="avatarImg" src="/static/images/utilisateur.png" alt="Aperçu">
+                </div>
+                <div class="avatar-actions">
+                  <input type="file" accept="image/*" name="photo_profil" id="photoProfil" class="form-control" />
+                  <div class="hint">Formats recommandés : JPG/PNG — 2 Mo max.</div>
+                </div>
+              </div>
+            </div>
+
+            <div class="row g-3">
+              <div class="col-md-3">
+                <label class="form-label">Civilité</label>
+                <select name="civilite" class="form-select" required>
+                  <option value="">—</option>
+                  <option value="Mme">Mme</option><option value="M.">M.</option>
+                </select>
+              </div>
+              <div class="col-md-5">
+                <label class="form-label">Nom</label>
+                <input name="nom" class="form-control" required>
+              </div>
+              <div class="col-md-4">
+                <label class="form-label">Prénom</label>
+                <input name="prenom" class="form-control" required>
+              </div>
+
+              <div class="col-md-4">
+                <label class="form-label">Date de naissance</label>
+                <input type="date" name="date_naissance" class="form-control" required>
+              </div>
+              <div class="col-md-4">
+                <label class="form-label">Email</label>
+                <input type="email" name="email" class="form-control" value="{{ prefill_email or invite.email if invite else '' }}" 
+                       pattern="[a-z0-9._%+-]+@[a-z0-9.-]+\.[a-z]{2,}$" 
+                       title="Veuillez entrer une adresse email valide (ex: nom@domaine.com)" required>
+                <div class="hint">Format: nom@domaine.com</div>
+              </div>
+              <div class="col-md-4">
+                <label class="form-label">Téléphone</label>
+                <input type="tel" name="telephone" class="form-control" 
+                       pattern="^(?:(?:\+|00)33|0)\s*[1-9](?:[\s.-]*\d{2}){4}$"
+                       title="Veuillez entrer un numéro de téléphone français valide (ex: 06 12 34 56 78)" 
+                       placeholder="06 12 34 56 78">
+                <div class="hint">Format: 06 12 34 56 78 ou +33 6 12 34 56 78</div>
+              </div>
+
+              <div class="col-12">
+                <label class="form-label">Adresse personnelle</label>
+                <input name="adresse_personnelle" class="form-control" 
+                       placeholder="Numéro et rue, Code postal Ville" required>
+                <div class="hint">Ex: 10 Rue de la Paix, 75001 Paris</div>
+              </div>
+
+              <div class="col-md-6">
+                <label class="form-label">Niveau d'études</label>
+                <select name="niveau_etudes" class="form-select">
+                  <option value="">Sélectionner...</option>
+                  <option value="BAC">BAC</option>
+                  <option value="BAC+2">BAC+2</option>
+                  <option value="BAC+3">BAC+3</option>
+                  <option value="BAC+4">BAC+4</option>
+                  <option value="BAC+5">BAC+5</option>
+                  <option value="BAC+6">BAC+6</option>
+                  <option value="BAC+7">BAC+7</option>
+                  <option value="BAC+8">BAC+8</option>
+                  <option value="BAC+9">BAC+9</option>
+                  <option value="BAC+10">BAC+10</option>
+                  <option value="BAC+11">BAC+11</option>
+                </select>
+              </div>
+              <div class="col-md-6">
+                <label class="form-label">Secteur d'activité</label>
+                <select name="secteur_activite" class="form-select">
+                  <option value="">Sélectionner...</option>
+                  <option value="Restauration">Restauration</option>
+                  <option value="Hôtellerie">Hôtellerie</option>
+                  <option value="Commerce">Commerce</option>
+                  <option value="Santé">Santé</option>
+                  <option value="Education">Education</option>
+                  <option value="Informatique">Informatique</option>
+                  <option value="Autre">Autre</option>
+                </select>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Informations entreprise -->
+      <div class="accordion-item">
+        <h2 class="accordion-header" id="headingCompany">
+          <button class="accordion-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#collapseCompany" aria-expanded="false" aria-controls="collapseCompany">
+            <i class="fas fa-building me-2"></i>Informations entreprise
+          </button>
+        </h2>
+        <div id="collapseCompany" class="accordion-collapse collapse" aria-labelledby="headingCompany" data-bs-parent="#preinscriptionAccordion">
+          <div class="accordion-body">
+            <div class="row g-3">
+              <div class="col-12">
+                <label class="form-label">Adresse de l'entreprise</label>
+                <input name="adresse_entreprise" class="form-control" 
+                       placeholder="Numéro et rue, Code postal Ville">
+                <div class="hint">Ex: 25 Avenue des Champs, 75008 Paris</div>
+              </div>
+              <div class="col-md-4">
+                <label class="form-label">Date de création (entreprise)</label>
+                <input type="date" name="date_creation_entreprise" class="form-control">
+              </div>
+              <div class="col-md-4">
+                <label class="form-label">Chiffre d'affaires (EUR)</label>
+                <select name="chiffre_affaire" class="form-select">
+                  <option value="0 - 10 000 €">0 - 10 000 €</option>
+                  <option value="10 000 - 50 000 €">10 000 - 50 000 €</option>
+                  <option value="50 000 - 100 000 €">50 000 - 100 000 €</option>
+                  <option value="100 000 - 500 000 €">100 000 - 500 000 €</option>
+                  <option value="500 000 - 1 000 000 €">500 000 - 1 000 000 €</option>
+                  <option value="1 000 000 € et plus">1 000 000 € et plus</option>
+                </select>
+              </div>
+              <div class="col-md-4">
+                <label class="form-label">SIRET (optionnel)</label>
+                <input type="text" name="siret" class="form-control" 
+                       pattern="^[0-9]{14}$"
+                       title="Le SIRET doit contenir exactement 14 chiffres"
+                       placeholder="12345678901234"
+                       maxlength="14">
+                <div class="hint">14 chiffres sans espaces (ex: 12345678901234)</div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Informations restauration -->
+      <div class="accordion-item">
+        <h2 class="accordion-header" id="headingRestaurant">
+          <button class="accordion-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#collapseRestaurant" aria-expanded="false" aria-controls="collapseRestaurant">
+            <i class="fas fa-utensils me-2"></i>Informations restauration
+          </button>
+        </h2>
+        <div id="collapseRestaurant" class="accordion-collapse collapse" aria-labelledby="headingRestaurant" data-bs-parent="#preinscriptionAccordion">
+          <div class="accordion-body">
+            <div class="row g-3">
+              <div class="col-12">
+                <label class="form-label">Spécialité culinaire</label>
+                <input name="specialite_culinaire" class="form-control" placeholder="Ex: Cuisine française, Italienne, etc.">
+              </div>
+              <div class="col-12">
+                <label class="form-label">Nom du concept</label>
+                <input name="nom_concept" class="form-control" placeholder="Ex: Le Bistrot du Coin, Pizza Express, etc.">
+              </div>
+              <div class="col-md-6">
+                <label class="form-label">Site internet</label>
+                <input type="url" name="site_internet" class="form-control" placeholder="https://www.monrestaurant.com">
+              </div>
+              <div class="col-md-6">
+                <label class="form-label">Réseaux sociaux</label>
+                <input name="lien_reseaux_sociaux" class="form-control" placeholder="Facebook, Instagram, etc.">
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Informations supplémentaires -->
+      <div class="accordion-item">
+        <h2 class="accordion-header" id="headingAdditional">
+          <button class="accordion-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#collapseAdditional" aria-expanded="false" aria-controls="collapseAdditional">
+            <i class="fas fa-info-circle me-2"></i>Informations supplémentaires
+          </button>
+        </h2>
+        <div id="collapseAdditional" class="accordion-collapse collapse" aria-labelledby="headingAdditional" data-bs-parent="#preinscriptionAccordion">
+          <div class="accordion-body">
+            <div class="row g-3">
+              <div class="col-12">
+                <div class="form-check">
+                  <input class="form-check-input" type="checkbox" name="handicap" value="true" id="handicap">
+                  <label class="form-check-label" for="handicap">
+                    Reconnaissance de handicap
+                  </label>
+                </div>
+              </div>
+              <div class="col-12">
+                <div class="form-check">
+                  <input class="form-check-input" type="checkbox" name="qpv" value="true" id="qpv">
+                  <label class="form-check-label" for="qpv">
+                    Situé en Zone de Revitalisation Rurale (QPV)
+                  </label>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Documents -->
+      <div class="accordion-item">
+        <h2 class="accordion-header" id="headingDocuments">
+          <button class="accordion-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#collapseDocuments" aria-expanded="false" aria-controls="collapseDocuments">
+            <i class="fas fa-file-upload me-2"></i>Documents à fournir
+          </button>
+        </h2>
+        <div id="collapseDocuments" class="accordion-collapse collapse" aria-labelledby="headingDocuments" data-bs-parent="#preinscriptionAccordion">
+          <div class="accordion-body">
+            <div class="row g-3">
+              <!-- Documents joints (repeater) -->
+              <div class="col-12">
+                <label class="form-label">Documents (optionnel)</label>
+                <div class="docs-help mb-2">Ajoutez vos documents et indiquez leur type et un titre (ex: "Justif_domicile_mars2025").</div>
+                <div id="docsContainer"></div>
+                <button type="button" class="btn btn-outline mt-2" id="addDocBtn">
+                  <i class="fa fa-plus me-1"></i> Ajouter un document
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+    </div>
+
+    <!-- Boutons d'action -->
+    <div class="d-flex justify-content-between align-items-center mt-4">
+      <div class="hint">Vos données sont utilisées pour étudier votre éligibilité au programme, conformément à notre politique de confidentialité.</div>
+      <button class="btn btn-primary"><i class="fa fa-check me-1"></i> Soumettre</button>
+    </div>
+  </form>
+  {% endif %}
+</div>
+{% endblock %}
+
+{% block scripts %}
+<style>
+  /* Amélioration des accordéons */
+  .accordion-button {
+    font-weight: 600;
+    color: var(--secondary-color);
+  }
+  
+  .accordion-button:not(.collapsed) {
+    background-color: var(--secondary-color);
+    color: var(--white-color);
+  }
+  
+  .accordion-button:focus {
+    box-shadow: 0 0 0 0.25rem color-mix(in srgb, var(--primary-color) 25%, transparent);
+  }
+  
+  .accordion-body {
+    background-color: var(--light-color);
+  }
+  
+  /* Card pour la sélection du programme */
+  .card-header.bg-primary {
+    background: var(--primary-color)!important;
+    color: var(--white-color)!important;
+    
+  }
+  
+  /* Amélioration des hints */
+  .hint {
+    font-size: 0.875rem;
+    color: var(--gray-medium);
+    margin-top: 0.25rem;
+  }
+  
+  /* Validation des champs */
+  .form-control.is-valid {
+    border-color: var(--success-color);
+  }
+  
+  .form-control.is-invalid {
+    border-color: var(--danger-color);
+  }
+  
+  .field-error {
+    color: var(--danger-color);
+    font-size: 0.875rem;
+    margin-top: 0.25rem;
+  }
+</style>
+
+<script>
+  // Validation en temps réel
+  function validateField(field, pattern, errorMessage) {
+    const value = field.value.trim();
+    const isValid = pattern.test(value);
+    
+    // Supprimer les anciens messages d'erreur
+    const existingError = field.parentNode.querySelector('.field-error');
+    if (existingError) existingError.remove();
+    
+    // Supprimer les anciennes classes d'erreur
+    field.classList.remove('is-invalid', 'is-valid');
+    
+    if (value === '') {
+      // Champ vide = pas d'erreur (sauf si required)
+      if (field.hasAttribute('required')) {
+        field.classList.add('is-invalid');
+        showFieldError(field, 'Ce champ est obligatoire');
+      }
+      return;
+    }
+    
+    if (isValid) {
+      field.classList.add('is-valid');
+    } else {
+      field.classList.add('is-invalid');
+      showFieldError(field, errorMessage);
+    }
+  }
+  
+  function showFieldError(field, message) {
+    const errorDiv = document.createElement('div');
+    errorDiv.className = 'field-error text-danger mt-1';
+    errorDiv.style.fontSize = '0.875rem';
+    errorDiv.innerHTML = `<i class="fas fa-exclamation-triangle me-1"></i>${message}`;
+    field.parentNode.appendChild(errorDiv);
+  }
+  
+  // Configuration des validations
+  const validations = {
+    'email': {
+      pattern: /^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$/,
+      message: 'Format email invalide (ex: nom@domaine.com)'
+    },
+    'telephone': {
+      pattern: /^(?:(?:\+|00)33|0)\s*[1-9](?:[\s.-]*\d{2}){4}$/,
+      message: 'Format téléphone invalide (ex: 06 12 34 56 78)'
+    },
+    'siret': {
+      pattern: /^[0-9]{14}$/,
+      message: 'Le SIRET doit contenir exactement 14 chiffres'
+    }
+  };
+  
+  // Appliquer la validation sur tous les champs
+  document.addEventListener('DOMContentLoaded', function() {
+    // Validation email
+    const emailField = document.querySelector('input[name="email"]');
+    if (emailField) {
+      emailField.addEventListener('blur', () => {
+        validateField(emailField, validations.email.pattern, validations.email.message);
+      });
+    }
+    
+    // Validation téléphone
+    const phoneField = document.querySelector('input[name="telephone"]');
+    if (phoneField) {
+      phoneField.addEventListener('blur', () => {
+        validateField(phoneField, validations.telephone.pattern, validations.telephone.message);
+      });
+    }
+    
+    // Validation SIRET
+    const siretField = document.querySelector('input[name="siret"]');
+    if (siretField) {
+      siretField.addEventListener('blur', () => {
+        validateField(siretField, validations.siret.pattern, validations.siret.message);
+      });
+    }
+    
+    // Validation des champs obligatoires
+    const requiredFields = document.querySelectorAll('input[required], select[required]');
+    requiredFields.forEach(field => {
+      field.addEventListener('blur', () => {
+        const value = field.value.trim();
+        field.classList.remove('is-invalid', 'is-valid');
+        
+        if (value === '') {
+          field.classList.add('is-invalid');
+          showFieldError(field, 'Ce champ est obligatoire');
+        } else {
+          field.classList.add('is-valid');
+        }
+      });
+    });
+  });
+
+  // Aperçu avatar
+  const fileInput = document.getElementById('photoProfil');
+  const avatarImg = document.getElementById('avatarImg');
+  if (fileInput) {
+    fileInput.addEventListener('change', (e) => {
+      const f = e.target.files && e.target.files[0];
+      if (!f) return;
+      const url = URL.createObjectURL(f);
+      avatarImg.src = url;
+    });
+  }
+
+  // Repeater documents
+  const DOC_TYPES = {{ (doc_types or ["CNI","Kbis","Justificatif de domicile","RIB","CV","Autre"]) | tojson }};
+  const docsContainer = document.getElementById('docsContainer');
+  const addBtn = document.getElementById('addDocBtn');
+
+  function docRowTemplate(idx){
+    const options = DOC_TYPES.map(t => `<option value="${t}">${t}</option>`).join("");
+    return `
+      <div class="doc-row" data-idx="${idx}">
+        <div>
+          <label class="form-label">Type</label>
+          <select class="form-select" name="doc_type_${idx}" required>
+            <option value="">—</option>${options}
+          </select>
+        </div>
+        <div>
+          <label class="form-label">Titre</label>
+          <input class="form-control" name="doc_title_${idx}" placeholder="ex: Justif_domicile_2025" required>
+        </div>
+        <div>
+          <label class="form-label">Fichier</label>
+          <input type="file" class="form-control" name="doc_file_${idx}" required>
+        </div>
+        <div>
+          <button type="button" class="remove" title="Supprimer"><i class="fa fa-times"></i></button>
+        </div>
+      </div>
+    `;
+  }
+
+  let docIdx = 0;
+  function addDocRow(){
+    docsContainer.insertAdjacentHTML('beforeend', docRowTemplate(docIdx));
+    const row = docsContainer.querySelector(`.doc-row[data-idx="${docIdx}"]`);
+    row.querySelector('.remove').addEventListener('click', () => row.remove());
+    docIdx += 1;
+  }
+  addBtn.addEventListener('click', addDocRow);
+</script>
+{% endblock %}

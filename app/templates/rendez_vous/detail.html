@@ -13,14 +13,14 @@
                         Rendez-vous - {{ rdv.candidat_prenom }} {{ rdv.candidat_nom }}
                     </h3>
                     <div class="btn-group">
-                        <a href="/rendez-vous" class="btn btn-secondary">
+                        <a href="{{ url_for('rendez_vous_list') }}" class="submenu-item">
                             <i class="fas fa-arrow-left me-1"></i>
                             Retour à la liste
                         </a>
-                        <button type="button" class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#editModal">
+                        <a class="submenu-item" data-bs-toggle="modal" data-bs-target="#editModal">
                             <i class="fas fa-edit me-1"></i>
                             Modifier
-                        </button>
+                        </a>
                     </div>
                 </div>
                 

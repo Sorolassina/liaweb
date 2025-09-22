@@ -1,7 +1,6 @@
 # app/routers/seminaire.py
 from fastapi import APIRouter, Depends, HTTPException, status, Request, Form, File, UploadFile
 from fastapi.responses import HTMLResponse, RedirectResponse
-from fastapi.templating import Jinja2Templates
 from sqlmodel import Session, select
 from typing import List, Optional
 from datetime import datetime, date, timezone
@@ -10,7 +9,9 @@ import uuid
 
 from app_lia_web.core.database import get_session
 from app_lia_web.core.security import get_current_user
-from app_lia_web.app.models.base import User
+from app_lia_web.core.path_config import path_config
+from app_lia_web.app.services.file_upload_service import FileUploadService
+from app_lia_web.app.models.base import User, Programme
 from app_lia_web.app.models.seminaire import Seminaire, SessionSeminaire, InvitationSeminaire, PresenceSeminaire, LivrableSeminaire, RenduLivrable
 from app_lia_web.app.models.enums import StatutSeminaire, TypeInvitation, StatutPresence, MethodeSignature
 from app_lia_web.app.schemas.seminaire_schemas import (
@@ -593,24 +594,25 @@ async def rendre_livrable(
         raise HTTPException(status_code=400, detail="Aucun fichier fourni")
     
     # Créer le répertoire de stockage
-    upload_dir = f"uploads/seminaires/{seminaire_id}/livrables"
-    os.makedirs(upload_dir, exist_ok=True)
+    subfolder = f"seminaires/{seminaire_id}/livrables"
     
     # Générer un nom de fichier unique
     file_extension = os.path.splitext(fichier.filename)[1]
     unique_filename = f"{uuid.uuid4()}{file_extension}"
-    file_path = os.path.join(upload_dir, unique_filename)
     
-    # Sauvegarder le fichier
-    with open(file_path, "wb") as buffer:
-        content = await fichier.read()
-        buffer.write(content)
+    # Utiliser FileUploadService pour sauvegarder le fichier
+    file_info = await FileUploadService.save_file(
+        fichier,
+        "media",
+        unique_filename,
+        subfolder=subfolder
+    )
     
     # Créer le rendu
     file_data = {
         'nom_fichier': fichier.filename,
-        'chemin_fichier': file_path,
-        'taille_fichier': len(content),
+        'chemin_fichier': file_info["relative_path"],
+        'taille_fichier': file_info["size"],
         'type_mime': fichier.content_type or 'application/octet-stream',
         'commentaire_candidat': commentaire
     }

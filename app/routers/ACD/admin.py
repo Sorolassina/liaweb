@@ -17,6 +17,8 @@ from pathlib import Path
 from app_lia_web.core.database import get_session
 from app_lia_web.core.config import settings
 from app_lia_web.core.security import get_current_user
+from app_lia_web.core.path_config import path_config
+from app_lia_web.app.services.file_upload_service import FileUploadService
 from app_lia_web.app.templates import templates
 
 from app_lia_web.app.models.base import (
@@ -36,7 +38,7 @@ from app_lia_web.app.models.ACD.activity import ActivityLog
 router = APIRouter()
 
 # Fonction pour sauvegarder les photos de profil
-def save_profile_photo(photo: UploadFile, user_id: int, old_photo_path: str = None) -> str:
+async def save_profile_photo(photo: UploadFile, user_id: int, old_photo_path: str = None) -> str:
     """Sauvegarde une photo de profil et retourne le chemin relatif"""
     from app_lia_web.core.config import Settings
     settings = Settings()
@@ -51,50 +53,32 @@ def save_profile_photo(photo: UploadFile, user_id: int, old_photo_path: str = No
     if photo.size > settings.MAX_UPLOAD_SIZE_MB * 1024 * 1024:
         raise HTTPException(status_code=400, detail=f"Fichier trop volumineux. Max: {settings.MAX_UPLOAD_SIZE_MB}MB")
     
-    # Créer le dossier media/users s'il n'existe pas
-    media_dir = settings.MEDIA_ROOT / "users"
-    print(f"📁 [DEBUG] Création du dossier: {media_dir}")
-    media_dir.mkdir(parents=True, exist_ok=True)
-    
     # Supprimer l'ancienne photo si elle existe
     if old_photo_path:
         try:
-            old_file_path = settings.MEDIA_ROOT / old_photo_path.lstrip('/')
-            if old_file_path.exists():
-                print(f"🗑️ [DEBUG] Suppression de l'ancienne photo: {old_file_path}")
-                old_file_path.unlink()
-                print(f"✅ [DEBUG] Ancienne photo supprimée avec succès")
-            else:
-                print(f"⚠️ [DEBUG] Ancienne photo introuvable: {old_file_path}")
+            FileUploadService.delete_file(old_photo_path)
+            print(f"🗑️ [DEBUG] Ancienne photo supprimée: {old_photo_path}")
         except Exception as e:
             print(f"❌ [DEBUG] Erreur lors de la suppression de l'ancienne photo: {e}")
     
     # Générer le nom de fichier
     ext = os.path.splitext(photo.filename)[1].lower() or ".jpg"
     filename = f"user_{user_id}_profile{ext}"
-    file_path = media_dir / filename
-    print(f"📄 [DEBUG] Nom de fichier généré: {filename}")
-    print(f"📄 [DEBUG] Chemin complet: {file_path}")
     
-    # Sauvegarder le fichier
+    # Utiliser FileUploadService pour sauvegarder le fichier
     try:
-        print(f"💾 [DEBUG] Lecture du contenu du fichier...")
-        content = photo.file.read()
-        print(f"💾 [DEBUG] Taille du contenu: {len(content)} bytes")
-        
-        print(f"💾 [DEBUG] Écriture du fichier...")
-        with open(file_path, "wb") as f:
-            f.write(content)
-        print(f"✅ [DEBUG] Fichier sauvegardé avec succès")
+        file_info = await FileUploadService.save_file(
+            photo,
+            "media",
+            filename,
+            subfolder="users"
+        )
+        print(f"✅ [DEBUG] Fichier sauvegardé avec succès: {file_info['relative_path']}")
+        return file_info["relative_path"]
         
     except Exception as e:
         print(f"❌ [DEBUG] Erreur lors de la sauvegarde: {e}")
         raise e
-    
-    # Retourner le chemin relatif pour l'affichage
-    relative_path = settings.get_media_url(f"users/{filename}")
-    print(f"🔗 [DEBUG] Chemin relatif retourné: {relative_path}")
-    return relative_path
 
 # -------- RBAC --------
 def admin_required(user: User):
@@ -127,7 +111,7 @@ def admin_home(
     ).all()
 
     return templates.TemplateResponse(
-        "ACD/admin/dashboard.html",
+        "admin/dashboard.html",
         {
             "request": request,
             "settings": settings,
@@ -144,7 +128,7 @@ def admin_home(
     )
 
 # ===== PROGRAMMES =====
-@router.get("/programmes", response_class=HTMLResponse)
+@router.get("/programmes", response_class=HTMLResponse, name="admin_programmes")
 def admin_programmes(request: Request, session: Session = Depends(get_session), current_user: User = Depends(get_current_user)):
     admin_required(current_user)
     progs = session.exec(select(Programme).order_by(Programme.code)).all()
@@ -183,7 +167,7 @@ def admin_programmes(request: Request, session: Session = Depends(get_session), 
         etapes_par_programme[prog.id] = session.exec(select(EtapePipeline).where(EtapePipeline.programme_id == prog.id).order_by(EtapePipeline.ordre)).all()
     
     timestamp = int(time.time())
-    return templates.TemplateResponse("ACD/admin/programmes_list.html", {
+    return templates.TemplateResponse("admin/programmes_list.html", {
         "request": request, 
         "settings": settings, 
         "utilisateur": current_user, 
@@ -208,7 +192,7 @@ def admin_programme_new(request: Request, session: Session = Depends(get_session
     
     users_disponibles = [user for user in users if user.id not in responsables_existants]
     
-    return templates.TemplateResponse("ACD/admin/programme_form.html", {
+    return templates.TemplateResponse("admin/programme_form.html", {
         "request": request, 
         "settings": settings, 
         "utilisateur": current_user, 
@@ -238,7 +222,7 @@ def admin_programme_edit(prog_id: int, request: Request, session: Session = Depe
     
     # Récupérer les utilisateurs affectés au programme
     programme_users = session.exec(select(ProgrammeUtilisateur).where(ProgrammeUtilisateur.programme_id == prog.id).order_by(ProgrammeUtilisateur.role_programme)).all()
-    return templates.TemplateResponse("ACD/admin/programme_form.html", {
+    return templates.TemplateResponse("admin/programme_form.html", {
         "request": request, 
         "settings": settings, 
         "utilisateur": current_user, 
@@ -545,7 +529,7 @@ def admin_programme_remove_user(
     return RedirectResponse(url=f"/admin/programmes?success=1&action=remove_member&prog_id={prog_id}&t={timestamp}", status_code=303)
 
 # ===== UTILISATEURS =====
-@router.get("/users", response_class=HTMLResponse)
+@router.get("/users", response_class=HTMLResponse, name="admin_users")
 def admin_users(request: Request, session: Session = Depends(get_session), current_user: User = Depends(get_current_user), q: Optional[str] = Query(None)):
     admin_required(current_user)
     stmt = select(User)
@@ -557,7 +541,7 @@ def admin_users(request: Request, session: Session = Depends(get_session), curre
     # Ajouter un timestamp pour le cache-busting des images
     timestamp = int(datetime.now(timezone.utc).timestamp())
     
-    return templates.TemplateResponse("ACD/admin/users.html", {
+    return templates.TemplateResponse("admin/users.html", {
         "request": request, 
         "settings": settings, 
         "utilisateur": current_user, 
@@ -567,8 +551,8 @@ def admin_users(request: Request, session: Session = Depends(get_session), curre
         "timestamp": timestamp
     })
 
-@router.post("/users/add")
-def admin_users_add(
+@router.post("/users/add", name="admin_users_add")
+async def admin_users_add(
     email: str = Form(...), 
     nom_complet: str = Form(...), 
     telephone: Optional[str] = Form(None),
@@ -621,7 +605,7 @@ def admin_users_add(
     # Sauvegarder la photo de profil si fournie
     if photo_profil and photo_profil.filename:
         try:
-            photo_path = save_profile_photo(photo_profil, u.id, None)  # Pas d'ancienne photo lors de la création
+            photo_path = await save_profile_photo(photo_profil, u.id, None)  # Pas d'ancienne photo lors de la création
             u.photo_profil = photo_path
         except Exception as e:
             # En cas d'erreur, continuer sans photo
@@ -634,7 +618,7 @@ def admin_users_add(
     timestamp = int(datetime.now(timezone.utc).timestamp())
     return RedirectResponse(url=f"/admin/users?success=1&action=add&t={timestamp}", status_code=303)
 
-@router.post("/users/{uid}/toggle")
+@router.post("/users/{uid}/toggle", name="admin_users_toggle")
 def admin_users_toggle(uid: int, request: Request, session: Session = Depends(get_session), current_user: User = Depends(get_current_user)):
     admin_required(current_user)
     u = session.get(User, uid)
@@ -647,7 +631,7 @@ def admin_users_toggle(uid: int, request: Request, session: Session = Depends(ge
     timestamp = int(datetime.now(timezone.utc).timestamp())
     return RedirectResponse(url=f"/admin/users?success=1&action=toggle&t={timestamp}", status_code=303)
 
-@router.post("/users/{uid}/update")
+@router.post("/users/{uid}/update", name="admin_users_update")
 def admin_users_update(
     uid: int,
     nom_complet: str = Form(...),
@@ -736,7 +720,7 @@ def admin_users_update(
     return RedirectResponse(url=f"/admin/users?success=1&action=update&t={timestamp}", status_code=303)
 
 # ===== JURYS =====
-@router.get("/jurys", response_class=HTMLResponse)
+@router.get("/jurys", response_class=HTMLResponse, name="admin_jurys")
 def admin_jurys(request: Request, session: Session = Depends(get_session), current_user: User = Depends(get_current_user)):
     admin_required(current_user)
     
@@ -756,7 +740,7 @@ def admin_jurys(request: Request, session: Session = Depends(get_session), curre
     groupes = session.exec(select(Groupe).where(Groupe.actif == True).order_by(Groupe.nom)).all()
     users = session.exec(select(User).where(User.actif == True)).all()
     
-    return templates.TemplateResponse("ACD/admin/jurys.html", {
+    return templates.TemplateResponse("admin/jurys.html", {
         "request": request, 
         "settings": settings, 
         "utilisateur": current_user, 
@@ -783,7 +767,7 @@ def admin_jurys_add(programme_id: int = Form(...), session_date: str = Form(...)
     log_activity(session, user=current_user, action="JURY_ADD", entity="Jury", entity_id=None,
                  activity_data={"programme_id": prog.id, "session_le": dt.isoformat(), "lieu": lieu, "statut": statut}, request=request)
     session.commit()
-    return RedirectResponse(url="/admin/jurys", status_code=303)
+    return RedirectResponse(url=request.url_for("admin_jurys"), status_code=303)
 
 @router.post("/jurys/{jury_id}/update")
 def admin_jury_update(jury_id: int, 
@@ -836,7 +820,7 @@ def admin_jury_delete(jury_id: int, request: Request, session: Session = Depends
     log_activity(session, user=current_user, action="JURY_DELETE", entity="Jury", entity_id=jury_id,
                  activity_data={"programme_id": jury.programme_id}, request=request)
     
-    return RedirectResponse(url="/admin/jurys", status_code=303)
+    return RedirectResponse(url=request.url_for("admin_jurys"), status_code=303)
 
 @router.post("/jurys/{jury_id}/membres/add")
 def admin_jury_membre_add(jury_id: int, 
@@ -913,7 +897,7 @@ def admin_jury_send_invitations(jury_id: int, request: Request, session: Session
     
     return RedirectResponse(url=f"/admin/jurys?success=invitations_sent&count={sent_count}&jury_id={jury_id}", status_code=303)
 
-@router.get("/logs", response_class=HTMLResponse)
+@router.get("/logs", response_class=HTMLResponse, name="admin_logs")
 def admin_logs(request: Request, session: Session = Depends(get_session), current_user: User = Depends(get_current_user)):
     admin_required(current_user)
     
@@ -925,7 +909,7 @@ def admin_logs(request: Request, session: Session = Depends(get_session), curren
         .limit(100)  # Limiter à 100 logs récents
     ).all()
     
-    return templates.TemplateResponse("ACD/admin/logs.html", {
+    return templates.TemplateResponse("admin/logs.html", {
         "request": request,
         "settings": settings,
         "utilisateur": current_user,
@@ -933,7 +917,7 @@ def admin_logs(request: Request, session: Session = Depends(get_session), curren
     })
 
 # ===== PERMISSIONS =====
-@router.get("/permissions", response_class=HTMLResponse)
+@router.get("/permissions", response_class=HTMLResponse, name="admin_permissions")
 def admin_permissions(request: Request, session: Session = Depends(get_session), current_user: User = Depends(get_current_user)):
     admin_required(current_user)
     
@@ -947,7 +931,7 @@ def admin_permissions(request: Request, session: Session = Depends(get_session),
     # Récupérer les utilisateurs pour les permissions spécifiques
     users = session.exec(select(User).where(User.actif == True)).all()
     
-    return templates.TemplateResponse("ACD/admin/permissions.html", {
+    return templates.TemplateResponse("admin/permissions.html", {
         "request": request,
         "settings": settings,
         "utilisateur": current_user,
@@ -976,9 +960,9 @@ def admin_grant_permission(
     )
     
     if success:
-        return RedirectResponse(url="/admin/permissions?success=permission_granted", status_code=303)
+        return RedirectResponse(url=request.url_for("admin_permissions") + "?success=permission_granted", status_code=303)
     else:
-        return RedirectResponse(url="/admin/permissions?error=permission_grant_failed", status_code=303)
+        return RedirectResponse(url=request.url_for("admin_permissions") + "?error=permission_grant_failed", status_code=303)
 
 @router.post("/permissions/revoke")
 def admin_revoke_permission(
@@ -995,18 +979,54 @@ def admin_revoke_permission(
     success = permission_service.revoke_permission(current_user, target_user_id, resource, reason)
     
     if success:
-        return RedirectResponse(url="/admin/permissions?success=permission_revoked", status_code=303)
+        return RedirectResponse(url=request.url_for("admin_permissions") + "?success=permission_revoked", status_code=303)
     else:
-        return RedirectResponse(url="/admin/permissions?error=permission_revoke_failed", status_code=303)
+        return RedirectResponse(url=request.url_for("admin_permissions") + "?error=permission_revoke_failed", status_code=303)
 
-@router.get("/database-status", response_class=HTMLResponse)
+@router.post("/permissions/update-role")
+def admin_update_role_permission(
+    role: str = Form(...),
+    resource: str = Form(...),
+    permission_level: str = Form(...),
+    reason: str = Form(None),
+    request: Request = None,
+    session: Session = Depends(get_session),
+    current_user: User = Depends(get_current_user)
+):
+    admin_required(current_user)
+    
+    try:
+        permission_service = PermissionService(session)
+        
+        # Convertir les chaînes en enums
+        resource_enum = TypeRessource(resource)
+        permission_enum = NiveauPermission(permission_level)
+        
+        # Mettre à jour la permission pour le rôle
+        success = permission_service.update_role_permission(
+            current_user, role, resource_enum, permission_enum, reason
+        )
+        
+        if success:
+            return RedirectResponse(url=request.url_for("admin_permissions") + "?success=role_permission_updated", status_code=303)
+        else:
+            return RedirectResponse(url=request.url_for("admin_permissions") + "?error=role_permission_update_failed", status_code=303)
+            
+    except ValueError as e:
+        # Erreur de conversion des enums
+        return RedirectResponse(url=request.url_for("admin_permissions") + "?error=invalid_permission_data", status_code=303)
+    except Exception as e:
+        print(f"❌ Erreur lors de la mise à jour de permission de rôle: {e}")
+        return RedirectResponse(url=request.url_for("admin_permissions") + "?error=role_permission_update_failed", status_code=303)
+
+@router.get("/database-status", response_class=HTMLResponse, name="admin_database_status")
 def admin_database_status(request: Request, session: Session = Depends(get_session), current_user: User = Depends(get_current_user)):
     admin_required(current_user)
     
     migration_service = DatabaseMigrationService(session)
     db_status = migration_service.get_database_status()
     
-    return templates.TemplateResponse("ACD/admin/database_status.html", {
+    return templates.TemplateResponse("admin/database_status.html", {
         "request": request,
         "settings": settings,
         "utilisateur": current_user,
@@ -1024,17 +1044,17 @@ def admin_database_migrate(request: Request, session: Session = Depends(get_sess
     log_activity(session, user=current_user, action="DATABASE_MIGRATION", 
                 entity="Database", activity_data=migration_results, request=request)
     
-    return RedirectResponse(url="/admin/database-status?success=migration_completed", status_code=303)
+    return RedirectResponse(url=request.url_for("admin_database_status") + "?success=migration_completed", status_code=303)
 
 # ===== ARCHIVES ET SAUVEGARDES =====
-@router.get("/archives", response_class=HTMLResponse)
+@router.get("/archives", response_class=HTMLResponse, name="admin_archives")
 def admin_archives(request: Request, session: Session = Depends(get_session), current_user: User = Depends(get_current_user)):
     admin_required(current_user)
     
     archive_service = ArchiveService(session)
     archives = archive_service.get_archive_list()
     
-    return templates.TemplateResponse("ACD/admin/archives.html", {
+    return templates.TemplateResponse("admin/archives.html", {
         "request": request,
         "settings": settings,
         "utilisateur": current_user,
@@ -1056,9 +1076,9 @@ def admin_create_backup(
     archive = archive_service.create_full_backup(current_user, description)
     
     if archive:
-        return RedirectResponse(url="/admin/archives?success=backup_created", status_code=303)
+        return RedirectResponse(url=request.url_for("admin_archives") + "?success=backup_created", status_code=303)
     else:
-        return RedirectResponse(url="/admin/archives?error=backup_failed", status_code=303)
+        return RedirectResponse(url=request.url_for("admin_archives") + "?error=backup_failed", status_code=303)
 
 @router.post("/archives/{archive_id}/restore")
 def admin_restore_backup(
@@ -1073,9 +1093,9 @@ def admin_restore_backup(
     success = archive_service.restore_from_backup(archive_id, current_user)
     
     if success:
-        return RedirectResponse(url="/admin/archives?success=backup_restored", status_code=303)
+        return RedirectResponse(url=request.url_for("admin_archives") + "?success=backup_restored", status_code=303)
     else:
-        return RedirectResponse(url="/admin/archives?error=restore_failed", status_code=303)
+        return RedirectResponse(url=request.url_for("admin_archives") + "?error=restore_failed", status_code=303)
 
 @router.post("/archives/{archive_id}/delete")
 def admin_delete_archive(
@@ -1090,9 +1110,9 @@ def admin_delete_archive(
     success = archive_service.delete_archive(archive_id, current_user)
     
     if success:
-        return RedirectResponse(url="/admin/archives?success=archive_deleted", status_code=303)
+        return RedirectResponse(url=request.url_for("admin_archives") + "?success=archive_deleted", status_code=303)
     else:
-        return RedirectResponse(url="/admin/archives?error=delete_failed", status_code=303)
+        return RedirectResponse(url=request.url_for("admin_archives") + "?error=delete_failed", status_code=303)
 
 @router.post("/cleanup/execute")
 def admin_execute_cleanup(
@@ -1106,12 +1126,12 @@ def admin_execute_cleanup(
     cleanup_stats = archive_service.cleanup_old_data(current_user)
     
     if cleanup_stats:
-        return RedirectResponse(url="/admin/archives?success=cleanup_completed", status_code=303)
+        return RedirectResponse(url=request.url_for("admin_archives") + "?success=cleanup_completed", status_code=303)
     else:
-        return RedirectResponse(url="/admin/archives?error=cleanup_failed", status_code=303)
+        return RedirectResponse(url=request.url_for("admin_archives") + "?error=cleanup_failed", status_code=303)
 
 # ===== PARAMÈTRES =====
-@router.get("/settings", response_class=HTMLResponse)
+@router.get("/settings", response_class=HTMLResponse, name="admin_settings")
 def admin_settings(request: Request, session: Session = Depends(get_session), current_user: User = Depends(get_current_user)):
     admin_required(current_user)
     def getv(k, default=""):
@@ -1126,7 +1146,7 @@ def admin_settings(request: Request, session: Session = Depends(get_session), cu
         "SMTP_USER": getv("SMTP_USER", getattr(settings, "SMTP_USER", "")),
         "SMTP_TLS": getv("SMTP_TLS", str(getattr(settings, "SMTP_TLS", True))),
     }
-    return templates.TemplateResponse("ACD/admin/settings.html", {"request": request, "settings": settings, "utilisateur": current_user, "cfg": ctx})
+    return templates.TemplateResponse("admin/settings.html", {"request": request, "settings": settings, "utilisateur": current_user, "cfg": ctx})
 
 @router.post("/settings/save")
 def admin_settings_save(
@@ -1162,7 +1182,7 @@ def admin_settings_save(
     log_activity(session, user=current_user, action="SETTINGS_SAVE", entity="AppSetting", entity_id=None,
                  activity_data={"keys": ["THEME_PRIMARY","THEME_SECONDARY","MAX_UPLOAD_SIZE_MB","SMTP_*"]}, request=request)
     session.commit()
-    return RedirectResponse(url="/admin/settings", status_code=303)
+    return RedirectResponse(url=request.url_for("admin_settings"), status_code=303)
 
 # ===== LOGS =====
 @router.get("/logs", response_class=HTMLResponse)
@@ -1214,7 +1234,7 @@ def admin_logs(
     users_distinct = session.exec(select(ActivityLog.user_email).where(ActivityLog.user_email.is_not(None)).distinct().order_by(ActivityLog.user_email)).all()
 
     return templates.TemplateResponse(
-        "ACD/admin/logs.html",
+        "admin/logs.html",
         {
             "request": request,
             "settings": settings,
@@ -1260,8 +1280,8 @@ def admin_logs_export_csv(
     buf.seek(0)
     return StreamingResponse(buf, media_type="text/csv", headers={"Content-Disposition": "attachment; filename=activity_logs.csv"})
 
-@router.post("/users/{uid}/photo")
-def admin_users_photo(
+@router.post("/users/{uid}/photo", name="admin_users_photo")
+async def admin_users_photo(
     uid: int, 
     photo_profil: UploadFile = File(...),
     request: Request = None, 
@@ -1282,7 +1302,7 @@ def admin_users_photo(
     # Sauvegarder la nouvelle photo
     try:
         print(f"📸 [DEBUG] Début de la sauvegarde de la photo...")
-        photo_path = save_profile_photo(photo_profil, u.id, u.photo_profil)
+        photo_path = await save_profile_photo(photo_profil, u.id, u.photo_profil)
         print(f"📸 [DEBUG] Photo sauvegardée: {photo_path}")
         
         u.photo_profil = photo_path
@@ -1306,7 +1326,7 @@ def admin_users_photo(
     timestamp = int(datetime.now(timezone.utc).timestamp())
     return RedirectResponse(url=f"/admin/users?success=1&action=photo&t={timestamp}", status_code=303)
 
-@router.post("/users/{uid}/delete")
+@router.post("/users/{uid}/delete", name="admin_users_delete")
 def admin_users_delete(
     uid: int,
     request: Request = None,
@@ -1416,7 +1436,7 @@ def admin_users_delete(
     return RedirectResponse(url=f"/admin/users?success=1&action=delete&t={timestamp}", status_code=303)
 
 # ===== PARTENAIRES =====
-@router.get("/partenaires", response_class=HTMLResponse)
+@router.get("/partenaires", response_class=HTMLResponse, name="admin_partenaires")
 def admin_partenaires(request: Request, session: Session = Depends(get_session), current_user: User = Depends(get_current_user), q: Optional[str] = Query(None)):
     admin_required(current_user)
     stmt = select(Partenaire)
@@ -1425,7 +1445,7 @@ def admin_partenaires(request: Request, session: Session = Depends(get_session),
         stmt = stmt.where((Partenaire.nom.ilike(like)) | (Partenaire.email.ilike(like)) | (Partenaire.description.ilike(like)))
     partenaires = session.exec(stmt.order_by(Partenaire.nom)).all()
     
-    return templates.TemplateResponse("ACD/admin/partenaires.html", {
+    return templates.TemplateResponse("admin/partenaires.html", {
         "request": request, 
         "settings": settings, 
         "utilisateur": current_user, 
@@ -1592,7 +1612,7 @@ def admin_partenaires_delete(
     return RedirectResponse(url=f"/admin/partenaires?success=1&action=delete&t={timestamp}", status_code=303)
 
 # ===== PROMOTIONS =====
-@router.get("/promotions", response_class=HTMLResponse)
+@router.get("/promotions", response_class=HTMLResponse, name="admin_promotions")
 def admin_promotions(request: Request, session: Session = Depends(get_session), current_user: User = Depends(get_current_user), q: Optional[str] = Query(None)):
     admin_required(current_user)
     stmt = select(Promotion)
@@ -1608,7 +1628,7 @@ def admin_promotions(request: Request, session: Session = Depends(get_session), 
     # Récupérer tous les programmes pour les dropdowns
     programmes = session.exec(select(Programme).order_by(Programme.code)).all()
     
-    return templates.TemplateResponse("ACD/admin/promotions.html", {
+    return templates.TemplateResponse("admin/promotions.html", {
         "request": request, 
         "settings": settings, 
         "utilisateur": current_user, 
@@ -1789,7 +1809,7 @@ def admin_promotions_delete(
     return RedirectResponse(url=f"/admin/promotions?success=1&action=delete&t={timestamp}", status_code=303)
 
 # ===== GROUPES =====
-@router.get("/groupes", response_class=HTMLResponse)
+@router.get("/groupes", response_class=HTMLResponse, name="admin_groupes")
 def admin_groupes(request: Request, session: Session = Depends(get_session), current_user: User = Depends(get_current_user), q: Optional[str] = Query(None)):
     admin_required(current_user)
     stmt = select(Groupe)
@@ -1798,7 +1818,7 @@ def admin_groupes(request: Request, session: Session = Depends(get_session), cur
         stmt = stmt.where((Groupe.nom.ilike(like)) | (Groupe.description.ilike(like)))
     groupes = session.exec(stmt.order_by(Groupe.nom)).all()
     
-    return templates.TemplateResponse("ACD/admin/groupes.html", {
+    return templates.TemplateResponse("admin/groupes.html", {
         "request": request, 
         "settings": settings, 
         "utilisateur": current_user, 
@@ -1957,11 +1977,11 @@ def admin_archives_cleanup(
         cleanup_stats = archive_service.cleanup_old_data(current_user)
         log_activity(session, user=current_user, action="ARCHIVE_CLEANUP", entity="Archive", entity_id=None,
                      activity_data={"cleanup_stats": cleanup_stats}, request=request)
-        return RedirectResponse(url="/admin/archives?success=cleanup_completed", status_code=303)
+        return RedirectResponse(url=request.url_for("admin_archives") + "?success=cleanup_completed", status_code=303)
     except Exception as e:
         log_activity(session, user=current_user, action="ARCHIVE_CLEANUP_FAILED", entity="Archive", entity_id=None,
                      activity_data={"error": str(e)}, request=request)
-        return RedirectResponse(url="/admin/archives?error=cleanup_failed", status_code=303)
+        return RedirectResponse(url=request.url_for("admin_archives") + "?error=cleanup_failed", status_code=303)
 
 @router.get("/archives/{archive_id}/download")
 def admin_archives_download(
@@ -2048,7 +2068,7 @@ def admin_archives_export(
             file_path = Path(archive.chemin_fichier)
             if not file_path.exists():
                 print(f"❌ [EXPORT] Fichier non trouvé: {archive.chemin_fichier}")
-                return RedirectResponse(url="/admin/archives?error=file_not_found", status_code=303)
+                return RedirectResponse(url=request.url_for("admin_archives") + "?error=file_not_found", status_code=303)
             
             print(f"✅ [EXPORT] Fichier trouvé, taille: {file_path.stat().st_size} bytes")
             
@@ -2068,7 +2088,7 @@ def admin_archives_export(
                 print(f"   Statut: {archive.statut}")
                 print(f"   Chemin: {archive.chemin_fichier}")
                 print(f"   Message erreur: {archive.message_erreur}")
-            return RedirectResponse(url="/admin/archives?error=export_failed", status_code=303)
+            return RedirectResponse(url=request.url_for("admin_archives") + "?error=export_failed", status_code=303)
             
     except Exception as e:
         print(f"💥 [EXPORT] Erreur: {str(e)}")
@@ -2077,7 +2097,7 @@ def admin_archives_export(
         
         log_activity(session, user=current_user, action="ARCHIVE_EXPORT_FAILED", entity="Archive", entity_id=None,
                      activity_data={"export_type": export_type, "error": str(e)}, request=request)
-        return RedirectResponse(url="/admin/archives?error=export_failed", status_code=303)
+        return RedirectResponse(url=request.url_for("admin_archives") + "?error=export_failed", status_code=303)
 
 @router.post("/archives/import")
 def admin_archives_import(
@@ -2159,7 +2179,7 @@ def admin_archives_import(
         except:
             pass
         
-        return RedirectResponse(url="/admin/archives?success=import_completed", status_code=303)
+        return RedirectResponse(url=request.url_for("admin_archives") + "?success=import_completed", status_code=303)
         
     except Exception as e:
         # Nettoyer le fichier temporaire en cas d'erreur
@@ -2171,7 +2191,7 @@ def admin_archives_import(
         
         log_activity(session, user=current_user, action="ARCHIVE_IMPORT_ERROR", entity="Archive", entity_id=None,
                      activity_data={"import_type": import_type, "error": str(e)}, request=request)
-        return RedirectResponse(url="/admin/archives?error=import_failed", status_code=303)
+        return RedirectResponse(url=request.url_for("admin_archives") + "?error=import_failed", status_code=303)
 
 @router.post("/archives/bulk-delete")
 def admin_archives_bulk_delete(
@@ -2210,9 +2230,9 @@ def admin_archives_bulk_delete(
         
         session.commit()
         
-        return RedirectResponse(url=f"/admin/archives?success=bulk_delete_completed&count={deleted_count}", status_code=303)
+        return RedirectResponse(url=f"{request.url_for('admin_archives')}?success=bulk_delete_completed&count={deleted_count}", status_code=303)
         
     except Exception as e:
         log_activity(session, user=current_user, action="ARCHIVE_BULK_DELETE_FAILED", entity="Archive", entity_id=None,
                      activity_data={"error": str(e)}, request=request)
-        return RedirectResponse(url="/admin/archives?error=bulk_delete_failed", status_code=303)
+        return RedirectResponse(url=request.url_for("admin_archives") + "?error=bulk_delete_failed", status_code=303)

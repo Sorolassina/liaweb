@@ -71,7 +71,7 @@ def jury_decisions_list(
     promotions = session.exec(select(Promotion)).all()
     
     return templates.TemplateResponse(
-        "ACD/admin/jury_decisions.html",
+        "admin/jury_decisions.html",
         {
             "request": request,
             "settings": settings,
@@ -186,7 +186,7 @@ def create_jury_decision(
         }
     )
     
-    return RedirectResponse(url=request.url_for("jury_decisions_list", jury_id=jury_id, success="decision_created"), status_code=303)
+    return RedirectResponse(url=f"{request.url_for('jury_decisions_list')}?jury_id={jury_id}&success=decision_created", status_code=303)
 
 
 @router.post("/jury-decisions/{decision_id}/update")
@@ -247,7 +247,7 @@ def update_jury_decision(
         }
     )
     
-    return RedirectResponse(url=request.url_for("jury_decisions_list", jury_id=decision_obj.jury_id, success="decision_updated"), status_code=303)
+    return RedirectResponse(url=f"{request.url_for('jury_decisions_list')}?jury_id={decision_obj.jury_id}&success=decision_updated", status_code=303)
 
 
 @router.post("/jury-decisions/{decision_id}/delete")
@@ -293,4 +293,4 @@ def delete_jury_decision(
         }
     )
     
-    return RedirectResponse(url=request.url_for("jury_decisions_list", jury_id=jury_id, success="decision_deleted"), status_code=303)
+    return RedirectResponse(url=f"{request.url_for('jury_decisions_list')}?jury_id={jury_id}&success=decision_deleted", status_code=303)

@@ -16,6 +16,8 @@ from app_lia_web.app.models.base import User, Document, Candidat
 from app_lia_web.app.models.enums import UserRole, TypeDocument
 from app_lia_web.app.schemas import DocumentResponse
 from app_lia_web.core.config import settings
+from app_lia_web.core.path_config import path_config
+from app_lia_web.app.services.file_upload_service import FileUploadService
 
 router = APIRouter()
 
@@ -63,18 +65,22 @@ async def upload_document(
         )
     
     # Créer le répertoire d'upload s'il n'existe pas
-    upload_dir = FileUtils.ensure_upload_dir()
+    upload_dir = path_config.UPLOAD_DIR
+    upload_dir.mkdir(parents=True, exist_ok=True)
     
     # Générer un nom de fichier unique
     timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
     file_extension = FileUtils.get_file_extension(file.filename)
     unique_filename = f"doc_{candidat_id}_{timestamp}{file_extension}"
-    file_path = os.path.join(upload_dir, unique_filename)
     
-    # Sauvegarder le fichier
+    # Utiliser FileUploadService pour sauvegarder le fichier
     try:
-        with open(file_path, "wb") as buffer:
-            shutil.copyfileobj(file.file, buffer)
+        file_info = await FileUploadService.save_file(
+            file,
+            "documents",
+            unique_filename
+        )
+        file_path = file_info["relative_path"]
     except Exception as e:
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
@@ -154,14 +160,15 @@ async def download_document(
         )
     
     # Vérifier que le fichier existe
-    if not os.path.exists(document.chemin_fichier):
+    file_path = path_config.get_physical_path("media", document.chemin_fichier)
+    if not file_path.exists():
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
             detail="Fichier non trouvé sur le serveur"
         )
     
     return FileResponse(
-        path=document.chemin_fichier,
+        path=str(file_path),
         filename=document.nom_fichier,
         media_type=document.mimetype
     )
@@ -189,14 +196,13 @@ async def delete_document(
         )
     
     # Supprimer le fichier physique
-    if os.path.exists(document.chemin_fichier):
-        try:
-            os.remove(document.chemin_fichier)
-        except Exception as e:
-            raise HTTPException(
-                status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-                detail=f"Erreur lors de la suppression du fichier: {str(e)}"
-            )
+    try:
+        FileUploadService.delete_file(document.chemin_fichier)
+    except Exception as e:
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"Erreur lors de la suppression du fichier: {str(e)}"
+        )
     
     # Supprimer l'enregistrement en base
     session.delete(document)

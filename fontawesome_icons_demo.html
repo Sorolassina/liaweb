@@ -1,0 +1,601 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Font Awesome Icons Demo</title>
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" rel="stylesheet">
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <style>
+        body {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            padding: 20px;
+        }
+        
+        .demo-container {
+            background: white;
+            border-radius: 15px;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.2);
+            padding: 30px;
+            margin-bottom: 30px;
+        }
+        
+        .icon-section {
+            margin-bottom: 40px;
+        }
+        
+        .icon-section h3 {
+            color: #333;
+            border-bottom: 3px solid #667eea;
+            padding-bottom: 10px;
+            margin-bottom: 20px;
+        }
+        
+        .icon-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+            gap: 15px;
+            margin-bottom: 20px;
+        }
+        
+        .icon-item {
+            display: flex;
+            align-items: center;
+            padding: 10px;
+            border: 1px solid #e9ecef;
+            border-radius: 8px;
+            transition: all 0.3s ease;
+            background: #f8f9fa;
+        }
+        
+        .icon-item:hover {
+            background: #667eea;
+            color: white;
+            transform: translateY(-2px);
+            box-shadow: 0 5px 15px rgba(102, 126, 234, 0.3);
+        }
+        
+        .icon-item i {
+            font-size: 1.2rem;
+            margin-right: 10px;
+            width: 25px;
+            text-align: center;
+        }
+        
+        .icon-name {
+            font-family: 'Courier New', monospace;
+            font-size: 0.9rem;
+            font-weight: 500;
+        }
+        
+        .code-block {
+            background: #2d3748;
+            color: #e2e8f0;
+            padding: 15px;
+            border-radius: 8px;
+            font-family: 'Courier New', monospace;
+            font-size: 14px;
+            line-height: 1.6;
+            white-space: pre-wrap;
+            overflow-x: auto;
+            margin-top: 15px;
+            border-left: 4px solid #667eea;
+        }
+        
+        .search-box {
+            position: sticky;
+            top: 20px;
+            z-index: 100;
+            margin-bottom: 30px;
+        }
+        
+        .search-box input {
+            border-radius: 25px;
+            border: 2px solid #667eea;
+            padding: 12px 20px;
+            font-size: 1.1rem;
+        }
+        
+        .search-box input:focus {
+            box-shadow: 0 0 0 0.2rem rgba(102, 126, 234, 0.25);
+            border-color: #667eea;
+        }
+        
+        .hidden {
+            display: none !important;
+        }
+        
+        .icon-category {
+            background: linear-gradient(135deg, #667eea, #764ba2);
+            color: white;
+            padding: 20px;
+            border-radius: 10px;
+            margin-bottom: 20px;
+        }
+        
+        .icon-category h4 {
+            margin: 0;
+            font-size: 1.3rem;
+        }
+    </style>
+</head>
+<body>
+    <div class="container-fluid">
+        <div class="row">
+            <div class="col-12">
+                <div class="demo-container">
+                    <h1 class="text-center mb-4">
+                        <i class="fas fa-icons text-primary me-3"></i>
+                        Font Awesome Icons Demo
+                    </h1>
+                    
+                    <div class="search-box">
+                        <input type="text" class="form-control" id="searchInput" placeholder="Rechercher une icône...">
+                    </div>
+                    
+                    <!-- Navigation -->
+                    <div class="icon-category">
+                        <h4><i class="fas fa-arrow-left me-2"></i>Navigation & Retour</h4>
+                    </div>
+                    <div class="icon-section">
+                        <div class="icon-grid" id="navigationIcons">
+                            <div class="icon-item" data-name="arrow-left">
+                                <i class="fas fa-arrow-left"></i>
+                                <span class="icon-name">fa-arrow-left</span>
+                            </div>
+                            <div class="icon-item" data-name="arrow-circle-left">
+                                <i class="fas fa-arrow-circle-left"></i>
+                                <span class="icon-name">fa-arrow-circle-left</span>
+                            </div>
+                            <div class="icon-item" data-name="long-arrow-alt-left">
+                                <i class="fas fa-long-arrow-alt-left"></i>
+                                <span class="icon-name">fa-long-arrow-alt-left</span>
+                            </div>
+                            <div class="icon-item" data-name="chevron-left">
+                                <i class="fas fa-chevron-left"></i>
+                                <span class="icon-name">fa-chevron-left</span>
+                            </div>
+                            <div class="icon-item" data-name="angle-left">
+                                <i class="fas fa-angle-left"></i>
+                                <span class="icon-name">fa-angle-left</span>
+                            </div>
+                            <div class="icon-item" data-name="caret-left">
+                                <i class="fas fa-caret-left"></i>
+                                <span class="icon-name">fa-caret-left</span>
+                            </div>
+                            <div class="icon-item" data-name="home">
+                                <i class="fas fa-home"></i>
+                                <span class="icon-name">fa-home</span>
+                            </div>
+                            <div class="icon-item" data-name="menu">
+                                <i class="fas fa-bars"></i>
+                                <span class="icon-name">fa-bars</span>
+                            </div>
+                            <div class="icon-item" data-name="user">
+                                <i class="fas fa-user"></i>
+                                <span class="icon-name">fa-user</span>
+                            </div>
+                            <div class="icon-item" data-name="users">
+                                <i class="fas fa-users"></i>
+                                <span class="icon-name">fa-users</span>
+                            </div>
+                            <div class="icon-item" data-name="settings">
+                                <i class="fas fa-cog"></i>
+                                <span class="icon-name">fa-cog</span>
+                            </div>
+                            <div class="icon-item" data-name="search">
+                                <i class="fas fa-search"></i>
+                                <span class="icon-name">fa-search</span>
+                            </div>
+                            <div class="icon-item" data-name="plus">
+                                <i class="fas fa-plus"></i>
+                                <span class="icon-name">fa-plus</span>
+                            </div>
+                            <div class="icon-item" data-name="edit">
+                                <i class="fas fa-edit"></i>
+                                <span class="icon-name">fa-edit</span>
+                            </div>
+                            <div class="icon-item" data-name="trash">
+                                <i class="fas fa-trash"></i>
+                                <span class="icon-name">fa-trash</span>
+                            </div>
+                            <div class="icon-item" data-name="eye">
+                                <i class="fas fa-eye"></i>
+                                <span class="icon-name">fa-eye</span>
+                            </div>
+                        </div>
+                        <div class="code-block">&lt;i class="fas fa-arrow-left"&gt;&lt;/i&gt;
+&lt;i class="fas fa-arrow-circle-left"&gt;&lt;/i&gt;
+&lt;i class="fas fa-long-arrow-alt-left"&gt;&lt;/i&gt;
+&lt;i class="fas fa-chevron-left"&gt;&lt;/i&gt;
+&lt;i class="fas fa-angle-left"&gt;&lt;/i&gt;
+&lt;i class="fas fa-caret-left"&gt;&lt;/i&gt;
+&lt;i class="fas fa-home"&gt;&lt;/i&gt;
+&lt;i class="fas fa-bars"&gt;&lt;/i&gt;
+&lt;i class="fas fa-user"&gt;&lt;/i&gt;
+&lt;i class="fas fa-users"&gt;&lt;/i&gt;
+&lt;i class="fas fa-cog"&gt;&lt;/i&gt;
+&lt;i class="fas fa-search"&gt;&lt;/i&gt;
+&lt;i class="fas fa-plus"&gt;&lt;/i&gt;
+&lt;i class="fas fa-edit"&gt;&lt;/i&gt;
+&lt;i class="fas fa-trash"&gt;&lt;/i&gt;
+&lt;i class="fas fa-eye"&gt;&lt;/i&gt;</div>
+                    </div>
+                    
+                    <div class="icon-category">
+                        <h4><i class="fas fa-calendar-alt me-2"></i>Calendrier & Temps</h4>
+                    </div>
+                    <div class="icon-section">
+                        <div class="icon-grid" id="calendarIcons">
+                            <div class="icon-item" data-name="calendar">
+                                <i class="fas fa-calendar-alt"></i>
+                                <span class="icon-name">fa-calendar-alt</span>
+                            </div>
+                            <div class="icon-item" data-name="clock">
+                                <i class="fas fa-clock"></i>
+                                <span class="icon-name">fa-clock</span>
+                            </div>
+                            <div class="icon-item" data-name="calendar-check">
+                                <i class="fas fa-calendar-check"></i>
+                                <span class="icon-name">fa-calendar-check</span>
+                            </div>
+                            <div class="icon-item" data-name="calendar-plus">
+                                <i class="fas fa-calendar-plus"></i>
+                                <span class="icon-name">fa-calendar-plus</span>
+                            </div>
+                            <div class="icon-item" data-name="stopwatch">
+                                <i class="fas fa-stopwatch"></i>
+                                <span class="icon-name">fa-stopwatch</span>
+                            </div>
+                            <div class="icon-item" data-name="history">
+                                <i class="fas fa-history"></i>
+                                <span class="icon-name">fa-history</span>
+                            </div>
+                        </div>
+                        <div class="code-block">&lt;i class="fas fa-calendar-alt"&gt;&lt;/i&gt;
+&lt;i class="fas fa-clock"&gt;&lt;/i&gt;
+&lt;i class="fas fa-calendar-check"&gt;&lt;/i&gt;
+&lt;i class="fas fa-calendar-plus"&gt;&lt;/i&gt;
+&lt;i class="fas fa-stopwatch"&gt;&lt;/i&gt;
+&lt;i class="fas fa-history"&gt;&lt;/i&gt;</div>
+                    </div>
+                    
+                    <div class="icon-category">
+                        <h4><i class="fas fa-chart-bar me-2"></i>Graphiques & Statistiques</h4>
+                    </div>
+                    <div class="icon-section">
+                        <div class="icon-grid" id="chartIcons">
+                            <div class="icon-item" data-name="chart-bar">
+                                <i class="fas fa-chart-bar"></i>
+                                <span class="icon-name">fa-chart-bar</span>
+                            </div>
+                            <div class="icon-item" data-name="chart-line">
+                                <i class="fas fa-chart-line"></i>
+                                <span class="icon-name">fa-chart-line</span>
+                            </div>
+                            <div class="icon-item" data-name="chart-pie">
+                                <i class="fas fa-chart-pie"></i>
+                                <span class="icon-name">fa-chart-pie</span>
+                            </div>
+                            <div class="icon-item" data-name="chart-area">
+                                <i class="fas fa-chart-area"></i>
+                                <span class="icon-name">fa-chart-area</span>
+                            </div>
+                            <div class="icon-item" data-name="tachometer">
+                                <i class="fas fa-tachometer-alt"></i>
+                                <span class="icon-name">fa-tachometer-alt</span>
+                            </div>
+                            <div class="icon-item" data-name="percent">
+                                <i class="fas fa-percentage"></i>
+                                <span class="icon-name">fa-percentage</span>
+                            </div>
+                        </div>
+                        <div class="code-block">&lt;i class="fas fa-chart-bar"&gt;&lt;/i&gt;
+&lt;i class="fas fa-chart-line"&gt;&lt;/i&gt;
+&lt;i class="fas fa-chart-pie"&gt;&lt;/i&gt;
+&lt;i class="fas fa-chart-area"&gt;&lt;/i&gt;
+&lt;i class="fas fa-tachometer-alt"&gt;&lt;/i&gt;
+&lt;i class="fas fa-percentage"&gt;&lt;/i&gt;</div>
+                    </div>
+                    
+                    <div class="icon-category">
+                        <h4><i class="fas fa-envelope me-2"></i>Communication</h4>
+                    </div>
+                    <div class="icon-section">
+                        <div class="icon-grid" id="communicationIcons">
+                            <div class="icon-item" data-name="envelope">
+                                <i class="fas fa-envelope"></i>
+                                <span class="icon-name">fa-envelope</span>
+                            </div>
+                            <div class="icon-item" data-name="phone">
+                                <i class="fas fa-phone"></i>
+                                <span class="icon-name">fa-phone</span>
+                            </div>
+                            <div class="icon-item" data-name="video">
+                                <i class="fas fa-video"></i>
+                                <span class="icon-name">fa-video</span>
+                            </div>
+                            <div class="icon-item" data-name="comments">
+                                <i class="fas fa-comments"></i>
+                                <span class="icon-name">fa-comments</span>
+                            </div>
+                            <div class="icon-item" data-name="paper-plane">
+                                <i class="fas fa-paper-plane"></i>
+                                <span class="icon-name">fa-paper-plane</span>
+                            </div>
+                            <div class="icon-item" data-name="bell">
+                                <i class="fas fa-bell"></i>
+                                <span class="icon-name">fa-bell</span>
+                            </div>
+                        </div>
+                        <div class="code-block">&lt;i class="fas fa-envelope"&gt;&lt;/i&gt;
+&lt;i class="fas fa-phone"&gt;&lt;/i&gt;
+&lt;i class="fas fa-video"&gt;&lt;/i&gt;
+&lt;i class="fas fa-comments"&gt;&lt;/i&gt;
+&lt;i class="fas fa-paper-plane"&gt;&lt;/i&gt;
+&lt;i class="fas fa-bell"&gt;&lt;/i&gt;</div>
+                    </div>
+                    
+                    <div class="icon-category">
+                        <h4><i class="fas fa-file-alt me-2"></i>Documents & Fichiers</h4>
+                    </div>
+                    <div class="icon-section">
+                        <div class="icon-grid" id="fileIcons">
+                            <div class="icon-item" data-name="file">
+                                <i class="fas fa-file"></i>
+                                <span class="icon-name">fa-file</span>
+                            </div>
+                            <div class="icon-item" data-name="file-alt">
+                                <i class="fas fa-file-alt"></i>
+                                <span class="icon-name">fa-file-alt</span>
+                            </div>
+                            <div class="icon-item" data-name="file-pdf">
+                                <i class="fas fa-file-pdf"></i>
+                                <span class="icon-name">fa-file-pdf</span>
+                            </div>
+                            <div class="icon-item" data-name="file-word">
+                                <i class="fas fa-file-word"></i>
+                                <span class="icon-name">fa-file-word</span>
+                            </div>
+                            <div class="icon-item" data-name="file-excel">
+                                <i class="fas fa-file-excel"></i>
+                                <span class="icon-name">fa-file-excel</span>
+                            </div>
+                            <div class="icon-item" data-name="folder">
+                                <i class="fas fa-folder"></i>
+                                <span class="icon-name">fa-folder</span>
+                            </div>
+                            <div class="icon-item" data-name="download">
+                                <i class="fas fa-download"></i>
+                                <span class="icon-name">fa-download</span>
+                            </div>
+                            <div class="icon-item" data-name="upload">
+                                <i class="fas fa-upload"></i>
+                                <span class="icon-name">fa-upload</span>
+                            </div>
+                        </div>
+                        <div class="code-block">&lt;i class="fas fa-file"&gt;&lt;/i&gt;
+&lt;i class="fas fa-file-alt"&gt;&lt;/i&gt;
+&lt;i class="fas fa-file-pdf"&gt;&lt;/i&gt;
+&lt;i class="fas fa-file-word"&gt;&lt;/i&gt;
+&lt;i class="fas fa-file-excel"&gt;&lt;/i&gt;
+&lt;i class="fas fa-folder"&gt;&lt;/i&gt;
+&lt;i class="fas fa-download"&gt;&lt;/i&gt;
+&lt;i class="fas fa-upload"&gt;&lt;/i&gt;</div>
+                    </div>
+                    
+                    <div class="icon-category">
+                        <h4><i class="fas fa-graduation-cap me-2"></i>Éducation & Formation</h4>
+                    </div>
+                    <div class="icon-section">
+                        <div class="icon-grid" id="educationIcons">
+                            <div class="icon-item" data-name="graduation-cap">
+                                <i class="fas fa-graduation-cap"></i>
+                                <span class="icon-name">fa-graduation-cap</span>
+                            </div>
+                            <div class="icon-item" data-name="book">
+                                <i class="fas fa-book"></i>
+                                <span class="icon-name">fa-book</span>
+                            </div>
+                            <div class="icon-item" data-name="book-open">
+                                <i class="fas fa-book-open"></i>
+                                <span class="icon-name">fa-book-open</span>
+                            </div>
+                            <div class="icon-item" data-name="chalkboard">
+                                <i class="fas fa-chalkboard"></i>
+                                <span class="icon-name">fa-chalkboard</span>
+                            </div>
+                            <div class="icon-item" data-name="pencil">
+                                <i class="fas fa-pencil-alt"></i>
+                                <span class="icon-name">fa-pencil-alt</span>
+                            </div>
+                            <div class="icon-item" data-name="certificate">
+                                <i class="fas fa-certificate"></i>
+                                <span class="icon-name">fa-certificate</span>
+                            </div>
+                        </div>
+                        <div class="code-block">&lt;i class="fas fa-graduation-cap"&gt;&lt;/i&gt;
+&lt;i class="fas fa-book"&gt;&lt;/i&gt;
+&lt;i class="fas fa-book-open"&gt;&lt;/i&gt;
+&lt;i class="fas fa-chalkboard"&gt;&lt;/i&gt;
+&lt;i class="fas fa-pencil-alt"&gt;&lt;/i&gt;
+&lt;i class="fas fa-certificate"&gt;&lt;/i&gt;</div>
+                    </div>
+                    
+                    <div class="icon-category">
+                        <h4><i class="fas fa-shield-alt me-2"></i>Sécurité & Statuts</h4>
+                    </div>
+                    <div class="icon-section">
+                        <div class="icon-grid" id="securityIcons">
+                            <div class="icon-item" data-name="shield">
+                                <i class="fas fa-shield-alt"></i>
+                                <span class="icon-name">fa-shield-alt</span>
+                            </div>
+                            <div class="icon-item" data-name="lock">
+                                <i class="fas fa-lock"></i>
+                                <span class="icon-name">fa-lock</span>
+                            </div>
+                            <div class="icon-item" data-name="unlock">
+                                <i class="fas fa-unlock"></i>
+                                <span class="icon-name">fa-unlock</span>
+                            </div>
+                            <div class="icon-item" data-name="check">
+                                <i class="fas fa-check"></i>
+                                <span class="icon-name">fa-check</span>
+                            </div>
+                            <div class="icon-item" data-name="times">
+                                <i class="fas fa-times"></i>
+                                <span class="icon-name">fa-times</span>
+                            </div>
+                            <div class="icon-item" data-name="exclamation">
+                                <i class="fas fa-exclamation-triangle"></i>
+                                <span class="icon-name">fa-exclamation-triangle</span>
+                            </div>
+                            <div class="icon-item" data-name="info">
+                                <i class="fas fa-info-circle"></i>
+                                <span class="icon-name">fa-info-circle</span>
+                            </div>
+                            <div class="icon-item" data-name="warning">
+                                <i class="fas fa-exclamation-circle"></i>
+                                <span class="icon-name">fa-exclamation-circle</span>
+                            </div>
+                        </div>
+                        <div class="code-block">&lt;i class="fas fa-shield-alt"&gt;&lt;/i&gt;
+&lt;i class="fas fa-lock"&gt;&lt;/i&gt;
+&lt;i class="fas fa-unlock"&gt;&lt;/i&gt;
+&lt;i class="fas fa-check"&gt;&lt;/i&gt;
+&lt;i class="fas fa-times"&gt;&lt;/i&gt;
+&lt;i class="fas fa-exclamation-triangle"&gt;&lt;/i&gt;
+&lt;i class="fas fa-info-circle"&gt;&lt;/i&gt;
+&lt;i class="fas fa-exclamation-circle"&gt;&lt;/i&gt;</div>
+                    </div>
+                    
+                    <div class="icon-category">
+                        <h4><i class="fas fa-mobile-alt me-2"></i>Technologie</h4>
+                    </div>
+                    <div class="icon-section">
+                        <div class="icon-grid" id="techIcons">
+                            <div class="icon-item" data-name="mobile">
+                                <i class="fas fa-mobile-alt"></i>
+                                <span class="icon-name">fa-mobile-alt</span>
+                            </div>
+                            <div class="icon-item" data-name="laptop">
+                                <i class="fas fa-laptop"></i>
+                                <span class="icon-name">fa-laptop</span>
+                            </div>
+                            <div class="icon-item" data-name="desktop">
+                                <i class="fas fa-desktop"></i>
+                                <span class="icon-name">fa-desktop</span>
+                            </div>
+                            <div class="icon-item" data-name="database">
+                                <i class="fas fa-database"></i>
+                                <span class="icon-name">fa-database</span>
+                            </div>
+                            <div class="icon-item" data-name="server">
+                                <i class="fas fa-server"></i>
+                                <span class="icon-name">fa-server</span>
+                            </div>
+                            <div class="icon-item" data-name="wifi">
+                                <i class="fas fa-wifi"></i>
+                                <span class="icon-name">fa-wifi</span>
+                            </div>
+                        </div>
+                        <div class="code-block">&lt;i class="fas fa-mobile-alt"&gt;&lt;/i&gt;
+&lt;i class="fas fa-laptop"&gt;&lt;/i&gt;
+&lt;i class="fas fa-desktop"&gt;&lt;/i&gt;
+&lt;i class="fas fa-database"&gt;&lt;/i&gt;
+&lt;i class="fas fa-server"&gt;&lt;/i&gt;
+&lt;i class="fas fa-wifi"&gt;&lt;/i&gt;</div>
+                    </div>
+                    
+                    <div class="icon-category">
+                        <h4><i class="fas fa-heart me-2"></i>Actions & Émotions</h4>
+                    </div>
+                    <div class="icon-section">
+                        <div class="icon-grid" id="actionIcons">
+                            <div class="icon-item" data-name="heart">
+                                <i class="fas fa-heart"></i>
+                                <span class="icon-name">fa-heart</span>
+                            </div>
+                            <div class="icon-item" data-name="star">
+                                <i class="fas fa-star"></i>
+                                <span class="icon-name">fa-star</span>
+                            </div>
+                            <div class="icon-item" data-name="thumbs-up">
+                                <i class="fas fa-thumbs-up"></i>
+                                <span class="icon-name">fa-thumbs-up</span>
+                            </div>
+                            <div class="icon-item" data-name="thumbs-down">
+                                <i class="fas fa-thumbs-down"></i>
+                                <span class="icon-name">fa-thumbs-down</span>
+                            </div>
+                            <div class="icon-item" data-name="play">
+                                <i class="fas fa-play"></i>
+                                <span class="icon-name">fa-play</span>
+                            </div>
+                            <div class="icon-item" data-name="pause">
+                                <i class="fas fa-pause"></i>
+                                <span class="icon-name">fa-pause</span>
+                            </div>
+                            <div class="icon-item" data-name="stop">
+                                <i class="fas fa-stop"></i>
+                                <span class="icon-name">fa-stop</span>
+                            </div>
+                            <div class="icon-item" data-name="refresh">
+                                <i class="fas fa-sync-alt"></i>
+                                <span class="icon-name">fa-sync-alt</span>
+                            </div>
+                        </div>
+                        <div class="code-block">&lt;i class="fas fa-heart"&gt;&lt;/i&gt;
+&lt;i class="fas fa-star"&gt;&lt;/i&gt;
+&lt;i class="fas fa-thumbs-up"&gt;&lt;/i&gt;
+&lt;i class="fas fa-thumbs-down"&gt;&lt;/i&gt;
+&lt;i class="fas fa-play"&gt;&lt;/i&gt;
+&lt;i class="fas fa-pause"&gt;&lt;/i&gt;
+&lt;i class="fas fa-stop"&gt;&lt;/i&gt;
+&lt;i class="fas fa-sync-alt"&gt;&lt;/i&gt;</div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // Fonction de recherche
+        document.getElementById('searchInput').addEventListener('input', function(e) {
+            const searchTerm = e.target.value.toLowerCase();
+            const iconItems = document.querySelectorAll('.icon-item');
+            
+            iconItems.forEach(item => {
+                const iconName = item.getAttribute('data-name').toLowerCase();
+                const iconClass = item.querySelector('.icon-name').textContent.toLowerCase();
+                
+                if (iconName.includes(searchTerm) || iconClass.includes(searchTerm)) {
+                    item.classList.remove('hidden');
+                } else {
+                    item.classList.add('hidden');
+                }
+            });
+        });
+        
+        // Copier le code au clic
+        document.querySelectorAll('.icon-item').forEach(item => {
+            item.addEventListener('click', function() {
+                const iconClass = this.querySelector('.icon-name').textContent;
+                const code = `<i class="${iconClass}"></i>`;
+                
+                navigator.clipboard.writeText(code).then(() => {
+                    // Feedback visuel
+                    this.style.background = '#28a745';
+                    this.style.color = 'white';
+                    setTimeout(() => {
+                        this.style.background = '';
+                        this.style.color = '';
+                    }, 1000);
+                });
+            });
+        });
+    </script>
+</body>
+</html>

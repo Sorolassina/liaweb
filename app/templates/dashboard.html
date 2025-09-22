@@ -3,7 +3,7 @@
 {% block title %}Tableau de bord - {{ app_name }}{% endblock %}
 
 {% block content %}
-<div class="container-fluid py-4">
+
     <!-- En-tête du tableau de bord -->
     <div class="row mb-4">
         <div class="col-12">
@@ -21,6 +21,7 @@
             </div>
         </div>
     </div>
+    
 
     <!-- Alertes -->
     {% if alerts %}
@@ -284,7 +285,7 @@
             </div>
         </div>
     </div>
-</div>
+
 
 <script>
 // Auto-refresh des alertes

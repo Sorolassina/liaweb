@@ -201,11 +201,26 @@
       padding: 8px 10px;
     }
   }
+  
 </style>
 {% endblock %}
 
 {% block content %}
-<div class="container-wide">
+<!-- Entête -->
+<div class="entete-card entete-fixe" style="padding: 15px 20px;">
+  <div class="row align-items-center">
+    <div class="col-md-8">
+      <h3 class="mb-0" style="font-size: 1.4rem;">
+        <i class="fa fa-users-cog me-2"></i>Tableau de bord général
+      </h3>
+      <p class="mb-0 opacity-75" style="font-size: 0.9rem;">
+          Visualisation des données générales du programme
+      </p>
+    </div>
+  </div>
+</div>
+ 
+<div class="container-wide" style="overflow-y: auto;">
 
   <!-- KPIs -->
   <div class="card-neumo p-3 mb-3">

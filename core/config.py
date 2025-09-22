@@ -152,6 +152,14 @@ class Settings(BaseSettings):
     VERSION: ClassVar[str] = "1.0.0"
     APP_NAME: ClassVar[str] = "LIA Coaching"
     AUTHOR: ClassVar[str] = "Soro Wangboho Lassina"
+    
+    # === INFORMATIONS ENTREPRISE ===
+    COMPANY_NAME: ClassVar[str] = "Mycreo Academy"
+    COMPANY_DESCRIPTION: ClassVar[str] = "Plateforme de coaching et d'accompagnement professionnel"
+    COMPANY_ADDRESS: ClassVar[str] = "Paris, France"
+    COMPANY_PHONE: ClassVar[str] = "+33 1 23 45 67 89"
+    COMPANY_WEBSITE: ClassVar[str] = "https://lia-coaching.com"
+    COMPANY_LOGO_PATH: ClassVar[str] = "/static/images/logo.png"
 
     # Autoriser "ALLOWED_HOSTS=localhost,127.0.0.1" dans .env
     @field_validator("ALLOWED_HOSTS", mode="before")

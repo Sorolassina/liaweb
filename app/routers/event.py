@@ -1,6 +1,5 @@
 from fastapi import APIRouter, Depends, HTTPException, Request, Form
 from fastapi.responses import HTMLResponse, RedirectResponse
-from fastapi.templating import Jinja2Templates
 from sqlmodel import Session, select
 from datetime import datetime, date, timezone
 from typing import List, Optional
@@ -8,9 +7,8 @@ import secrets
 import string
 
 from app_lia_web.core.database import get_session
-from app_lia_web.app.models.base import User
+from app_lia_web.app.models.base import User, Programme, Inscription
 from app_lia_web.app.models.event import Event, InvitationEvent, PresenceEvent
-from app_lia_web.app.models.seminaire import Programme, Inscription
 from app_lia_web.app.schemas.event_schemas import EventCreate, EventUpdate, InvitationEventCreate, PresenceEventCreate
 from app_lia_web.app.services.event_service import EventService
 from app_lia_web.core.security import get_current_user

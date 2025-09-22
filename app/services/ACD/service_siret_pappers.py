@@ -4,8 +4,9 @@ import os
 import requests
 
 from app_lia_web.core.config import settings
-from app_lia_web.core.file_encoded import encode_file_to_base64
+from app_lia_web.app.services.file_upload_service import FileUploadService
 
+FileUploadService = FileUploadService()
       
 async def get_entreprise_process(numero_siret: str, request: Request):
     base_url = settings.get_base_url(request)
@@ -121,7 +122,7 @@ async def get_entreprise_process(numero_siret: str, request: Request):
         print("🔍 [SERVICE] Vérification de l'existence du fichier CSV...")
         if os.path.exists(csv_url):
             print("📄 [SERVICE] Encodage du fichier CSV en base64...")
-            csv_base64 = encode_file_to_base64(csv_url)
+            csv_base64 = FileUploadService.encode_file_to_base64(csv_url)
             print("✅ [SERVICE] Encodage CSV terminé")
         else:
             print("⚠️ [SERVICE] Fichier CSV non trouvé")

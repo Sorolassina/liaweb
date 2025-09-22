@@ -1,0 +1,287 @@
+{% extends "admin/base_admin.html" %}
+
+{% block admin_content %}
+<div class="card-neumo p-4">
+  <div class="d-flex justify-content-between align-items-center mb-4">
+    <h5 class="m-0">
+      <i class="fa fa-history me-2"></i>Logs d'activité
+    </h5>
+    <div class="text-muted small">
+      <i class="fa fa-info-circle me-1"></i>Dernières 100 activités
+    </div>
+  </div>
+
+  <!-- Filtres et recherche -->
+  <div class="row g-3 mb-4">
+    <div class="col-md-4">
+      <div class="input-group">
+        <span class="input-group-text"><i class="fa fa-search"></i></span>
+        <input type="text" class="form-control" id="searchLogs" placeholder="Rechercher dans les logs...">
+      </div>
+    </div>
+    <div class="col-md-3">
+      <select class="form-select" id="filterAction">
+        <option value="">Toutes les actions</option>
+        <option value="USER_ADD">Ajout utilisateur</option>
+        <option value="USER_UPDATE">Modification utilisateur</option>
+        <option value="USER_DELETE">Suppression utilisateur</option>
+        <option value="PROGRAMME_ADD">Ajout programme</option>
+        <option value="PROGRAMME_UPDATE">Modification programme</option>
+        <option value="PROGRAMME_DELETE">Suppression programme</option>
+        <option value="JURY_ADD">Ajout jury</option>
+        <option value="JURY_UPDATE">Modification jury</option>
+        <option value="JURY_DELETE">Suppression jury</option>
+        <option value="JURY_INVITATIONS_SENT">Envoi invitations jury</option>
+      </select>
+    </div>
+    <div class="col-md-3">
+      <select class="form-select" id="filterUser">
+        <option value="">Tous les utilisateurs</option>
+        {% for log in logs %}
+          {% if log.user %}
+            <option value="{{ log.user.id }}">{{ log.user.nom_complet }}</option>
+          {% endif %}
+        {% endfor %}
+      </select>
+    </div>
+    <div class="col-md-2">
+      <button class="btn btn-outline-secondary w-100" onclick="clearFilters()">
+        <i class="fa fa-times me-1"></i>Effacer
+      </button>
+    </div>
+  </div>
+
+  <!-- Tableau des logs -->
+  <div class="users-table-container">
+    <table class="table align-middle" id="logsTable">
+      <thead>
+        <tr>
+          <th>Date/Heure</th>
+          <th>Utilisateur</th>
+          <th>Action</th>
+          <th>Entité</th>
+          <th>Détails</th>
+          <!--<th>IP</th>-->
+        </tr>
+      </thead>
+      <tbody>
+        {% for log in logs %}
+        <tr class="log-row" 
+            data-action="{{ log.action }}" 
+            data-user="{{ log.user_id or '' }}"
+            data-search="{{ log.action|lower }} {{ log.entity|lower }} {{ log.user_nom_complet|lower if log.user_nom_complet else '' }} {{ log.user_email|lower if log.user_email else '' }}">
+          <td>
+            <div class="fw-bold small">{{ log.created_at.strftime('%d/%m/%Y') }}</div>
+            <div class="text-muted small">{{ log.created_at.strftime('%H:%M:%S') }}</div>
+          </td>
+          <td>
+            {% if log.user_nom_complet %}
+              <div class="d-flex align-items-center">
+                {% if log.user_id %}
+                  <!-- Si on a l'ID, on peut essayer de récupérer la photo depuis la session -->
+                  <div class="bg-primary rounded-circle me-2 d-flex align-items-center justify-content-center" 
+                       style="width: 24px; height: 24px;">
+                    <i class="fa fa-user text-white" style="font-size: 10px;"></i>
+                  </div>
+                {% else %}
+                  <div class="bg-warning rounded-circle me-2 d-flex align-items-center justify-content-center" 
+                       style="width: 24px; height: 24px;">
+                    <i class="fa fa-user-times text-white" style="font-size: 10px;"></i>
+                  </div>
+                {% endif %}
+                <div>
+                  <div class="fw-bold small">{{ log.user_nom_complet }}</div>
+                  <small class="text-muted">
+                    {% if log.user_role %}
+                      {{ log.user_role.replace('_', ' ').title() }}
+                    {% elif log.user_email %}
+                      {{ log.user_email }}
+                    {% else %}
+                      Utilisateur supprimé
+                    {% endif %}
+                  </small>
+                </div>
+              </div>
+            {% else %}
+              <div class="d-flex align-items-center">
+                <div class="bg-danger rounded-circle me-2 d-flex align-items-center justify-content-center" 
+                     style="width: 24px; height: 24px;">
+                  <i class="fa fa-question text-white" style="font-size: 10px;"></i>
+                </div>
+                <div>
+                  <div class="fw-bold small text-danger">Utilisateur inconnu</div>
+                  <small class="text-muted">Données manquantes</small>
+                </div>
+              </div>
+            {% endif %}
+          </td>
+          <td>
+            {% if log.action == 'USER_ADD' %}
+              <span class="badge bg-success"><i class="fa fa-plus me-1"></i>Ajout utilisateur</span>
+            {% elif log.action == 'USER_UPDATE' %}
+              <span class="badge bg-primary"><i class="fa fa-edit me-1"></i>Modification utilisateur</span>
+            {% elif log.action == 'USER_DELETE' %}
+              <span class="badge bg-danger"><i class="fa fa-trash me-1"></i>Suppression utilisateur</span>
+            {% elif log.action == 'PROGRAMME_ADD' %}
+              <span class="badge bg-success"><i class="fa fa-plus me-1"></i>Ajout programme</span>
+            {% elif log.action == 'PROGRAMME_UPDATE' %}
+              <span class="badge bg-primary"><i class="fa fa-edit me-1"></i>Modification programme</span>
+            {% elif log.action == 'PROGRAMME_DELETE' %}
+              <span class="badge bg-danger"><i class="fa fa-trash me-1"></i>Suppression programme</span>
+            {% elif log.action == 'JURY_ADD' %}
+              <span class="badge bg-success"><i class="fa fa-plus me-1"></i>Ajout jury</span>
+            {% elif log.action == 'JURY_UPDATE' %}
+              <span class="badge bg-primary"><i class="fa fa-edit me-1"></i>Modification jury</span>
+            {% elif log.action == 'JURY_DELETE' %}
+              <span class="badge bg-danger"><i class="fa fa-trash me-1"></i>Suppression jury</span>
+            {% elif log.action == 'JURY_INVITATIONS_SENT' %}
+              <span class="badge bg-warning"><i class="fa fa-envelope me-1"></i>Envoi invitations</span>
+            {% else %}
+              <span class="badge bg-secondary">{{ log.action }}</span>
+            {% endif %}
+          </td>
+          <td>
+            <span class="badge bg-info">{{ log.entity }}</span>
+            {% if log.entity_id %}
+              <small class="text-muted">#{{ log.entity_id }}</small>
+            {% endif %}
+          </td>
+          <td>
+            {% if log.activity_data %}
+              <button class="btn btn-outline-info btn-sm" data-bs-toggle="modal" data-bs-target="#detailsModal{{ log.id }}">
+                <i class="fa fa-eye"></i>
+              </button>
+            {% else %}
+              <span class="text-muted">—</span>
+            {% endif %}
+          </td>
+          <!--<td>
+            <small class="text-muted">{{ log.ip_address or '—' }}</small>
+          </td>-->
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+
+  {% if not logs %}
+    <div class="text-center py-5">
+      <i class="fa fa-history fa-3x text-muted mb-3"></i>
+      <h5 class="text-muted">Aucun log d'activité</h5>
+      <p class="text-muted">Les activités des utilisateurs apparaîtront ici.</p>
+    </div>
+  {% endif %}
+</div>
+
+<!-- Modals pour les détails des logs -->
+{% for log in logs %}
+{% if log.activity_data %}
+<div class="modal fade" id="detailsModal{{ log.id }}" tabindex="-1">
+  <div class="modal-dialog modal-lg">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h5 class="modal-title">
+          <i class="fa fa-info-circle me-2"></i>Détails de l'activité
+        </h5>
+        <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+      </div>
+      <div class="modal-body">
+        <div class="row g-3">
+          <div class="col-md-6">
+            <label class="form-label fw-bold">Action</label>
+            <div class="form-control-plaintext bg-light p-2 rounded">{{ log.action }}</div>
+          </div>
+          <div class="col-md-6">
+            <label class="form-label fw-bold">Entité</label>
+            <div class="form-control-plaintext bg-light p-2 rounded">{{ log.entity }}{% if log.entity_id %} #{{ log.entity_id }}{% endif %}</div>
+          </div>
+          <div class="col-md-6">
+            <label class="form-label fw-bold">Utilisateur</label>
+            <div class="form-control-plaintext bg-light p-2 rounded">
+              {% if log.user_nom_complet %}
+                {{ log.user_nom_complet }}
+                {% if log.user_email %}
+                  ({{ log.user_email }})
+                {% endif %}
+                {% if log.user_role %}
+                  - {{ log.user_role.replace('_', ' ').title() }}
+                {% endif %}
+                {% if not log.user_id %}
+                  <span class="text-warning ms-2">(Utilisateur supprimé)</span>
+                {% endif %}
+              {% else %}
+                <span class="text-danger">Utilisateur inconnu</span>
+              {% endif %}
+            </div>
+          </div>
+          <div class="col-md-6">
+            <label class="form-label fw-bold">Date/Heure</label>
+            <div class="form-control-plaintext bg-light p-2 rounded">{{ log.created_at.strftime('%d/%m/%Y %H:%M:%S') }}</div>
+          </div>
+          <div class="col-md-6">
+            <label class="form-label fw-bold">Adresse IP</label>
+            <div class="form-control-plaintext bg-light p-2 rounded">{{ log.ip_address or 'Non disponible' }}</div>
+          </div>
+          <div class="col-md-6">
+            <label class="form-label fw-bold">User Agent</label>
+            <div class="form-control-plaintext bg-light p-2 rounded small">{{ log.user_agent or 'Non disponible' }}</div>
+          </div>
+          <div class="col-12">
+            <label class="form-label fw-bold">Données de l'activité</label>
+            <div class="form-control-plaintext bg-light p-2 rounded" style="min-height: 100px; font-family: monospace;">
+              <pre>{{ log.activity_data | tojson(indent=2) }}</pre>
+            </div>
+          </div>
+        </div>
+      </div>
+      <div class="modal-footer">
+        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Fermer</button>
+      </div>
+    </div>
+  </div>
+</div>
+{% endif %}
+{% endfor %}
+
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+  const searchInput = document.getElementById('searchLogs');
+  const filterAction = document.getElementById('filterAction');
+  const filterUser = document.getElementById('filterUser');
+  const logRows = document.querySelectorAll('.log-row');
+
+  function filterLogs() {
+    const searchTerm = searchInput.value.toLowerCase();
+    const actionFilter = filterAction.value;
+    const userFilter = filterUser.value;
+
+    logRows.forEach(row => {
+      const searchData = row.getAttribute('data-search');
+      const actionData = row.getAttribute('data-action');
+      const userData = row.getAttribute('data-user');
+
+      const matchesSearch = !searchTerm || searchData.includes(searchTerm);
+      const matchesAction = !actionFilter || actionData === actionFilter;
+      const matchesUser = !userFilter || userData === userFilter;
+
+      if (matchesSearch && matchesAction && matchesUser) {
+        row.style.display = '';
+      } else {
+        row.style.display = 'none';
+      }
+    });
+  }
+
+  searchInput.addEventListener('input', filterLogs);
+  filterAction.addEventListener('change', filterLogs);
+  filterUser.addEventListener('change', filterLogs);
+
+  window.clearFilters = function() {
+    searchInput.value = '';
+    filterAction.value = '';
+    filterUser.value = '';
+    filterLogs();
+  };
+});
+</script>
+{% endblock %}

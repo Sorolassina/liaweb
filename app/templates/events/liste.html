@@ -3,9 +3,30 @@
 {% block title %}Liste des Événements{% endblock %}
 
 {% block content %}
-<div class="container-fluid p-4">
-    <!-- En-tête -->
-    <div class="row mb-4">
+<!--<div class="container-fluid p-4">-->
+    <!-- Entête -->
+    <div class="entete-card" style="padding: 15px 20px;">
+        <div class="row align-items-center";">
+        <div class="col-md-8 d-flex justify-content-between align-items-center" style=" width: 100%;">
+            <div>
+            <h3 class="mb-0" style="font-size: 1.4rem;">
+                <i class="fas fa-calendar-alt me-2"></i>Événements
+            </h3>
+            <p class="mb-0 opacity-75" style="font-size: 0.9rem;">
+                Gestion des données des événements du programme
+            </p>
+            </div>
+            <div class="toolbar">
+            <a href="{{ url_for('form_event') }}" class="submenu-item">
+                <div class="icon"><i class="fas fa-calendar-alt"></i></div><div>+ Événement</div>
+            </a>
+            
+            </div>
+        </div>
+        </div>
+    </div>
+    
+    <!--div class="row mb-4">
         <div class="col-12">
             <div class="d-flex justify-content-between align-items-center">
                 <div>
@@ -229,7 +250,7 @@
             </div>
         </div>
     </div>
-</div>
+<!--</div>-->
 
 <style>
 /* Réduction des espaces entre les éléments */

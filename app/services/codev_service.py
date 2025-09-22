@@ -302,8 +302,8 @@ class CodevService:
         ))
         
         if programme_id:
-            # Joindre avec CycleCodev pour filtrer par programme
-            query = query.join(CycleCodev, SeanceCodev.cycle_id == CycleCodev.id).where(CycleCodev.programme_id == programme_id)
+            # Joindre avec GroupeCodev et CycleCodev pour filtrer par programme
+            query = query.join(GroupeCodev, SeanceCodev.groupe_id == GroupeCodev.groupe_id).join(CycleCodev, GroupeCodev.cycle_id == CycleCodev.id).where(CycleCodev.programme_id == programme_id)
         
         seances = session.exec(
             query.order_by(SeanceCodev.date_seance).limit(limit)
@@ -323,10 +323,10 @@ class CodevService:
         ))
         
         if programme_id:
-            # Joindre avec SeanceCodev et CycleCodev pour filtrer par programme
+            # Joindre avec SeanceCodev, GroupeCodev et CycleCodev pour filtrer par programme
             query = query.join(SeanceCodev, PresentationCodev.seance_id == SeanceCodev.id).join(
-                CycleCodev, SeanceCodev.cycle_id == CycleCodev.id
-            ).where(CycleCodev.programme_id == programme_id)
+                GroupeCodev, SeanceCodev.groupe_id == GroupeCodev.groupe_id
+            ).join(CycleCodev, GroupeCodev.cycle_id == CycleCodev.id).where(CycleCodev.programme_id == programme_id)
         
         presentations = session.exec(
             query.order_by(PresentationCodev.delai_engagement)

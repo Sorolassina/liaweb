@@ -1,0 +1,164 @@
+{% extends "admin/base_admin.html" %}
+
+{% block admin_content %}
+<div class="card-neumo p-4">
+  <div class="d-flex justify-content-between align-items-center mb-4">
+    <h5 class="m-0">
+      <i class="fa fa-database me-2"></i>Statut de la base de données
+    </h5>
+    <div>
+      <form method="post" action="{{ url_for('admin_database_migrate') }}" class="d-inline">
+        <button type="submit" class="btn btn-warning" onclick="return confirm('Êtes-vous sûr de vouloir exécuter la migration ?')">
+          <i class="fa fa-sync me-2"></i>Exécuter la migration
+        </button>
+      </form>
+    </div>
+  </div>
+
+  <!-- Messages de succès/erreur -->
+  {% if request.query_params.get('success') %}
+    <div class="alert alert-success alert-dismissible fade show" role="alert">
+      {% if request.query_params.get('success') == 'migration_completed' %}
+        <i class="fa fa-check-circle me-2"></i>Migration exécutée avec succès
+      {% endif %}
+      <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+    </div>
+  {% endif %}
+
+  <!-- Statut de connexion -->
+  <div class="row mb-4">
+    <div class="col-md-6">
+      <div class="card">
+        <div class="card-body">
+          <h6 class="card-title">
+            <i class="fa fa-plug me-2"></i>Connexion
+          </h6>
+          {% if db_status.connection %}
+            <span class="badge bg-success">
+              <i class="fa fa-check me-1"></i>Connectée
+            </span>
+          {% else %}
+            <span class="badge bg-danger">
+              <i class="fa fa-times me-1"></i>Erreur de connexion
+            </span>
+          {% endif %}
+        </div>
+      </div>
+    </div>
+    <div class="col-md-6">
+      <div class="card">
+        <div class="card-body">
+          <h6 class="card-title">
+            <i class="fa fa-table me-2"></i>Tables
+          </h6>
+          <span class="badge bg-info">{{ db_status.tables|length }} table(s)</span>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Enums -->
+  <div class="row mb-4">
+    <div class="col-12">
+      <h6 class="mb-3">
+        <i class="fa fa-list me-2"></i>Enums PostgreSQL
+      </h6>
+      {% if db_status.enums %}
+        <div class="row">
+          {% for enum_name, enum_values in db_status.enums.items() %}
+          <div class="col-md-6 col-lg-4 mb-3">
+            <div class="card">
+              <div class="card-body">
+                <h6 class="card-title text-capitalize">{{ enum_name }}</h6>
+                <div class="small">
+                  {% for value in enum_values %}
+                    <span class="badge bg-secondary me-1 mb-1">{{ value }}</span>
+                  {% endfor %}
+                </div>
+                <small class="text-muted">{{ enum_values|length }} valeur(s)</small>
+              </div>
+            </div>
+          </div>
+          {% endfor %}
+        </div>
+      {% else %}
+        <div class="alert alert-warning">
+          <i class="fa fa-exclamation-triangle me-2"></i>Aucun enum trouvé
+        </div>
+      {% endif %}
+    </div>
+  </div>
+
+  <!-- Tables -->
+  <div class="row mb-4">
+    <div class="col-12">
+      <h6 class="mb-3">
+        <i class="fa fa-table me-2"></i>Tables de la base de données
+      </h6>
+      {% if db_status.tables %}
+        <div class="users-table-container">
+          <table class="table table-sm table-bordered">
+            <thead class="table-dark">
+              <tr>
+                <th>Nom de la table</th>
+                <th>Statut</th>
+              </tr>
+            </thead>
+            <tbody>
+              {% for table in db_status.tables %}
+              <tr>
+                <td class="fw-bold">{{ table }}</td>
+                <td>
+                  <span class="badge bg-success">
+                    <i class="fa fa-check me-1"></i>Existe
+                  </span>
+                </td>
+              </tr>
+              {% endfor %}
+            </tbody>
+          </table>
+        </div>
+      {% else %}
+        <div class="alert alert-warning">
+          <i class="fa fa-exclamation-triangle me-2"></i>Aucune table trouvée
+        </div>
+      {% endif %}
+    </div>
+  </div>
+
+  <!-- Erreurs -->
+  {% if db_status.error %}
+    <div class="alert alert-danger">
+      <h6><i class="fa fa-exclamation-circle me-2"></i>Erreur</h6>
+      <p class="mb-0">{{ db_status.error }}</p>
+    </div>
+  {% endif %}
+
+  <!-- Informations de debug -->
+  {% if settings.DEBUG %}
+    <div class="mt-4">
+      <h6 class="mb-3">
+        <i class="fa fa-bug me-2"></i>Informations de debug
+      </h6>
+      <div class="card">
+        <div class="card-body">
+          <pre class="mb-0"><code>{{ db_status|tojson(indent=2) }}</code></pre>
+        </div>
+      </div>
+    </div>
+  {% endif %}
+</div>
+
+<script>
+// Auto-dismiss alerts after 5 seconds
+document.addEventListener('DOMContentLoaded', function() {
+  const alerts = document.querySelectorAll('.alert');
+  alerts.forEach(alert => {
+    setTimeout(() => {
+      const bsAlert = new bootstrap.Alert(alert);
+      bsAlert.close();
+    }, 5000);
+  });
+});
+</script>
+{% endblock %}

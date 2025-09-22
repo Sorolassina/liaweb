@@ -170,7 +170,7 @@
     <h1>
       <i class="fas fa-sync-alt"></i> Cycles de Codéveloppement
     </h1>
-    <a href="/codev/cycles/creer" class="btn-create">
+    <a href="{{ url_for('codev_cycle_create') }}" class="btn-create submenu-item">
       <i class="fas fa-plus"></i> Nouveau cycle
     </a>
   </div>
@@ -236,10 +236,10 @@
       </div>
       
       <div class="cycle-actions">
-        <a href="/codev/cycles/{{ cycle.id }}" class="btn-action btn-view">
+        <a href="{{ url_for('codev_cycle_detail', cycle_id=cycle.id) }}" class="btn-action btn-view submenu-item">
           <i class="fas fa-eye"></i> Voir
         </a>
-        <a href="/codev/cycles/{{ cycle.id }}?edit=1" class="btn-action btn-edit">
+        <a href="{{ url_for('codev_cycle_edit', cycle_id=cycle.id) }}" class="btn-action btn-edit submenu-item">
           <i class="fas fa-edit"></i> Modifier
         </a>
       </div>
@@ -257,7 +257,7 @@
         Aucun cycle de codéveloppement n'a encore été créé.
       {% endif %}
     </p>
-    <a href="/codev/cycles/creer" class="btn-create">
+    <a href="{{ url_for('codev_cycle_create') }}" class="btn-create submenu-item">
       <i class="fas fa-plus"></i> Créer le premier cycle
     </a>
   </div>
