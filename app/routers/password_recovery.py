@@ -9,6 +9,7 @@ from typing import Optional
 import logging
 
 from app_lia_web.core.database import get_session
+from app_lia_web.core.middleware import get_shared_session
 from app_lia_web.core.config import settings
 from app_lia_web.app.services.password_recovery_service import PasswordRecoveryService
 from app_lia_web.app.schemas.password_recovery_schemas import (
@@ -43,7 +44,7 @@ async def forgot_password_page(request: Request):
 async def request_password_recovery(
     request: Request,
     email: str = Form(...),
-    session: Session = Depends(get_session)
+    session: Session = Depends(get_shared_session)
 ):
     """Traite la demande de récupération de mot de passe"""
     try:
@@ -111,7 +112,7 @@ async def verify_recovery_code(
     request: Request,
     email: str = Form(...),
     code: str = Form(...),
-    session: Session = Depends(get_session)
+    session: Session = Depends(get_shared_session)
 ):
     """Vérifie le code de récupération"""
     try:
@@ -159,7 +160,7 @@ async def verify_recovery_code(
 async def reset_password_page(request: Request, email: Optional[str] = None, code: Optional[str] = None):
     """Page de réinitialisation du mot de passe"""
     if not email or not code:
-        return RedirectResponse(url="/mot-de-passe-oublie", status_code=302)
+        return RedirectResponse(url=request.url_for("request_password_recovery_get"), status_code=302)
     
     return templates.TemplateResponse(
         "password_recovery/reset_password.html",
@@ -182,7 +183,7 @@ async def reset_password(
     code: str = Form(...),
     new_password: str = Form(...),
     confirm_password: str = Form(...),
-    session: Session = Depends(get_session)
+    session: Session = Depends(get_shared_session)
 ):
     """Réinitialise le mot de passe"""
     try:
@@ -265,7 +266,7 @@ async def reset_password(
 async def api_request_password_recovery(
     request_data: PasswordRecoveryRequest,
     request: Request,
-    session: Session = Depends(get_session)
+    session: Session = Depends(get_shared_session)
 ):
     """API pour demander une récupération de mot de passe"""
     try:
@@ -288,7 +289,7 @@ async def api_request_password_recovery(
 @router.post("/api/password-recovery/verify", response_model=PasswordRecoveryResponse, name="api_verify_recovery_code_post")
 async def api_verify_recovery_code(
     request_data: PasswordRecoveryVerify,
-    session: Session = Depends(get_session)
+    session: Session = Depends(get_shared_session)
 ):
     """API pour vérifier un code de récupération"""
     try:
@@ -310,7 +311,7 @@ async def api_verify_recovery_code(
 @router.post("/api/password-recovery/reset", response_model=PasswordRecoveryResponse, name="api_reset_password_post")
 async def api_reset_password(
     request_data: PasswordReset,
-    session: Session = Depends(get_session)
+    session: Session = Depends(get_shared_session)
 ):
     """API pour réinitialiser le mot de passe"""
     try:
@@ -335,7 +336,7 @@ async def api_reset_password(
 
 
 @router.post("/api/password-recovery/cleanup", name="api_cleanup_expired_codes")
-async def cleanup_expired_codes(session: Session = Depends(get_session)):
+async def cleanup_expired_codes(session: Session = Depends(get_shared_session)):
     """API pour nettoyer les codes expirés (utilisé par un cron job)"""
     try:
         count = recovery_service.cleanup_expired_codes(session)

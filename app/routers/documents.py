@@ -10,7 +10,10 @@ import shutil
 from datetime import datetime, timezone
 
 from app_lia_web.core.database import get_session
+from app_lia_web.core.middleware import get_shared_session
 from app_lia_web.core.security import get_current_user
+from app_lia_web.core.program_schema_integration import table_exists_anywhere
+import logging
 from app_lia_web.core.utils import FileUtils
 from app_lia_web.app.models.base import User, Document, Candidat
 from app_lia_web.app.models.enums import UserRole, TypeDocument
@@ -22,13 +25,13 @@ from app_lia_web.app.services.file_upload_service import FileUploadService
 router = APIRouter()
 
 
-@router.post("/documents/upload", response_model=DocumentResponse)
+@router.post("/documents/upload", response_model=DocumentResponse, name="upload_document")
 async def upload_document(
     candidat_id: int,
     type_document: TypeDocument,
     titre: Optional[str] = None,
     file: UploadFile = File(...),
-    session: Session = Depends(get_session),
+    session: Session = Depends(get_shared_session),
     current_user: User = Depends(get_current_user)
 ):
     """Upload un document pour un candidat"""
@@ -107,11 +110,11 @@ async def upload_document(
     return DocumentResponse.from_orm(document)
 
 
-@router.get("/documents", response_model=List[DocumentResponse])
+@router.get("/documents", response_model=List[DocumentResponse], name="get_documents")
 async def get_documents(
     candidat_id: Optional[int] = Query(None, description="Filtrer par candidat"),
     type_document: Optional[TypeDocument] = Query(None, description="Filtrer par type de document"),
-    session: Session = Depends(get_session),
+    session: Session = Depends(get_shared_session),
     current_user: User = Depends(get_current_user)
 ):
     """Récupère la liste des documents"""
@@ -124,14 +127,21 @@ async def get_documents(
     if type_document:
         query = query.where(Document.type_document == type_document)
     
-    documents = session.exec(query.order_by(Document.depose_le.desc())).all()
-    return [DocumentResponse.from_orm(doc) for doc in documents]
+    if not table_exists_anywhere("document", session):
+        return []
+    
+    try:
+        documents = session.exec(query.order_by(Document.depose_le.desc())).all()
+        return [DocumentResponse.from_orm(doc) for doc in documents]
+    except Exception as e:
+        logging.warning(f"Erreur lors de la récupération des documents: {e}")
+        return []
 
 
-@router.get("/documents/{document_id}", response_model=DocumentResponse)
+@router.get("/documents/{document_id}", response_model=DocumentResponse, name="get_document")
 async def get_document(
     document_id: int,
-    session: Session = Depends(get_session),
+    session: Session = Depends(get_shared_session),
     current_user: User = Depends(get_current_user)
 ):
     """Récupère un document par ID"""
@@ -145,10 +155,10 @@ async def get_document(
     return DocumentResponse.from_orm(document)
 
 
-@router.get("/documents/{document_id}/download")
+@router.get("/documents/{document_id}/download", name="download_document")
 async def download_document(
     document_id: int,
-    session: Session = Depends(get_session),
+    session: Session = Depends(get_shared_session),
     current_user: User = Depends(get_current_user)
 ):
     """Télécharge un document"""
@@ -174,10 +184,10 @@ async def download_document(
     )
 
 
-@router.delete("/documents/{document_id}")
+@router.delete("/documents/{document_id}", name="delete_document")
 async def delete_document(
     document_id: int,
-    session: Session = Depends(get_session),
+    session: Session = Depends(get_shared_session),
     current_user: User = Depends(get_current_user)
 ):
     """Supprime un document"""
@@ -211,12 +221,12 @@ async def delete_document(
     return {"message": "Document supprimé avec succès"}
 
 
-@router.put("/documents/{document_id}")
+@router.put("/documents/{document_id}", name="update_document")
 async def update_document(
     document_id: int,
     titre: Optional[str] = None,
     type_document: Optional[TypeDocument] = None,
-    session: Session = Depends(get_session),
+    session: Session = Depends(get_shared_session),
     current_user: User = Depends(get_current_user)
 ):
     """Met à jour les métadonnées d'un document"""
@@ -248,11 +258,11 @@ async def update_document(
     return DocumentResponse.from_orm(document)
 
 
-@router.get("/candidats/{candidat_id}/documents")
+@router.get("/candidats/{candidat_id}/documents", name="get_candidat_documents")
 async def get_candidat_documents(
     candidat_id: int,
     type_document: Optional[TypeDocument] = Query(None, description="Filtrer par type de document"),
-    session: Session = Depends(get_session),
+    session: Session = Depends(get_shared_session),
     current_user: User = Depends(get_current_user)
 ):
     """Récupère les documents d'un candidat"""

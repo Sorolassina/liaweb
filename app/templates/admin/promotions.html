@@ -135,10 +135,10 @@
             {% if promo.date_debut or promo.date_fin %}
               <div class="small">
                 {% if promo.date_debut %}
-                  <div><strong>Début:</strong> {{ promo.date_debut.strftime('%d/%m/%Y') }}</div>
+                  <div><strong>Début:</strong> {{ promo.date_debut | format_date }}</div>
                 {% endif %}
                 {% if promo.date_fin %}
-                  <div><strong>Fin:</strong> {{ promo.date_fin.strftime('%d/%m/%Y') }}</div>
+                  <div><strong>Fin:</strong> {{ promo.date_fin | format_date }}</div>
                 {% endif %}
               </div>
             {% else %}
@@ -221,11 +221,11 @@
             </div>
             <div class="col-md-6">
               <label class="form-label">Date de début</label>
-              <input type="date" name="date_debut" class="form-control" value="{{ promo.date_debut.strftime('%Y-%m-%d') if promo.date_debut else '' }}">
+              <input type="date" name="date_debut" class="form-control" value="{{ promo.date_debut | format_date_input if promo.date_debut else '' }}">
             </div>
             <div class="col-md-6">
               <label class="form-label">Date de fin</label>
-              <input type="date" name="date_fin" class="form-control" value="{{ promo.date_fin.strftime('%Y-%m-%d') if promo.date_fin else '' }}">
+              <input type="date" name="date_fin" class="form-control" value="{{ promo.date_fin | format_date_input if promo.date_fin else '' }}">
             </div>
           </div>
         </div>

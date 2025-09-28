@@ -1,0 +1,1394 @@
+{% extends "base.html" %}
+
+{% block title %}Directeur Technique - Dashboard{% endblock %}
+
+{% block head_extra %}
+<!-- Leaflet CSS -->
+<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" crossorigin=""/>
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+<style>
+    /* Modern Card Style */
+    .modern-card {
+        width: 100%;
+        background: white;
+        box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
+        border-radius: 0.5rem;
+        overflow: hidden;
+        transition: all 0.3s ease;
+        border: 1px solid rgba(0, 0, 0, 0.05);
+    }
+
+    .modern-card:hover {
+        transform: translateY(-2px);
+        box-shadow: 0 10px 25px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05);
+    }
+
+    .modern-card-header {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        padding: 0.75rem;
+        background: linear-gradient(135deg, #f8fafc 0%, #e2e8f0 100%);
+        border-bottom: 1px solid rgba(0, 0, 0, 0.05);
+    }
+
+    .modern-card-icon {
+        width: 1.5rem;
+        height: 1.5rem;
+        border-radius: 0.375rem;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        margin-right: 0.5rem;
+        font-size: 0.875rem;
+        color: white;
+        box-shadow: 0 2px 4px -1px rgba(0, 0, 0, 0.1);
+    }
+
+    .modern-card-icon.primary {
+        background: linear-gradient(135deg, #3b82f6, #1d4ed8);
+    }
+
+    .modern-card-icon.success {
+        background: linear-gradient(135deg, #10b981, #059669);
+    }
+
+    .modern-card-icon.warning {
+        background: linear-gradient(135deg, #f59e0b, #d97706);
+    }
+
+    .modern-card-icon.danger {
+        background: linear-gradient(135deg, #ef4444, #dc2626);
+    }
+
+    .modern-card-icon.info {
+        background: linear-gradient(135deg, #06b6d4, #0891b2);
+    }
+
+    .modern-card-title {
+        font-size: 0.875rem;
+        font-weight: 600;
+        color: #374151;
+        margin: 0;
+        line-height: 1.2;
+    }
+
+    .modern-card-subtitle {
+        font-size: 0.75rem;
+        color: #6b7280;
+        margin: 0.125rem 0 0 0;
+        line-height: 1.2;
+    }
+
+    .modern-card-actions {
+        display: flex;
+        align-items: center;
+        gap: 0.25rem;
+    }
+
+    .modern-card-action {
+        width: 1.25rem;
+        height: 1.25rem;
+        border-radius: 0.25rem;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        cursor: pointer;
+        transition: all 0.2s ease;
+        color: #6b7280;
+        font-size: 0.75rem;
+    }
+
+    .modern-card-action:hover {
+        background: rgba(0, 0, 0, 0.05);
+        color: #374151;
+    }
+
+    .modern-card-body {
+        padding: 0.75rem;
+    }
+
+    .modern-card-value {
+        font-size: 1.75rem;
+        font-weight: 700;
+        color: #111827;
+        margin: 0;
+        line-height: 1;
+    }
+
+    .modern-card-change {
+        display: flex;
+        align-items: center;
+        margin-top: 0.25rem;
+        font-size: 0.75rem;
+        font-weight: 500;
+    }
+
+    .modern-card-change.positive {
+        color: #059669;
+    }
+
+    .modern-card-change.negative {
+        color: #dc2626;
+    }
+
+    .modern-card-change.neutral {
+        color: #6b7280;
+    }
+
+    .modern-card-change i {
+        margin-right: 0.125rem;
+        font-size: 0.625rem;
+    }
+
+    .modern-card-progress {
+        margin-top: 0.5rem;
+    }
+
+    .modern-card-progress-bar {
+        width: 100%;
+        height: 0.25rem;
+        background: #e5e7eb;
+        border-radius: 0.125rem;
+        overflow: hidden;
+        position: relative;
+    }
+
+    .modern-card-progress-fill {
+        height: 100%;
+        background: linear-gradient(90deg, #3b82f6, #1d4ed8);
+        border-radius: 0.125rem;
+        transition: width 0.3s ease;
+    }
+
+    .modern-card-progress-fill.success {
+        background: linear-gradient(90deg, #10b981, #059669);
+    }
+
+    .modern-card-progress-fill.warning {
+        background: linear-gradient(90deg, #f59e0b, #d97706);
+    }
+
+    .modern-card-progress-fill.danger {
+        background: linear-gradient(90deg, #ef4444, #dc2626);
+    }
+
+    .modern-card-progress-fill.info {
+        background: linear-gradient(90deg, #06b6d4, #0891b2);
+    }
+
+    .modern-card-progress-text {
+        display: flex;
+        justify-content: space-between;
+        font-size: 0.625rem;
+        color: #6b7280;
+        margin-top: 0.25rem;
+    }
+
+    /* Weather Card Style for QPV and Candidats */
+    .cardm {
+        position: relative;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        width: 100%;
+        height: 200px;
+    }
+
+    .card {
+        position: absolute;
+        width: 100%;
+        height: 130px;
+        border-radius: 25px;
+        background: whitesmoke;
+        color: black;
+        z-index: 2;
+        transition: .4s ease-in-out;
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        padding: 1rem;
+    }
+
+    .card-icon {
+        position: relative;
+        width: 60px;
+        height: 60px;
+        border-radius: 50%;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 1.5rem;
+        color: white;
+        margin-right: 1rem;
+    }
+
+    .card-icon.qpv {
+        background: linear-gradient(135deg, #ef4444, #dc2626);
+    }
+
+    .card-icon.candidats {
+        background: linear-gradient(135deg, #3b82f6, #1d4ed8);
+    }
+
+    .main {
+        font-size: 2em;
+        font-weight: bold;
+        position: relative;
+        color: #111827;
+    }
+
+    .mainsub {
+        font-size: 0.8em;
+        color: #6b7280;
+        margin-top: 0.25rem;
+    }
+
+    .card2 {
+        position: absolute;
+        display: flex;
+        flex-direction: column;
+        width: 100%;
+        height: 130px;
+        border-radius: 35px;
+        background: white;
+        z-index: -1;
+        transition: .4s ease-in-out;
+        padding: 1rem;
+    }
+
+    .card:hover {
+        background-color: #FFE87C;
+        cursor: pointer;
+        transform: translateY(-5px);
+    }
+
+    .card:hover + .card2 {
+        height: 300px;
+        border-bottom-left-radius: 0px;
+        border-bottom-right-radius: 0px;
+    }
+
+    .card:hover + .card2 .lower {
+        opacity: 1;
+        transform: translateY(0);
+    }
+
+    .upper {
+        display: flex;
+        flex-direction: row;
+        position: relative;
+        color: black;
+        gap: 2rem;
+        margin-bottom: 1rem;
+    }
+
+    .humiditytext, .airtext {
+        font-size: 0.7em;
+        text-align: center;
+    }
+
+    .lower {
+        display: flex;
+        flex-direction: row;
+        position: absolute;
+        text-align: center;
+        color: black;
+        top: 80px;
+        left: 0;
+        right: 0;
+        padding: 0 1rem;
+        font-size: 0.7em;
+        transition: .4s ease-in-out;
+        opacity: 0;
+        transform: translateY(20px);
+        justify-content: space-around;
+    }
+
+    .aqi, .realfeel, .pressure {
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        gap: 0.25rem;
+    }
+
+    .card3 {
+        position: absolute;
+        display: flex;
+        flex-direction: row;
+        justify-content: center;
+        align-items: center;
+        width: 100%;
+        height: 30px;
+        bottom: 0;
+        left: 0;
+        font-size: 0.9em;
+        font-weight: bold;
+        border-bottom-left-radius: 35px;
+        border-bottom-right-radius: 35px;
+        transition: .4s ease-in-out;
+    }
+
+    .card3.qpv {
+        background: linear-gradient(135deg, #ef4444, #dc2626);
+        color: white;
+    }
+
+    .card3.candidats {
+        background: linear-gradient(135deg, #3b82f6, #1d4ed8);
+        color: white;
+    }
+
+    /* SVG Card Style */
+    .svg-card-container {
+        width: 100%;
+        height: 200px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        transition: transform 0.3s ease;
+    }
+
+    .svg-card-container:hover {
+        transform: translateY(-5px) scale(1.02);
+    }
+
+    .svg-card {
+        width: 100%;
+        height: 100%;
+        max-width: 300px;
+        max-height: 200px;
+        transition: all 0.3s ease;
+    }
+
+    .svg-card:hover {
+        filter: brightness(1.1);
+    }
+
+    .kpi-card {
+        background: linear-gradient(135deg, var(--primary-color) 0%, #764ba2 100%);
+        color: var(--secondary-color);
+        border-radius: 15px;
+        padding: 20px;
+        margin-bottom: 20px;
+        box-shadow: 0 8px 32px rgba(0,0,0,0.1);
+    }
+    .kpi-card.qpv {
+        background: linear-gradient(135deg, #ff6b6b 0%, #ee5a24 100%);
+    }
+    .kpi-card.qpv-limite {
+        background: linear-gradient(135deg, #feca57 0%, #ff9ff3 100%);
+    }
+    .kpi-card.success {
+        background: linear-gradient(135deg, #48dbfb 0%, #0abde3 100%);
+    }
+    .kpi-value {
+        font-size: 2.5rem;
+        font-weight: bold;
+        margin-bottom: 5px;
+    }
+    .kpi-label {
+        font-size: 0.9rem;
+        opacity: 0.9;
+    }
+    .kpi-change {
+        font-size: 0.8rem;
+        margin-top: 5px;
+    }
+    .kpi-change.positive {
+        color: #2ecc71;
+    }
+    .kpi-change.negative {
+        color: #e74c3c;
+    }
+    .chart-container {
+        background: white;
+        border-radius: 15px;
+        padding: 20px;
+        margin-bottom: 20px;
+        box-shadow: 0 4px 20px rgba(0,0,0,0.1);
+        overflow: hidden;
+    }
+    .chart-container canvas {
+        max-height: 100% !important;
+        max-width: 100% !important;
+    }
+    
+    /* Carte Leaflet */
+    #map {
+        height: 100%;
+        width: 100%;
+        border-radius: 10px;
+    }
+    
+    .map-container {
+        height: 450px;
+        position: relative;
+    }
+    .alert-card {
+        border-left: 4px solid;
+        border-radius: 8px;
+        padding: 15px;
+        margin-bottom: 10px;
+    }
+    .alert-critical {
+        border-left-color: #e74c3c;
+        background-color: #fdf2f2;
+    }
+    .alert-important {
+        border-left-color: #f39c12;
+        background-color: #fef9e7;
+    }
+    .alert-info {
+        border-left-color: #3498db;
+        background-color: #f0f8ff;
+    }
+    /* Radio Inputs Style */
+    .radio-inputs {
+        position: relative;
+        display: flex;
+        flex-wrap: wrap;
+        border-radius: 1rem;
+        background: linear-gradient(145deg, #e6e6e6, #ffffff);
+        box-sizing: border-box;
+        box-shadow:
+            5px 5px 15px rgba(0, 0, 0, 0.15),
+            -5px -5px 15px rgba(255, 255, 255, 0.8);
+        padding: 0.5rem;
+        width: 100%;
+        font-size: 14px;
+        gap: 0.5rem;
+        margin-bottom: 2rem;
+    }
+
+    .radio-inputs .radio {
+        flex: 1 1 auto;
+        text-align: center;
+        position: relative;
+    }
+
+    .radio-inputs .radio input {
+        display: none;
+    }
+
+    .radio-inputs .radio .name {
+        display: flex;
+        cursor: pointer;
+        align-items: center;
+        justify-content: center;
+        border-radius: 0.7rem;
+        border: none;
+        padding: 0.7rem 0;
+        color: #2d3748;
+        font-weight: 500;
+        font-family: inherit;
+        background: linear-gradient(145deg, #ffffff, #e6e6e6);
+        box-shadow:
+            3px 3px 6px rgba(0, 0, 0, 0.1),
+            -3px -3px 6px rgba(255, 255, 255, 0.7);
+        transition: all 0.2s ease;
+        overflow: hidden;
+    }
+
+    .radio-inputs .radio input:checked + .name {
+        background: linear-gradient(145deg, var(--primary-color), #2563eb);
+        color: white;
+        font-weight: 600;
+        text-shadow: 0 1px 2px rgba(0, 0, 0, 0.2);
+        box-shadow:
+            inset 2px 2px 5px rgba(0, 0, 0, 0.2),
+            inset -2px -2px 5px rgba(255, 255, 255, 0.1),
+            3px 3px 8px rgba(59, 130, 246, 0.3);
+        transform: translateY(2px);
+    }
+
+    /* Hover effect */
+    .radio-inputs .radio:hover .name {
+        background: linear-gradient(145deg, #f0f0f0, #ffffff);
+        transform: translateY(-1px);
+        box-shadow:
+            4px 4px 8px rgba(0, 0, 0, 0.1),
+            -4px -4px 8px rgba(255, 255, 255, 0.8);
+    }
+
+    .radio-inputs .radio:hover input:checked + .name {
+        transform: translateY(1px);
+    }
+
+    /* Animation */
+    .radio-inputs .radio input:checked + .name {
+        animation: select 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+    }
+
+    /* Particles */
+    .radio-inputs .radio .name::before,
+    .radio-inputs .radio .name::after {
+        content: "";
+        position: absolute;
+        width: 6px;
+        height: 6px;
+        border-radius: 50%;
+        opacity: 0;
+        pointer-events: none;
+    }
+
+    .radio-inputs .radio input:checked + .name::before,
+    .radio-inputs .radio input:checked + .name::after {
+        animation: particles 0.8s ease-out forwards;
+    }
+
+    .radio-inputs .radio .name::before {
+        background: #60a5fa;
+        box-shadow: 0 0 6px #60a5fa;
+        top: -10px;
+        left: 50%;
+        transform: translateX(-50%);
+    }
+
+    .radio-inputs .radio .name::after {
+        background: #93c5fd;
+        box-shadow: 0 0 8px #93c5fd;
+        bottom: -10px;
+        left: 50%;
+        transform: translateX(-50%);
+    }
+
+    /* Sparkles */
+    .radio-inputs .radio .name::after {
+        content: "";
+        position: absolute;
+        inset: 0;
+        z-index: -1;
+        background: radial-gradient(
+            circle at var(--x, 50%) var(--y, 50%),
+            rgba(59, 130, 246, 0.3) 0%,
+            transparent 50%
+        );
+        opacity: 0;
+        transition: opacity 0.3s;
+    }
+
+    .radio-inputs .radio input:checked + .name::after {
+        opacity: 1;
+        animation: sparkle-bg 1s ease-out forwards;
+    }
+
+    /* Multiple particles */
+    .radio-inputs .radio input:checked + .name {
+        overflow: visible;
+    }
+
+    .radio-inputs .radio input:checked + .name::before {
+        box-shadow:
+            0 0 6px #60a5fa,
+            10px -10px 0 #60a5fa,
+            -10px -10px 0 #60a5fa;
+        animation: multi-particles-top 0.8s ease-out forwards;
+    }
+
+    .radio-inputs .radio input:checked + .name::after {
+        box-shadow:
+            0 0 8px #93c5fd,
+            10px 10px 0 #93c5fd,
+            -10px 10px 0 #93c5fd;
+        animation: multi-particles-bottom 0.8s ease-out forwards;
+    }
+
+    @keyframes select {
+        0% {
+            transform: scale(0.95) translateY(2px);
+        }
+        50% {
+            transform: scale(1.05) translateY(-1px);
+        }
+        100% {
+            transform: scale(1) translateY(2px);
+        }
+    }
+
+    @keyframes multi-particles-top {
+        0% {
+            opacity: 1;
+            transform: translateX(-50%) translateY(0) scale(1);
+        }
+        40% {
+            opacity: 0.8;
+        }
+        100% {
+            opacity: 0;
+            transform: translateX(-50%) translateY(-20px) scale(0);
+            box-shadow:
+                0 0 6px transparent,
+                20px -20px 0 transparent,
+                -20px -20px 0 transparent;
+        }
+    }
+
+    @keyframes multi-particles-bottom {
+        0% {
+            opacity: 1;
+            transform: translateX(-50%) translateY(0) scale(1);
+        }
+        40% {
+            opacity: 0.8;
+        }
+        100% {
+            opacity: 0;
+            transform: translateX(-50%) translateY(20px) scale(0);
+            box-shadow:
+                0 0 8px transparent,
+                20px 20px 0 transparent,
+                -20px 20px 0 transparent;
+        }
+    }
+
+    @keyframes sparkle-bg {
+        0% {
+            opacity: 0;
+            transform: scale(0.2);
+        }
+        50% {
+            opacity: 1;
+        }
+        100% {
+            opacity: 0;
+            transform: scale(2);
+        }
+    }
+
+    /* Ripple effect */
+    .radio-inputs .radio .name::before {
+        content: "";
+        position: absolute;
+        inset: 0;
+        border-radius: inherit;
+        background: radial-gradient(
+            circle at var(--x, 50%) var(--y, 50%),
+            rgba(255, 255, 255, 0.5) 0%,
+            transparent 50%
+        );
+        opacity: 0;
+        transition: opacity 0.3s;
+    }
+
+    .radio-inputs .radio input:checked + .name::before {
+        animation: ripple 0.8s ease-out;
+    }
+
+    @keyframes ripple {
+        0% {
+            opacity: 1;
+            transform: scale(0.2);
+        }
+        50% {
+            opacity: 0.5;
+        }
+        100% {
+            opacity: 0;
+            transform: scale(2.5);
+        }
+    }
+
+    /* Glowing border */
+    .radio-inputs .radio input:checked + .name {
+        position: relative;
+    }
+
+    .radio-inputs .radio input:checked + .name::after {
+        content: "";
+        position: absolute;
+        inset: -2px;
+        border-radius: inherit;
+        background: linear-gradient(
+            45deg,
+            rgba(59, 130, 246, 0.5),
+            rgba(37, 99, 235, 0.5)
+        );
+        -webkit-mask:
+            linear-gradient(#fff 0 0) content-box,
+            linear-gradient(#fff 0 0);
+        -webkit-mask-composite: xor;
+        mask-composite: exclude;
+        animation: border-glow 1.5s ease-in-out infinite alternate;
+    }
+
+    @keyframes border-glow {
+        0% {
+            opacity: 0.5;
+        }
+        100% {
+            opacity: 1;
+        }
+    }
+
+    .tab-content {
+        background-color: #f8f9fa;
+        border-radius: 15px;
+        padding: 20px;
+        min-height: 600px;
+    }
+    .programme-card {
+        background: white;
+        border-radius: 10px;
+        padding: 20px;
+        margin-bottom: 15px;
+        box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+    }
+    .qpv-badge {
+        background: linear-gradient(135deg, #ff6b6b 0%, #ee5a24 100%);
+        color: white;
+        padding: 4px 8px;
+        border-radius: 12px;
+        font-size: 0.8rem;
+        font-weight: bold;
+    }
+    .qpv-limite-badge {
+        background: linear-gradient(135deg, #feca57 0%, #ff9ff3 100%);
+        color: white;
+        padding: 4px 8px;
+        border-radius: 12px;
+        font-size: 0.8rem;
+        font-weight: bold;
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+    <div class="container-fluid">
+        <!-- Header -->
+        <div class="row mb-4">
+            <div class="col-12">
+                <div class="d-flex justify-content-between align-items-center">
+                    <div>
+                        <h1 class="mb-0"><i class="fas fa-cogs text-primary"></i> Dashboard Directeur Technique</h1>
+                        <p class="text-muted mb-0">Vue d'ensemble de l'activité LIA WEB</p>
+                    </div>
+                    <div class="text-end">
+                        <small class="text-muted">Dernière mise à jour : <span id="lastUpdate">{{ now_formatted('%d/%m/%Y %H:%M') }}</span></small>
+                        <button class="btn btn-outline-primary btn-sm ms-2" onclick="refreshData()">
+                            <i class="fas fa-sync-alt"></i> Actualiser
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Navigation par radio buttons -->
+        <div class="radio-inputs">
+            <label class="radio">
+                <input checked="" name="tab" type="radio" value="overview" />
+                <span class="name"><i class="fas fa-home"></i> Vue d'ensemble</span>
+            </label>
+            <label class="radio">
+                <input name="tab" type="radio" value="programmes" />
+                <span class="name"><i class="fas fa-chart-bar"></i> Programmes</span>
+            </label>
+            <label class="radio">
+                <input name="tab" type="radio" value="rh" />
+                <span class="name"><i class="fas fa-users"></i> RH</span>
+            </label>
+            <label class="radio">
+                <input name="tab" type="radio" value="tech" />
+                <span class="name"><i class="fas fa-cog"></i> Tech</span>
+            </label>
+            <label class="radio">
+                <input name="tab" type="radio" value="reports" />
+                <span class="name"><i class="fas fa-file-alt"></i> Rapports</span>
+            </label>
+            <label class="radio">
+                <input name="tab" type="radio" value="alerts" />
+                <span class="name"><i class="fas fa-bell"></i> Alertes <span class="badge bg-danger ms-1" id="alertCount">3</span></span>
+            </label>
+        </div>
+
+        <!-- Contenu des onglets -->
+        <div class="tab-content" id="directorTabContent">
+            <!-- Onglet Vue d'ensemble -->
+            <div class="tab-pane fade show active" id="overview" role="tabpanel">
+                <!-- KPIs globaux -->
+                <div class="row mb-4">
+                    <div class="col-md-3">
+                        <div class="modern-card">
+                            <div class="modern-card-header">
+                                <div class="d-flex align-items-center">
+                                    <div class="modern-card-icon success">
+                                        <i class="fas fa-check-double"></i>
+                                    </div>
+                                    <div>
+                                        <h3 class="modern-card-title">Validés</h3>
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="modern-card-body">
+                                <div class="modern-card-value" id="totalCandidatsValides">{{ total_candidats_valides }}</div>
+                                <div class="modern-card-change positive">
+                                    <i class="fas fa-arrow-up"></i> +12%
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="col-md-3">
+                        <div class="modern-card">
+                            <div class="modern-card-header">
+                                <div class="d-flex align-items-center">
+                                    <div class="modern-card-icon info">
+                                        <i class="fas fa-clipboard-list"></i>
+                                    </div>
+                                    <div>
+                                        <h3 class="modern-card-title">Préinscrits</h3>
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="modern-card-body">
+                                <div class="modern-card-value" id="totalPreinscriptions">{{ total_preinscriptions }}</div>
+                                <div class="modern-card-change positive">
+                                    <i class="fas fa-arrow-up"></i> +18%
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="col-md-3">
+                        <div class="modern-card">
+                            <div class="modern-card-header">
+                                <div class="d-flex align-items-center">
+                                    <div class="modern-card-icon warning">
+                                        <i class="fas fa-exchange-alt"></i>
+                                    </div>
+                                    <div>
+                                        <h3 class="modern-card-title">Réorientés</h3>
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="modern-card-body">
+                                <div class="modern-card-value" id="candidatsReorientes">{{ candidats_reorientes }}</div>
+                                <div class="modern-card-change negative">
+                                    <i class="fas fa-arrow-down"></i> -2%
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="col-md-3">
+                        <div class="modern-card">
+                            <div class="modern-card-header">
+                                <div class="d-flex align-items-center">
+                                    <div class="modern-card-icon danger">
+                                        <i class="fas fa-map-marker-alt"></i>
+                                    </div>
+                                    <div>
+                                        <h3 class="modern-card-title">QPV</h3>
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="modern-card-body">
+                                <div class="modern-card-value" id="candidatsQPV">{{ candidats_valides_qpv }}</div>
+                                <div class="modern-card-change positive">
+                                    <i class="fas fa-arrow-up"></i> +8%
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Graphiques principaux -->
+                <div class="row">
+                    <div class="col-md-12">
+                        <div class="chart-container" style="height: 500px;">
+                            <h5><i class="fas fa-map-marker-alt text-primary"></i> Répartition géographique des candidats validés</h5>
+                            <div class="map-container">
+                                <div id="map"></div>
+                            </div>
+                            <div class="mt-2" style="display:flex; gap:8px; flex-wrap:wrap;">
+                                <span class="badge badge-warning">🟡 QPV</span>
+                                <span class="badge badge-info">🟠 QPV Limite</span>
+                                <span class="badge badge-secondary">⚪ Non QPV</span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Pyramide des âges -->
+                <div class="row mt-4">
+                    <div class="col-md-12">
+                        <div class="chart-container" style="height: 500px;">
+                            <h5><i class="fas fa-chart-bar text-primary"></i> Pyramide des âges des candidats validés</h5>
+                            <div style="height: 400px; position: relative;">
+                                <canvas id="pyramideChart"></canvas>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Taux de conversion mensuel -->
+                <div class="row mt-4">
+                    <div class="col-md-12">
+                        <div class="chart-container" style="height: 500px;">
+                            <h5><i class="fas fa-chart-line text-primary"></i> Taux de conversion mensuel (Préinscrits → Validés)</h5>
+                            <div style="height: 400px; position: relative;">
+                                <canvas id="conversionChart"></canvas>
+                            </div>
+                            <div class="mt-2">
+                                <small class="text-muted">
+                                    <i class="fas fa-info-circle"></i> 
+                                    Ce graphique montre le pourcentage de préinscrits qui deviennent des candidats validés chaque mois
+                                </small>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Alertes critiques -->
+                <div class="row mt-4">
+                    <div class="col-12">
+                        <h5><i class="fas fa-exclamation-triangle text-danger"></i> Alertes critiques</h5>
+                        {% for alerte in alertes_critiques %}
+                        <div class="alert-card alert-critical">
+                            <div class="d-flex justify-content-between align-items-center">
+                                <div>
+                                    <strong><i class="fas fa-exclamation-circle"></i> {{ alerte.message }}</strong>
+                                </div>
+                                <button class="btn btn-outline-danger btn-sm">Voir détails</button>
+                            </div>
+                        </div>
+                        {% endfor %}
+                        {% for alerte in alertes_importantes %}
+                        <div class="alert-card alert-important">
+                            <div class="d-flex justify-content-between align-items-center">
+                                <div>
+                                    <strong><i class="fas fa-clock"></i> {{ alerte.message }}</strong>
+                                </div>
+                                <button class="btn btn-outline-warning btn-sm">Intervenir</button>
+                            </div>
+                        </div>
+                        {% endfor %}
+                    </div>
+                </div>
+            </div>
+
+            <!-- Onglet Programmes -->
+            <div class="tab-pane fade" id="programmes" role="tabpanel">
+                <div class="row">
+                    {% for prog_data in programmes_data %}
+                    <div class="col-md-6">
+                        <div class="programme-card">
+                            <div class="d-flex justify-content-between align-items-center mb-3">
+                                <h5><i class="fas fa-graduation-cap text-primary"></i> {{ prog_data.programme.nom }}</h5>
+                                <span class="qpv-badge">QPV: {{ prog_data.taux_qpv | round(1) }}%</span>
+                            </div>
+                            <div class="row text-center">
+                                <div class="col-3">
+                                    <div class="fw-bold">{{ prog_data.total }}</div>
+                                    <small class="text-muted">Total</small>
+                                </div>
+                                <div class="col-3">
+                                    <div class="fw-bold text-danger">{{ prog_data.qpv }}</div>
+                                    <small class="text-muted">QPV</small>
+                                </div>
+                                <div class="col-3">
+                                    <div class="fw-bold text-warning">{{ prog_data.qpv_limite }}</div>
+                                    <small class="text-muted">QPV Limite</small>
+                                </div>
+                                <div class="col-3">
+                                    <div class="fw-bold text-success">{{ prog_data.taux_validation | round(1) }}%</div>
+                                    <small class="text-muted">Validation</small>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    {% endfor %}
+                </div>
+            </div>
+
+            <!-- Onglet RH -->
+            <div class="tab-pane fade" id="rh" role="tabpanel">
+                <h5><i class="fas fa-users text-primary"></i> Performance des conseillers</h5>
+                <div class="table-responsive">
+                    <table class="table table-striped">
+                        <thead>
+                            <tr>
+                                <th>Conseiller</th>
+                                <th>Total candidats</th>
+                                <th>QPV</th>
+                                <th>QPV Limite</th>
+                                <th>Taux validation QPV</th>
+                                <th>Charge QPV</th>
+                                <th>Statut</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for conseiller_data in conseillers_data %}
+                            <tr>
+                                <td><strong>{{ conseiller_data.conseiller.nom_complet }}</strong></td>
+                                <td>{{ conseiller_data.total }}</td>
+                                <td><span class="badge bg-danger">{{ conseiller_data.qpv }}</span></td>
+                                <td><span class="badge bg-warning">{{ conseiller_data.qpv_limite }}</span></td>
+                                <td><span class="text-success">{{ conseiller_data.taux_validation_qpv | round(1) }}%</span></td>
+                                <td><span class="text-warning">{{ conseiller_data.charge }}</span></td>
+                                <td><span class="badge bg-success">Actif</span></td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+
+            <!-- Onglet Tech -->
+            <div class="tab-pane fade" id="tech" role="tabpanel">
+                <div class="row">
+                    <div class="col-md-6">
+                        <div class="chart-container" style="height: 400px;">
+                            <h5><i class="fas fa-chart-pie text-primary"></i> Utilisation par statut QPV</h5>
+                            <div style="height: 350px; position: relative;">
+                                <canvas id="usageQPVChart"></canvas>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="col-md-6">
+                        <div class="chart-container" style="height: 400px;">
+                            <h5><i class="fas fa-clock text-primary"></i> Temps de session QPV vs Non-QPV</h5>
+                            <div style="height: 350px; position: relative;">
+                                <canvas id="sessionTimeChart"></canvas>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Onglet Rapports -->
+            <div class="tab-pane fade" id="reports" role="tabpanel">
+                <h5><i class="fas fa-file-alt text-primary"></i> Rapports disponibles</h5>
+                <div class="row">
+                    <div class="col-md-4">
+                        <div class="card">
+                            <div class="card-body text-center">
+                                <i class="fas fa-calendar-week fa-3x text-primary mb-3"></i>
+                                <h5>Rapport hebdomadaire</h5>
+                                <p class="text-muted">Synthèse des activités de la semaine avec focus QPV</p>
+                                <button class="btn btn-primary">Générer</button>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="col-md-4">
+                        <div class="card">
+                            <div class="card-body text-center">
+                                <i class="fas fa-calendar-alt fa-3x text-primary mb-3"></i>
+                                <h5>Rapport mensuel</h5>
+                                <p class="text-muted">Évolution des KPIs et tendances QPV</p>
+                                <button class="btn btn-primary">Générer</button>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="col-md-4">
+                        <div class="card">
+                            <div class="card-body text-center">
+                                <i class="fas fa-download fa-3x text-primary mb-3"></i>
+                                <h5>Export QPV</h5>
+                                <p class="text-muted">Données spécifiques candidats QPV</p>
+                                <button class="btn btn-primary">Exporter</button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Onglet Alertes -->
+            <div class="tab-pane fade" id="alerts" role="tabpanel">
+                <h5><i class="fas fa-bell text-primary"></i> Centre d'alertes</h5>
+                
+                <!-- Alertes critiques -->
+                <div class="mb-4">
+                    <h6 class="text-danger"><i class="fas fa-exclamation-triangle"></i> Alertes critiques</h6>
+                    <div class="alert-card alert-critical">
+                        <div class="d-flex justify-content-between align-items-center">
+                            <div>
+                                <strong>Objectif QPV ACD non atteint</strong>
+                                <p class="mb-0">Le programme ACD n'a atteint que 78% de son objectif QPV</p>
+                                <small class="text-muted">Il y a 2 heures</small>
+                            </div>
+                            <div>
+                                <button class="btn btn-outline-danger btn-sm me-2">Résoudre</button>
+                                <button class="btn btn-outline-secondary btn-sm">Ignorer</button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Alertes importantes -->
+                <div class="mb-4">
+                    <h6 class="text-warning"><i class="fas fa-exclamation-circle"></i> Alertes importantes</h6>
+                    <div class="alert-card alert-important">
+                        <div class="d-flex justify-content-between align-items-center">
+                            <div>
+                                <strong>Taux d'abandon QPV élevé</strong>
+                                <p class="mb-0">Le programme ACT a un taux d'abandon QPV de 15.2%</p>
+                                <small class="text-muted">Il y a 4 heures</small>
+                            </div>
+                            <div>
+                                <button class="btn btn-outline-warning btn-sm me-2">Analyser</button>
+                                <button class="btn btn-outline-secondary btn-sm">Ignorer</button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Notifications informatives -->
+                <div class="mb-4">
+                    <h6 class="text-info"><i class="fas fa-info-circle"></i> Notifications</h6>
+                    <div class="alert-card alert-info">
+                        <div class="d-flex justify-content-between align-items-center">
+                            <div>
+                                <strong>Nouveaux candidats QPV</strong>
+                                <p class="mb-0">12 nouveaux candidats QPV cette semaine</p>
+                                <small class="text-muted">Il y a 1 jour</small>
+                            </div>
+                            <div>
+                                <button class="btn btn-outline-info btn-sm">Voir</button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Leaflet JS -->
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js" crossorigin=""></script>
+    
+    <script>
+        // Données pour la carte
+        const PINS_VALIDES = {{ pins_valides | tojson }};
+        
+        // Données pour la pyramide des âges
+        const PYRAMIDE_LABELS = {{ pyramide_labels | tojson }};
+        const PYRAMIDE_MALE = {{ pyramide_male | tojson }};
+        const PYRAMIDE_FEMALE = {{ pyramide_female | tojson }};
+        
+        // Données pour le taux de conversion
+        const TAUX_CONVERSION_MENSUEL = {{ taux_conversion_mensuel | tojson }};
+        const LABELS_CONVERSION = {{ labels_conversion | tojson }};
+        
+        // Initialisation des composants
+        document.addEventListener('DOMContentLoaded', function() {
+            initMap();
+            initPyramide();
+            initConversion();
+            initRadioTabs();
+            startAutoRefresh();
+        });
+
+        function initMap() {
+            // Initialiser la carte Leaflet
+            const map = L.map('map', { scrollWheelZoom: false });
+            L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+                maxZoom: 18, 
+                attribution: '&copy; OpenStreetMap'
+            }).addTo(map);
+            
+            const markers = [];
+            
+            // Ajouter les marqueurs pour chaque candidat validé
+            PINS_VALIDES.forEach(p => {
+                // Déterminer la couleur du pin selon le statut QPV
+                let pinColor = '#3388ff'; // Bleu par défaut (Non QPV)
+                let qpv_status = "⚪ Non QPV";
+                
+                if (p.qpv) {
+                    pinColor = '#ffd700'; // Jaune pour QPV
+                    qpv_status = "🟡 QPV";
+                } else if (p.qpv_limite) {
+                    pinColor = '#ff8c00'; // Orange pour QPV Limite
+                    qpv_status = "🟠 QPV Limite";
+                }
+                
+                // Créer une icône Leaflet colorée
+                const coloredIcon = L.icon({
+                    iconUrl: 'https://raw.githubusercontent.com/pointhi/leaflet-color-markers/master/img/marker-icon-2x-blue.png',
+                    shadowUrl: 'https://cdnjs.cloudflare.com/ajax/libs/leaflet/0.7.7/images/marker-shadow.png',
+                    iconSize: [25, 41],
+                    iconAnchor: [12, 41],
+                    popupAnchor: [1, -34],
+                    shadowSize: [41, 41]
+                });
+                
+                // Modifier la couleur de l'icône
+                if (p.qpv) {
+                    coloredIcon.options.iconUrl = 'https://raw.githubusercontent.com/pointhi/leaflet-color-markers/master/img/marker-icon-2x-gold.png';
+                } else if (p.qpv_limite) {
+                    coloredIcon.options.iconUrl = 'https://raw.githubusercontent.com/pointhi/leaflet-color-markers/master/img/marker-icon-2x-orange.png';
+                }
+                
+                const m = L.marker([p.lat, p.lng], { icon: coloredIcon }).addTo(map);
+                
+                const sx = p.sexe === "F" ? "🔵 Femme" : (p.sexe === "H" ? "⚫ Homme" : "•");
+                m.bindPopup(`<div style="font-weight:800">${(p.prenom||"")} ${(p.nom||"")}</div>
+                             <div style="font-size:.9rem; opacity:.8">${p.adresse||""}</div>
+                             <div style="font-size:.9rem;">${qpv_status} • ${sx}</div>`);
+                markers.push(m);
+            });
+            
+            // Ajuster la vue de la carte
+            if (markers.length > 0) {
+                const group = new L.featureGroup(markers);
+                map.fitBounds(group.getBounds().pad(0.2));
+            } else {
+                map.setView([46.7, 2.5], 5); // Vue par défaut de la France
+            }
+        }
+
+        function initPyramide() {
+            const ctx = document.getElementById('pyramideChart').getContext('2d');
+            new Chart(ctx, {
+                type: 'bar',
+                data: {
+                    labels: PYRAMIDE_LABELS,
+                    datasets: [{
+                        label: 'Hommes',
+                        data: PYRAMIDE_MALE,
+                        backgroundColor: '#3498db',
+                        borderColor: '#2980b9',
+                        borderWidth: 1
+                    }, {
+                        label: 'Femmes',
+                        data: PYRAMIDE_FEMALE,
+                        backgroundColor: '#e74c3c',
+                        borderColor: '#c0392b',
+                        borderWidth: 1
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    indexAxis: 'y', // Graphique horizontal pour ressembler à une pyramide
+                    plugins: {
+                        legend: {
+                            position: 'top',
+                        },
+                        title: {
+                            display: true,
+                            text: 'Répartition par âge et sexe'
+                        }
+                    },
+                    scales: {
+                        x: {
+                            beginAtZero: true,
+                            ticks: {
+                                precision: 0
+                            }
+                        },
+                        y: {
+                            ticks: {
+                                autoSkip: false
+                            }
+                        }
+                    }
+                }
+            });
+        }
+
+        function initConversion() {
+            const ctx = document.getElementById('conversionChart').getContext('2d');
+            new Chart(ctx, {
+                type: 'line',
+                data: {
+                    labels: LABELS_CONVERSION,
+                    datasets: [{
+                        label: 'Taux de conversion (%)',
+                        data: TAUX_CONVERSION_MENSUEL,
+                        borderColor: '#2ecc71',
+                        backgroundColor: 'rgba(46, 204, 113, 0.1)',
+                        borderWidth: 3,
+                        fill: true,
+                        tension: 0.4,
+                        pointBackgroundColor: '#2ecc71',
+                        pointBorderColor: '#27ae60',
+                        pointBorderWidth: 2,
+                        pointRadius: 6,
+                        pointHoverRadius: 8
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: {
+                        legend: {
+                            display: false
+                        },
+                        tooltip: {
+                            callbacks: {
+                                label: function(context) {
+                                    return `Taux de conversion: ${context.parsed.y.toFixed(1)}%`;
+                                }
+                            }
+                        }
+                    },
+                    scales: {
+                        y: {
+                            beginAtZero: true,
+                            max: 100,
+                            ticks: {
+                                callback: function(value) {
+                                    return value + '%';
+                                }
+                            },
+                            grid: {
+                                color: 'rgba(0,0,0,0.1)'
+                            }
+                        },
+                        x: {
+                            grid: {
+                                color: 'rgba(0,0,0,0.1)'
+                            }
+                        }
+                    },
+                    elements: {
+                        point: {
+                            hoverBackgroundColor: '#27ae60'
+                        }
+                    }
+                }
+            });
+        }
+
+        function initRadioTabs() {
+            const radioInputs = document.querySelectorAll('input[name="tab"]');
+            const tabPanes = document.querySelectorAll('.tab-pane');
+            
+            radioInputs.forEach(radio => {
+                radio.addEventListener('change', function() {
+                    // Masquer tous les onglets
+                    tabPanes.forEach(pane => {
+                        pane.classList.remove('show', 'active');
+                    });
+                    
+                    // Afficher l'onglet sélectionné
+                    const targetTab = document.getElementById(this.value);
+                    if (targetTab) {
+                        targetTab.classList.add('show', 'active');
+                    }
+                });
+            });
+        }
+
+
+        function refreshData() {
+            // Simulation du rafraîchissement des données
+            document.getElementById('lastUpdate').textContent = new Date().toLocaleString('fr-FR');
+            
+            // Animation de chargement
+            const refreshBtn = document.querySelector('[onclick="refreshData()"]');
+            const originalText = refreshBtn.innerHTML;
+            refreshBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Actualisation...';
+            
+            setTimeout(() => {
+                refreshBtn.innerHTML = originalText;
+                // Ici on pourrait recharger les données via AJAX
+            }, 2000);
+        }
+
+        function startAutoRefresh() {
+            // Actualisation automatique toutes les 5 minutes
+            setInterval(() => {
+                refreshData();
+            }, 300000);
+        }
+    </script>
+{% endblock %}

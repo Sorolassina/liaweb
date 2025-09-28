@@ -11,13 +11,16 @@ from sqlmodel import Session, select
 from sqlalchemy import func
 
 from app_lia_web.core.database import get_session
+from app_lia_web.core.middleware import get_shared_session
 from app_lia_web.core.config import settings
 from app_lia_web.core.security import get_current_user
 from app_lia_web.core.path_config import path_config
 from app_lia_web.core.program_schema_integration import (
     get_program_schema_from_request,
     get_schema_routing_service,
-    SchemaRoutingService
+    SchemaRoutingService,
+    safe_count_query,
+    table_exists_anywhere
 )
 from app_lia_web.app.services.file_upload_service import FileUploadService
 from app_lia_web.app.templates import templates
@@ -28,27 +31,39 @@ from app_lia_web.app.models.base import (
     DecisionJuryTable, Jury, DecisionJuryCandidat, Partenaire, User, Promotion, Groupe,
     ReorientationCandidat, Document
 )
+from app_lia_web.app.schemas.preinscription_schemas import Adresse
+from app_lia_web.app.schemas.schema_qpv import QPVResponse, QPVErrorResponse
+from app_lia_web.app.schemas.schema_siret import SiretRequest
+from app_lia_web.app.services.service_qpv import verif_qpv
+from app_lia_web.app.services.service_siret_pappers import get_entreprise_process
 from app_lia_web.app.models.enums import TypeDocument, DecisionJury, UserRole, GroupeCodev, TypePromotion
-from app_lia_web.app.services.ACD.eligibilite import evaluate_eligibilite, entreprise_age_annees
-from app_lia_web.app.services.ACD.service_qpv import verif_qpv
-from app_lia_web.app.services.ACD.service_siret_pappers import get_entreprise_process
-from app_lia_web.app.schemas.ACD.schema_qpv import Adresse
-from app_lia_web.app.schemas.ACD.schema_siret import SiretRequest
+from app_lia_web.app.services.eligibilite import evaluate_eligibilite, entreprise_age_annees
 
 router = APIRouter()
 
 def _prog_by_code(session: Session, code: str) -> Programme | None:
-    return session.exec(select(Programme).where(Programme.code == code)).first()
+    if not table_exists_anywhere("programme", session):
+        return None
+    try:
+        return session.exec(select(Programme).where(Programme.code == code)).first()
+    except Exception as e:
+        print(f"⚠️ [WARNING] Erreur lors de la récupération du programme {code}: {e}")
+        return None
 
 @router.get("/form", name="form_inscriptions_display", response_class=HTMLResponse)
 def inscriptions_ui(
     request: Request,
-    session: Session = Depends(get_session),
+    session: Session = Depends(get_shared_session),
     current_user=Depends(get_current_user),
     programme: str = Query("ACD"),
     q: Optional[str] = Query(None),
     pre_id: Optional[int] = Query(None),
 ):
+    # Gestion des transactions échouées - rollback si nécessaire
+    try:
+        session.rollback()
+    except Exception:
+        pass  # Ignorer les erreurs de rollback
     prog = _prog_by_code(session, programme)
     if not prog:
         # Au lieu de lever une erreur, créer un programme factice avec des valeurs vides
@@ -62,18 +77,24 @@ def inscriptions_ui(
 
     # Liste de préinscriptions (colonnes pour la liste gauche)
     pre_rows = []
-    if prog.id:
-        stmt = (
-            select(Preinscription, Candidat, Entreprise, Eligibilite)
-            .join(Candidat, Candidat.id==Preinscription.candidat_id)
-            .join(Entreprise, Entreprise.candidat_id==Candidat.id, isouter=True)
-            .join(Eligibilite, Eligibilite.preinscription_id==Preinscription.id, isouter=True)
-            .where(Preinscription.programme_id==prog.id)
-        )
-        if q:
-            like = f"%{q}%"
-            stmt = stmt.where((Candidat.nom.ilike(like)) | (Candidat.prenom.ilike(like)) | (Candidat.email.ilike(like)))
-        pre_rows = session.exec(stmt.order_by(Preinscription.cree_le.desc()).limit(400)).all()
+    if prog.id and table_exists_anywhere("preinscription", session) and table_exists_anywhere("candidat", session):
+        try:
+            stmt = (
+                select(Preinscription, Candidat, Entreprise, Eligibilite)
+                .join(Candidat, Candidat.id==Preinscription.candidat_id)
+                .join(Entreprise, Entreprise.candidat_id==Candidat.id, isouter=True)
+                .join(Eligibilite, Eligibilite.preinscription_id==Preinscription.id, isouter=True)
+                .where(Preinscription.programme_id==prog.id)
+            )
+            if q:
+                like = f"%{q}%"
+                stmt = stmt.where((Candidat.nom.ilike(like)) | (Candidat.prenom.ilike(like)) | (Candidat.email.ilike(like)))
+            pre_rows = session.exec(stmt.order_by(Preinscription.cree_le.desc()).limit(400)).all()
+        except Exception as e:
+            print(f"⚠️ [WARNING] Erreur lors de la récupération des préinscriptions: {e}")
+            pre_rows = []
+    else:
+        print(f"⚠️ [WARNING] Tables preinscription ou candidat manquantes - retour liste vide")
         
         # Debug logs
         if settings.DEBUG:
@@ -122,22 +143,37 @@ def inscriptions_ui(
     objectif_qpv_atteint = 0.0
     
     if prog.id:
-        total_pre = session.exec(select(func.count(Preinscription.id)).where(Preinscription.programme_id==prog.id)).one() or 0
-        total_insc = session.exec(select(func.count(Inscription.id)).where(Inscription.programme_id==prog.id)).one() or 0
+        total_pre = 0
+        if table_exists_anywhere("preinscription", session):
+            total_pre = safe_count_query(session, Preinscription, programme_id=prog.id)
+        
+        total_insc = 0
+        if table_exists_anywhere("inscription", session):
+            total_insc = safe_count_query(session, Inscription, programme_id=prog.id)
         taux_conv = round((total_insc / total_pre * 100), 1) if total_pre else 0.0
 
-        # Objectif QPV (ex: % de préinscrits ayant qpv_ok)
-        qpv_ok_count = session.exec(
-            select(func.count(Eligibilite.id)).join(Preinscription).where(
-                (Preinscription.programme_id==prog.id) & (Eligibilite.qpv_ok.is_(True))
-            )
-        ).one() or 0
+        # Objectif QPV (ex: % de préinscrits ayant qpv_ok) - Version sécurisée
+        qpv_ok_count = 0
+        if table_exists_anywhere("eligibilite", session) and table_exists_anywhere("preinscription", session):
+            try:
+                qpv_ok_count = session.exec(
+                    select(func.count(Eligibilite.id)).join(Preinscription).where(
+                        (Preinscription.programme_id==prog.id) & (Eligibilite.qpv_ok.is_(True))
+                    )
+                ).one() or 0
+            except Exception as e:
+                logging.warning(f"Erreur lors du comptage QPV: {e}")
+                qpv_ok_count = 0
         objectif_qpv_atteint = round((qpv_ok_count / total_pre * 100), 1) if total_pre else 0.0
 
-    # Jury sessions futures + récentes
+    # Jury sessions futures + récentes - Version sécurisée
     jurys = []
-    if prog.id:
-        jurys = session.exec(select(Jury).where(Jury.programme_id==prog.id).order_by(Jury.session_le.desc())).all()
+    if prog.id and table_exists_anywhere("jury", session):
+        try:
+            jurys = session.exec(select(Jury).where(Jury.programme_id==prog.id).order_by(Jury.session_le.desc())).all()
+        except Exception as e:
+            logging.warning(f"Erreur lors de la récupération des jurys: {e}")
+            jurys = []
 
     # Données pour le système de décisions du jury
     decisions_jury = []
@@ -145,33 +181,61 @@ def inscriptions_ui(
     promotions = []
     partenaires = []
     
-    if cand:
-        # Récupérer les décisions du jury pour ce candidat avec les relations
-        from sqlalchemy.orm import joinedload
-        decisions_jury = session.exec(
-            select(DecisionJuryCandidat)
-            .options(
-                joinedload(DecisionJuryCandidat.jury),
-                joinedload(DecisionJuryCandidat.conseiller),
-                joinedload(DecisionJuryCandidat.groupe),
+    if cand and table_exists_anywhere("decision_jury_candidat", session):
+        try:
+            # Récupérer les décisions du jury pour ce candidat avec les relations
+            from sqlalchemy.orm import joinedload
+            decisions_jury = session.exec(
+                select(DecisionJuryCandidat)
+                .options(
+                    joinedload(DecisionJuryCandidat.jury),
+                    joinedload(DecisionJuryCandidat.conseiller),
+                    joinedload(DecisionJuryCandidat.groupe),
                 joinedload(DecisionJuryCandidat.promotion),
                 joinedload(DecisionJuryCandidat.partenaire)
             )
-            .where(DecisionJuryCandidat.candidat_id == cand.id)
-            .order_by(DecisionJuryCandidat.date_decision.desc())
-        ).all()
+                .where(DecisionJuryCandidat.candidat_id == cand.id)
+                .order_by(DecisionJuryCandidat.date_decision.desc())
+            ).all()
+        except Exception as e:
+            logging.warning(f"Erreur lors de la récupération des décisions jury: {e}")
+            decisions_jury = []
     
     # Récupérer les conseillers
-    conseillers = session.exec(select(User).where(User.role == UserRole.CONSEILLER.value)).all()
+    conseillers = []
+    try:
+        session.rollback()
+        conseillers = session.exec(select(User).where(User.role == UserRole.CONSEILLER.value)).all()
+    except Exception as e:
+        print(f"⚠️ [WARNING] Erreur lors de la récupération des conseillers: {e}")
+        conseillers = []
     
     # Récupérer les promotions
-    promotions = session.exec(select(Promotion)).all()
+    promotions = []
+    try:
+        session.rollback()
+        promotions = session.exec(select(Promotion)).all()
+    except Exception as e:
+        print(f"⚠️ [WARNING] Erreur lors de la récupération des promotions: {e}")
+        promotions = []
     
     # Récupérer les partenaires actifs
-    partenaires = session.exec(select(Partenaire).where(Partenaire.actif == True)).all()
+    partenaires = []
+    try:
+        session.rollback()
+        partenaires = session.exec(select(Partenaire).where(Partenaire.actif == True)).all()
+    except Exception as e:
+        print(f"⚠️ [WARNING] Erreur lors de la récupération des partenaires: {e}")
+        partenaires = []
     
     # Récupérer les groupes actifs
-    groupes = session.exec(select(Groupe).where(Groupe.actif == True).order_by(Groupe.nom)).all()
+    groupes = []
+    try:
+        session.rollback()
+        groupes = session.exec(select(Groupe).where(Groupe.actif == True).order_by(Groupe.nom)).all()
+    except Exception as e:
+        print(f"⚠️ [WARNING] Erreur lors de la récupération des groupes: {e}")
+        groupes = []
 
     # Extraire le nom du QPV si disponible
     qpv_name = None
@@ -234,35 +298,25 @@ def create_from_pre(
     session: Session = Depends(get_session),
     current_user=Depends(get_current_user),
 ):
-    pre = session.get(Preinscription, pre_id)
-    if not pre:
-        raise HTTPException(status_code=404, detail="Préinscription introuvable")
-    prog = session.get(Programme, pre.programme_id)
-    if not prog:
-        raise HTTPException(status_code=404, detail="Programme introuvable")
-    exists = session.exec(
-        select(Inscription).where(
-            (Inscription.programme_id==pre.programme_id) & (Inscription.candidat_id==pre.candidat_id)
+    """Crée une inscription depuis une préinscription"""
+    try:
+        from app_lia_web.app.services import InscriptionService
+        
+        # Utiliser le service pour créer l'inscription
+        inscription = InscriptionService.create_from_preinscription(session, pre_id)
+        
+        # Récupérer le programme pour la redirection
+        prog = session.get(Programme, inscription.programme_id)
+        
+        return RedirectResponse(
+            url=f"{request.url_for('form_inscriptions_display')}?programme={prog.code}&pre_id={pre_id}", 
+            status_code=303
         )
-    ).first()
-    if exists:
-        return RedirectResponse(url=f"{request.url_for('form_inscriptions_display')}?programme={prog.code}&pre_id={pre.id}", status_code=303)
-
-    ins = Inscription(programme_id=pre.programme_id, candidat_id=pre.candidat_id, statut=pre.statut)
-    session.add(ins); session.flush()
-
-    # Instancie le pipeline pour ce programme
-    steps = session.exec(
-        select(EtapePipeline).where(
-            (EtapePipeline.programme_id==prog.id) & (EtapePipeline.active.is_(True))
-        ).order_by(EtapePipeline.ordre)
-    ).all()
-    for st in steps:
-        av = AvancementEtape(inscription_id=ins.id, etape_id=st.id, statut=StatutEtape.A_FAIRE)
-        session.add(av)
-
-    session.commit()
-    return RedirectResponse(url=f"{request.url_for('form_inscriptions_display')}?programme={prog.code}&pre_id={pre.id}", status_code=303)
+        
+    except ValueError as e:
+        raise HTTPException(status_code=400, detail=str(e))
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Erreur lors de la création de l'inscription: {str(e)}")
 
 
 # Mise à jour infos candidat/entreprise
@@ -319,7 +373,14 @@ async def update_infos(
         print(f"🔍 [INSCRIPTION] Vérification directe en base: {len(all_docs)} documents trouvés")
         for doc in all_docs:
             print(f"   - ID: {doc.id}, Nom: {doc.nom_fichier}, Type: {doc.type_document}")
-    ent = session.exec(select(Entreprise).where(Entreprise.candidat_id==cand.id)).first()
+    ent = None
+    if table_exists_anywhere("entreprise", session):
+        try:
+            ent = session.exec(select(Entreprise).where(Entreprise.candidat_id==cand.id)).first()
+        except Exception as e:
+            print(f"⚠️ [WARNING] Erreur lors de la récupération de l'entreprise: {e}")
+            ent = None
+    
     if not ent:
         ent = Entreprise(candidat_id=cand.id)
         session.add(ent); session.flush()
@@ -447,7 +508,7 @@ async def update_infos(
     session.commit()
     
     # Log de l'activité
-    from app_lia_web.app.services.ACD.audit import log_activity
+    from app_lia_web.app.services.audit import log_activity
     log_activity(
         session=session,
         user=current_user,
@@ -497,7 +558,14 @@ def elig_recalc(
             print(f"❌ [RECALC] Candidat {pre.candidat_id} introuvable")
             raise HTTPException(status_code=404, detail="Candidat introuvable")
         
-        ent = session.exec(select(Entreprise).where(Entreprise.candidat_id==cand.id)).first()
+        ent = None
+        if table_exists_anywhere("entreprise", session):
+            try:
+                ent = session.exec(select(Entreprise).where(Entreprise.candidat_id==cand.id)).first()
+            except Exception as e:
+                print(f"⚠️ [WARNING] Erreur lors de la récupération de l'entreprise: {e}")
+                ent = None
+        
         if not ent:
             print(f"❌ [RECALC] Entreprise pour candidat {cand.id} introuvable")
             raise HTTPException(status_code=404, detail="Entreprise introuvable")
@@ -835,7 +903,7 @@ def create_jury_decision(
         pass
     
     # Log de l'activité
-    from app_lia_web.app.services.ACD.audit import log_activity
+    from app_lia_web.app.services.audit import log_activity
     log_activity(
         session=session,
         user=current_user,
@@ -855,8 +923,16 @@ def create_jury_decision(
     )
     
     # Redirection vers la page d'inscription
-    prog = session.exec(select(Programme).join(Preinscription).where(Preinscription.candidat_id == candidat_id)).first()
-    pre = session.exec(select(Preinscription).where(Preinscription.candidat_id == candidat_id)).first()
+    prog = None
+    pre = None
+    if table_exists_anywhere("preinscription", session) and table_exists_anywhere("programme", session):
+        try:
+            prog = session.exec(select(Programme).join(Preinscription).where(Preinscription.candidat_id == candidat_id)).first()
+            pre = session.exec(select(Preinscription).where(Preinscription.candidat_id == candidat_id)).first()
+        except Exception as e:
+            print(f"⚠️ [WARNING] Erreur lors de la récupération du programme/préinscription: {e}")
+            prog = None
+            pre = None
     return RedirectResponse(url=f"{request.url_for('form_inscriptions_display')}?programme={prog.code if prog else 'ACD'}&pre_id={pre.id if pre else ''}&success=decision_created", status_code=303)
 
 
@@ -892,7 +968,7 @@ def delete_jury_decision(
     session.commit()
     
     # Log de l'activité
-    from app_lia_web.app.services.ACD.audit import log_activity
+    from app_lia_web.app.services.audit import log_activity
     log_activity(
         session=session,
         user=current_user,
@@ -905,8 +981,16 @@ def delete_jury_decision(
     )
     
     # Redirection vers la page d'inscription
-    prog = session.exec(select(Programme).join(Preinscription).where(Preinscription.candidat_id == candidat_id)).first()
-    pre = session.exec(select(Preinscription).where(Preinscription.candidat_id == candidat_id)).first()
+    prog = None
+    pre = None
+    if table_exists_anywhere("preinscription", session) and table_exists_anywhere("programme", session):
+        try:
+            prog = session.exec(select(Programme).join(Preinscription).where(Preinscription.candidat_id == candidat_id)).first()
+            pre = session.exec(select(Preinscription).where(Preinscription.candidat_id == candidat_id)).first()
+        except Exception as e:
+            print(f"⚠️ [WARNING] Erreur lors de la récupération du programme/préinscription: {e}")
+            prog = None
+            pre = None
     return RedirectResponse(url=f"{request.url_for('form_inscriptions_display')}?programme={prog.code if prog else 'ACD'}&pre_id={pre.id if pre else ''}&success=decision_deleted", status_code=303)
 
 
@@ -929,7 +1013,13 @@ async def check_qpv_candidate(
     
     # Récupérer les adresses depuis la base si non fournies
     if not adresse_personnelle or not adresse_entreprise:
-        entreprise = session.exec(select(Entreprise).where(Entreprise.candidat_id == candidat_id)).first()
+        entreprise = None
+        if table_exists_anywhere("entreprise", session):
+            try:
+                entreprise = session.exec(select(Entreprise).where(Entreprise.candidat_id == candidat_id)).first()
+            except Exception as e:
+                print(f"⚠️ [WARNING] Erreur lors de la récupération de l'entreprise: {e}")
+                entreprise = None
         
         # Adresse personnelle du candidat
         if not adresse_personnelle:
@@ -1107,7 +1197,7 @@ async def check_qpv_candidate(
             print(f"✅ [QPV] Éligibilité mise à jour - QPV: {qpv_found}")
     
     # Log de l'activité
-    from app_lia_web.app.services.ACD.audit import log_activity
+    from app_lia_web.app.services.audit import log_activity
     log_activity(
         session=session,
         user=current_user,
@@ -1182,7 +1272,7 @@ async def check_siret_candidate(
             print(f"✅ [SIRET] Informations entreprise mises à jour")
         
         # Log de l'activité
-        from app_lia_web.app.services.ACD.audit import log_activity
+        from app_lia_web.app.services.audit import log_activity
         log_activity(
             session=session,
             user=current_user,
@@ -1453,3 +1543,126 @@ def download_document(
     except Exception as e:
         print(f"❌ [DOC] Erreur lors du téléchargement: {e}")
         raise HTTPException(status_code=500, detail=f"Erreur lors du téléchargement du document: {str(e)}")
+
+
+# ============================================================================
+# ROUTES QPV ET SIRET (fusionnées depuis route_qpv.py et route_siret_pappers.py)
+# ============================================================================
+
+@router.post("/inscriptions/qpv-check", name="check_qpv_route", response_model=QPVResponse)
+async def check_qpv_route(address: Adresse, request: Request):
+    """
+    Vérifier le statut QPV d'une adresse
+    
+    Args:
+        address: Objet Adresse contenant l'adresse à vérifier
+        request: Requête FastAPI pour récupérer l'URL de base
+        
+    Returns:
+        dict: Résultat de la vérification QPV avec cartes et images
+    """
+    import time
+    start_time = time.time()
+    data = address.model_dump()
+
+    print("✅ [ROUTE QPV] Adresse validée:", address)
+
+    # Vérification des données d'entrée
+    if not data.get("address") or not data["address"].strip():
+        return {
+            "address": "Adresse vide",
+            "nom_qp": "Aucun QPV",
+            "distance_m": "N/A",
+            "carte": "",
+            "image_url": "",
+            "image_encoded": ""
+        }
+    
+    # Validation basique du format d'adresse
+    adresse = data["address"].strip()
+    if len(adresse) < 5 or adresse.isdigit():
+        return {
+            "address": "Format d'adresse invalide",
+            "nom_qp": "Aucun QPV", 
+            "distance_m": "N/A",
+            "carte": "",
+            "image_url": "",
+            "image_encoded": ""
+        }
+
+    try:
+        # Appel du service de vérification QPV
+        result = await verif_qpv(data, request)
+        
+        duration = round(time.time() - start_time, 2)
+        print(f"✅ [ROUTE QPV] Vérification terminée en {duration}s")
+        
+        return result
+        
+    except Exception as e:
+        print(f"❌ [ROUTE QPV] Erreur lors de la vérification: {e}")
+        raise HTTPException(
+            status_code=500, 
+            detail=f"Erreur lors de la vérification QPV: {str(e)}"
+        )
+
+
+@router.post("/inscriptions/siret-check", name="check_siret_route")
+async def check_siret_route(siret_request: SiretRequest, request: Request):
+    """
+    Vérifier les informations d'une entreprise via son SIRET/SIREN
+    
+    Args:
+        siret_request: Objet SiretRequest contenant le numéro SIRET/SIREN
+        request: Requête FastAPI pour récupérer l'URL de base
+        
+    Returns:
+        dict: Informations de l'entreprise avec données CSV
+    """
+    import time
+    print(f"🚀 [ROUTE SIRET] Début du traitement")
+    print(f"📝 [ROUTE SIRET] SIRET reçu: {siret_request.numero_siret}")
+    
+    start_time = time.time()
+    data = siret_request.model_dump()
+    
+    # Validation du format SIRET/SIREN
+    numero_siret = data.get("numero_siret", "").strip()
+    print(f"🔍 [ROUTE SIRET] Validation format: {numero_siret}")
+    
+    if not numero_siret or not numero_siret.isdigit():
+        print("❌ [ROUTE SIRET] Format SIRET invalide")
+        raise HTTPException(
+            status_code=400,
+            detail="Le numéro SIRET/SIREN doit contenir uniquement des chiffres"
+        )
+    
+    if len(numero_siret) not in [9, 14]:
+        print("❌ [ROUTE SIRET] Longueur SIRET invalide")
+        raise HTTPException(
+            status_code=400,
+            detail="Le numéro doit faire 9 chiffres (SIREN) ou 14 chiffres (SIRET)"
+        )
+    
+    # Extraction du SIREN (9 premiers chiffres)
+    siren = numero_siret[:9]
+    print(f"🔢 [ROUTE SIRET] SIREN extrait: {siren}")
+
+    try:
+        # Appel du service Pappers
+        result = await get_entreprise_process(siren, request)
+        
+        duration = round(time.time() - start_time, 2)
+        print(f"✅ [ROUTE SIRET] Traitement terminé en {duration}s")
+        
+        return result
+        
+    except HTTPException:
+        # Re-lever les HTTPException du service
+        raise
+    except Exception as e:
+        print(f"❌ [ROUTE SIRET] Erreur inattendue: {e}")
+        raise HTTPException(
+            status_code=500,
+            detail=f"Erreur lors de la vérification SIRET: {str(e)}"
+        )

@@ -9,6 +9,8 @@ import string
 
 
 class PasswordRecoveryCode(SQLModel, table=True):
+    __tablename__ = "password_recovery_code"
+    
     """Code de récupération de mot de passe"""
     id: Optional[int] = Field(default=None, primary_key=True)
     email: str = Field(index=True)

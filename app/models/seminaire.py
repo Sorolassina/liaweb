@@ -6,6 +6,7 @@ from .enums import TypeSession, StatutPresence, StatutSeminaire, TypeInvitation
 from .base import Programme, User, Inscription
 
 class Seminaire(SQLModel, table=True):
+    __tablename__ = "seminaire"
     """Séminaire multi-jours avec programmes matin/soir"""
     id: Optional[int] = Field(default=None, primary_key=True)
     
@@ -37,13 +38,15 @@ class Seminaire(SQLModel, table=True):
     modifie_le: Optional[datetime] = None
     
     # Relations
-    programme: Programme = Relationship(back_populates="seminaires")
-    organisateur: User = Relationship()
+    programme: "Programme" = Relationship(back_populates="seminaires")
+    organisateur: "User" = Relationship()
     sessions: List["SessionSeminaire"] = Relationship(back_populates="seminaire")
     invitations: List["InvitationSeminaire"] = Relationship(back_populates="seminaire")
     livrables: List["LivrableSeminaire"] = Relationship(back_populates="seminaire")
 
 class SessionSeminaire(SQLModel, table=True):
+    __tablename__ = "session_seminaire"
+    
     """Session individuelle d'un séminaire (matin/soir)"""
     id: Optional[int] = Field(default=None, primary_key=True)
     seminaire_id: int = Field(foreign_key="seminaire.id", index=True)
@@ -70,10 +73,12 @@ class SessionSeminaire(SQLModel, table=True):
     cree_le: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
     
     # Relations
-    seminaire: Seminaire = Relationship(back_populates="sessions")
+    seminaire: "Seminaire" = Relationship(back_populates="sessions")
     participants: List["PresenceSeminaire"] = Relationship(back_populates="session")
 
 class InvitationSeminaire(SQLModel, table=True):
+    __tablename__ = "invitation_seminaire"
+    
     """Invitation d'un candidat/promotion à un séminaire"""
     id: Optional[int] = Field(default=None, primary_key=True)
     seminaire_id: int = Field(foreign_key="seminaire.id", index=True)
@@ -100,13 +105,15 @@ class InvitationSeminaire(SQLModel, table=True):
     cree_le: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
     
     # Relations
-    seminaire: Seminaire = Relationship(back_populates="invitations")
-    inscription: Optional[Inscription] = Relationship()
+    seminaire: "Seminaire" = Relationship(back_populates="invitations")
+    inscription: Optional["Inscription"] = Relationship()
 
 class PresenceSeminaire(SQLModel, table=True):
+    __tablename__ = "presence_seminaire"
+    
     """Présence d'un candidat à une session de séminaire"""
     id: Optional[int] = Field(default=None, primary_key=True)
-    session_id: int = Field(foreign_key="sessionseminaire.id", index=True)
+    session_id: int = Field(foreign_key="session_seminaire.id", index=True)
     inscription_id: int = Field(foreign_key="inscription.id", index=True)
     
     # Statut de présence
@@ -134,10 +141,12 @@ class PresenceSeminaire(SQLModel, table=True):
     modifie_le: Optional[datetime] = None
     
     # Relations
-    session: SessionSeminaire = Relationship(back_populates="participants")
-    inscription: Inscription = Relationship()
+    session: "SessionSeminaire" = Relationship(back_populates="participants")
+    inscription: "Inscription" = Relationship()
 
 class LivrableSeminaire(SQLModel, table=True):
+    __tablename__ = "livrable_seminaire"
+    
     """Livrables à rendre à la fin du séminaire"""
     id: Optional[int] = Field(default=None, primary_key=True)
     seminaire_id: int = Field(foreign_key="seminaire.id", index=True)
@@ -160,13 +169,15 @@ class LivrableSeminaire(SQLModel, table=True):
     cree_le: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
     
     # Relations
-    seminaire: Seminaire = Relationship(back_populates="livrables")
+    seminaire: "Seminaire" = Relationship(back_populates="livrables")
     rendus: List["RenduLivrable"] = Relationship(back_populates="livrable")
 
 class RenduLivrable(SQLModel, table=True):
+    __tablename__ = "rendu_livrable"
+    
     """Rendu d'un livrable par un candidat"""
     id: Optional[int] = Field(default=None, primary_key=True)
-    livrable_id: int = Field(foreign_key="livrableseminaire.id", index=True)
+    livrable_id: int = Field(foreign_key="livrable_seminaire.id", index=True)
     inscription_id: int = Field(foreign_key="inscription.id", index=True)
     
     # Fichier rendu
@@ -188,6 +199,6 @@ class RenduLivrable(SQLModel, table=True):
     evaluateur_id: Optional[int] = Field(foreign_key="user.id")
     
     # Relations
-    livrable: LivrableSeminaire = Relationship(back_populates="rendus")
-    inscription: Inscription = Relationship()
-    evaluateur: Optional[User] = Relationship()
+    livrable: "LivrableSeminaire" = Relationship(back_populates="rendus")
+    inscription: "Inscription" = Relationship()
+    evaluateur: Optional["User"] = Relationship()

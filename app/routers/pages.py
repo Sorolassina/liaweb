@@ -3,29 +3,48 @@ from fastapi import APIRouter, Request, Depends
 from fastapi.responses import HTMLResponse
 from sqlmodel import select, func
 from app_lia_web.core.database import get_session
+from app_lia_web.core.middleware import get_shared_session
 from app_lia_web.core.security import get_current_user, require_permission
-from app_lia_web.app.models.base import Programme, User, Inscription, Jury, Candidat, Document
+from app_lia_web.app.models.base import Programme, User, Candidat, Document
+from app_lia_web.app.models.inscription import Inscription
+from app_lia_web.app.models.jury import Jury
 from app_lia_web.app.models.enums import UserRole
 from app_lia_web.app.templates import templates
+from app_lia_web.core.program_schema_integration import safe_count_query, table_exists_anywhere
+import logging
 
 router = APIRouter()
 
-@router.get("/directeur", response_class=HTMLResponse)
-def page_directeur(request: Request, session=Depends(get_session), u=Depends(get_current_user)):
+@router.get("/directeur", response_class=HTMLResponse, name="page_directeur")
+def page_directeur(request: Request, session=Depends(get_shared_session), u=Depends(get_current_user)):
     # Vérifier les permissions
     require_permission(u, [UserRole.DIRECTEUR_TECHNIQUE.value, UserRole.ADMINISTRATEUR.value])
     
-    # KPIs
+    # KPIs - Version sécurisée
     kpi = {
-        "programmes": session.exec(select(func.count()).select_from(Programme)).one(),
-        "utilisateurs": session.exec(select(func.count()).select_from(User)).one(),
-        "inscriptions_en_attente": session.exec(
-            select(func.count()).select_from(Inscription).where(Inscription.statut == "en_attente")
-        ).one(),
-        "jurys_a_venir": session.exec(
-            select(func.count()).select_from(Jury).where(Jury.session_le != None)
-        ).one(),
+        "programmes": 0,
+        "utilisateurs": 0,
+        "inscriptions_en_attente": 0,  # Version sécurisée
+        "jurys_a_venir": 0,  # Version sécurisée
     }
+    
+    # Inscriptions en attente - Version sécurisée
+    if table_exists_anywhere("inscription", session):
+        try:
+            kpi["inscriptions_en_attente"] = session.exec(
+                select(func.count()).select_from(Inscription).where(Inscription.statut == "en_attente")
+            ).one()
+        except Exception as e:
+            logging.warning(f"Erreur lors du comptage des inscriptions en attente: {e}")
+    
+    # Jurys à venir - Version sécurisée
+    if table_exists_anywhere("jury", session):
+        try:
+            kpi["jurys_a_venir"] = session.exec(
+                select(func.count()).select_from(Jury).where(Jury.session_le != None)
+            ).one()
+        except Exception as e:
+            logging.warning(f"Erreur lors du comptage des jurys à venir: {e}")
 
     # Listes pour formulaires & widgets
     programmes = session.exec(select(Programme)).all()
@@ -84,16 +103,22 @@ def page_directeur(request: Request, session=Depends(get_session), u=Depends(get
     )
 
 # A) Responsable Structure
-@router.get("/responsable-structure", response_class=HTMLResponse)
-def page_rs(request: Request, session=Depends(get_session), u=Depends(get_current_user)):
+@router.get("/responsable-structure", response_class=HTMLResponse, name="page_responsable_structure")
+def page_rs(request: Request, session=Depends(get_shared_session), u=Depends(get_current_user)):
     require_permission(u, [UserRole.RESPONSABLE_STRUCTURE.value, UserRole.ADMINISTRATEUR.value])
     
     kpi = {
-        "programmes": session.exec(select(func.count()).select_from(Programme)).one(),
+        "programmes": 0,
         "promotions": 0,  # à brancher si modèle Promotion
         "groupes": 0,  # à brancher si modèle Groupe
-        "conseillers": session.exec(select(func.count()).select_from(User).where(User.role == UserRole.CONSEILLER.value)).one(),
+        "conseillers": 0,
     }
+    
+    if table_exists_anywhere("programme", session):
+        kpi["programmes"] = safe_count_query(session, Programme)
+    
+    if table_exists_anywhere("user", session):
+        kpi["conseillers"] = safe_count_query(session, User, role=UserRole.CONSEILLER.value)
     programmes = session.exec(select(Programme)).all()
     # Groupes enrichis (exemple simple)
     groupes = [{"nom": "Groupe ACD-G1", "programme_nom": "ACD"}]
@@ -103,8 +128,8 @@ def page_rs(request: Request, session=Depends(get_session), u=Depends(get_curren
     })
 
 # B) Responsable Programme
-@router.get("/responsable-programme/{programme_id}", response_class=HTMLResponse)
-def page_rp(programme_id: int, request: Request, session=Depends(get_session), u=Depends(get_current_user)):
+@router.get("/responsable-programme/{programme_id}", response_class=HTMLResponse, name="page_responsable_programme")
+def page_rp(programme_id: int, request: Request, session=Depends(get_shared_session), u=Depends(get_current_user)):
     require_permission(u, [UserRole.RESPONSABLE_PROGRAMME.value, UserRole.ADMINISTRATEUR.value])
     
     programme = session.get(Programme, programme_id)
@@ -116,8 +141,8 @@ def page_rp(programme_id: int, request: Request, session=Depends(get_session), u
     })
 
 # C) Conseiller
-@router.get("/conseiller", response_class=HTMLResponse)
-def page_conseiller(request: Request, session=Depends(get_session), u=Depends(get_current_user)):
+@router.get("/conseiller", response_class=HTMLResponse, name="page_conseiller")
+def page_conseiller(request: Request, session=Depends(get_shared_session), u=Depends(get_current_user)):
     require_permission(u, [UserRole.CONSEILLER.value, UserRole.ADMINISTRATEUR.value])
     
     a_completer = []  # id, candidat_nom, pieces_manquantes
@@ -126,8 +151,8 @@ def page_conseiller(request: Request, session=Depends(get_session), u=Depends(ge
     })
 
 # D) Jury externe
-@router.get("/jury-espace", response_class=HTMLResponse)
-def page_jury(request: Request, session=Depends(get_session), u=Depends(get_current_user)):
+@router.get("/jury-espace", response_class=HTMLResponse, name="page_jury")
+def page_jury(request: Request, session=Depends(get_shared_session), u=Depends(get_current_user)):
     require_permission(u, [UserRole.JURY_EXTERNE.value, UserRole.RESPONSABLE_PROGRAMME.value, UserRole.ADMINISTRATEUR.value])
     
     jurys = session.exec(select(Jury).order_by(Jury.session_le)).all()
@@ -137,8 +162,8 @@ def page_jury(request: Request, session=Depends(get_session), u=Depends(get_curr
     })
 
 # E) Coach externe
-@router.get("/coach", response_class=HTMLResponse)
-def page_coach(request: Request, session=Depends(get_session), u=Depends(get_current_user)):
+@router.get("/coach", response_class=HTMLResponse, name="page_coach")
+def page_coach(request: Request, session=Depends(get_shared_session), u=Depends(get_current_user)):
     require_permission(u, [UserRole.COACH_EXTERNE.value, UserRole.CONSEILLER.value, UserRole.ADMINISTRATEUR.value])
     
     seances = []  # agenda coaching
@@ -148,25 +173,37 @@ def page_coach(request: Request, session=Depends(get_session), u=Depends(get_cur
     })
 
 # F) Candidat (self-service)
-@router.get("/espace-candidat", response_class=HTMLResponse)
-def page_candidat(request: Request, session=Depends(get_session), u=Depends(get_current_user)):
+@router.get("/espace-candidat", response_class=HTMLResponse, name="page_candidat")
+def page_candidat(request: Request, session=Depends(get_shared_session), u=Depends(get_current_user)):
     require_permission(u, [UserRole.CANDIDAT.value, UserRole.ADMINISTRATEUR.value])
     
-    # Ici u est un utilisateur; mappez-le à son Candidat si vous avez la relation
-    candidat = session.exec(select(Candidat).where(Candidat.email == u.email)).first()
-    docs = session.exec(select(Document).where(Document.candidat_id == candidat.id)).all() if candidat else []
+    # Ici u est un utilisateur; mappez-le à son Candidat si vous avez la relation - Version sécurisée
+    candidat = None
+    docs = []
+    if table_exists_anywhere("candidat", session):
+        try:
+            candidat = session.exec(select(Candidat).where(Candidat.email == u.email)).first()
+        except Exception as e:
+            logging.warning(f"Erreur lors de la récupération du candidat: {e}")
+    
+    if candidat and table_exists_anywhere("document", session):
+        try:
+            docs = session.exec(select(Document).where(Document.candidat_id == candidat.id)).all()
+        except Exception as e:
+            logging.warning(f"Erreur lors de la récupération des documents: {e}")
+            docs = []
     kpi = {"statut": "en_attente", "progression": 0, "docs": len(docs)}
     return templates.TemplateResponse("pages/candidat.html", {
         "request": request, "candidat": candidat, "documents": docs, "kpi": kpi
     })
 
-@router.get("/drh-daf", response_class=HTMLResponse)
-def page_drh_daf(request: Request, session=Depends(get_session), u=Depends(get_current_user)):
+@router.get("/drh-daf", response_class=HTMLResponse, name="page_drh_daf")
+def page_drh_daf(request: Request, session=Depends(get_shared_session), u=Depends(get_current_user)):
     require_permission(u, [UserRole.DRH_DAF.value, UserRole.DRH.value, UserRole.DAF.value, UserRole.ADMINISTRATEUR.value])
     
-    # KPIs (exemples à adapter)
+    # KPIs (exemples à adapter) - Version sécurisée
     kpi = {
-        "effectif_total": session.exec(select(func.count()).select_from(User)).one(),
+        "effectif_total": 0,
         "effectif_internes": 0,  # filtrer par type interne
         "effectif_externes": 0,  # filtrer par type externe/coach/jury
         "masse_salariale_mois": 0,
@@ -176,6 +213,9 @@ def page_drh_daf(request: Request, session=Depends(get_session), u=Depends(get_c
         "taux_turnover": 0,
         "recrutements_en_cours": 0,
     }
+    
+    if table_exists_anywhere("user", session):
+        kpi["effectif_total"] = safe_count_query(session, User)
 
     # Listes (placeholder, à brancher sur vos tables RH/Finance)
     recrutements = []   # poste, type_contrat, programme_nom, statut

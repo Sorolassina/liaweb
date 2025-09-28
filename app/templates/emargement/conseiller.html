@@ -29,7 +29,7 @@
                         <div class="col-md-6">
                             <h5><i class="fas fa-calendar-alt me-2" style="color: var(--primary-color);"></i>Détails du rendez-vous</h5>
                             <div class="bg-light p-3 rounded">
-                                <p><strong>Date :</strong> {{ rdv.debut.strftime('%d/%m/%Y à %H:%M') if rdv.debut else 'Non définie' }}</p>
+                                <p><strong>Date :</strong> {{ rdv.debut | format_datetime if rdv.debut else 'Non définie' }}</p>
                                 <p><strong>Type :</strong> {{ rdv.type }}</p>
                                 <p><strong>Lieu :</strong> {{ rdv.lieu or 'Non défini' }}</p>
                                 <p><strong>Statut :</strong> 
@@ -64,7 +64,7 @@
                                     {% if emargement.signature_conseiller %}
                                         <p class="text-success mb-1">
                                             <i class="fas fa-check-circle me-2"></i>
-                                            <strong>Signé le :</strong> {{ emargement.date_signature_conseiller.strftime('%d/%m/%Y à %H:%M') }}
+                                            <strong>Signé le :</strong> {{ emargement.date_signature_conseiller | format_datetime }}
                                         </p>
                                         <small class="text-muted">Signature enregistrée avec succès</small>
                                     {% else %}
@@ -92,7 +92,7 @@
                                     {% if emargement.signature_candidat %}
                                         <p class="text-success mb-1">
                                             <i class="fas fa-check-circle me-2"></i>
-                                            <strong>Signé le :</strong> {{ emargement.date_signature_candidat.strftime('%d/%m/%Y à %H:%M') }}
+                                            <strong>Signé le :</strong> {{ emargement.date_signature_candidat | format_datetime }}
                                         </p>
                                         <small class="text-muted">Signature reçue par email</small>
                                     {% else %}

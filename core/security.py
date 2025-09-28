@@ -20,6 +20,7 @@ from sqlmodel import Session, select
 from app_lia_web.app.models.base import User
 from app_lia_web.core.config import settings
 from app_lia_web.core.database import get_session
+from app_lia_web.core.middleware import get_shared_session
 import logging
 
 # Configuration du logging  
@@ -44,7 +45,7 @@ ADMIN_NAME = os.getenv("ADMIN_NAME", "Soro wangboho lassina")
 async def get_current_user(
     request: Request,
     bearer_token: Optional[str] = Depends(oauth2_scheme),
-    session: Session = Depends(get_session),
+    session: Session = Depends(get_shared_session),
 ) -> User:
     """
     Récupère l'utilisateur authentifié à partir du JWT (cookie ou header Bearer).
@@ -122,12 +123,13 @@ async def get_current_user(
     if not user.actif:
         raise _forbidden_exception("Utilisateur inactif")
 
+
     return user
 
 
 async def get_current_user_optional(
     request: Request,
-    session: Session = Depends(get_session),
+    session: Session = Depends(get_shared_session),
 ) -> Optional[User]:
     """
     Version optionnelle de get_current_user qui retourne None si pas d'authentification.
@@ -149,6 +151,7 @@ async def get_current_user_optional(
         user = session.get(User, user_id)
         if not user or not user.actif:
             return None
+        
         
         return user
     except Exception:

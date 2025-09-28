@@ -7,8 +7,14 @@ from typing import Dict, Any
 from datetime import datetime, timezone, timedelta
 
 from app_lia_web.core.database import get_session
+from app_lia_web.core.middleware import get_shared_session
 from app_lia_web.core.security import get_current_user
-from app_lia_web.app.models.base import User, Preinscription, Inscription, Programme, Jury, Candidat
+from app_lia_web.core.program_schema_integration import safe_count_query, table_exists_anywhere
+import logging
+from app_lia_web.app.models.base import User, Programme, Candidat
+from app_lia_web.app.models.preinscription import Preinscription
+from app_lia_web.app.models.inscription import Inscription
+from app_lia_web.app.models.jury import Jury
 from app_lia_web.app.models.enums import UserRole, StatutDossier
 from app_lia_web.app.schemas import StatistiquesResponse
 from app_lia_web.app.services import StatistiquesService
@@ -16,9 +22,9 @@ from app_lia_web.app.services import StatistiquesService
 router = APIRouter()
 
 
-@router.get("/dashboard/stats", response_model=StatistiquesResponse)
+@router.get("/dashboard/stats", response_model=StatistiquesResponse, name="get_dashboard_stats")
 async def get_dashboard_stats(
-    session: Session = Depends(get_session),
+    session: Session = Depends(get_shared_session),
     current_user: User = Depends(get_current_user)
 ):
     """Récupère les statistiques du tableau de bord"""
@@ -26,9 +32,9 @@ async def get_dashboard_stats(
     return stats
 
 
-@router.get("/dashboard/stats-detaillees")
+@router.get("/dashboard/stats-detaillees", name="get_detailed_stats")
 async def get_detailed_stats(
-    session: Session = Depends(get_session),
+    session: Session = Depends(get_shared_session),
     current_user: User = Depends(get_current_user)
 ):
     """Récupère des statistiques détaillées pour le tableau de bord"""
@@ -37,17 +43,23 @@ async def get_detailed_stats(
     programmes = session.exec(select(Programme).where(Programme.actif == True)).all()
     
     for programme in programmes:
-        preinscriptions_count = session.exec(
-            select(Preinscription).where(Preinscription.programme_id == programme.id)
-        ).count()
+        preinscriptions_count = 0
+        if table_exists_anywhere("preinscription", session):
+            preinscriptions_count = safe_count_query(session, Preinscription, programme_id=programme.id)
         
-        inscriptions_count = session.exec(
-            select(Inscription).where(Inscription.programme_id == programme.id)
-        ).count()
+        inscriptions_count = 0
+        if table_exists_anywhere("inscription", session):
+            inscriptions_count = safe_count_query(session, Inscription, programme_id=programme.id)
         
-        jurys_count = session.exec(
-            select(Jury).where(Jury.programme_id == programme.id)
-        ).count()
+        jurys_count = 0
+        if table_exists_anywhere("jury", session):
+            try:
+                jurys_count = session.exec(
+                    select(Jury).where(Jury.programme_id == programme.id)
+                ).count()
+            except Exception as e:
+                logging.warning(f"Erreur lors du comptage des jurys pour le programme {programme.id}: {e}")
+                jurys_count = 0
         
         stats_par_programme.append({
             "programme": programme.nom,
@@ -80,13 +92,25 @@ async def get_detailed_stats(
     # Évolution sur les 30 derniers jours
     date_30_jours = datetime.now(timezone.utc) - timedelta(days=30)
     
-    preinscriptions_30_jours = session.exec(
-        select(Preinscription).where(Preinscription.cree_le >= date_30_jours)
-    ).count()
+    preinscriptions_30_jours = 0
+    if table_exists_anywhere("preinscription", session):
+        try:
+            preinscriptions_30_jours = session.exec(
+                select(Preinscription).where(Preinscription.cree_le >= date_30_jours)
+            ).count()
+        except Exception as e:
+            logging.warning(f"Erreur lors du comptage des préinscriptions 30 jours: {e}")
+            preinscriptions_30_jours = 0
     
-    inscriptions_30_jours = session.exec(
-        select(Inscription).where(Inscription.cree_le >= date_30_jours)
-    ).count()
+    inscriptions_30_jours = 0
+    if table_exists_anywhere("inscription", session):
+        try:
+            inscriptions_30_jours = session.exec(
+                select(Inscription).where(Inscription.cree_le >= date_30_jours)
+            ).count()
+        except Exception as e:
+            logging.warning(f"Erreur lors du comptage des inscriptions 30 jours: {e}")
+            inscriptions_30_jours = 0
     
     return {
         "stats_par_programme": stats_par_programme,
@@ -98,10 +122,10 @@ async def get_detailed_stats(
     }
 
 
-@router.get("/dashboard/actions-recentes")
+@router.get("/dashboard/actions-recentes", name="get_recent_actions")
 async def get_recent_actions(
     limit: int = 10,
-    session: Session = Depends(get_session),
+    session: Session = Depends(get_shared_session),
     current_user: User = Depends(get_current_user)
 ):
     """Récupère les actions récentes pour le tableau de bord"""
@@ -168,9 +192,9 @@ async def get_recent_actions(
     return actions[:limit]
 
 
-@router.get("/dashboard/alerts")
+@router.get("/dashboard/alerts", name="get_dashboard_alerts")
 async def get_dashboard_alerts(
-    session: Session = Depends(get_session),
+    session: Session = Depends(get_shared_session),
     current_user: User = Depends(get_current_user)
 ):
     """Récupère les alertes pour le tableau de bord"""
@@ -229,9 +253,9 @@ async def get_dashboard_alerts(
     return alerts
 
 
-@router.get("/dashboard/user-stats")
+@router.get("/dashboard/user-stats", name="get_user_stats")
 async def get_user_stats(
-    session: Session = Depends(get_session),
+    session: Session = Depends(get_shared_session),
     current_user: User = Depends(get_current_user)
 ):
     """Récupère les statistiques spécifiques à l'utilisateur connecté"""

@@ -5,6 +5,7 @@ from typing import List, Dict, Any
 from sqlmodel import Session, select
 import logging
 from app_lia_web.app.models.base import EtapePipeline, AvancementEtape, Inscription, Candidat
+from app_lia_web.core.program_schema_integration import table_exists_anywhere
 
 logger = logging.getLogger(__name__)
 
@@ -14,12 +15,18 @@ class PipelineService:
     
     @staticmethod
     def get_pipeline_etapes(session: Session, programme_id: int) -> List[dict]:
-        """Récupère les étapes du pipeline d'un programme"""
-        etapes = session.exec(
-            select(EtapePipeline)
-            .where(EtapePipeline.programme_id == programme_id)
-            .order_by(EtapePipeline.ordre)
-        ).all()
+        """Récupère les étapes du pipeline d'un programme - Version sécurisée"""
+        etapes = []
+        if table_exists_anywhere("etape_pipeline", session):
+            try:
+                etapes = session.exec(
+                    select(EtapePipeline)
+                    .where(EtapePipeline.programme_id == programme_id)
+                    .order_by(EtapePipeline.ordre)
+                ).all()
+            except Exception as e:
+                logging.warning(f"Erreur lors de la récupération des étapes du pipeline: {e}")
+                etapes = []
         
         return [
             {

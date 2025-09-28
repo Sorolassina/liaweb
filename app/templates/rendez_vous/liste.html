@@ -268,8 +268,8 @@
                                 {% for rdv in rendez_vous %}
                                 <tr>
                                     <td>
-                                        <strong>{{ rdv.debut.strftime('%d/%m/%Y') }}</strong><br>
-                                        <small class="text-muted">{{ rdv.debut.strftime('%H:%M') }}{% if rdv.fin %} - {{ rdv.fin.strftime('%H:%M') }}{% endif %}</small>
+                                        <strong>{{ rdv.debut | format_date }}</strong><br>
+                                        <small class="text-muted">{{ rdv.debut | format_time }}{% if rdv.fin %} - {{ rdv.fin | format_time }}{% endif %}</small>
                                     </td>
                                     <td>
                                         <strong>{{ rdv.candidat_prenom }} {{ rdv.candidat_nom }}</strong><br>

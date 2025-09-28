@@ -8,7 +8,10 @@ from datetime import datetime
 from pathlib import Path
 
 from app_lia_web.core.database import get_session
+from app_lia_web.core.middleware import get_shared_session
 from app_lia_web.core.security import get_current_user
+from app_lia_web.core.program_schema_integration import table_exists_anywhere
+import logging
 from app_lia_web.app.models.base import User, Programme, Inscription
 from app_lia_web.app.models.elearning import (
     RessourceElearning, ModuleElearning, ProgressionElearning,
@@ -34,18 +37,22 @@ router = APIRouter()
 
 # === ROUTES WEB ===
 
-@router.get("/", response_class=HTMLResponse)
+@router.get("/", response_class=HTMLResponse, name="elearning_dashboard")
 async def elearning_dashboard(
     request: Request,
+    session: Session = Depends(get_shared_session),
     current_user: User = Depends(get_current_user),
-    session: Session = Depends(get_session),
     programme_id: Optional[int] = None
 ):
     """Dashboard e-learning"""
     # Récupérer les statistiques générales
-    programmes = session.exec(
-        select(Programme).where(Programme.actif == True)
-    ).all()
+    try:
+        programmes = session.exec(
+            select(Programme).where(Programme.actif == True)
+        ).all()
+    except Exception as e:
+        print(f"⚠️ [WARNING] Erreur lors de la récupération des programmes e-learning: {e}")
+        programmes = []
     
     print(f"🔍 DEBUG DASHBOARD: {len(programmes)} programmes actifs trouvés")
     for p in programmes:
@@ -92,56 +99,86 @@ async def elearning_modules(
     statut: Optional[str] = None,
     difficulte: Optional[str] = None,
     current_user: User = Depends(get_current_user),
-    session: Session = Depends(get_session)
+    session: Session = Depends(get_shared_session)
 ):
     """Liste des modules e-learning"""
-    print(f"🔍 DEBUG MODULES: programme_id={programme_id}, statut={statut}, difficulte={difficulte}")
-    
-    # Si statut est "tous", on ne filtre pas par statut
-    if statut == "tous":
-        statut = None
-        actif_only = False  # Voir tous les modules (actifs ET inactifs)
-        print("🔍 DEBUG: Mode 'tous' activé - actif_only=False")
-    else:
-        actif_only = True   # Par défaut, voir seulement les modules actifs
-        print(f"🔍 DEBUG: Mode normal - actif_only=True, statut={statut}")
-    
-    # Si difficulte est "tous", on ne filtre pas par difficulté
-    if difficulte == "tous":
-        difficulte = None
-        print("🔍 DEBUG: Mode 'tous' difficultés activé")
-    
-    # Debug: Vérifier tous les modules dans la base
-    all_modules = session.exec(select(ModuleElearning)).all()
-    print(f"🔍 DEBUG: Total modules en base: {len(all_modules)}")
-    for m in all_modules:
-        print(f"  - Module {m.id}: {m.titre} (statut: {m.statut}, actif: {m.actif}, difficulte: {m.difficulte})")
-    
-    modules = ElearningService.get_modules(session, programme_id, statut, actif_only, difficulte)
-    programmes = session.exec(select(Programme).where(Programme.actif == True)).all()
-    
-    print(f"🔍 DEBUG MODULES: {len(modules)} modules trouvés après filtrage")
-    for m in modules:
-        print(f"  - Module {m.id}: {m.titre} (statut: {m.statut}, actif: {m.actif}, difficulte: {m.difficulte})")
-    
-    return templates.TemplateResponse(
-        "elearning/modules.html",
-        {
-            "request": request,
-            "utilisateur": current_user,
-            "modules": modules,
-            "programmes": programmes,
-            "programme_id": programme_id,
-            "statut_selected": statut,
-            "difficulte_selected": difficulte
-        }
-    )
+    try:
+        print(f"🔍 DEBUG MODULES: Début de la fonction")
+        print(f"🔍 DEBUG MODULES: programme_id={programme_id}, statut={statut}, difficulte={difficulte}")
+        print(f"🔍 DEBUG MODULES: session_id={id(session)}")
+        print(f"🔍 DEBUG MODULES: current_user={current_user}")
+        
+        # Pas de rollback automatique - la session partagée gère les transactions
+        
+        # Si statut est "tous", on ne filtre pas par statut
+        if statut == "tous":
+            statut = None
+            actif_only = False  # Voir tous les modules (actifs ET inactifs)
+            print("🔍 DEBUG: Mode 'tous' activé - actif_only=False")
+        else:
+            actif_only = True   # Par défaut, voir seulement les modules actifs
+            print(f"🔍 DEBUG: Mode normal - actif_only=True, statut={statut}")
+        
+        # Si difficulte est "tous", on ne filtre pas par difficulté
+        if difficulte == "tous":
+            difficulte = None
+            print("🔍 DEBUG: Mode 'tous' difficultés activé")
+        
+        # Debug: Vérifier tous les modules dans la base - Version sécurisée
+        all_modules = []
+        if table_exists_anywhere("module_elearning", session):
+            try:
+                all_modules = session.exec(select(ModuleElearning)).all()
+                print(f"🔍 DEBUG: Total modules en base: {len(all_modules)}")
+                for m in all_modules:
+                    print(f"  - Module {m.id}: {m.titre} (statut: {m.statut}, actif: {m.actif}, difficulte: {m.difficulte})")
+            except Exception as e:
+                logging.warning(f"Erreur lors de la récupération des modules elearning: {e}")
+                all_modules = []
+                print(f"🔍 DEBUG: Aucun module trouvé (table inexistante)")
+        else:
+            print(f"🔍 DEBUG: Table module_elearning n'existe pas")
+        
+        try:
+            modules = ElearningService.get_modules(session, programme_id, statut, actif_only, difficulte)
+        except Exception as e:
+            print(f"⚠️ [WARNING] Erreur lors de la récupération des modules e-learning: {e}")
+            modules = []
+        
+        try:
+            programmes = session.exec(select(Programme).where(Programme.actif == True)).all()
+        except Exception as e:
+            print(f"⚠️ [WARNING] Erreur lors de la récupération des programmes e-learning: {e}")
+            programmes = []
+        
+        print(f"🔍 DEBUG MODULES: {len(modules)} modules trouvés après filtrage")
+        for m in modules:
+            print(f"  - Module {m.id}: {m.titre} (statut: {m.statut}, actif: {m.actif}, difficulte: {m.difficulte})")
+        
+        return templates.TemplateResponse(
+            "elearning/modules.html",
+            {
+                "request": request,
+                "utilisateur": current_user,
+                "modules": modules,
+                "programmes": programmes,
+                "programme_id": programme_id,
+                "statut_selected": statut,
+                "difficulte_selected": difficulte
+            }
+        )
+    except Exception as e:
+        print(f"❌ ERREUR dans elearning_modules: {e}")
+        print(f"❌ Type d'erreur: {type(e)}")
+        import traceback
+        print(f"❌ Traceback: {traceback.format_exc()}")
+        raise
 
-@router.get("/modules/creer", response_class=HTMLResponse)
+@router.get("/modules/creer", response_class=HTMLResponse, name="elearning_module_create_form")
 async def elearning_module_creer_form(
     request: Request,
     current_user: User = Depends(get_current_user),
-    session: Session = Depends(get_session)
+    session: Session = Depends(get_shared_session)
 ):
     """Formulaire de création d'un module e-learning"""
     programmes = session.exec(select(Programme).where(Programme.actif == True)).all()
@@ -161,7 +198,7 @@ async def elearning_module_edit_form(
     module_id: int,
     request: Request,
     current_user: User = Depends(get_current_user),
-    session: Session = Depends(get_session)
+    session: Session = Depends(get_shared_session)
 ):
     """Formulaire d'édition d'un module e-learning"""
     module = session.get(ModuleElearning, module_id)
@@ -185,7 +222,7 @@ async def elearning_module_edit(
     module_id: int,
     request: Request,
     current_user: User = Depends(get_current_user),
-    session: Session = Depends(get_session)
+    session: Session = Depends(get_shared_session)
 ):
     """Traiter la modification d'un module e-learning"""
     if current_user.role not in ["administrateur", "responsable_programme", "formateur"]:
@@ -216,7 +253,7 @@ async def elearning_module_edit(
     try:
         updated_module = ElearningService.update_module(session, module_id, module_data)
         # Rediriger vers la liste des modules
-        return RedirectResponse(url="/elearning/modules", status_code=303)
+        return RedirectResponse(url=request.url_for("elearning_modules"), status_code=303)
     except Exception as e:
         # En cas d'erreur, retourner au formulaire avec un message d'erreur
         programmes = session.exec(select(Programme).where(Programme.actif == True)).all()
@@ -231,11 +268,11 @@ async def elearning_module_edit(
             }
         )
 
-@router.post("/modules/creer", response_class=HTMLResponse)
+@router.post("/modules/creer", response_class=HTMLResponse, name="elearning_module_create")
 async def elearning_module_creer(
     request: Request,
     current_user: User = Depends(get_current_user),
-    session: Session = Depends(get_session)
+    session: Session = Depends(get_shared_session)
 ):
     """Traiter la création d'un module e-learning"""
     if current_user.role not in ["administrateur", "responsable_programme", "formateur"]:
@@ -261,7 +298,7 @@ async def elearning_module_creer(
     try:
         module = ElearningService.create_module(session, module_data, current_user.id)
         # Rediriger vers la liste des modules
-        return RedirectResponse(url="/elearning/modules", status_code=303)
+        return RedirectResponse(url=request.url_for("elearning_modules"), status_code=303)
     except Exception as e:
         # En cas d'erreur, retourner au formulaire avec un message d'erreur
         programmes = session.exec(select(Programme).where(Programme.actif == True)).all()
@@ -281,7 +318,7 @@ async def elearning_module_detail(
     module_id: int,
     request: Request,
     current_user: User = Depends(get_current_user),
-    session: Session = Depends(get_session)
+    session: Session = Depends(get_shared_session)
 ):
     """Détail d'un module e-learning"""
     module = session.get(ModuleElearning, module_id)
@@ -344,12 +381,12 @@ async def elearning_module_detail(
         }
     )
 
-@router.get("/ressources/{ressource_id}/start", response_class=HTMLResponse)
+@router.get("/ressources/{ressource_id}/start", response_class=HTMLResponse, name="elearning_start_ressource")
 async def start_ressource(
     ressource_id: int,
     request: Request,
     current_user: User = Depends(get_current_user),
-    session: Session = Depends(get_session)
+    session: Session = Depends(get_shared_session)
 ):
     """Démarrer une ressource e-learning"""
     ressource = session.get(RessourceElearning, ressource_id)
@@ -378,7 +415,7 @@ async def start_ressource(
 async def elearning_ressource_creer_form(
     request: Request,
     current_user: User = Depends(get_current_user),
-    session: Session = Depends(get_session)
+    session: Session = Depends(get_shared_session)
 ):
     """Formulaire de création d'une ressource e-learning"""
     if current_user.role not in ["administrateur", "responsable_programme", "formateur"]:
@@ -399,11 +436,11 @@ async def elearning_ressource_creer_form(
         }
     )
 
-@router.post("/ressources/creer", response_class=HTMLResponse)
+@router.post("/ressources/creer", response_class=HTMLResponse, name="elearning_ressource_create")
 async def elearning_ressource_creer(
     request: Request,
     current_user: User = Depends(get_current_user),
-    session: Session = Depends(get_session),
+    session: Session = Depends(get_shared_session),
 ):
     print("🔥 ROUTE APPELÉE: elearning_ressource_creer")
     """
@@ -711,12 +748,12 @@ async def elearning_ressource_creer(
     target = (return_url or "/elearning/modules") + suffix
     return RedirectResponse(url=target, status_code=303)
 
-@router.get("/modules/{module_id}/ressources/{ressource_id}/remove")
+@router.get("/modules/{module_id}/ressources/{ressource_id}/remove", name="elearning_remove_ressource_from_module")
 async def remove_ressource_from_module(
     module_id: int,
     ressource_id: int,
     current_user: User = Depends(get_current_user),
-    session: Session = Depends(get_session)
+    session: Session = Depends(get_shared_session)
 ):
     """Supprimer une ressource d'un module"""
     if current_user.role not in ["administrateur", "responsable_programme", "formateur"]:
@@ -724,16 +761,16 @@ async def remove_ressource_from_module(
     
     try:
         ElearningService.remove_ressource_from_module(session, module_id, ressource_id)
-        return RedirectResponse(url=f"/elearning/modules/{module_id}", status_code=303)
+        return RedirectResponse(url=request.url_for("elearning_module_detail", module_id=module_id), status_code=303)
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Erreur lors de la suppression: {str(e)}")
 
-@router.get("/ressources/{ressource_id}/edit", response_class=HTMLResponse)
+@router.get("/ressources/{ressource_id}/edit", response_class=HTMLResponse, name="elearning_ressource_edit_form")
 async def elearning_ressource_edit_form(
     ressource_id: int,
     request: Request,
     current_user: User = Depends(get_current_user),
-    session: Session = Depends(get_session)
+    session: Session = Depends(get_shared_session)
 ):
     """Formulaire d'édition d'une ressource e-learning"""
     if current_user.role not in ["administrateur", "responsable_programme", "formateur"]:
@@ -752,12 +789,12 @@ async def elearning_ressource_edit_form(
         }
     )
 
-@router.post("/ressources/{ressource_id}/edit", response_class=HTMLResponse)
+@router.post("/ressources/{ressource_id}/edit", response_class=HTMLResponse, name="elearning_ressource_edit")
 async def elearning_ressource_edit(
     ressource_id: int,
     request: Request,
     current_user: User = Depends(get_current_user),
-    session: Session = Depends(get_session)
+    session: Session = Depends(get_shared_session)
 ):
     """Traiter la modification d'une ressource e-learning"""
     if current_user.role not in ["administrateur", "responsable_programme", "formateur"]:
@@ -904,7 +941,7 @@ async def elearning_ressource_edit(
     try:
         updated_ressource = ElearningService.update_ressource(session, ressource_id, ressource_data)
         # Rediriger vers la liste des modules
-        return RedirectResponse(url="/elearning/modules", status_code=303)
+        return RedirectResponse(url=request.url_for("elearning_modules"), status_code=303)
     except Exception as e:
         # En cas d'erreur, faire un rollback de la session
         session.rollback()
@@ -920,11 +957,11 @@ async def elearning_ressource_edit(
         )
 
 # Route pour les statistiques e-learning
-@router.get("/statistiques", response_class=HTMLResponse)
+@router.get("/statistiques", response_class=HTMLResponse, name="elearning_statistiques")
 async def elearning_statistiques(
     request: Request,
     current_user: User = Depends(get_current_user),
-    session: Session = Depends(get_session)
+    session: Session = Depends(get_shared_session)
 ):
     """Page des statistiques e-learning"""
     if current_user.role not in ["administrateur", "responsable_programme"]:
@@ -969,12 +1006,12 @@ async def elearning_statistiques(
         }
     )
 
-@router.get("/candidat/{inscription_id}", response_class=HTMLResponse)
+@router.get("/candidat/{inscription_id}", response_class=HTMLResponse, name="elearning_candidat_progression")
 async def elearning_candidat_progression(
     inscription_id: int,
     request: Request,
     current_user: User = Depends(get_current_user),
-    session: Session = Depends(get_session)
+    session: Session = Depends(get_shared_session)
 ):
     """Progression e-learning d'un candidat"""
     inscription = session.get(Inscription, inscription_id)

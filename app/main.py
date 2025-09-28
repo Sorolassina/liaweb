@@ -37,7 +37,10 @@ from sqlmodel import Session  # ORM SQLModel
 from fastapi import Depends  # Injection de dépendances
 
 # === IMPORTS INTERNES - MODÈLES ===
-from app_lia_web.app.models.base import Programme, Preinscription, Inscription, Jury  # Modèles principaux
+from app_lia_web.app.models.base import Programme  # Modèles principaux
+from app_lia_web.app.models.preinscription import Preinscription
+from app_lia_web.app.models.inscription import Inscription
+from app_lia_web.app.models.jury import Jury
 from sqlmodel import func  # Fonctions SQL (COUNT, etc.)
 from app_lia_web.core.security import authenticate_user, create_access_token  # Authentification
 from app_lia_web.core.config import settings  # Configuration (réimport)
@@ -99,16 +102,20 @@ app.state.settings = settings
 
 # Configuration du système de schémas par programme
 # Cette fonction configure le middleware et les routes pour la gestion des schémas
-# DOIT être appelé AVANT setup_all_middlewares pour que SessionMiddleware soit disponible
 setup_program_schemas(app)
 
 # Configuration de tous les middlewares personnalisés de l'application
 # Ces middlewares gèrent la sécurité, les logs, la validation, etc.
 setup_all_middlewares(
     app,  # Instance de l'application FastAPI
-    allowed_hosts=getattr(settings, "ALLOWED_HOSTS", ["localhost", "127.0.0.1"]),  # Hôtes autorisés
+    allowed_hosts=getattr(settings, "ALLOWED_HOSTS", ["localhost", "127.0.0.0.1"]),  # Hôtes autorisés
     secret_key=settings.SECRET_KEY,  # Clé secrète pour les sessions/tokens
 )
+
+# Configuration du middleware de session partagée EN DERNIER
+# pour qu'il soit exécuté EN PREMIER et disponible pour tous les autres middlewares
+from app_lia_web.core.middleware import SharedSessionMiddleware
+app.add_middleware(SharedSessionMiddleware)
 
 # Ajout du middleware de validation des enums au démarrage
 # Ce middleware valide automatiquement les valeurs d'enum dans les requêtes
@@ -133,6 +140,10 @@ if settings.DEBUG and not cors_origins:
     allow_headers=["*"],
 )
 """
+
+# Middleware pour surveiller la création de programmes
+from app_lia_web.core.program_schema_integration import ProgramCreationMiddleware
+app.add_middleware(ProgramCreationMiddleware)
 
 # ============================================================================
 # CONFIGURATION DES FICHIERS STATIQUES ET TEMPLATES
@@ -291,6 +302,38 @@ for router, prefix, tags in router_configs:
     app.include_router(router, prefix=prefix, tags=tags)
 
 # ============================================================================
+# ROUTE DEBUG POUR AFFICHER TOUS LES ROUTERS
+# ============================================================================
+
+@app.get("/debug/routers")
+def debug_routers():
+    """Affiche tous les routers inclus dans l'application"""
+    routers_info = []
+    for router, prefix, tags in router_configs:
+        router_name = router.__class__.__name__
+        routes = []
+        for route in router.routes:
+            if hasattr(route, 'path') and hasattr(route, 'methods'):
+                routes.append({
+                    "path": route.path,
+                    "methods": list(route.methods),
+                    "name": getattr(route, 'name', None)
+                })
+        
+        routers_info.append({
+            "router_name": router_name,
+            "prefix": prefix,
+            "tags": tags,
+            "routes": routes,
+            "routes_count": len(routes)
+        })
+    
+    return {
+        "total_routers": len(router_configs),
+        "routers": routers_info
+    }
+
+# ============================================================================
 # ROUTE GLOBALE POUR SERVIR LES FICHIERS UPLOADÉS
 # ============================================================================
 
@@ -402,62 +445,15 @@ async def on_startup():
     ensure_admin_user()  # S'assurer qu'un admin existe
     print("✅ ÉTAPE 5 TERMINÉE: Administrateur vérifié")
     
-    # === ÉTAPE 6: CRÉATION DES SCHÉMAS PAR PROGRAMME ===
-    print("📋 ÉTAPE 6: Création des schémas par programme")
+    # === ÉTAPE 6: VÉRIFICATION ET CRÉATION DES SCHÉMAS PAR PROGRAMME ===
+    print("📋 ÉTAPE 6: Vérification et création des schémas par programme")
     try:
-        print("🚀 Début de l'initialisation des schémas par programme")
-        
-        # ÉTAPE 6.1: Créer une session et un manager
-        print("📋 ÉTAPE 6.1: Création session et manager")
-        session = next(get_session())
-        manager = ProgramSchemaManager()  # Manager pour les schémas
-        manager.session = session
-        print("✅ ÉTAPE 6.1 TERMINÉE: Session et manager créés")
-        
-        # ÉTAPE 6.2: Récupérer les programmes actifs
-        print("📋 ÉTAPE 6.2: Récupération des programmes actifs")
-        from app_lia_web.app.models.base import Programme
-        from sqlmodel import select
-        programmes = session.exec(
-            select(Programme).where(Programme.actif == True)  # Seulement les programmes actifs
-        ).all()
-        print(f"📋 Programmes trouvés: {[p.code for p in programmes]}")
-        print("✅ ÉTAPE 6.2 TERMINÉE: Programmes récupérés")
-        
-        # ÉTAPE 6.3: Créer les schémas pour chaque programme
-        print("📋 ÉTAPE 6.3: Création des schémas individuels")
-        for programme in programmes:
-            print(f"🔍 Traitement du programme: {programme.code}")
-            
-            # ÉTAPE 6.3.1: Vérifier si le schéma existe
-            print(f"📋 ÉTAPE 6.3.1: Vérification existence schéma {programme.code}")
-            schema_exists = manager.schema_exists(programme.code)
-            
-            if not schema_exists:
-                print(f"🔨 Création du schéma pour le programme {programme.code}")
-                success = manager.create_program_schema(programme.code)
-                if success:
-                    print(f"✅ Schéma {programme.code} créé avec succès")
-                else:
-                    print(f"❌ Échec de création du schéma {programme.code}")
-            else:
-                print(f"ℹ️ Schéma {programme.code} existe déjà")
-                print(f"🔨 Vérification et création des tables dans le schéma {programme.code}")
-                # Créer les tables même si le schéma existe déjà
-                manager._create_tables_in_schema(programme.code.lower())
-        
-        print("✅ ÉTAPE 6.3 TERMINÉE: Schémas individuels traités")
-        
-        # ÉTAPE 6.4: Fermer la session
-        print("📋 ÉTAPE 6.4: Fermeture de la session")
-        session.close()
-        print("✅ ÉTAPE 6.4 TERMINÉE: Session fermée")
-        
-        print("🎉 Initialisation des schémas par programme terminée")
-        print("✅ ÉTAPE 6 TERMINÉE: Création des schémas par programme")
+        from app_lia_web.core.program_schema_integration import check_and_create_program_schemas
+        check_and_create_program_schemas()
+        print("✅ ÉTAPE 6 TERMINÉE: Vérification et création des schémas par programme")
         
     except Exception as e:
-        print(f"❌ ÉTAPE 6 ÉCHEC: Création des schémas - {e}")
+        print(f"❌ ÉTAPE 6 ÉCHEC: Vérification et création des schémas - {e}")
         import traceback
         print(traceback.format_exc())
     
@@ -483,7 +479,6 @@ async def root_get(request: Request):
             "app_name": settings.APP_NAME, 
             "version": settings.VERSION,
             "author": settings.AUTHOR,
-            "current_year": datetime.now().year,
             "settings": settings
         }
     )
@@ -494,63 +489,14 @@ from fastapi import status
 from app_lia_web.core.security import get_current_user
 from app_lia_web.app.models.base import User
 from app_lia_web.app.models.enums import UserRole
-from app_lia_web.app.models.base import Programme, Preinscription, Inscription, Jury
+from app_lia_web.app.models.base import Programme
+from app_lia_web.app.models.preinscription import Preinscription
+from app_lia_web.app.models.inscription import Inscription
+from app_lia_web.app.models.jury import Jury
 from app_lia_web.core.database import get_session
 from app_lia_web.app.schemas import UserResponse
 from sqlmodel import select, func
 
-@app.get("/admin", response_class=HTMLResponse)
-async def admin_dashboard(
-    request: Request,
-    session: Session = Depends(get_session),
-    current_user: User = Depends(get_current_user)
-):
-    """
-    Page d'administration - Dashboard principal pour les administrateurs.
-    Cette route affiche les KPIs et la liste des utilisateurs.
-    """
-    # Vérifier les permissions - seuls les admins et directeurs techniques peuvent accéder
-    if current_user.role not in [UserRole.ADMINISTRATEUR.value, UserRole.DIRECTEUR_TECHNIQUE.value]:
-        raise HTTPException(
-            status_code=status.HTTP_403_FORBIDDEN,
-            detail="Accès non autorisé"
-        )
-    
-    # === CALCUL DES KPIs (Key Performance Indicators) ===
-    nb_prog = session.exec(select(func.count()).select_from(Programme)).one()  # Nombre de programmes
-    nb_pre = session.exec(select(func.count()).select_from(Preinscription)).one()  # Nombre de préinscriptions
-    nb_insc = session.exec(select(func.count()).select_from(Inscription)).one()  # Nombre d'inscriptions
-    nb_jury = session.exec(select(func.count()).select_from(Jury)).one()  # Nombre de jurys
-
-    # === RÉCUPÉRATION DES UTILISATEURS ===
-    # Récupérer tous les utilisateurs depuis la base de données
-    all_users = session.exec(select(User)).all()
-    users_data = [UserResponse.from_orm(user) for user in all_users]
-
-    # Retourner le template admin avec toutes les données
-    return templates.TemplateResponse(
-        "admin.html",
-        {
-            "request": request,
-            "titre": "Administration",
-            "utilisateur": UserResponse.from_orm(current_user),
-            "roles": [current_user.role],
-            
-            # KPIs pour le dashboard
-            "kpi": {
-                "programmes": nb_prog,
-                "preinscriptions": nb_pre,
-                "inscriptions": nb_insc,
-                "jurys": nb_jury,
-            },
-            "users": users_data,  # Liste réelle des utilisateurs
-            "app_name": settings.APP_NAME,
-            "version": settings.VERSION,
-            "author": settings.AUTHOR,
-            "current_year": datetime.now().year,
-            "settings": settings
-        }
-    )
 
 @app.get("/auth/logout")
 async def logout(request: Request):
@@ -584,7 +530,7 @@ async def login(
                 "app_name": settings.APP_NAME,
                 "version": settings.VERSION,
                 "author": settings.AUTHOR,
-                "current_year": datetime.now().year,
+                # current_year est déjà défini comme fonction globale dans templates
                 "settings": settings,
                 "error": "Email ou mot de passe incorrect"
             }
@@ -645,7 +591,7 @@ async def root_post(
                     "app_name": settings.APP_NAME,
                     "version": settings.VERSION,
                     "author": settings.AUTHOR,
-                    "current_year": datetime.now().year,
+                    # current_year est déjà défini comme fonction globale dans templates
                     "settings": settings,
                     "error": "Email ou mot de passe incorrect"
                 }
@@ -659,7 +605,7 @@ async def root_post(
                 "app_name": settings.APP_NAME,
                 "version": settings.VERSION,
                 "author": settings.AUTHOR,
-                "current_year": datetime.now().year,
+                # current_year est déjà défini comme fonction globale dans templates
                 "settings": settings,
                 "error": "Erreur lors de la connexion"
             }

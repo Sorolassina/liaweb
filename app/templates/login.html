@@ -391,7 +391,7 @@
 
                 <!-- Formulaire de Connexion -->
                 <div class="login-form-container">
-                    <form method="POST" action="/login" id="login-form" class="login-form">
+                    <form method="POST" action="{{ url_for('login') }}" id="login-form" class="login-form">
                         <!-- Messages d'erreur/succès -->
                         {% if error %}
                         <div id="error-message" class="message error-message show">

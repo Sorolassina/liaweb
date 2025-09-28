@@ -5,6 +5,8 @@ from datetime import datetime, timezone
 from .enums import *
 
 class RessourceElearning(SQLModel, table=True):
+    __tablename__ = "ressource_elearning"
+
     """Ressource pédagogique (vidéo, document, quiz, etc.)"""
     id: Optional[int] = Field(default=None, primary_key=True)
     titre: str
@@ -44,6 +46,8 @@ class RessourceElearning(SQLModel, table=True):
     progressions: List["ProgressionElearning"] = Relationship(back_populates="ressource")
 
 class ModuleElearning(SQLModel, table=True):
+    __tablename__ = "module_elearning"
+
     """Module de formation e-learning"""
     id: Optional[int] = Field(default=None, primary_key=True)
     titre: str
@@ -66,11 +70,13 @@ class ModuleElearning(SQLModel, table=True):
     progressions: List["ProgressionElearning"] = Relationship(back_populates="module")
 
 class ProgressionElearning(SQLModel, table=True):
+    __tablename__ = "progression_elearning"
+
     """Progression d'un candidat dans le e-learning"""
     id: Optional[int] = Field(default=None, primary_key=True)
     inscription_id: int = Field(foreign_key="inscription.id")
-    module_id: int = Field(foreign_key="moduleelearning.id")
-    ressource_id: int = Field(foreign_key="ressourceelearning.id")
+    module_id: int = Field(foreign_key="module_elearning.id")
+    ressource_id: int = Field(foreign_key="ressource_elearning.id")
     statut: str = Field(default="non_commence", max_length=20)  # "non_commence", "en_cours", "termine", "abandonne"
     temps_consacre_minutes: int = Field(default=0)  # Temps passé sur la ressource
     score: Optional[float] = None  # Score obtenu (pour les quiz)
@@ -81,11 +87,13 @@ class ProgressionElearning(SQLModel, table=True):
     cree_le: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
     
     # Relations
-    inscription: "Inscription" = Relationship()
+    inscription: "Inscription" = Relationship(back_populates="progressions_elearning")
     module: "ModuleElearning" = Relationship(back_populates="progressions")
     ressource: "RessourceElearning" = Relationship(back_populates="progressions")
 
 class ObjectifElearning(SQLModel, table=True):
+    __tablename__ = "objectif_elearning"
+
     """Objectifs e-learning obligatoires par programme"""
     id: Optional[int] = Field(default=None, primary_key=True)
     programme_id: int = Field(foreign_key="programme.id")
@@ -102,9 +110,11 @@ class ObjectifElearning(SQLModel, table=True):
     programme: "Programme" = Relationship()
 
 class QuizElearning(SQLModel, table=True):
+    __tablename__ = "quiz_elearning"
+
     """Quiz associé à une ressource"""
     id: Optional[int] = Field(default=None, primary_key=True)
-    ressource_id: int = Field(foreign_key="ressourceelearning.id")
+    ressource_id: int = Field(foreign_key="ressource_elearning.id")
     question: str
     type_question: str = Field(max_length=20)  # "choix_multiple", "vrai_faux", "texte_libre"
     options: Optional[str] = None  # JSON des options pour choix multiple
@@ -119,24 +129,28 @@ class QuizElearning(SQLModel, table=True):
     reponses: List["ReponseQuiz"] = Relationship(back_populates="quiz")
 
 class ReponseQuiz(SQLModel, table=True):
+    __tablename__ = "reponse_quiz"
+
     """Réponse d'un candidat à un quiz"""
     id: Optional[int] = Field(default=None, primary_key=True)
     inscription_id: int = Field(foreign_key="inscription.id")
-    quiz_id: int = Field(foreign_key="quizelearning.id")
+    quiz_id: int = Field(foreign_key="quiz_elearning.id")
     reponse_donnee: str
     est_correcte: bool
     points_obtenus: int = Field(default=0)
     date_reponse: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
     
     # Relations
-    inscription: "Inscription" = Relationship()
+    inscription: "Inscription" = Relationship(back_populates="reponses_quiz")
     quiz: "QuizElearning" = Relationship(back_populates="reponses")
 
 class CertificatElearning(SQLModel, table=True):
+    __tablename__ = "certificat_elearning"
+
     """Certificat de completion e-learning"""
     id: Optional[int] = Field(default=None, primary_key=True)
     inscription_id: int = Field(foreign_key="inscription.id")
-    module_id: Optional[int] = Field(foreign_key="moduleelearning.id")
+    module_id: Optional[int] = Field(foreign_key="module_elearning.id")
     titre: str
     description: Optional[str] = None
     score_final: Optional[float] = None
@@ -146,13 +160,15 @@ class CertificatElearning(SQLModel, table=True):
     valide: bool = True
     
     # Relations
-    inscription: "Inscription" = Relationship()
+    inscription: "Inscription" = Relationship(back_populates="certificats_elearning")
     module: Optional["ModuleElearning"] = Relationship()
 
 # Table de liaison pour ModuleElearning <-> RessourceElearning
 class ModuleRessource(SQLModel, table=True):
+    __tablename__ = "module_ressource"
+    
     """Table de liaison entre modules et ressources"""
-    module_id: int = Field(foreign_key="moduleelearning.id", primary_key=True)
-    ressource_id: int = Field(foreign_key="ressourceelearning.id", primary_key=True)
+    module_id: int = Field(foreign_key="module_elearning.id", primary_key=True)
+    ressource_id: int = Field(foreign_key="ressource_elearning.id", primary_key=True)
     ordre: int = Field(default=0)
     obligatoire: bool = Field(default=True)

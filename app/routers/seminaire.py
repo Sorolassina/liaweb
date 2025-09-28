@@ -8,6 +8,7 @@ import os
 import uuid
 
 from app_lia_web.core.database import get_session
+from app_lia_web.core.middleware import get_shared_session
 from app_lia_web.core.security import get_current_user
 from app_lia_web.core.path_config import path_config
 from app_lia_web.app.services.file_upload_service import FileUploadService
@@ -30,7 +31,7 @@ seminaire_service = SeminaireService()
 @router.get("/", name="liste_seminaires", response_class=HTMLResponse)
 async def liste_seminaires(
     request: Request,
-    db: Session = Depends(get_session),
+    db: Session = Depends(get_shared_session),
     current_user: User = Depends(get_current_user),
     programme_id: Optional[int] = None
 ):
@@ -39,9 +40,23 @@ async def liste_seminaires(
     if programme_id:
         filters['programme_id'] = programme_id
     
-    seminaires = seminaire_service.get_seminaires(db, filters)
-    stats = seminaire_service.get_seminaire_stats(db)
-    programmes = db.exec(select(Programme).where(Programme.actif == True)).all()
+    try:
+        seminaires = seminaire_service.get_seminaires(db, filters)
+    except Exception as e:
+        print(f"⚠️ [WARNING] Erreur lors de la récupération des séminaires: {e}")
+        seminaires = []
+    
+    try:
+        stats = seminaire_service.get_seminaire_stats(db)
+    except Exception as e:
+        print(f"⚠️ [WARNING] Erreur lors de la récupération des statistiques séminaires: {e}")
+        stats = {"total": 0, "actifs": 0, "programmes": 0}
+    
+    try:
+        programmes = db.exec(select(Programme).where(Programme.actif == True)).all()
+    except Exception as e:
+        print(f"⚠️ [WARNING] Erreur lors de la récupération des programmes: {e}")
+        programmes = []
     
     return templates.TemplateResponse("seminaires/liste.html", {
         "request": request,
@@ -56,7 +71,7 @@ async def liste_seminaires(
 @router.get("/nouveau", name="form_seminaire", response_class=HTMLResponse)
 async def nouveau_seminaire_form(
     request: Request,
-    db: Session = Depends(get_session),
+    db: Session = Depends(get_shared_session),
     current_user: User = Depends(get_current_user)
 ):
     """Formulaire de création d'un nouveau séminaire"""
@@ -83,7 +98,7 @@ async def creer_seminaire(
     capacite_max: int = Form(None),
     invitation_auto: bool = Form(False),
     invitation_promos: bool = Form(False),
-    db: Session = Depends(get_session),
+    db: Session = Depends(get_shared_session),
     current_user: User = Depends(get_current_user)
 ):
     """Créer un nouveau séminaire"""
@@ -102,13 +117,13 @@ async def creer_seminaire(
     )
     
     seminaire = seminaire_service.create_seminaire(seminaire_data, db)
-    return RedirectResponse(url=f"/seminaires/{seminaire.id}", status_code=303)
+    return RedirectResponse(url=request.url_for("seminaire_detail", seminaire_id=seminaire.id), status_code=303)
 
 @router.get("/{seminaire_id}",name="detail_seminaire", response_class=HTMLResponse)
 async def detail_seminaire(
     seminaire_id: int,
     request: Request,
-    db: Session = Depends(get_session),
+    db: Session = Depends(get_shared_session),
     current_user: User = Depends(get_current_user)
 ):
     """Page de détail d'un séminaire"""
@@ -134,7 +149,7 @@ async def detail_seminaire(
 async def nouvelle_session_form(
     seminaire_id: int,
     request: Request,
-    db: Session = Depends(get_session),
+    db: Session = Depends(get_shared_session),
     current_user: User = Depends(get_current_user)
 ):
     """Formulaire de création d'une nouvelle session"""
@@ -162,7 +177,7 @@ async def creer_session(
     visioconf_url: str = Form(""),
     capacite: int = Form(None),
     obligatoire: bool = Form(True),
-    db: Session = Depends(get_session),
+    db: Session = Depends(get_shared_session),
     current_user: User = Depends(get_current_user)
 ):
     """Créer une nouvelle session"""
@@ -192,13 +207,13 @@ async def creer_session(
     )
     
     session = seminaire_service.create_session(session_data, db)
-    return RedirectResponse(url=f"/seminaires/{seminaire_id}", status_code=303)
+    return RedirectResponse(url=request.url_for("seminaire_detail", seminaire_id=seminaire_id), status_code=303)
 
 @router.get("/{seminaire_id}/invitations",name="invitations_seminaire", response_class=HTMLResponse)
 async def invitations_seminaire(
     seminaire_id: int,
     request: Request,
-    db: Session = Depends(get_session),
+    db: Session = Depends(get_shared_session),
     current_user: User = Depends(get_current_user)
 ):
     """Page de gestion des invitations"""
@@ -209,7 +224,8 @@ async def invitations_seminaire(
     invitations = seminaire_service.get_invitations_seminaire(seminaire_id, db)
     
     # Récupérer les candidats disponibles pour invitation (exclure ceux déjà invités)
-    from app_lia_web.app.models.base import Inscription, Candidat
+    from app_lia_web.app.models.inscription import Inscription
+    from app_lia_web.app.models.base import Candidat
     from sqlmodel import select
     
     # Récupérer les IDs des inscriptions déjà invitées
@@ -245,21 +261,21 @@ async def envoyer_invitations(
     request: Request,
     type_invitation: str = Form(...),
     candidats_ids: List[int] = Form([]),
-    db: Session = Depends(get_session),
+    db: Session = Depends(get_shared_session),
     current_user: User = Depends(get_current_user)
 ):
     """Envoyer des invitations"""
     type_inv = TypeInvitation(type_invitation)
     invitations = seminaire_service.send_invitations_bulk(seminaire_id, type_inv, candidats_ids, db)
     
-    return RedirectResponse(url=f"/seminaires/{seminaire_id}/invitations", status_code=303)
+    return RedirectResponse(url=request.url_for("invitations_seminaire", seminaire_id=seminaire_id), status_code=303)
 
 @router.get("/{seminaire_id}/sessions/{session_id}/emargement/liens", name="generer_liens_emargement", response_class=HTMLResponse)
 async def generer_liens_emargement(
     request: Request,
     seminaire_id: int,
     session_id: int,
-    db: Session = Depends(get_session),
+    db: Session = Depends(get_shared_session),
     current_user: User = Depends(get_current_user)
 ):
     """Page de génération des liens d'émargement"""
@@ -293,7 +309,7 @@ async def envoyer_liens_emargement(
     session_id: int,
     request: Request,
     invitation_ids: List[int] = Form(...),
-    db: Session = Depends(get_session),
+    db: Session = Depends(get_shared_session),
     current_user: User = Depends(get_current_user)
 ):
     """Envoyer les liens d'émargement par email"""
@@ -336,7 +352,7 @@ async def envoyer_liens_emargement(
         except Exception as e:
             print(f"Erreur envoi email émargement: {e}")
     
-    return RedirectResponse(url=f"/seminaires/{seminaire_id}/sessions/{session_id}/emargement", status_code=303)
+    return RedirectResponse(url=request.url_for("emargement_seminaire", seminaire_id=seminaire_id, session_id=session_id), status_code=303)
 
 @router.get("/{seminaire_id}/sessions/{session_id}/emargement/lien/{token}", name="emargement_lien", response_class=HTMLResponse)
 async def emargement_lien(
@@ -344,7 +360,7 @@ async def emargement_lien(
     seminaire_id: int,
     session_id: int,
     token: str,
-    db: Session = Depends(get_session)
+    db: Session = Depends(get_shared_session)
 ):
     """Page d'émargement via lien unique"""
     # Vérifier le token et récupérer l'invitation
@@ -383,7 +399,7 @@ async def signer_emargement_lien(
     nom_signature: str = Form(""),
     photo_data: str = Form(""),
     commentaire: str = Form(""),
-    db: Session = Depends(get_session)
+    db: Session = Depends(get_shared_session)
 ):
     """Signer l'émargement via lien"""
     # Vérifier le token
@@ -433,7 +449,7 @@ async def emargement_session(
     seminaire_id: int,
     session_id: int,
     request: Request,
-    db: Session = Depends(get_session),
+    db: Session = Depends(get_shared_session),
     current_user: User = Depends(get_current_user)
 ):
     """Page d'émargement pour une session"""
@@ -466,7 +482,7 @@ async def marquer_presence(
     methode_signature: str = Form("MANUEL"),
     signature_data: str = Form(""),
     note: str = Form(""),
-    db: Session = Depends(get_session),
+    db: Session = Depends(get_shared_session),
     current_user: User = Depends(get_current_user)
 ):
     """Marquer la présence d'un participant"""
@@ -482,13 +498,13 @@ async def marquer_presence(
     )
     
     presence_obj = seminaire_service.mark_presence(presence_data, db)
-    return RedirectResponse(url=f"/seminaires/{seminaire_id}/sessions/{session_id}/emargement", status_code=303)
+    return RedirectResponse(url=request.url_for("emargement_seminaire", seminaire_id=seminaire_id, session_id=session_id), status_code=303)
 
 @router.get("/{seminaire_id}/livrables",name="livrables_seminaire", response_class=HTMLResponse)
 async def livrables_seminaire(
     seminaire_id: int,
     request: Request,
-    db: Session = Depends(get_session),
+    db: Session = Depends(get_shared_session),
     current_user: User = Depends(get_current_user)
 ):
     """Page de gestion des livrables"""
@@ -518,7 +534,7 @@ async def creer_livrable(
     consignes: str = Form(""),
     format_accepte: str = Form(""),
     taille_max_mb: str = Form(""),
-    db: Session = Depends(get_session),
+    db: Session = Depends(get_shared_session),
     current_user: User = Depends(get_current_user)
 ):
     """Créer un nouveau livrable"""
@@ -543,13 +559,13 @@ async def creer_livrable(
     )
     
     livrable = seminaire_service.create_livrable(livrable_data, db)
-    return RedirectResponse(url=f"/seminaires/{seminaire_id}/livrables", status_code=303)
+    return RedirectResponse(url=request.url_for("livrables_seminaire", seminaire_id=seminaire_id), status_code=303)
 
 @router.get("/{seminaire_id}/livrables/candidat", name="livrables_candidat", response_class=HTMLResponse)
 async def livrables_candidat(
     request: Request,
     seminaire_id: int,
-    db: Session = Depends(get_session),
+    db: Session = Depends(get_shared_session),
     current_user: User = Depends(get_current_user)
 ):
     """Page des livrables pour un candidat"""
@@ -585,7 +601,7 @@ async def rendre_livrable(
     inscription_id: int = Form(...),
     fichier: UploadFile = File(...),
     commentaire: str = Form(""),
-    db: Session = Depends(get_session),
+    db: Session = Depends(get_shared_session),
     current_user: User = Depends(get_current_user)
 ):
     """Rendre un livrable"""
@@ -618,13 +634,13 @@ async def rendre_livrable(
     }
     
     rendu = seminaire_service.submit_livrable(livrable_id, inscription_id, file_data, db)
-    return RedirectResponse(url=f"/seminaires/{seminaire_id}/livrables", status_code=303)
+    return RedirectResponse(url=request.url_for("livrables_seminaire", seminaire_id=seminaire_id), status_code=303)
 
 # === ROUTES API ===
 
 @router.get("/api/stats",name="get_seminaire_stats_api")
 async def get_seminaire_stats(
-    db: Session = Depends(get_session),
+    db: Session = Depends(get_shared_session),
     current_user: User = Depends(get_current_user)
 ):
     """API: Statistiques des séminaires"""
@@ -634,7 +650,7 @@ async def get_seminaire_stats(
 async def get_session_stats(
     seminaire_id: int,
     session_id: int,
-    db: Session = Depends(get_session),
+    db: Session = Depends(get_shared_session),
     current_user: User = Depends(get_current_user)
 ):
     """API: Statistiques d'une session"""
@@ -646,7 +662,7 @@ async def get_session_stats(
 @router.get("/{seminaire_id}/sessions/{session_id}/emargement-direct", name="emargement_direct", response_class=HTMLResponse)
 async def emargement_direct(
     seminaire_id: int, session_id: int, request: Request,
-    db: Session = Depends(get_session)
+    db: Session = Depends(get_shared_session)
 ):
     """Page publique d'émargement direct"""
     seminaire = db.get(Seminaire, seminaire_id)
@@ -662,7 +678,7 @@ async def emargement_direct(
     
     # Récupérer toutes les invitations pour afficher tous les candidats
     from app_lia_web.app.models.seminaire import InvitationSeminaire
-    from app_lia_web.app.models.base import Inscription
+    from app_lia_web.app.models.inscription import Inscription
     from sqlmodel import select
     from sqlalchemy.orm import selectinload
     
@@ -681,7 +697,7 @@ async def emargement_direct(
 async def supprimer_seminaire(
     seminaire_id: int,
     request: Request,
-    db: Session = Depends(get_session),
+    db: Session = Depends(get_shared_session),
     current_user: User = Depends(get_current_user)
 ):
     """Supprimer un séminaire et toutes ses données associées"""
@@ -707,7 +723,7 @@ async def supprimer_session(
     seminaire_id: int,
     session_id: int,
     request: Request,
-    db: Session = Depends(get_session),
+    db: Session = Depends(get_shared_session),
     current_user: User = Depends(get_current_user)
 ):
     """Supprimer une session et toutes ses données associées"""
@@ -734,7 +750,7 @@ async def supprimer_session(
 async def invitation_page(
     token: str,
     request: Request,
-    db: Session = Depends(get_session)
+    db: Session = Depends(get_shared_session)
 ):
     """Page publique d'invitation"""
     from sqlmodel import select
@@ -760,7 +776,7 @@ async def invitation_page(
 async def accepter_invitation(
     request: Request,
     token: str,
-    db: Session = Depends(get_session)
+    db: Session = Depends(get_shared_session)
 ):
     """Accepter une invitation"""
     invitation = seminaire_service.accept_invitation(token, db)
@@ -780,7 +796,7 @@ async def accepter_invitation(
 async def refuser_invitation(
     request: Request,
     token: str,
-    db: Session = Depends(get_session)
+    db: Session = Depends(get_shared_session)
 ):
     """Refuser une invitation"""
     invitation = seminaire_service.reject_invitation(token, db)
@@ -802,7 +818,7 @@ async def supprimer_participant_session(
     session_id: int,
     inscription_id: int,
     request: Request,
-    db: Session = Depends(get_session),
+    db: Session = Depends(get_shared_session),
     current_user: User = Depends(get_current_user)
 ):
     """Supprimer un participant d'une session de séminaire"""
@@ -824,4 +840,4 @@ async def supprimer_participant_session(
     if referer and f"/seminaires/{seminaire_id}/sessions/{session_id}" in referer:
         return RedirectResponse(url=referer, status_code=303)
     else:
-        return RedirectResponse(url=f"/seminaires/{seminaire_id}/sessions/{session_id}/emargement", status_code=303)
+        return RedirectResponse(url=request.url_for("emargement_seminaire", seminaire_id=seminaire_id, session_id=session_id), status_code=303)

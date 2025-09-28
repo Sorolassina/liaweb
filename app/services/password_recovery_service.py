@@ -10,7 +10,7 @@ from app_lia_web.app.models.password_recovery import PasswordRecoveryCode
 from app_lia_web.app.models.base import User
 from app_lia_web.core.security import get_password_hash
 from app_lia_web.core.config import settings
-from app_lia_web.app.services.ACD.mailer import SmtpMailer, EmailMessage, EmailContent
+from app_lia_web.app.services.mailer import SmtpMailer, EmailMessage, EmailContent
 
 logger = logging.getLogger(__name__)
 

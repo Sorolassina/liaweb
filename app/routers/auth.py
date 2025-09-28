@@ -10,6 +10,7 @@ import os
 from datetime import datetime, timezone
 
 from app_lia_web.core.database import get_session
+from app_lia_web.core.middleware import get_shared_session
 from app_lia_web.core.security import get_current_user, create_access_token, authenticate_user
 from app_lia_web.app.models.base import User
 from app_lia_web.app.models.enums import UserRole
@@ -25,10 +26,10 @@ from fastapi import Depends
 router = APIRouter()
 
 
-@router.post("/users", response_model=UserResponse)
+@router.post("/users", response_model=UserResponse, name="create_user")
 async def create_user(
     user_data: UserCreate,
-    session: Session = Depends(get_session),
+    session: Session = Depends(get_shared_session),
     current_user: User = Depends(get_current_user)
 ):
     """Crée un nouvel utilisateur (admin seulement)"""
@@ -50,16 +51,16 @@ async def create_user(
     return UserResponse.from_orm(user)
 
 
-@router.get("/users/me", response_model=UserResponse)
+@router.get("/users/me", response_model=UserResponse, name="get_current_user_info")
 async def get_current_user_info(current_user: User = Depends(get_current_user)):
     """Récupère les informations de l'utilisateur connecté"""
     return UserResponse.from_orm(current_user)
 
 
-@router.get("/users", response_model=List[UserResponse])
+@router.get("/users", response_model=List[UserResponse], name="get_users")
 async def get_users(
     role: str = None,
-    session: Session = Depends(get_session),
+    session: Session = Depends(get_shared_session),
     current_user: User = Depends(get_current_user)
 ):
     """Récupère la liste des utilisateurs (admin seulement)"""
@@ -77,11 +78,11 @@ async def get_users(
     return [UserResponse.from_orm(user) for user in users]
 
 
-@router.put("/users/{user_id}", response_model=UserResponse)
+@router.put("/users/{user_id}", response_model=UserResponse, name="update_user")
 async def update_user(
     user_id: int,
     user_data: UserUpdate,
-    session: Session = Depends(get_session),
+    session: Session = Depends(get_shared_session),
     current_user: User = Depends(get_current_user)
 ):
     """Met à jour un utilisateur"""
@@ -102,10 +103,10 @@ async def update_user(
     return UserResponse.from_orm(user)
 
 
-@router.delete("/users/{user_id}")
+@router.delete("/users/{user_id}", name="delete_user")
 async def delete_user(
     user_id: int,
-    session: Session = Depends(get_session),
+    session: Session = Depends(get_shared_session),
     current_user: User = Depends(get_current_user)
 ):
     """Supprime un utilisateur (admin seulement)"""
@@ -138,7 +139,7 @@ async def delete_user(
 async def profil_page(
     request: Request,
     current_user: User = Depends(get_current_user),
-    session: Session = Depends(get_session)
+    session: Session = Depends(get_shared_session)
 ):
     """Page de profil utilisateur - permet à l'utilisateur de voir et modifier ses informations"""
     return templates.TemplateResponse("profil.html", {
@@ -156,7 +157,7 @@ async def profil_update(
     email: str = Form(...),
     telephone: Optional[str] = Form(None),
     current_user: User = Depends(get_current_user),
-    session: Session = Depends(get_session)
+    session: Session = Depends(get_shared_session)
 ):
     """Met à jour les informations du profil utilisateur"""
     try:
@@ -199,7 +200,7 @@ async def profil_change_password(
     new_password: str = Form(...),
     confirm_password: str = Form(...),
     current_user: User = Depends(get_current_user),
-    session: Session = Depends(get_session)
+    session: Session = Depends(get_shared_session)
 ):
     """Change le mot de passe de l'utilisateur"""
     try:
@@ -242,7 +243,7 @@ async def profil_photo(
     request: Request,
     photo_profil: UploadFile = File(...),
     current_user: User = Depends(get_current_user),
-    session: Session = Depends(get_session)
+    session: Session = Depends(get_shared_session)
 ):
     """Change la photo de profil de l'utilisateur"""
     try:

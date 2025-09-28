@@ -5,6 +5,7 @@ from typing import List, Optional, Dict, Any
 from sqlmodel import Session, select, func, and_, or_
 from datetime import datetime, timezone, date, timedelta
 import logging
+from app_lia_web.core.program_schema_integration import safe_count_query, table_exists_anywhere
 
 from app_lia_web.app.models.codev import (
     SeanceCodev, PresentationCodev, ContributionCodev, ParticipationSeance,
@@ -249,18 +250,23 @@ class CodevService:
         if not cycle:
             return {}
         
-        # Nombre de groupes
-        nb_groupes = session.exec(
-            select(func.count()).select_from(GroupeCodev)
-            .where(GroupeCodev.cycle_id == cycle_id)
-        ).one()
+        # Nombre de groupes - Version sécurisée
+        nb_groupes = 0
+        if table_exists_anywhere("groupe_codev", session):
+            nb_groupes = safe_count_query(session, GroupeCodev, cycle_id=cycle_id)
         
-        # Nombre total de membres
-        nb_membres = session.exec(
-            select(func.count()).select_from(MembreGroupeCodev)
-            .join(GroupeCodev, MembreGroupeCodev.groupe_codev_id == GroupeCodev.id)
-            .where(GroupeCodev.cycle_id == cycle_id)
-        ).one()
+        # Nombre total de membres - Version sécurisée
+        nb_membres = 0
+        if table_exists_anywhere("membre_groupe_codev", session) and table_exists_anywhere("groupe_codev", session):
+            try:
+                nb_membres = session.exec(
+                    select(func.count()).select_from(MembreGroupeCodev)
+                    .join(GroupeCodev, MembreGroupeCodev.groupe_codev_id == GroupeCodev.id)
+                    .where(GroupeCodev.cycle_id == cycle_id)
+                ).one()
+            except Exception as e:
+                logging.warning(f"Erreur lors du comptage des membres du cycle: {e}")
+                nb_membres = 0
         
         # Nombre de séances réalisées
         nb_seances = session.exec(
@@ -294,43 +300,79 @@ class CodevService:
     def get_prochaines_seances(session: Session, limit: int = 10, programme_id: Optional[int] = None) -> List[SeanceCodev]:
         """Récupère les prochaines séances de codéveloppement"""
         
-        maintenant = datetime.now(timezone.utc)
-        
-        query = select(SeanceCodev).where(and_(
-            SeanceCodev.date_seance >= maintenant,
-            SeanceCodev.statut == StatutSeanceCodev.PLANIFIEE.value
-        ))
-        
+        # Vérifier l'existence des tables essentielles
+        required_tables = ["seance_codev"]
         if programme_id:
-            # Joindre avec GroupeCodev et CycleCodev pour filtrer par programme
-            query = query.join(GroupeCodev, SeanceCodev.groupe_id == GroupeCodev.groupe_id).join(CycleCodev, GroupeCodev.cycle_id == CycleCodev.id).where(CycleCodev.programme_id == programme_id)
+            required_tables.extend(["groupe_codev", "cycle_codev"])
         
-        seances = session.exec(
-            query.order_by(SeanceCodev.date_seance).limit(limit)
-        ).all()
+        missing_tables = []
+        for table in required_tables:
+            if not table_exists_anywhere(table, session):
+                missing_tables.append(table)
         
-        return seances
+        if missing_tables:
+            print(f"⚠️ [WARNING] Tables manquantes pour les prochaines séances CoDev: {missing_tables}")
+            return []
+        
+        try:
+            maintenant = datetime.now(timezone.utc)
+            
+            query = select(SeanceCodev).where(and_(
+                SeanceCodev.date_seance >= maintenant,
+                SeanceCodev.statut == StatutSeanceCodev.PLANIFIEE.value
+            ))
+            
+            if programme_id:
+                # Joindre avec GroupeCodev et CycleCodev pour filtrer par programme
+                query = query.join(GroupeCodev, SeanceCodev.groupe_id == GroupeCodev.groupe_id).join(CycleCodev, GroupeCodev.cycle_id == CycleCodev.id).where(CycleCodev.programme_id == programme_id)
+            
+            seances = session.exec(
+                query.order_by(SeanceCodev.date_seance).limit(limit)
+            ).all()
+            
+            return seances
+        except Exception as e:
+            print(f"⚠️ [WARNING] Erreur lors de la récupération des prochaines séances CoDev: {e}")
+            return []
     
     @staticmethod
     def get_engagements_en_cours(session: Session, programme_id: Optional[int] = None) -> List[PresentationCodev]:
         """Récupère les engagements en cours de test"""
         
-        maintenant = datetime.now(timezone.utc)
-        
-        query = select(PresentationCodev).where(and_(
-            PresentationCodev.statut == StatutPresentation.TEST_EN_COURS.value,
-            PresentationCodev.delai_engagement >= maintenant.date()
-        ))
-        
+        # Vérifier l'existence des tables essentielles
+        required_tables = ["presentation_codev"]
         if programme_id:
-            # Joindre avec SeanceCodev, GroupeCodev et CycleCodev pour filtrer par programme
-            query = query.join(SeanceCodev, PresentationCodev.seance_id == SeanceCodev.id).join(
-                GroupeCodev, SeanceCodev.groupe_id == GroupeCodev.groupe_id
-            ).join(CycleCodev, GroupeCodev.cycle_id == CycleCodev.id).where(CycleCodev.programme_id == programme_id)
+            required_tables.extend(["seance_codev", "groupe_codev", "cycle_codev"])
         
-        presentations = session.exec(
-            query.order_by(PresentationCodev.delai_engagement)
-        ).all()
+        missing_tables = []
+        for table in required_tables:
+            if not table_exists_anywhere(table, session):
+                missing_tables.append(table)
+        
+        if missing_tables:
+            print(f"⚠️ [WARNING] Tables manquantes pour les engagements CoDev: {missing_tables}")
+            return []
+        
+        try:
+            maintenant = datetime.now(timezone.utc)
+            
+            query = select(PresentationCodev).where(and_(
+                PresentationCodev.statut == StatutPresentation.TEST_EN_COURS.value,
+                PresentationCodev.delai_engagement >= maintenant.date()
+            ))
+            
+            if programme_id:
+                # Joindre avec SeanceCodev, GroupeCodev et CycleCodev pour filtrer par programme
+                query = query.join(SeanceCodev, PresentationCodev.seance_id == SeanceCodev.id).join(
+                    GroupeCodev, SeanceCodev.groupe_id == GroupeCodev.groupe_id
+                ).join(CycleCodev, GroupeCodev.cycle_id == CycleCodev.id).where(CycleCodev.programme_id == programme_id)
+            
+            presentations = session.exec(
+                query.order_by(PresentationCodev.delai_engagement)
+            ).all()
+        except Exception as e:
+            print(f"⚠️ [WARNING] Erreur lors de la récupération des engagements CoDev: {e}")
+            return []
         
         return presentations
     

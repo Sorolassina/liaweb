@@ -5,7 +5,9 @@ from typing import List, Optional
 from datetime import date, datetime, timezone
 
 from app_lia_web.core.database import get_session
+from app_lia_web.core.middleware import get_shared_session
 from app_lia_web.core.security import get_current_user
+from app_lia_web.core.program_schema_integration import table_exists_anywhere
 from app_lia_web.app.models.base import User, Programme, Inscription, Candidat, SuiviMensuel
 from app_lia_web.app.schemas.suivi_mensuel_schemas import (
     SuiviMensuelCreate, SuiviMensuelUpdate, SuiviMensuelFilter
@@ -46,7 +48,7 @@ def clean_int_data(data: str) -> Optional[int]:
 @router.get("/", name="liste_candidats_valides", response_class=HTMLResponse)
 async def liste_candidats_valides(
     request: Request,
-    db: Session = Depends(get_session),
+    db: Session = Depends(get_shared_session),
     current_user: User = Depends(get_current_user),
     programme_id: Optional[int] = None,
     search_candidat: Optional[str] = None,
@@ -58,7 +60,11 @@ async def liste_candidats_valides(
     try:
         # D'abord, vérifier tous les statuts disponibles
         print(f"🔍 DEBUG: Vérification des statuts disponibles...")
-        all_inscriptions = db.exec(select(Inscription.statut)).all()
+        if not table_exists_anywhere("inscription", db):
+            print(f"⚠️ [WARNING] Table 'inscription' manquante pour les suivis mensuels")
+            all_inscriptions = []
+        else:
+            all_inscriptions = db.exec(select(Inscription.statut)).all()
         unique_statuts = set(all_inscriptions)
         print(f"🔍 DEBUG: Statuts trouvés: {unique_statuts}")
         
@@ -141,7 +147,7 @@ async def liste_candidats_valides(
 @router.get("/suivis", name="liste_suivis_mensuels", response_class=HTMLResponse)
 async def liste_suivis_mensuels(
     request: Request,
-    db: Session = Depends(get_session),
+    db: Session = Depends(get_shared_session),
     current_user: User = Depends(get_current_user),
     programme_id: Optional[int] = None,
     mois_debut: Optional[str] = None,
@@ -184,7 +190,7 @@ async def liste_suivis_mensuels(
 @router.get("/creer", name="creer_suivi_mensuel_form", response_class=HTMLResponse)
 async def creer_suivi_mensuel_form(
     request: Request,
-    db: Session = Depends(get_session),
+    db: Session = Depends(get_shared_session),
     current_user: User = Depends(get_current_user),
     inscription_id: Optional[int] = None,
     mois: Optional[date] = None
@@ -212,7 +218,7 @@ async def creer_suivi_mensuel_form(
 @router.post("/creer", name="creer_suivi_mensuel")
 async def creer_suivi_mensuel(
     request: Request,
-    db: Session = Depends(get_session),
+    db: Session = Depends(get_shared_session),
     current_user: User = Depends(get_current_user),
     inscription_id: int = Form(...),
     mois: str = Form(...),  # Changé en str pour debug
@@ -318,7 +324,7 @@ async def creer_suivi_mensuel(
 async def modifier_suivi_mensuel_form(
     request: Request,
     suivi_id: int,
-    db: Session = Depends(get_session),
+    db: Session = Depends(get_shared_session),
     current_user: User = Depends(get_current_user)
 ):
     """Formulaire de modification d'un suivi mensuel"""
@@ -365,7 +371,7 @@ async def modifier_suivi_mensuel_form(
 async def modifier_suivi_mensuel(
     request: Request,
     suivi_id: int,
-    db: Session = Depends(get_session),
+    db: Session = Depends(get_shared_session),
     current_user: User = Depends(get_current_user),
     inscription_id: int = Form(...),
     mois: str = Form(...),  # Changé en str pour gérer le format YYYY-MM
@@ -471,7 +477,7 @@ async def modifier_suivi_mensuel(
 async def supprimer_suivi_mensuel(
     request: Request,
     suivi_id: int,
-    db: Session = Depends(get_session),
+    db: Session = Depends(get_shared_session),
     current_user: User = Depends(get_current_user)
 ):
     """Supprimer un suivi mensuel"""
@@ -492,7 +498,7 @@ async def supprimer_suivi_mensuel(
 async def suivis_par_inscription(
     request: Request,
     inscription_id: int,
-    db: Session = Depends(get_session),
+    db: Session = Depends(get_shared_session),
     current_user: User = Depends(get_current_user)
 ):
     """Suivis mensuels d'une inscription spécifique"""
@@ -524,7 +530,7 @@ async def suivis_par_inscription(
 async def suivis_par_programme(
     request: Request,
     programme_id: int,
-    db: Session = Depends(get_session),
+    db: Session = Depends(get_shared_session),
     current_user: User = Depends(get_current_user)
 ):
     """Suivis mensuels d'un programme spécifique"""

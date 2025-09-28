@@ -154,13 +154,13 @@
             {% endif %}
           </td>
           <td>
-                <div class="fw-bold small">{{ archive.cree_le.strftime('%d/%m/%Y') }}</div>
-            <div class="text-muted small">{{ archive.cree_le.strftime('%H:%M') }}</div>
+                <div class="fw-bold small">{{ archive.cree_le | format_date }}</div>
+            <div class="text-muted small">{{ archive.cree_le | format_time }}</div>
           </td>
           <td>
             {% if archive.expire_le %}
-              <div class="fw-bold small">{{ archive.expire_le.strftime('%d/%m/%Y') }}</div>
-              <div class="text-muted small">{{ archive.expire_le.strftime('%H:%M') }}</div>
+              <div class="fw-bold small">{{ archive.expire_le | format_date }}</div>
+              <div class="text-muted small">{{ archive.expire_le | format_time }}</div>
             {% else %}
               <span class="text-muted">—</span>
             {% endif %}

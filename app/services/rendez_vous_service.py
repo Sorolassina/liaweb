@@ -4,9 +4,12 @@ from typing import List, Optional, Dict, Any
 from sqlmodel import Session, select, and_, or_
 from sqlalchemy import func
 
-from app_lia_web.app.models.base import RendezVous, Inscription, Candidat, Entreprise, Programme, User
+from app_lia_web.app.models.base import Candidat, Entreprise, Programme, User
+from app_lia_web.app.models.rendez_vous import RendezVous
+from app_lia_web.app.models.inscription import Inscription
 from app_lia_web.app.models.enums import TypeRDV, StatutRDV
 from app_lia_web.app.schemas.rendez_vous_schemas import RendezVousCreate, RendezVousUpdate, RendezVousFilter
+from app_lia_web.core.program_schema_integration import table_exists_anywhere
 
 class RendezVousService:
     """Service pour la gestion des rendez-vous"""
@@ -97,24 +100,40 @@ class RendezVousService:
     
     def search_rendez_vous(self, filters: RendezVousFilter, limit: int = 100, offset: int = 0) -> List[Dict[str, Any]]:
         """Rechercher des rendez-vous avec filtres"""
-        query = (
-            select(
-                RendezVous,
-                Candidat.nom.label("candidat_nom"),
-                Candidat.prenom.label("candidat_prenom"),
-                Candidat.email.label("candidat_email"),
-                Candidat.telephone.label("candidat_telephone"),
-                User.nom_complet.label("conseiller_nom"),
-                Programme.nom.label("programme_nom"),
-                Programme.id.label("programme_id"),
-                Entreprise.raison_sociale.label("entreprise_nom")
+        # Vérifier l'existence des tables essentielles
+        required_tables = ["rendez_vous", "inscription", "candidat", "programme"]
+        missing_tables = []
+        
+        for table in required_tables:
+            if not table_exists_anywhere(table, self.session):
+                missing_tables.append(table)
+        
+        if missing_tables:
+            print(f"⚠️ [WARNING] Tables manquantes pour les rendez-vous: {missing_tables}")
+            return []
+        
+        try:
+            query = (
+                select(
+                    RendezVous,
+                    Candidat.nom.label("candidat_nom"),
+                    Candidat.prenom.label("candidat_prenom"),
+                    Candidat.email.label("candidat_email"),
+                    Candidat.telephone.label("candidat_telephone"),
+                    User.nom_complet.label("conseiller_nom"),
+                    Programme.nom.label("programme_nom"),
+                    Programme.id.label("programme_id"),
+                    Entreprise.raison_sociale.label("entreprise_nom")
+                )
+                .join(Inscription, RendezVous.inscription_id == Inscription.id)
+                .join(Candidat, Inscription.candidat_id == Candidat.id)
+                .join(Programme, Inscription.programme_id == Programme.id)
+                .join(Entreprise, Candidat.id == Entreprise.candidat_id)
+                .outerjoin(User, RendezVous.conseiller_id == User.id)
             )
-            .join(Inscription, RendezVous.inscription_id == Inscription.id)
-            .join(Candidat, Inscription.candidat_id == Candidat.id)
-            .join(Programme, Inscription.programme_id == Programme.id)
-            .join(Entreprise, Candidat.id == Entreprise.candidat_id)
-            .outerjoin(User, RendezVous.conseiller_id == User.id)
-        )
+        except Exception as e:
+            print(f"⚠️ [WARNING] Erreur lors de la construction de la requête rendez-vous: {e}")
+            return []
         
         # Application des filtres
         conditions = []
@@ -157,7 +176,11 @@ class RendezVousService:
         # Pagination
         query = query.offset(offset).limit(limit)
         
-        results = self.session.exec(query).all()
+        try:
+            results = self.session.exec(query).all()
+        except Exception as e:
+            print(f"⚠️ [WARNING] Erreur lors de l'exécution de la requête rendez-vous: {e}")
+            return []
         
         return [
             {
@@ -202,18 +225,36 @@ class RendezVousService:
     
     def get_statistiques_rendez_vous(self, programme_id: Optional[int] = None, date_debut: Optional[date] = None, date_fin: Optional[date] = None) -> Dict[str, Any]:
         """Récupérer les statistiques des rendez-vous"""
-        query = select(RendezVous)
-        
+        # Vérifier l'existence des tables essentielles
+        required_tables = ["rendez_vous"]
         if programme_id:
-            query = query.join(Inscription, RendezVous.inscription_id == Inscription.id).where(Inscription.programme_id == programme_id)
+            required_tables.append("inscription")
         
-        if date_debut:
-            query = query.where(RendezVous.debut >= datetime.combine(date_debut, datetime.min.time()))
+        missing_tables = []
+        for table in required_tables:
+            if not table_exists_anywhere(table, self.session):
+                missing_tables.append(table)
         
-        if date_fin:
-            query = query.where(RendezVous.debut <= datetime.combine(date_fin, datetime.max.time()))
+        if missing_tables:
+            print(f"⚠️ [WARNING] Tables manquantes pour les statistiques rendez-vous: {missing_tables}")
+            return {"total": 0, "a_venir": 0, "termines": 0, "annules": 0}
         
-        rdv_list = self.session.exec(query).all()
+        try:
+            query = select(RendezVous)
+            
+            if programme_id:
+                query = query.join(Inscription, RendezVous.inscription_id == Inscription.id).where(Inscription.programme_id == programme_id)
+            
+            if date_debut:
+                query = query.where(RendezVous.debut >= datetime.combine(date_debut, datetime.min.time()))
+            
+            if date_fin:
+                query = query.where(RendezVous.debut <= datetime.combine(date_fin, datetime.max.time()))
+            
+            rdv_list = self.session.exec(query).all()
+        except Exception as e:
+            print(f"⚠️ [WARNING] Erreur lors de la récupération des statistiques rendez-vous: {e}")
+            return {"total": 0, "a_venir": 0, "termines": 0, "annules": 0}
         
         total = len(rdv_list)
         planifies = len([rdv for rdv in rdv_list if rdv.statut == StatutRDV.PLANIFIE])

@@ -5,6 +5,7 @@ from datetime import datetime, timezone, date
 import secrets
 import string
 from app_lia_web.core.database import get_session
+from app_lia_web.core.program_schema_integration import table_exists_anywhere
 from app_lia_web.app.models.seminaire import (
     Seminaire, SessionSeminaire, InvitationSeminaire, 
     PresenceSeminaire, LivrableSeminaire, RenduLivrable
@@ -37,24 +38,33 @@ class SeminaireService:
 
     def get_seminaires(self, db: Session, filters: Optional[Dict] = None) -> List[Seminaire]:
         """Récupérer la liste des séminaires avec filtres"""
-        query = select(Seminaire)
+        # Vérifier l'existence de la table seminaire
+        if not table_exists_anywhere("seminaire", db):
+            print(f"⚠️ [WARNING] Table 'seminaire' manquante")
+            return []
         
-        if filters:
-            if filters.get('programme_id'):
-                query = query.where(Seminaire.programme_id == filters['programme_id'])
-            if filters.get('statut'):
-                query = query.where(Seminaire.statut == filters['statut'])
-            if filters.get('organisateur_id'):
-                query = query.where(Seminaire.organisateur_id == filters['organisateur_id'])
-            if filters.get('actif') is not None:
-                query = query.where(Seminaire.actif == filters['actif'])
-            if filters.get('date_debut_from'):
-                query = query.where(Seminaire.date_debut >= filters['date_debut_from'])
-            if filters.get('date_debut_to'):
-                query = query.where(Seminaire.date_debut <= filters['date_debut_to'])
-        
-        query = query.order_by(Seminaire.date_debut.desc())
-        return db.exec(query).all()
+        try:
+            query = select(Seminaire)
+            
+            if filters:
+                if filters.get('programme_id'):
+                    query = query.where(Seminaire.programme_id == filters['programme_id'])
+                if filters.get('statut'):
+                    query = query.where(Seminaire.statut == filters['statut'])
+                if filters.get('organisateur_id'):
+                    query = query.where(Seminaire.organisateur_id == filters['organisateur_id'])
+                if filters.get('actif') is not None:
+                    query = query.where(Seminaire.actif == filters['actif'])
+                if filters.get('date_debut_from'):
+                    query = query.where(Seminaire.date_debut >= filters['date_debut_from'])
+                if filters.get('date_debut_to'):
+                    query = query.where(Seminaire.date_debut <= filters['date_debut_to'])
+            
+            query = query.order_by(Seminaire.date_debut.desc())
+            return db.exec(query).all()
+        except Exception as e:
+            print(f"⚠️ [WARNING] Erreur lors de la récupération des séminaires: {e}")
+            return []
 
     def update_seminaire(self, seminaire_id: int, seminaire_data: SeminaireUpdate, db: Session) -> Optional[Seminaire]:
         """Mettre à jour un séminaire"""
@@ -713,7 +723,16 @@ class SeminaireService:
 
     def get_seminaire_stats(self, db: Session) -> Dict[str, Any]:
         """Obtenir les statistiques globales des séminaires"""
-        seminaires = db.exec(select(Seminaire)).all()
+        # Vérifier l'existence de la table seminaire
+        if not table_exists_anywhere("seminaire", db):
+            print(f"⚠️ [WARNING] Table 'seminaire' manquante pour les statistiques")
+            return {"total": 0, "actifs": 0, "programmes": 0}
+        
+        try:
+            seminaires = db.exec(select(Seminaire)).all()
+        except Exception as e:
+            print(f"⚠️ [WARNING] Erreur lors de la récupération des statistiques séminaires: {e}")
+            return {"total": 0, "actifs": 0, "programmes": 0}
         
         stats = {
             'total_seminaires': len(seminaires),

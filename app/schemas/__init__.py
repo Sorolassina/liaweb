@@ -14,7 +14,7 @@ from .candidat_schemas import CandidatBase, CandidatCreate, CandidatUpdate, Cand
 from .entreprise_schemas import EntrepriseBase, EntrepriseCreate, EntrepriseUpdate, EntrepriseResponse
 
 # Schémas préinscriptions
-from .preinscription_schemas import PreinscriptionBase, PreinscriptionCreate, PreinscriptionUpdate, PreinscriptionResponse
+from .preinscription_schemas import Adresse
 
 # Schémas documents
 from .document_schemas import DocumentBase, DocumentCreate, DocumentResponse
@@ -83,7 +83,7 @@ __all__ = [
     "EntrepriseBase", "EntrepriseCreate", "EntrepriseUpdate", "EntrepriseResponse",
     
     # Préinscriptions
-    "PreinscriptionBase", "PreinscriptionCreate", "PreinscriptionUpdate", "PreinscriptionResponse",
+    "Adresse",
     
     # Documents
     "DocumentBase", "DocumentCreate", "DocumentResponse",

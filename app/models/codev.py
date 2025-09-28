@@ -11,6 +11,8 @@ if TYPE_CHECKING:
 from .enums import *
 
 class SeanceCodev(SQLModel, table=True):
+    __tablename__ = "seance_codev"
+    
     """Séance de codéveloppement"""
     id: Optional[int] = Field(default=None, primary_key=True)
     groupe_id: int = Field(foreign_key="groupe.id")
@@ -31,9 +33,11 @@ class SeanceCodev(SQLModel, table=True):
     participants: List["ParticipationSeance"] = Relationship(back_populates="seance")
 
 class PresentationCodev(SQLModel, table=True):
+    __tablename__ = "presentation_codev"
+
     """Présentation d'un candidat lors d'une séance"""
     id: Optional[int] = Field(default=None, primary_key=True)
-    seance_id: int = Field(foreign_key="seancecodev.id")
+    seance_id: int = Field(foreign_key="seance_codev.id")
     candidat_id: int = Field(foreign_key="inscription.id")
     ordre_presentation: int  # Ordre dans la séance (1, 2, 3...)
     probleme_expose: str  # Problématique exposée
@@ -46,14 +50,16 @@ class PresentationCodev(SQLModel, table=True):
     cree_le: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
     
     # Relations
-    seance: SeanceCodev = Relationship(back_populates="presentations")
-    candidat: "Inscription" = Relationship()
+    seance: "SeanceCodev" = Relationship(back_populates="presentations")
+    candidat: "Inscription" = Relationship(back_populates="presentations_codev")
     contributions: List["ContributionCodev"] = Relationship(back_populates="presentation")
 
 class ContributionCodev(SQLModel, table=True):
+    __tablename__ = "contribution_codev"
+    
     """Contribution d'un participant à une présentation"""
     id: Optional[int] = Field(default=None, primary_key=True)
-    presentation_id: int = Field(foreign_key="presentationcodev.id")
+    presentation_id: int = Field(foreign_key="presentation_codev.id")
     contributeur_id: int = Field(foreign_key="inscription.id")
     type_contribution: str = Field(default="suggestion", max_length=20)
     contenu: str
@@ -61,13 +67,15 @@ class ContributionCodev(SQLModel, table=True):
     cree_le: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
     
     # Relations
-    presentation: PresentationCodev = Relationship(back_populates="contributions")
-    contributeur: "Inscription" = Relationship()
+    presentation: "PresentationCodev" = Relationship(back_populates="contributions")
+    contributeur: "Inscription" = Relationship(back_populates="contributions_codev")
 
 class ParticipationSeance(SQLModel, table=True):
+    __tablename__ = "participation_seance"
+    
     """Participation d'un candidat à une séance"""
     id: Optional[int] = Field(default=None, primary_key=True)
-    seance_id: int = Field(foreign_key="seancecodev.id")
+    seance_id: int = Field(foreign_key="seance_codev.id")
     candidat_id: int = Field(foreign_key="inscription.id")
     statut_presence: str = Field(default="absent", max_length=20)
     heure_arrivee: Optional[datetime] = None
@@ -78,10 +86,12 @@ class ParticipationSeance(SQLModel, table=True):
     cree_le: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
     
     # Relations
-    seance: SeanceCodev = Relationship(back_populates="participants")
-    candidat: "Inscription" = Relationship()
+    seance: "SeanceCodev" = Relationship(back_populates="participants")
+    candidat: "Inscription" = Relationship(back_populates="participations_seance")
 
 class CycleCodev(SQLModel, table=True):
+    __tablename__ = "cycle_codev"
+    
     """Cycle de codéveloppement (série de séances)"""
     id: Optional[int] = Field(default=None, primary_key=True)
     nom: str = Field(index=True, max_length=100)
@@ -104,9 +114,11 @@ class CycleCodev(SQLModel, table=True):
     groupes: List["GroupeCodev"] = Relationship(back_populates="cycle")
 
 class GroupeCodev(SQLModel, table=True):
+    __tablename__ = "groupe_codev"
+    
     """Groupe de codéveloppement dans un cycle"""
     id: Optional[int] = Field(default=None, primary_key=True)
-    cycle_id: int = Field(foreign_key="cyclecodev.id")
+    cycle_id: int = Field(foreign_key="cycle_codev.id")
     groupe_id: int = Field(foreign_key="groupe.id")
     nom_groupe: str  # Nom spécifique dans ce cycle (ex: "Groupe Alpha - Cycle 2024")
     animateur_id: Optional[int] = Field(foreign_key="user.id")
@@ -115,15 +127,17 @@ class GroupeCodev(SQLModel, table=True):
     date_creation: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
     
     # Relations
-    cycle: CycleCodev = Relationship(back_populates="groupes")
+    cycle: "CycleCodev" = Relationship(back_populates="groupes")
     groupe: "Groupe" = Relationship()
     animateur: Optional["User"] = Relationship()
     membres: List["MembreGroupeCodev"] = Relationship(back_populates="groupe_codev")
 
 class MembreGroupeCodev(SQLModel, table=True):
+    __tablename__ = "membre_groupe_codev"
+    
     """Membre d'un groupe de codéveloppement"""
     id: Optional[int] = Field(default=None, primary_key=True)
-    groupe_codev_id: int = Field(foreign_key="groupecodev.id")
+    groupe_codev_id: int = Field(foreign_key="groupe_codev.id")
     candidat_id: int = Field(foreign_key="inscription.id")
     date_integration: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
     statut: str = Field(default="actif", max_length=20)
@@ -131,8 +145,6 @@ class MembreGroupeCodev(SQLModel, table=True):
     notes_integration: Optional[str] = None
     
     # Relations
-    groupe_codev: GroupeCodev = Relationship(back_populates="membres")
-    candidat: "Inscription" = Relationship()
+    groupe_codev: "GroupeCodev" = Relationship(back_populates="membres")
+    candidat: "Inscription" = Relationship(back_populates="membres_groupes_codev")
 
-# Le modèle Groupe est déjà défini dans base.py
-# Nous importons les relations nécessaires depuis base.py

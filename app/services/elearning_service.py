@@ -3,6 +3,8 @@ from sqlmodel import Session, select, and_, or_, func
 from typing import List, Optional, Dict, Any
 from datetime import datetime, timezone
 import json
+import logging
+from app_lia_web.core.program_schema_integration import safe_count_query, table_exists_anywhere
 
 from app_lia_web.app.models.elearning import (
     RessourceElearning, ModuleElearning, ProgressionElearning,
@@ -39,7 +41,17 @@ class ElearningService:
     @staticmethod
     def get_ressources(session: Session, programme_id: Optional[int] = None, actif_only: bool = True) -> List[RessourceElearning]:
         """Récupérer les ressources e-learning"""
-        query = select(RessourceElearning)
+        
+        # Vérifier l'existence de la table ressource_elearning
+        if not table_exists_anywhere("ressource_elearning", session):
+            print(f"⚠️ [WARNING] Table 'ressource_elearning' manquante")
+            return []
+        
+        try:
+            query = select(RessourceElearning)
+        except Exception as e:
+            print(f"⚠️ [WARNING] Erreur lors de la construction de la requête ressources e-learning: {e}")
+            return []
         
         if actif_only:
             query = query.where(RessourceElearning.actif == True)
@@ -51,7 +63,12 @@ class ElearningService:
             )
         
         query = query.order_by(RessourceElearning.ordre, RessourceElearning.titre)
-        return session.exec(query).all()
+        
+        try:
+            return session.exec(query).all()
+        except Exception as e:
+            print(f"⚠️ [WARNING] Erreur lors de l'exécution de la requête ressources e-learning: {e}")
+            return []
     
     @staticmethod
     def update_ressource(session: Session, ressource_id: int, ressource_data: RessourceElearningUpdate) -> Optional[RessourceElearning]:
@@ -102,7 +119,18 @@ class ElearningService:
         """Récupérer les modules e-learning"""
         print(f"🔍 SERVICE get_modules: programme_id={programme_id}, statut={statut}, actif_only={actif_only}, difficulte={difficulte}")
         
-        query = select(ModuleElearning)
+        # Pas de rollback - la session partagée gère les transactions
+        
+        # Vérifier l'existence de la table module_elearning
+        if not table_exists_anywhere("module_elearning", session):
+            print(f"⚠️ [WARNING] Table 'module_elearning' manquante")
+            return []
+        
+        try:
+            query = select(ModuleElearning)
+        except Exception as e:
+            print(f"⚠️ [WARNING] Erreur lors de la construction de la requête modules e-learning: {e}")
+            return []
         
         if programme_id:
             query = query.where(ModuleElearning.programme_id == programme_id)
@@ -125,7 +153,11 @@ class ElearningService:
         
         query = query.order_by(ModuleElearning.ordre, ModuleElearning.titre)
         
-        result = session.exec(query).all()
+        try:
+            result = session.exec(query).all()
+        except Exception as e:
+            print(f"⚠️ [WARNING] Erreur lors de l'exécution de la requête modules e-learning: {e}")
+            return []
         print(f"🔍 SERVICE: {len(result)} modules retournés")
         for m in result:
             print(f"  - Module {m.id}: {m.titre} (statut: {m.statut}, actif: {m.actif}, difficulte: {m.difficulte})")
@@ -251,11 +283,21 @@ class ElearningService:
     @staticmethod
     def get_progression_candidat(session: Session, inscription_id: int) -> List[ProgressionElearning]:
         """Récupérer la progression d'un candidat"""
-        query = select(ProgressionElearning).where(
-            ProgressionElearning.inscription_id == inscription_id
-        ).order_by(ProgressionElearning.cree_le)
         
-        return session.exec(query).all()
+        # Vérifier l'existence de la table progression_elearning
+        if not table_exists_anywhere("progression_elearning", session):
+            print(f"⚠️ [WARNING] Table 'progression_elearning' manquante")
+            return []
+        
+        try:
+            query = select(ProgressionElearning).where(
+                ProgressionElearning.inscription_id == inscription_id
+            ).order_by(ProgressionElearning.cree_le)
+            
+            return session.exec(query).all()
+        except Exception as e:
+            print(f"⚠️ [WARNING] Erreur lors de la récupération de la progression e-learning: {e}")
+            return []
     
     # === GESTION DES QUIZ ===
     
@@ -382,19 +424,53 @@ class ElearningService:
         """Obtenir les statistiques e-learning d'un programme"""
         print(f"🔍 DEBUG SERVICE: Début calcul stats pour programme {programme_id}")
         
-        programme = session.get(Programme, programme_id)
-        if not programme:
-            print(f"❌ DEBUG SERVICE: Programme {programme_id} non trouvé")
-            raise ValueError("Programme non trouvé")
+        # Vérifier l'existence des tables essentielles
+        required_tables = ["inscription", "progression_elearning", "module_elearning", "ressource_elearning"]
+        missing_tables = []
         
-        print(f"✅ DEBUG SERVICE: Programme trouvé: {programme.nom}")
+        for table in required_tables:
+            if not table_exists_anywhere(table, session):
+                missing_tables.append(table)
         
-        # Candidats inscrits au programme
-        candidats_inscrits = session.exec(
-            select(func.count(Inscription.id)).where(
-                Inscription.programme_id == programme_id
+        if missing_tables:
+            print(f"⚠️ [WARNING] Tables manquantes pour les statistiques e-learning: {missing_tables}")
+            return StatistiquesElearningProgramme(
+                programme_id=programme_id,
+                programme_nom="Programme inconnu",
+                candidats_inscrits=0,
+                candidats_actifs=0,
+                modules_completes=0,
+                ressources_consultees=0,
+                taux_completion_moyen=0.0,
+                temps_moyen_formation=0.0
             )
-        ).first() or 0
+        
+        try:
+            programme = session.get(Programme, programme_id)
+            if not programme:
+                print(f"❌ DEBUG SERVICE: Programme {programme_id} non trouvé")
+                raise ValueError("Programme non trouvé")
+            
+            print(f"✅ DEBUG SERVICE: Programme trouvé: {programme.nom}")
+            
+            # Candidats inscrits au programme
+            candidats_inscrits = session.exec(
+                select(func.count(Inscription.id)).where(
+                    Inscription.programme_id == programme_id
+                )
+            ).first() or 0
+        except Exception as e:
+            print(f"⚠️ [WARNING] Erreur lors du calcul des statistiques e-learning: {e}")
+            return StatistiquesElearningProgramme(
+                programme_id=programme_id,
+                programme_nom="Programme inconnu",
+                candidats_inscrits=0,
+                candidats_actifs=0,
+                modules_completes=0,
+                ressources_consultees=0,
+                taux_completion_moyen=0.0,
+                temps_moyen_formation=0.0
+            )
         
         print(f"🔍 DEBUG SERVICE: {candidats_inscrits} candidats inscrits")
         
@@ -523,18 +599,33 @@ class ElearningService:
     
     @staticmethod
     def get_statistiques_globales(session: Session) -> Dict[str, Any]:
-        """Obtenir les statistiques globales du système e-learning"""
-        # Compter les modules
-        total_modules = session.exec(select(func.count(ModuleElearning.id))).first()
+        """Obtenir les statistiques globales du système e-learning - Version sécurisée"""
+        # Compter les modules - Version sécurisée
+        total_modules = 0
+        if table_exists_anywhere("module_elearning", session):
+            try:
+                total_modules = session.exec(select(func.count(ModuleElearning.id))).first() or 0
+            except Exception as e:
+                logging.warning(f"Erreur lors du comptage des modules e-learning: {e}")
         
-        # Compter les ressources
-        total_ressources = session.exec(select(func.count(RessourceElearning.id))).first()
+        # Compter les ressources - Version sécurisée
+        total_ressources = 0
+        if table_exists_anywhere("ressource_elearning", session):
+            try:
+                total_ressources = session.exec(select(func.count(RessourceElearning.id))).first() or 0
+            except Exception as e:
+                logging.warning(f"Erreur lors du comptage des ressources e-learning: {e}")
         
-        # Compter les candidats actifs
-        total_candidats = session.exec(
-            select(func.count(Inscription.id))
-            .where(Inscription.statut == "actif")
-        ).first()
+        # Compter les candidats actifs - Version sécurisée
+        total_candidats = 0
+        if table_exists_anywhere("inscription", session):
+            try:
+                total_candidats = session.exec(
+                    select(func.count(Inscription.id))
+                    .where(Inscription.statut == "actif")
+                ).first() or 0
+            except Exception as e:
+                logging.warning(f"Erreur lors du comptage des candidats actifs: {e}")
         
         # Temps total de formation
         temps_total = session.exec(

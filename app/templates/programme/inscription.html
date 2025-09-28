@@ -763,7 +763,7 @@
                     <select class="form-select" name="jury_id" required>
                       <option value="">— Sélectionner une session —</option>
                     {% for j in jurys %}
-                      <option value="{{ j.id }}">{{ j.session_le.strftime('%d/%m/%Y %H:%M') }} — {{ j.lieu or '—' }}</option>
+                      <option value="{{ j.id }}">{{ j.session_le | format_datetime }} — {{ j.lieu or '—' }}</option>
                     {% endfor %}
                   </select>
                 </div>
@@ -903,8 +903,8 @@
                     <tbody>
                       {% for decision in decisions_jury %}
                       <tr>
-                        <td>{{ decision.date_decision.strftime('%d/%m/%Y %H:%M') }}</td>
-                        <td>{{ decision.jury.session_le.strftime('%d/%m/%Y') }}</td>
+                        <td>{{ decision.date_decision | format_datetime }}</td>
+                        <td>{{ decision.jury.session_le | format_date }}</td>
                         <td>
                           {% if decision.decision == "VALIDE" %}
                             <span class="badge bg-success">Validé</span>

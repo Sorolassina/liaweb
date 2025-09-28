@@ -186,3 +186,24 @@ class StatutMembreGroupe(str, Enum):
     INACTIF = "inactif"
     SUSPENDU = "suspendu"
     EXCLU = "exclu"
+
+class StatutEvent(str, Enum):
+    PLANIFIE = "planifie"
+    EN_COURS = "en_cours"
+    TERMINE = "termine"
+    ANNULE = "annule"
+
+class TypeInvitationEvent(str, Enum):
+    INDIVIDUELLE = "individuelle"
+    GROUPE = "groupe"
+
+class StatutInvitationEvent(str, Enum):
+    EN_ATTENTE = "en_attente"
+    ACCEPTEE = "acceptee"
+    REFUSEE = "refusee"
+
+class MethodeSignatureEvent(str, Enum):
+    MANUEL = "manuel"
+    DIGITAL = "digital"
+    QR_CODE = "qr_code"
+    EMAIL = "email"

@@ -155,7 +155,7 @@
     <div class="col-md-8 d-flex justify-content-between align-items-center" style=" width: 100%;">
       <div>
         <h3 class="mb-0" style="font-size: 1.4rem;">
-          <i class="fa fa-users-cog me-2"></i>Préinscriptions({{current_programme}})
+          <i class="fa fa-users-cog me-2"></i>Préinscriptions({{get_current_programme_title(request)}})
         </h3>
         <p class="mb-0 opacity-75" style="font-size: 0.9rem;">
             Visualisation des données des préinscriptions du programme
@@ -163,7 +163,7 @@
       </div>
       
       <div class="toolbar">
-        <a href="{{ url_for('preinscriptions_public_form') }}?programme={{ current_programme }}" class="submenu-item {% if request.url.path == '/ACD/preinscriptions/public_form' %}active{% endif %}">
+        <a href="{{ url_for('preinscriptions_public_form') }}?programme={{ current_programme }}" class="submenu-item {% if request.url.path == '/preinscriptions/public-form' %}active{% endif %}">
           <div class="icon"><i class="fa fa-file-alt"></i></div><div>Formulaire</div>
         </a>
         <a class="submenu-item" data-bs-toggle="modal" data-bs-target="#sendInviteModal" style="cursor: pointer;">
@@ -176,31 +176,6 @@
 
 
 <div class="container-wide" style="overflow-y: auto;">
-
-  <!--<div class="d-flex justify-content-between align-items-center mb-2">
-    <h3 class="section-title" style="margin:0">Préinscriptions({{current_programme}})</h3>
-    <div class="toolbar">
-      
-      <form class="d-flex gap-2" method="get">
-        <input type="text" class="form-control form-control-sm" name="q" placeholder="Recherche (nom, email)" value="{{ q }}">
-        <button class="btn btn-sm btn-primary">Filtrer</button>
-      </form>
-      <a href="{{ url_for('preinscriptions_public_form') }}?programme={{ current_programme }}" class="submenu-item {% if request.url.path == '/ACD/preinscriptions/public_form' %}active{% endif %}">
-        <div class="icon"><i class="fas fa-tachometer-alt"></i></div><div>Formulaire</div>
-      </a>
-      <button class="btn btn-sm btn-outline-secondary" data-bs-toggle="modal" data-bs-target="#sendInviteModal">
-        <i class="fa fa-paper-plane me-1"></i> Envoyer un lien
-      </button>
-      
-    </div>
-  </div>
-
-  <div class="card-neumo p-3 mb-3">
-    <div class="kpi">
-      
-      <span class="chip">Total: {{ kpi.programme }}</span>
-    </div>
-  </div>-->
 
   <div class="grid-2 mb-3">
     <div class="card-neumo p-3">

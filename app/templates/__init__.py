@@ -34,8 +34,6 @@ else:
 
 templates = Jinja2Templates(directory=str(TEMPLATES_DIR))
 
-
-
 # Filtres personnalisés pour Jinja2
 def format_date(value):
     """Formate une date"""
@@ -47,6 +45,30 @@ def format_datetime(value):
     """Formate une date et heure"""
     if value:
         return value.strftime("%d/%m/%Y à %H:%M")
+    return "Non renseigné"
+
+def format_time(value):
+    """Formate une heure"""
+    if value:
+        return value.strftime("%H:%M")
+    return "Non renseigné"
+
+def format_date_input(value):
+    """Formate une date pour input HTML (YYYY-MM-DD)"""
+    if value:
+        return value.strftime("%Y-%m-%d")
+    return ""
+
+def format_datetime_input(value):
+    """Formate une date et heure pour input HTML (YYYY-MM-DDTHH:MM)"""
+    if value:
+        return value.strftime("%Y-%m-%dT%H:%M")
+    return ""
+
+def format_date_short(value):
+    """Formate une date courte (DD/MM)"""
+    if value:
+        return value.strftime("%d/%m")
     return "Non renseigné"
 
 def statut_color(statut):
@@ -159,20 +181,21 @@ def format_email(email, max_length=25):
     return email[:max_length-3] + "..."
 
 def get_current_programme_title(request):
-    """Extrait le titre du programme depuis l'URL ou retourne le titre par défaut"""
+    """Extrait le titre du programme depuis l'URL, les paramètres ou retourne le titre par défaut"""
     if not request:
         return "LIA-Gestion coaching"
     
-    # Extraire le programme depuis l'URL
-    path = request.url.path
-    if '/ACD/' in path:
-        return "ACD"
-    elif '/ACI/' in path:
-        return "ACI" 
-    elif '/ACT/' in path:
-        return "ACT"
-    else:
+    # PRIORITÉ 1: Depuis request.state (middleware)
+    if hasattr(request, 'state') and hasattr(request.state, 'program_schema') and request.state.program_schema:
+        return request.state.program_schema.upper()
+    
+    # PRIORITÉ 2: Depuis les paramètres de requête (ex: ?programme=ACD)
+    programme_param = request.query_params.get('programme')
+    if programme_param:
+        return programme_param.upper()
+    else:   
         return "LIA-Gestion coaching"
+
 
 def get_current_programme_from_session(request):
     """Récupère le code du programme actuel depuis request.state (middleware)"""
@@ -180,24 +203,13 @@ def get_current_programme_from_session(request):
         return "PUBLIC"
     
     try:
-        # Priorité 1 : Depuis request.state (middleware)
-        if hasattr(request, 'state') and hasattr(request.state, 'program_schema'):
-            programme = request.state.program_schema.upper()
+        programme = getattr(request.state, 'program_schema', None)
+        if programme:
             logger.info(f"Programme récupéré depuis request.state: {programme}")
-            return programme
+            return programme.upper()
     except Exception as e:
         logger.warning(f"Erreur lors de la récupération depuis request.state: {e}")
     
-    try:
-        # Priorité 2 : Depuis la session (fallback)
-        if hasattr(request, 'session') and 'current_programme' in request.session:
-            programme = request.session['current_programme']
-            logger.info(f"Programme récupéré depuis session: {programme}")
-            return programme
-    except Exception as e:
-        logger.warning(f"Erreur lors de la récupération depuis session: {e}")
-    
-    logger.info("Aucun programme trouvé, utilisation de PUBLIC par défaut")
     return "PUBLIC"
 
 
@@ -224,6 +236,10 @@ def format_number_french(value, decimals=2):
 # Ajout des filtres au template
 templates.env.filters["format_date"] = format_date
 templates.env.filters["format_datetime"] = format_datetime
+templates.env.filters["format_time"] = format_time
+templates.env.filters["format_date_input"] = format_date_input
+templates.env.filters["format_datetime_input"] = format_datetime_input
+templates.env.filters["format_date_short"] = format_date_short
 templates.env.filters["statut_color"] = statut_color
 templates.env.filters["action_color"] = action_color
 templates.env.filters["format_candidat_name"] = format_candidat_name
@@ -251,6 +267,14 @@ def get_active_programmes():
 def get_current_time():
     """Fonction pour obtenir l'heure actuelle dans les templates"""
     return datetime.now()
+
+def get_current_time_formatted(format_str='%Y%m%d%H%M'):
+    """Fonction pour obtenir l'heure actuelle formatée dans les templates"""
+    return datetime.now().strftime(format_str)
+
+def get_current_year():
+    """Fonction pour obtenir l'année actuelle dans les templates"""
+    return datetime.now().year
 
 def get_company_logo_url():
     """Obtenir l'URL du logo de l'entreprise via path_config"""
@@ -320,6 +344,7 @@ def get_company_file_path(filename: str, subfolder: str = "compagnie") -> str:
             pass
     return None
 
+
 def company_file_exists(filename: str, subfolder: str = "compagnie") -> bool:
     """Vérifier si un fichier de l'entreprise existe"""
     if path_config:
@@ -338,7 +363,33 @@ def list_company_files(subfolder: str = "compagnie") -> list:
             pass
     return []
 
+def get_user_photo_url(utilisateur=None):
+    """Obtenir l'URL de la photo de profil de l'utilisateur ou l'image par défaut"""
+    if utilisateur and hasattr(utilisateur, 'photo_profil') and utilisateur.photo_profil:
+        # Si le chemin commence déjà par /uploads/ ou /media/, on le retourne tel quel
+        if utilisateur.photo_profil.startswith('/uploads/') or utilisateur.photo_profil.startswith('/media/'):
+            return utilisateur.photo_profil
+        # Sinon, on ajoute le préfixe /uploads/
+        return f"/uploads/{utilisateur.photo_profil}"
+    return "/static/images/utilisateur.png"
+
 # Configuration globale des templates
+# Injection des fonctions utilitaires (toujours disponibles)
+templates.env.globals.update(
+    # === FONCTIONS UTILITAIRES ===
+    now=get_current_time,
+    now_formatted=get_current_time_formatted,
+    current_year=get_current_year,
+    datetime=datetime,
+    format_candidat_name=format_candidat_name,
+    format_email=format_email,
+    get_current_programme_title=get_current_programme_title,
+    get_current_programme_from_session=get_current_programme_from_session,
+    get_programmes=get_active_programmes,  # ← Fonction pour éviter les conflits
+    get_user_photo_url=get_user_photo_url,
+)
+
+# Configuration spécifique si settings est disponible
 if settings:
     templates.env.auto_reload = bool(settings.DEBUG)
     templates.env.globals.update(
@@ -361,21 +412,13 @@ if settings:
         theme_secondary=settings.THEME_SECONDARY,
         theme_white=settings.THEME_WHITE,
         
-        # === FONCTIONS UTILITAIRES ===
-        now=get_current_time,
-        datetime=datetime,
-        format_candidat_name=format_candidat_name,
-        format_email=format_email,
-        get_current_programme_title=get_current_programme_title,
-        get_current_programme_from_session=get_current_programme_from_session,
-        get_programmes=get_active_programmes,  # ← Fonction pour éviter les conflits
+        # === FONCTIONS ENTREPRISE ===
         get_company_logo_url=get_company_logo_url,
         get_company_logo_path=get_company_logo_path,
         get_company_file_url=get_company_file_url,
         get_company_file_path=get_company_file_path,
         company_file_exists=company_file_exists,
         list_company_files=list_company_files,
-
         
         # === INFORMATIONS TECHNIQUES ===
         environment=settings.ENVIRONMENT,

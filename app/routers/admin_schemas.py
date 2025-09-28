@@ -5,8 +5,9 @@ from fastapi import APIRouter, Depends, HTTPException, Request
 from fastapi.responses import HTMLResponse
 from sqlmodel import Session
 from app_lia_web.core.database import get_session
+from app_lia_web.core.middleware import get_shared_session
 from app_lia_web.core.security import get_current_user
-from app_lia_web.app.routers.ACD.admin import admin_required
+from app_lia_web.app.routers.admin import admin_required
 from app_lia_web.app.services.program_schema_service import ProgramSchemaService
 from app_lia_web.app.models.base import Programme, User
 from app_lia_web.app.templates import templates
@@ -16,10 +17,10 @@ import logging
 logger = logging.getLogger(__name__)
 router = APIRouter()
 
-@router.get("/admin/schemas", response_class=HTMLResponse)
+@router.get("/admin/schemas", response_class=HTMLResponse, name="admin_schemas")
 def admin_schemas(
     request: Request,
-    session: Session = Depends(get_session),
+    session: Session = Depends(get_shared_session),
     current_user: User = Depends(get_current_user)
 ):
     """Page d'administration des schémas"""
@@ -45,10 +46,10 @@ def admin_schemas(
         "utilisateur": current_user
     })
 
-@router.post("/admin/schemas/create/{program_code}")
+@router.post("/admin/schemas/create/{program_code}", name="create_program_schema")
 def create_program_schema(
     program_code: str,
-    session: Session = Depends(get_session),
+    session: Session = Depends(get_shared_session),
     current_user: User = Depends(get_current_user)
 ):
     """Crée un schéma pour un programme"""
@@ -67,10 +68,10 @@ def create_program_schema(
         logger.error(f"Erreur lors de la création du schéma {program_code}: {e}")
         raise HTTPException(status_code=500, detail=str(e))
 
-@router.post("/admin/schemas/migrate/{program_code}")
+@router.post("/admin/schemas/migrate/{program_code}", name="migrate_program_data")
 def migrate_program_data(
     program_code: str,
-    session: Session = Depends(get_session),
+    session: Session = Depends(get_shared_session),
     current_user: User = Depends(get_current_user)
 ):
     """Migre les données existantes vers le schéma du programme"""
@@ -89,11 +90,11 @@ def migrate_program_data(
         logger.error(f"Erreur lors de la migration des données pour {program_code}: {e}")
         raise HTTPException(status_code=500, detail=str(e))
 
-@router.post("/admin/schemas/backup/{program_code}")
+@router.post("/admin/schemas/backup/{program_code}", name="backup_program_schema")
 def backup_program_schema(
     program_code: str,
     backup_path: str = "/tmp/backups",
-    session: Session = Depends(get_session),
+    session: Session = Depends(get_shared_session),
     current_user: User = Depends(get_current_user)
 ):
     """Sauvegarde un schéma en fichiers Excel"""
@@ -112,11 +113,11 @@ def backup_program_schema(
         logger.error(f"Erreur lors de la sauvegarde du schéma {program_code}: {e}")
         raise HTTPException(status_code=500, detail=str(e))
 
-@router.post("/admin/schemas/drop/{program_code}")
+@router.post("/admin/schemas/drop/{program_code}", name="drop_program_schema")
 def drop_program_schema(
     program_code: str,
     backup_data: bool = True,
-    session: Session = Depends(get_session),
+    session: Session = Depends(get_shared_session),
     current_user: User = Depends(get_current_user)
 ):
     """Supprime un schéma de programme"""
@@ -140,10 +141,10 @@ def drop_program_schema(
         logger.error(f"Erreur lors de la suppression du schéma {program_code}: {e}")
         raise HTTPException(status_code=500, detail=str(e))
 
-@router.get("/admin/schemas/stats/{program_code}")
+@router.get("/admin/schemas/stats/{program_code}", name="get_schema_stats")
 def get_schema_stats(
     program_code: str,
-    session: Session = Depends(get_session),
+    session: Session = Depends(get_shared_session),
     current_user: User = Depends(get_current_user)
 ):
     """Retourne les statistiques d'un schéma"""

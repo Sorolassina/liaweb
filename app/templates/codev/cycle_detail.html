@@ -249,7 +249,7 @@
         <div class="info-item">
           <div class="info-label">Période :</div>
           <div class="info-value">
-            {{ cycle.date_debut.strftime('%d/%m/%Y') }} - {{ cycle.date_fin.strftime('%d/%m/%Y') }}
+            {{ cycle.date_debut | format_date }} - {{ cycle.date_fin | format_date }}
           </div>
         </div>
         
@@ -279,7 +279,7 @@
         
         <div class="info-item">
           <div class="info-label">Créé le :</div>
-          <div class="info-value">{{ cycle.cree_le.strftime('%d/%m/%Y à %H:%M') }}</div>
+          <div class="info-value">{{ cycle.cree_le | format_datetime }}</div>
         </div>
       </div>
       

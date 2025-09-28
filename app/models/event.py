@@ -2,30 +2,13 @@ from sqlmodel import SQLModel, Field, Relationship
 from datetime import datetime, date
 from typing import Optional, List
 from enum import Enum
+from .enums import StatutEvent, TypeInvitationEvent, StatutInvitationEvent, MethodeSignatureEvent
 
-class StatutEvent(str, Enum):
-    PLANIFIE = "planifie"
-    EN_COURS = "en_cours"
-    TERMINE = "termine"
-    ANNULE = "annule"
 
-class TypeInvitationEvent(str, Enum):
-    INDIVIDUELLE = "individuelle"
-    GROUPE = "groupe"
-
-class StatutInvitationEvent(str, Enum):
-    EN_ATTENTE = "en_attente"
-    ACCEPTEE = "acceptee"
-    REFUSEE = "refusee"
-
-class MethodeSignatureEvent(str, Enum):
-    MANUEL = "manuel"
-    DIGITAL = "digital"
-    QR_CODE = "qr_code"
-    EMAIL = "email"
 
 class Event(SQLModel, table=True):
-    __tablename__ = "events"
+    __tablename__ = "event"
+
     id: Optional[int] = Field(default=None, primary_key=True)
     titre: str = Field(max_length=255)
     description: Optional[str] = Field(default=None)
@@ -52,7 +35,8 @@ class Event(SQLModel, table=True):
     presences: List["PresenceEvent"] = Relationship(back_populates="event")
 
 class InvitationEvent(SQLModel, table=True):
-    __tablename__ = "invitation_events"
+    __tablename__ = "invitation_event"
+
     id: Optional[int] = Field(default=None, primary_key=True)
     type_invitation: TypeInvitationEvent
     statut: StatutInvitationEvent = Field(default=StatutInvitationEvent.EN_ATTENTE)
@@ -61,18 +45,19 @@ class InvitationEvent(SQLModel, table=True):
     date_reponse: Optional[datetime] = Field(default=None)
     
     # Relations
-    event_id: int = Field(foreign_key="events.id")
-    event: Optional[Event] = Relationship(back_populates="invitations")
+    event_id: int = Field(foreign_key="event.id")
+    event: Optional["Event"] = Relationship(back_populates="invitations")
     
     inscription_id: int = Field(foreign_key="inscription.id")
-    inscription: Optional["Inscription"] = Relationship()
+    inscription: Optional["Inscription"] = Relationship(back_populates="invitations_event")
     
     # Timestamps
     cree_le: datetime = Field(default_factory=lambda: datetime.now())
     modifie_le: Optional[datetime] = Field(default=None)
 
 class PresenceEvent(SQLModel, table=True):
-    __tablename__ = "presence_events"
+    __tablename__ = "presence_event"
+    
     id: Optional[int] = Field(default=None, primary_key=True)
     presence: str = Field(default="absent")
     methode_signature: Optional[MethodeSignatureEvent] = Field(default=None)
@@ -84,11 +69,11 @@ class PresenceEvent(SQLModel, table=True):
     ip_signature: Optional[str] = Field(default=None)
     
     # Relations
-    event_id: int = Field(foreign_key="events.id")
-    event: Optional[Event] = Relationship(back_populates="presences")
+    event_id: int = Field(foreign_key="event.id")
+    event: Optional["Event"] = Relationship(back_populates="presences")
     
     inscription_id: int = Field(foreign_key="inscription.id")
-    inscription: Optional["Inscription"] = Relationship()
+    inscription: Optional["Inscription"] = Relationship(back_populates="presences_event")
     
     # Timestamps
     cree_le: datetime = Field(default_factory=lambda: datetime.now())

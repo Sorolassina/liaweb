@@ -164,7 +164,7 @@
               {% endif %}
             </td>
             <td>
-              <small class="text-muted">{{ partenaire.cree_le.strftime('%d/%m/%Y') }}</small>
+              <small class="text-muted">{{ partenaire.cree_le | format_date }}</small>
             </td>
             <td>
               <div class="btn-group btn-group-sm">

@@ -3,9 +3,9 @@ Service de routage dynamique vers les schémas par programme
 """
 from typing import Type, Any, Optional
 from sqlmodel import SQLModel, Session
-from app_lia_web.app.models.program_schema_models import (
-    CandidatProgram, PreinscriptionProgram, InscriptionProgram,
-    EntrepriseProgram, DocumentProgram, EligibiliteProgram, JuryDecisionProgram
+from app_lia_web.app.models.base import (
+    Candidat, Preinscription, Inscription,
+    Entreprise, Document, Eligibilite, DecisionJuryTable
 )
 import logging
 
@@ -16,13 +16,13 @@ class ProgramSchemaRouter:
     
     # Mapping des modèles par schéma
     SCHEMA_MODELS = {
-        'candidats': CandidatProgram,
-        'preinscriptions': PreinscriptionProgram,
-        'inscriptions': InscriptionProgram,
-        'entreprises': EntrepriseProgram,
-        'documents': DocumentProgram,
-        'eligibilites': EligibiliteProgram,
-        'jury_decisions': JuryDecisionProgram,
+        'candidats': Candidat,
+        'preinscriptions': Preinscription,
+        'inscriptions': Inscription,
+        'entreprises': Entreprise,
+        'documents': Document,
+        'eligibilites': Eligibilite,
+        'jury_decisions': DecisionJuryTable,
     }
     
     @classmethod
@@ -31,13 +31,19 @@ class ProgramSchemaRouter:
         if table_name in cls.SCHEMA_MODELS:
             model_class = cls.SCHEMA_MODELS[table_name]
             
-            # Modifier dynamiquement le nom de la table pour inclure le schéma
+            # Créer une classe dynamique simple
             class DynamicModel(model_class):
                 __tablename__ = f"{schema_name}.{table_name}"
+                __table_args__ = {'extend_existing': True}
             
             return DynamicModel
         
         raise ValueError(f"Modèle non trouvé pour la table {table_name}")
+    
+    @classmethod
+    def get_table_name_for_schema(cls, table_name: str, schema_name: str) -> str:
+        """Retourne le nom de table complet avec schéma"""
+        return f"{schema_name}.{table_name}"
     
     @classmethod
     def get_session_with_schema(cls, session: Session, schema_name: str) -> Session:

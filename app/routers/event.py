@@ -7,7 +7,9 @@ import secrets
 import string
 
 from app_lia_web.core.database import get_session
-from app_lia_web.app.models.base import User, Programme, Inscription
+from app_lia_web.core.middleware import get_shared_session
+from app_lia_web.app.models.base import User, Programme
+from app_lia_web.app.models.inscription import Inscription
 from app_lia_web.app.models.event import Event, InvitationEvent, PresenceEvent
 from app_lia_web.app.schemas.event_schemas import EventCreate, EventUpdate, InvitationEventCreate, PresenceEventCreate
 from app_lia_web.app.services.event_service import EventService
@@ -22,14 +24,28 @@ event_service = EventService()
 @router.get("/", name="liste_events", response_class=HTMLResponse)
 async def liste_events(
     request: Request,
-    db: Session = Depends(get_session),
+    db: Session = Depends(get_shared_session),
     current_user: User = Depends(get_current_user),
     programme_id: Optional[int] = None
 ):
     """Liste des événements"""
-    events = event_service.get_events(db, programme_id=programme_id)
-    stats = event_service.get_event_stats(db)
-    programmes = db.exec(select(Programme).where(Programme.actif == True)).all()
+    try:
+        events = event_service.get_events(db, programme_id=programme_id)
+    except Exception as e:
+        print(f"⚠️ [WARNING] Erreur lors de la récupération des événements: {e}")
+        events = []
+    
+    try:
+        stats = event_service.get_event_stats(db)
+    except Exception as e:
+        print(f"⚠️ [WARNING] Erreur lors de la récupération des statistiques événements: {e}")
+        stats = {"total": 0, "actifs": 0, "programmes": 0}
+    
+    try:
+        programmes = db.exec(select(Programme).where(Programme.actif == True)).all()
+    except Exception as e:
+        print(f"⚠️ [WARNING] Erreur lors de la récupération des programmes: {e}")
+        programmes = []
     
     return templates.TemplateResponse("events/liste.html", {
         "request": request,
@@ -43,7 +59,7 @@ async def liste_events(
 @router.get("/nouveau", name="form_event", response_class=HTMLResponse)
 async def form_event(
     request: Request,
-    db: Session = Depends(get_session),
+    db: Session = Depends(get_shared_session),
     current_user: User = Depends(get_current_user)
 ):
     """Formulaire de création d'événement"""
@@ -66,7 +82,7 @@ async def creer_event(
     heure_fin: str = Form(""),
     lieu: str = Form(""),
     programme_id: int = Form(...),
-    db: Session = Depends(get_session),
+    db: Session = Depends(get_shared_session),
     current_user: User = Depends(get_current_user)
 ):
     """Créer un nouvel événement"""
@@ -115,7 +131,7 @@ async def creer_event(
 async def detail_event(
     event_id: int,
     request: Request,
-    db: Session = Depends(get_session),
+    db: Session = Depends(get_shared_session),
     current_user: User = Depends(get_current_user)
 ):
     """Détail d'un événement"""
@@ -138,7 +154,7 @@ async def detail_event(
 async def edit_event(
     event_id: int,
     request: Request,
-    db: Session = Depends(get_session),
+    db: Session = Depends(get_shared_session),
     current_user: User = Depends(get_current_user)
 ):
     """Formulaire d'édition d'un événement"""
@@ -168,7 +184,7 @@ async def update_event(
     lieu: str = Form(""),
     programme_id: int = Form(...),
     statut: str = Form("planifie"),
-    db: Session = Depends(get_session),
+    db: Session = Depends(get_shared_session),
     current_user: User = Depends(get_current_user)
 ):
     """Mettre à jour un événement"""
@@ -209,7 +225,7 @@ async def update_event(
     updated_event = event_service.update_event(event_id, update_data, db)
     
     # Rediriger vers la page de détail
-    return RedirectResponse(url=f"/events/{event_id}", status_code=303)
+    return RedirectResponse(url=request.url_for("event_detail", event_id=event_id), status_code=303)
 
 # === ROUTES D'ÉMARGEMENT ===
 
@@ -217,7 +233,7 @@ async def update_event(
 async def emargement_event(
     event_id: int,
     request: Request,
-    db: Session = Depends(get_session),
+    db: Session = Depends(get_shared_session),
     current_user: User = Depends(get_current_user)
 ):
     """Page d'émargement pour un événement"""
@@ -240,7 +256,7 @@ async def emargement_event(
 async def emargement_direct_event(
     event_id: int,
     request: Request,
-    db: Session = Depends(get_session),
+    db: Session = Depends(get_shared_session),
     current_user: User = Depends(get_current_user)
 ):
     """Page d'émargement direct pour un événement (mode tablette avec authentification)"""
@@ -261,7 +277,7 @@ async def emargement_direct_event(
 async def invitations_event(
     event_id: int,
     request: Request,
-    db: Session = Depends(get_session),
+    db: Session = Depends(get_shared_session),
     current_user: User = Depends(get_current_user)
 ):
     """Page de gestion des invitations"""
@@ -272,7 +288,8 @@ async def invitations_event(
     invitations = event_service.get_invitations_by_event(event_id, db)
     
     # Récupérer les candidats disponibles pour invitation
-    from app_lia_web.app.models.base import Inscription, Candidat
+    from app_lia_web.app.models.inscription import Inscription
+    from app_lia_web.app.models.base import Candidat
     
     inscriptions = db.exec(
         select(Inscription)
@@ -294,7 +311,7 @@ async def envoyer_invitations_event(
     request: Request,
     type_invitation: str = Form(...),
     candidats_ids: List[int] = Form([]),
-    db: Session = Depends(get_session),
+    db: Session = Depends(get_shared_session),
     current_user: User = Depends(get_current_user)
 ):
     """Envoyer des invitations"""
@@ -303,7 +320,7 @@ async def envoyer_invitations_event(
     type_inv = TypeInvitation(type_invitation)
     invitations = event_service.send_invitations_bulk(event_id, type_inv, candidats_ids, db)
     
-    return RedirectResponse(url=f"/events/{event_id}/invitations", status_code=303)
+    return RedirectResponse(url=request.url_for("event_invitations", event_id=event_id), status_code=303)
 
 
 @router.post("/{event_id}/emargement-direct", name="marquer_presence_event_direct")
@@ -315,7 +332,7 @@ async def marquer_presence_event_direct(
     methode_signature: str = Form("manuel"),
     signature_data: str = Form(""),
     note: str = Form(""),
-    db: Session = Depends(get_session),
+    db: Session = Depends(get_shared_session),
     current_user: User = Depends(get_current_user)
 ):
     """Marquer la présence d'un candidat à un événement (mode tablette avec authentification)"""
@@ -339,7 +356,7 @@ async def marquer_presence_event_direct(
     presence_obj = event_service.mark_presence(presence_data, db)
     
     # Rediriger vers la page d'émargement principale après validation
-    return RedirectResponse(url=f"/events/{event_id}/emargement", status_code=303)
+    return RedirectResponse(url=request.url_for("event_emargement", event_id=event_id), status_code=303)
 
 # === ROUTES D'ÉMARGEMENT PAR LIEN (MODE DISTANCE) ===
 
@@ -347,7 +364,7 @@ async def marquer_presence_event_direct(
 async def generer_liens_emargement_event(
     event_id: int,
     request: Request,
-    db: Session = Depends(get_session),
+    db: Session = Depends(get_shared_session),
     current_user: User = Depends(get_current_user)
 ):
     """Page de génération des liens d'émargement pour un événement"""
@@ -371,7 +388,7 @@ async def envoyer_liens_emargement_event(
     event_id: int,
     request: Request,
     invitation_ids: List[int] = Form(...),
-    db: Session = Depends(get_session),
+    db: Session = Depends(get_shared_session),
     current_user: User = Depends(get_current_user)
 ):
     """Envoyer les liens d'émargement par email pour un événement"""
@@ -419,14 +436,14 @@ async def envoyer_liens_emargement_event(
         except Exception as e:
             print(f"Erreur envoi email émargement événement: {e}")
     
-    return RedirectResponse(url=f"/events/{event_id}/emargement", status_code=303)
+    return RedirectResponse(url=request.url_for("event_emargement", event_id=event_id), status_code=303)
 
 @router.get("/{event_id}/emargement/lien/{token}", name="emargement_lien_event", response_class=HTMLResponse)
 async def emargement_lien_event(
     event_id: int,
     token: str,
     request: Request,
-    db: Session = Depends(get_session)
+    db: Session = Depends(get_shared_session)
 ):
     """Page d'émargement via lien unique pour un événement"""
     # Vérifier le token et récupérer l'invitation
@@ -463,7 +480,7 @@ async def signer_emargement_lien_event(
     nom_signature: str = Form(""),
     photo_data: str = Form(""),
     commentaire: str = Form(""),
-    db: Session = Depends(get_session)
+    db: Session = Depends(get_shared_session)
 ):
     """Signer l'émargement via lien pour un événement"""
     # Vérifier le token
@@ -513,7 +530,7 @@ async def signer_emargement_lien_event(
 async def invitation_event_page(
     token: str,
     request: Request,
-    db: Session = Depends(get_session)
+    db: Session = Depends(get_shared_session)
 ):
     """Page publique d'invitation d'événement"""
     invitation = event_service.get_invitation_by_token(token, db)
@@ -535,7 +552,7 @@ async def invitation_event_page(
 async def accepter_invitation_event(
     token: str,
     request: Request,
-    db: Session = Depends(get_session)
+    db: Session = Depends(get_shared_session)
 ):
     """Accepter une invitation d'événement"""
     invitation = event_service.get_invitation_by_token(token, db)
@@ -555,7 +572,7 @@ async def accepter_invitation_event(
 async def refuser_invitation_event(
     token: str,
     request: Request,
-    db: Session = Depends(get_session)
+    db: Session = Depends(get_shared_session)
 ):
     """Refuser une invitation d'événement"""
     invitation = event_service.get_invitation_by_token(token, db)
@@ -576,7 +593,7 @@ async def supprimer_participant_event(
     event_id: int,
     inscription_id: int,
     request: Request,
-    db: Session = Depends(get_session),
+    db: Session = Depends(get_shared_session),
     current_user: User = Depends(get_current_user)
 ):
     """Supprimer un participant d'un événement"""
@@ -596,4 +613,4 @@ async def supprimer_participant_event(
     if referer and f"/events/{event_id}" in referer:
         return RedirectResponse(url=referer, status_code=303)
     else:
-        return RedirectResponse(url=f"/events/{event_id}", status_code=303)
+        return RedirectResponse(url=request.url_for("event_detail", event_id=event_id), status_code=303)

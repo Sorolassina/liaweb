@@ -24,7 +24,7 @@
         <ul class="list-group">
           {% for j in jurys_next %}
             <li class="list-group-item d-flex justify-content-between">
-              <span>{{ j.session_le.strftime('%d/%m/%Y %H:%M') }} — {{ j.lieu or '—' }}</span>
+              <span>{{ j.session_le | format_datetime }} — {{ j.lieu or '—' }}</span>
               <span class="badge bg-secondary">{{ j.statut }}</span>
             </li>
           {% endfor %}

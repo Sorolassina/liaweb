@@ -42,9 +42,9 @@
                                                 <label class="form-label fw-bold">Date et heure</label>
                                                 <p class="mb-0">
                                                     <i class="fas fa-calendar me-2"></i>
-                                                    {{ rdv.debut.strftime('%d/%m/%Y à %H:%M') }}
+                                                    {{ rdv.debut | format_datetime }}
                                                     {% if rdv.fin %}
-                                                        - {{ rdv.fin.strftime('%H:%M') }}
+                                                        - {{ rdv.fin | format_time }}
                                                     {% endif %}
                                                 </p>
                                             </div>
@@ -266,13 +266,13 @@
                         <div class="col-md-6">
                             <div class="mb-3">
                                 <label for="debut" class="form-label">Date et heure de début</label>
-                                <input type="datetime-local" name="debut" id="debut" class="form-control" value="{{ rdv.debut.strftime('%Y-%m-%dT%H:%M') }}" required>
+                                <input type="datetime-local" name="debut" id="debut" class="form-control" value="{{ rdv.debut | format_datetime_input }}" required>
                             </div>
                         </div>
                         <div class="col-md-6">
                             <div class="mb-3">
                                 <label for="fin" class="form-label">Date et heure de fin</label>
-                                <input type="datetime-local" name="fin" id="fin" class="form-control" value="{{ rdv.fin.strftime('%Y-%m-%dT%H:%M') if rdv.fin else '' }}">
+                                <input type="datetime-local" name="fin" id="fin" class="form-control" value="{{ rdv.fin | format_datetime_input if rdv.fin else '' }}">
                             </div>
                         </div>
                     </div>

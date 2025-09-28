@@ -132,7 +132,7 @@
                                     </td>
                                     <td>
                                         {% if inscription.cree_le %}
-                                            {{ inscription.cree_le.strftime('%d/%m/%Y') }}
+                                            {{ inscription.cree_le | format_date }}
                                         {% else %}
                                             <span class="text-muted">N/A</span>
                                         {% endif %}

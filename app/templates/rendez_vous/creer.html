@@ -243,7 +243,7 @@
                                 <div class="col-md-6">
                                     <strong>Programme:</strong> {{ inscription.programme.nom }}<br>
                                     <strong>Entreprise:</strong> {{ candidat.entreprise.nom if candidat.entreprise else '-' }}<br>
-                                    <strong>Date d'inscription:</strong> {{ inscription.cree_le.strftime('%d/%m/%Y') }}
+                                    <strong>Date d'inscription:</strong> {{ inscription.cree_le | format_date }}
                                 </div>
                             </div>
                         </div>

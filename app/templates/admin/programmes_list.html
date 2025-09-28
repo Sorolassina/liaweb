@@ -66,7 +66,7 @@
           {% if p.responsable %}
             <div class="d-flex align-items-center">
               {% if p.responsable.photo_profil %}
-                <img src="{{ p.responsable.photo_profil }}?v={{ p.responsable.id }}&t={{ timestamp }}" alt="Photo" class="rounded-circle me-2" width="24" height="24" style="object-fit: cover;">
+                <img src="{{ get_user_photo_url(p.responsable) }}?v={{ p.responsable.id }}&t={{ timestamp }}" alt="Photo" class="rounded-circle me-2" width="24" height="24" style="object-fit: cover;">
               {% else %}
                 <div class="rounded-circle bg-secondary d-flex align-items-center justify-content-center me-2" style="width: 24px; height: 24px;">
                   <i class="fa fa-user text-white" style="font-size: 0.7rem;"></i>
@@ -80,7 +80,7 @@
         </td>
         <td class="text-end">
           <div class="btn-group btn-group-sm">
-            <a class="submenu-item" href="{{ url_for('admin_programmes_edit', programme_id=p.id) }}" title="Modifier">
+            <a class="submenu-item" href="{{ url_for('admin_programmes_edit', prog_id=p.id) }}" title="Modifier">
               <i class="fa fa-edit"></i>
             </a>
             <button type="button" class="btn btn-outline-info" data-bs-toggle="modal" data-bs-target="#viewModal{{ p.id }}" title="Voir les détails">
@@ -153,8 +153,8 @@
            <div class="col-12">
              <h6>Période</h6>
              <table class="table table-sm">
-               <tr><td><strong>Date de début :</strong></td><td>{{ p.date_debut.strftime('%d/%m/%Y') if p.date_debut else '—' }}</td></tr>
-               <tr><td><strong>Date de fin :</strong></td><td>{{ p.date_fin.strftime('%d/%m/%Y') if p.date_fin else '—' }}</td></tr>
+               <tr><td><strong>Date de début :</strong></td><td>{{ p.date_debut | format_date if p.date_debut else '—' }}</td></tr>
+               <tr><td><strong>Date de fin :</strong></td><td>{{ p.date_fin | format_date if p.date_fin else '—' }}</td></tr>
              </table>
            </div>
          </div>
@@ -174,7 +174,7 @@
       </div>
       <div class="modal-footer">
         <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Fermer</button>
-        <a href="{{ url_for('admin_programmes_edit', programme_id=p.id) }}" class="submenu-item">
+        <a href="{{ url_for('admin_programmes_edit', prog_id=p.id) }}" class="submenu-item">
           <i class="fa fa-edit me-2"></i>Modifier
         </a>
       </div>
@@ -201,7 +201,7 @@
             <h6 class="mb-0"><i class="fa fa-plus me-2"></i>Ajouter un membre</h6>
           </div>
           <div class="card-body">
-            <form method="post" action="{{ url_for('admin_programmes_add_member', programme_id=p.id) }}" id="addMemberForm{{ p.id }}">
+            <form method="post" action="{{ url_for('admin_programme_add_user', prog_id=p.id) }}" id="addMemberForm{{ p.id }}">
               <div class="row g-3">
                                  <div class="col-md-6">
                    <label class="form-label">Utilisateur <span class="text-danger">*</span></label>
@@ -263,13 +263,7 @@
               <tr>
                 <td>
                   <div class="d-flex align-items-center">
-                    {% if pu.utilisateur.photo_profil %}
-                      <img src="{{ pu.utilisateur.photo_profil }}?v={{ pu.utilisateur.id }}&t={{ timestamp }}" alt="Photo" class="rounded-circle me-2" width="32" height="32" style="object-fit: cover;">
-                    {% else %}
-                      <div class="rounded-circle bg-secondary d-flex align-items-center justify-content-center me-2" style="width: 32px; height: 32px;">
-                        <i class="fa fa-user text-white" style="font-size: 0.8rem;"></i>
-                      </div>
-                    {% endif %}
+                    <img src="{{ get_user_photo_url(pu.utilisateur) }}?v={{ pu.utilisateur.id }}&t={{ timestamp }}" alt="Photo" class="rounded-circle me-2" width="32" height="32" style="object-fit: cover;">
                     <div>
                       <div class="fw-bold">{{ pu.utilisateur.nom_complet }}</div>
                       <small class="text-muted">{{ pu.utilisateur.email }}</small>
@@ -277,7 +271,7 @@
                   </div>
                 </td>
                 <td>
-                  <span class="badge bg-primary">{{ pu.role_programme.replace('_', ' ').title() }}</span>
+                  <span class="badge bg-primary">{{ (pu.role_programme or '').replace('_', ' ').title() }}</span>
                 </td>
                 <td>
                   {% if pu.actif %}
@@ -293,9 +287,9 @@
                 <td>
                   {% if pu.date_debut or pu.date_fin %}
                     <small>
-                      {% if pu.date_debut %}{{ pu.date_debut.strftime('%d/%m/%Y') }}{% endif %}
+                      {% if pu.date_debut %}{{ pu.date_debut | format_date }}{% endif %}
                       {% if pu.date_debut and pu.date_fin %} - {% endif %}
-                      {% if pu.date_fin %}{{ pu.date_fin.strftime('%d/%m/%Y') }}{% endif %}
+                      {% if pu.date_fin %}{{ pu.date_fin | format_date }}{% endif %}
                     </small>
                   {% else %}
                     <span class="text-muted">—</span>
@@ -306,7 +300,7 @@
                     <button class="btn btn-outline-primary" title="Modifier" onclick="editMember({{ p.id }}, {{ pu.id }})">
                       <i class="fa fa-edit"></i>
                     </button>
-                    <form method="post" action="{{ url_for('admin_programmes_remove_member', programme_id=p.id, utilisateur_id=pu.utilisateur_id) }}" class="d-inline">
+                    <form method="post" action="{{ url_for('admin_programme_remove_user', prog_id=p.id, user_id=pu.utilisateur_id) }}" class="d-inline">
                       <button type="submit" class="btn btn-outline-danger" title="Retirer" 
                               onclick="return confirm('Retirer cet utilisateur du programme ?')">
                         <i class="fa fa-times"></i>
@@ -352,7 +346,7 @@
             <h6 class="mb-0"><i class="fa fa-plus me-2"></i>Ajouter une étape</h6>
           </div>
           <div class="card-body">
-            <form method="post" action="{{ url_for('admin_programmes_add_step', programme_id=p.id) }}" id="addStepForm{{ p.id }}">
+            <form method="post" action="{{ url_for('admin_programmes_add_step', prog_id=p.id) }}" id="addStepForm{{ p.id }}">
               <div class="row g-3">
                 <div class="col-md-3">
                   <label class="form-label">Code <span class="text-danger">*</span></label>
@@ -492,7 +486,7 @@
       </div>
       <div class="modal-footer">
         <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Annuler</button>
-        <form method="post" action="{{ url_for('admin_programmes_delete', programme_id=p.id) }}" class="d-inline">
+        <form method="post" action="{{ url_for('admin_programmes_delete', prog_id=p.id) }}" class="d-inline">
           <button type="submit" class="btn btn-danger">
             <i class="fa fa-trash me-2"></i>Supprimer définitivement
           </button>

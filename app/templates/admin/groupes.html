@@ -119,8 +119,8 @@
           </td>
           <td>
             <div class="small">
-              <div>{{ groupe.date_creation.strftime('%d/%m/%Y') }}</div>
-              <div class="text-muted">{{ groupe.date_creation.strftime('%H:%M') }}</div>
+              <div>{{ groupe.date_creation | format_date }}</div>
+              <div class="text-muted">{{ groupe.date_creation | format_time }}</div>
             </div>
           </td>
           <td>

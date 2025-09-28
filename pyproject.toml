@@ -65,6 +65,9 @@ dependencies = [
     "selenium>=4.32.0",
     "webdriver-manager>=4.0.2",
     "pillow>=11.3.0",
+    "pytest>=8.4.1",
+    "pytest-asyncio>=1.1.0",
+    "pytest-cov>=7.0.0",
 ]
 
 [project.optional-dependencies]

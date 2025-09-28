@@ -7,7 +7,10 @@ from typing import List, Optional
 from datetime import datetime
 
 from app_lia_web.core.database import get_session
+from app_lia_web.core.middleware import get_shared_session
 from app_lia_web.core.security import get_current_user, require_permission
+from app_lia_web.core.program_schema_integration import safe_count_query
+import logging
 from app_lia_web.app.models.base import User, EtapePipeline, AvancementEtape, Programme, Inscription
 from app_lia_web.app.models.enums import UserRole, StatutDossier
 from app_lia_web.app.schemas import EtapePipelineCreate, EtapePipelineUpdate, AvancementEtapeCreate
@@ -16,10 +19,10 @@ from app_lia_web.app.services import PipelineService
 router = APIRouter()
 
 
-@router.get("/pipelines/{programme_id}/etapes", response_model=List[dict])
+@router.get("/pipelines/{programme_id}/etapes", response_model=List[dict], name="get_pipeline_etapes")
 async def get_pipeline_etapes(
     programme_id: int,
-    session: Session = Depends(get_session),
+    session: Session = Depends(get_shared_session),
     current_user: User = Depends(get_current_user)
 ):
     """Récupère les étapes du pipeline d'un programme"""
@@ -27,11 +30,11 @@ async def get_pipeline_etapes(
     return etapes
 
 
-@router.post("/pipelines/{programme_id}/etapes")
+@router.post("/pipelines/{programme_id}/etapes", name="create_pipeline_etape")
 async def create_pipeline_etape(
     programme_id: int,
     etape: EtapePipelineCreate,
-    session: Session = Depends(get_session),
+    session: Session = Depends(get_shared_session),
     current_user: User = Depends(get_current_user)
 ):
     """Crée une nouvelle étape dans le pipeline d'un programme"""
@@ -41,11 +44,11 @@ async def create_pipeline_etape(
     return {"message": "Étape créée avec succès", "etape": nouvelle_etape}
 
 
-@router.put("/pipelines/etapes/{etape_id}")
+@router.put("/pipelines/etapes/{etape_id}", name="update_pipeline_etape")
 async def update_pipeline_etape(
     etape_id: int,
     etape_update: EtapePipelineUpdate,
-    session: Session = Depends(get_session),
+    session: Session = Depends(get_shared_session),
     current_user: User = Depends(get_current_user)
 ):
     """Met à jour une étape du pipeline"""
@@ -55,10 +58,10 @@ async def update_pipeline_etape(
     return {"message": "Étape mise à jour avec succès", "etape": etape}
 
 
-@router.delete("/pipelines/etapes/{etape_id}")
+@router.delete("/pipelines/etapes/{etape_id}", name="delete_pipeline_etape")
 async def delete_pipeline_etape(
     etape_id: int,
-    session: Session = Depends(get_session),
+    session: Session = Depends(get_shared_session),
     current_user: User = Depends(get_current_user)
 ):
     """Supprime une étape du pipeline"""
@@ -68,10 +71,10 @@ async def delete_pipeline_etape(
     return {"message": "Étape supprimée avec succès"}
 
 
-@router.post("/pipelines/etapes/{etape_id}/toggle")
+@router.post("/pipelines/etapes/{etape_id}/toggle", name="toggle_pipeline_etape")
 async def toggle_pipeline_etape(
     etape_id: int,
-    session: Session = Depends(get_session),
+    session: Session = Depends(get_shared_session),
     current_user: User = Depends(get_current_user)
 ):
     """Active/désactive une étape du pipeline"""
@@ -81,10 +84,10 @@ async def toggle_pipeline_etape(
     return {"message": f"Étape {'activée' if etape.active else 'désactivée'} avec succès", "etape": etape}
 
 
-@router.get("/inscriptions/{inscription_id}/avancement")
+@router.get("/inscriptions/{inscription_id}/avancement", name="get_inscription_avancement")
 async def get_inscription_avancement(
     inscription_id: int,
-    session: Session = Depends(get_session),
+    session: Session = Depends(get_shared_session),
     current_user: User = Depends(get_current_user)
 ):
     """Récupère l'avancement d'un candidat dans le pipeline"""
@@ -92,11 +95,11 @@ async def get_inscription_avancement(
     return avancement
 
 
-@router.post("/inscriptions/{inscription_id}/avancement")
+@router.post("/inscriptions/{inscription_id}/avancement", name="update_inscription_avancement")
 async def update_inscription_avancement(
     inscription_id: int,
     avancement: AvancementEtapeCreate,
-    session: Session = Depends(get_session),
+    session: Session = Depends(get_shared_session),
     current_user: User = Depends(get_current_user)
 ):
     """Met à jour l'avancement d'un candidat dans le pipeline"""
@@ -106,10 +109,10 @@ async def update_inscription_avancement(
     return {"message": "Avancement mis à jour avec succès", "avancement": nouvel_avancement}
 
 
-@router.get("/pipelines/{programme_id}/statistiques")
+@router.get("/pipelines/{programme_id}/statistiques", name="get_pipeline_statistiques")
 async def get_pipeline_statistiques(
     programme_id: int,
-    session: Session = Depends(get_session),
+    session: Session = Depends(get_shared_session),
     current_user: User = Depends(get_current_user)
 ):
     """Récupère les statistiques du pipeline d'un programme"""
@@ -117,12 +120,12 @@ async def get_pipeline_statistiques(
     return stats
 
 
-@router.get("/pipelines/etapes/{etape_id}/candidats")
+@router.get("/pipelines/etapes/{etape_id}/candidats", name="get_candidats_par_etape")
 async def get_candidats_par_etape(
     etape_id: int,
     skip: int = Query(0, ge=0),
     limit: int = Query(10, ge=1, le=100),
-    session: Session = Depends(get_session),
+    session: Session = Depends(get_shared_session),
     current_user: User = Depends(get_current_user)
 ):
     """Récupère les candidats à une étape spécifique du pipeline"""
@@ -130,10 +133,10 @@ async def get_candidats_par_etape(
     return candidats
 
 
-@router.post("/pipelines/{programme_id}/reinitialiser")
+@router.post("/pipelines/{programme_id}/reinitialiser", name="reinitialiser_pipeline")
 async def reinitialiser_pipeline(
     programme_id: int,
-    session: Session = Depends(get_session),
+    session: Session = Depends(get_shared_session),
     current_user: User = Depends(get_current_user)
 ):
     """Réinitialise le pipeline d'un programme (supprime tous les avancements)"""
@@ -143,10 +146,10 @@ async def reinitialiser_pipeline(
     return {"message": "Pipeline réinitialisé avec succès"}
 
 
-@router.get("/pipelines/etapes/{etape_id}/details")
+@router.get("/pipelines/etapes/{etape_id}/details", name="get_etape_details")
 async def get_etape_details(
     etape_id: int,
-    session: Session = Depends(get_session),
+    session: Session = Depends(get_shared_session),
     current_user: User = Depends(get_current_user)
 ):
     """Récupère les détails d'une étape du pipeline"""
@@ -154,11 +157,10 @@ async def get_etape_details(
     if not etape:
         raise HTTPException(status_code=404, detail="Étape non trouvée")
     
-    # Compter les candidats à cette étape
-    candidats_count = session.exec(
-        select(AvancementEtape)
-        .where(AvancementEtape.etape_id == etape_id)
-    ).count()
+    # Compter les candidats à cette étape - Version sécurisée
+    candidats_count = 0
+    if table_exists_anywhere("avancement_etape", session):
+        candidats_count = safe_count_query(session, AvancementEtape, etape_id=etape_id)
     
     return {
         "etape": etape,
@@ -166,11 +168,11 @@ async def get_etape_details(
     }
 
 
-@router.post("/pipelines/etapes/{etape_id}/reordonner")
+@router.post("/pipelines/etapes/{etape_id}/reordonner", name="reordonner_etapes")
 async def reordonner_etapes(
     etape_id: int,
     nouvelle_position: int,
-    session: Session = Depends(get_session),
+    session: Session = Depends(get_shared_session),
     current_user: User = Depends(get_current_user)
 ):
     """Réordonne les étapes du pipeline"""

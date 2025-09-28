@@ -2,6 +2,7 @@ from sqlmodel import Session, select, func
 from typing import List, Optional, Dict, Any
 from datetime import date, datetime, timezone
 from app_lia_web.app.models.base import SuiviMensuel, Inscription, Candidat, Programme
+from app_lia_web.core.program_schema_integration import table_exists_anywhere
 from app_lia_web.app.schemas.suivi_mensuel_schemas import (
     SuiviMensuelCreate, SuiviMensuelUpdate, SuiviMensuelFilter, SuiviMensuelStats, SuiviMensuelWithCandidat
 )
@@ -17,14 +18,31 @@ class SuiviMensuelService:
         self, db: Session, filters: SuiviMensuelFilter, skip: int = 0, limit: int = 100
     ) -> List[SuiviMensuelWithCandidat]:
         """Récupérer les suivis mensuels avec filtres"""
-        query = select(
-            SuiviMensuel,
-            Candidat.prenom,
-            Candidat.nom,
-            Programme.nom.label("programme_nom")
-        ).join(Inscription, Inscription.id == SuiviMensuel.inscription_id)\
-        .join(Candidat, Candidat.id == Inscription.candidat_id)\
-        .join(Programme, Programme.id == Inscription.programme_id)
+        
+        # Vérifier l'existence des tables essentielles
+        required_tables = ["suivi_mensuel", "inscription", "candidat", "programme"]
+        missing_tables = []
+        
+        for table in required_tables:
+            if not table_exists_anywhere(table, db):
+                missing_tables.append(table)
+        
+        if missing_tables:
+            print(f"⚠️ [WARNING] Tables manquantes pour les suivis mensuels: {missing_tables}")
+            return []
+        
+        try:
+            query = select(
+                SuiviMensuel,
+                Candidat.prenom,
+                Candidat.nom,
+                Programme.nom.label("programme_nom")
+            ).join(Inscription, Inscription.id == SuiviMensuel.inscription_id)\
+            .join(Candidat, Candidat.id == Inscription.candidat_id)\
+            .join(Programme, Programme.id == Inscription.programme_id)
+        except Exception as e:
+            print(f"⚠️ [WARNING] Erreur lors de la construction de la requête suivis mensuels: {e}")
+            return []
 
         if filters.programme_id:
             query = query.where(Inscription.programme_id == filters.programme_id)
@@ -52,7 +70,11 @@ class SuiviMensuelService:
 
         query = query.order_by(SuiviMensuel.mois.desc(), SuiviMensuel.cree_le.desc())
         
-        results = db.exec(query.offset(skip).limit(limit)).all()
+        try:
+            results = db.exec(query.offset(skip).limit(limit)).all()
+        except Exception as e:
+            print(f"⚠️ [WARNING] Erreur lors de l'exécution de la requête suivis mensuels: {e}")
+            return []
         
         return [
             SuiviMensuelWithCandidat(

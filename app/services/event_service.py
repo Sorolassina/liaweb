@@ -7,6 +7,7 @@ from app_lia_web.app.models.event import Event, InvitationEvent, PresenceEvent
 from app_lia_web.app.models.enums import TypeInvitation
 from app_lia_web.app.schemas.event_schemas import EventCreate, EventUpdate, InvitationEventCreate, PresenceEventCreate
 from app_lia_web.app.services.email_service import EmailService
+from app_lia_web.core.program_schema_integration import table_exists_anywhere
 
 class EventService:
     def __init__(self):
@@ -25,11 +26,20 @@ class EventService:
         return db.get(Event, event_id)
     
     def get_events(self, db: Session, skip: int = 0, limit: int = 100, programme_id: Optional[int] = None) -> List[Event]:
-        query = select(Event)
-        if programme_id:
-            query = query.where(Event.programme_id == programme_id)
-        query = query.offset(skip).limit(limit)
-        return db.exec(query).all()
+        # Vérifier l'existence de la table event
+        if not table_exists_anywhere("event", db):
+            print(f"⚠️ [WARNING] Table 'event' manquante")
+            return []
+        
+        try:
+            query = select(Event)
+            if programme_id:
+                query = query.where(Event.programme_id == programme_id)
+            query = query.offset(skip).limit(limit)
+            return db.exec(query).all()
+        except Exception as e:
+            print(f"⚠️ [WARNING] Erreur lors de la récupération des événements: {e}")
+            return []
     
     def update_event(self, event_id: int, event_data: EventUpdate, db: Session) -> Optional[Event]:
         event = db.get(Event, event_id)
@@ -54,7 +64,17 @@ class EventService:
         return True
     
     def get_event_stats(self, db: Session) -> Dict[str, int]:
-        events = db.exec(select(Event)).all()
+        # Vérifier l'existence de la table event
+        if not table_exists_anywhere("event", db):
+            print(f"⚠️ [WARNING] Table 'event' manquante pour les statistiques")
+            return {"total": 0, "actifs": 0, "programmes": 0}
+        
+        try:
+            events = db.exec(select(Event)).all()
+        except Exception as e:
+            print(f"⚠️ [WARNING] Erreur lors de la récupération des statistiques événements: {e}")
+            return {"total": 0, "actifs": 0, "programmes": 0}
+        
         return {
             'total_events': len(events),
             'events_planifies': len([e for e in events if e.statut == 'planifie']),

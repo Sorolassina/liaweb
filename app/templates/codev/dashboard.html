@@ -90,7 +90,7 @@
         </p>
         </div>
         <div class="toolbar">
-        <a href="{{ url_for('codev_cycles_creer') }}" class="submenu-item">
+        <a href="{{ url_for('codev_cycles_create_form') }}" class="submenu-item">
             <div class="icon"><i class="fas fa-users"></i></div><div>cycle</div>
         </a>
         
@@ -146,7 +146,7 @@
               <div>
                 <h6 class="mb-0" style="font-size: 0.9rem;">{{ cycle.nom }}</h6>
                 <small class="text-muted" style="font-size: 0.7rem;">
-                  {{ cycle.date_debut.strftime('%d/%m') }} - {{ cycle.date_fin.strftime('%d/%m') }}
+                  {{ cycle.date_debut | format_date_short }} - {{ cycle.date_fin | format_date_short }}
                 </small>
               </div>
               <div class="text-end">
@@ -256,7 +256,7 @@
         <div class="card-body">
           <div class="row">
             <div class="col-md-3">
-              <a href="{{ url_for('codev_cycles_creer') }}" class="submenu-item">
+              <a href="{{ url_for('codev_cycles_create_form') }}" class="submenu-item">
                 <i class="fa fa-plus me-2"></i> Cycle
               </a>
             </div>

@@ -15,13 +15,16 @@ from fastapi import Request, Depends
 from typing import Optional
 #from app.core.security import verify_token, get_password_hash,_extract_token_from_request, _credentials_exception, _forbidden_exception
 
-# Importer tous les modèles pour que SQLModel.metadata.create_all() fonctionne
+# Importer SEULEMENT les modèles qui doivent rester dans le schéma public
 from app_lia_web.app.models.base import (
-    User, Programme, Promotion, Candidat, Entreprise,
-    Preinscription, Document, Eligibilite, Inscription, Jury,
-    MembreJury, DecisionJuryTable, EtapePipeline, AvancementEtape,
-    ActionHandicap, PasswordRecoveryCode
+    User, Programme, Partenaire, Groupe, PasswordRecoveryCode, ProgrammeUtilisateur, Promotion
 )
+from app_lia_web.app.models.activity import ActivityLog
+# Les autres modèles seront créés dans les schémas par programme
+# from app_lia_web.app.models.preinscription import Preinscription, Eligibilite
+# from app_lia_web.app.models.inscription import Inscription
+# from app_lia_web.app.models.jury import Jury, MembreJury, DecisionJuryTable
+# from app_lia_web.app.models.rendez_vous import RendezVous, EmargementRDV
 
 from sqlmodel import select
 from app_lia_web.core.config import settings
@@ -50,13 +53,26 @@ engine = create_engine(
 print("✅",settings.DATABASE_URL)
 
 def create_db_and_tables() -> None:
-    """Crée les tables de la base de données avec gestion d'erreur."""
+    """Crée SEULEMENT les tables du schéma public (système)."""
     try:
-        # Essayer de créer les tables
-        SQLModel.metadata.create_all(engine)
-        logger.info(f"✅ Tables créées avec succès")
+        # Créer seulement les tables qui doivent rester dans le schéma public
+        public_models = [
+            User, Programme, Partenaire, Groupe, PasswordRecoveryCode,
+            ProgrammeUtilisateur, Promotion, ActivityLog
+        ]
+        
+        # Créer les métadonnées pour les tables publiques seulement
+        from sqlmodel import MetaData
+        public_metadata = MetaData()
+        
+        # Ajouter les tables publiques aux métadonnées
+        for model in public_models:
+            if hasattr(model, '__table__'):
+                public_metadata.create_all(bind=engine, tables=[model.__table__])
+        
+        logger.info(f"✅ Tables publiques (système) créées avec succès")
     except Exception as e:
-        logger.error(f"❌ Erreur lors de la création des tables: {e}")
+        logger.error(f"❌ Erreur lors de la création des tables publiques: {e}")
         logger.info("💡 Merci de que votre base de données soit configurée correctement...")
         
         

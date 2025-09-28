@@ -4,7 +4,7 @@ Service de gestion des jurys
 from typing import List
 from sqlmodel import Session, select
 import logging
-from app_lia_web.app.models.base import Jury, MembreJury
+from app_lia_web.app.models.jury import Jury, MembreJury
 from app_lia_web.app.schemas import JuryCreate
 
 logger = logging.getLogger(__name__)

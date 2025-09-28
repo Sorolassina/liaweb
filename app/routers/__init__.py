@@ -8,8 +8,8 @@ from .auth import router as auth_router
 # Routers de gestion des données
 from .programmes import router as programmes_router
 from .candidats import router as candidats_router
-from .ACD.preinscriptions import router as preinscriptions_router
-# from .inscriptions import router as inscriptions_router  # Supprimé car doublon avec ACD_inscriptions_router
+from .preinscriptions import router as preinscriptions_router
+from .inscriptions import router as inscriptions_router
 from .documents import router as documents_router
 from .jury import router as jury_router
 
@@ -18,17 +18,10 @@ from .dashboard import router as dashboard_router
 from .pipelines import router as pipelines_router
 from .pages import router as pages_router
 from .accueil import router as accueil_router
-from .ACD.ACD import router as ACD_router
-from .ACD.preinscriptions import router as ACD_preinscriptions_router
-from .inscriptions import router as inscriptions_router
-from .ACD.admin import router as ACD_admin_router
-from .ACD.jury_decisions import router as ACD_jury_decisions_router
-from .ACD.route_qpv import router as ACD_qpv_router
-from .ACD.route_siret_pappers import router as ACD_siret_router
+
+# Routers spécialisés
+from .admin import router as admin_router
 from .rendez_vous import router as rendez_vous_router
-from .video_router import router as video_router
-from .emargement_router import router as emargement_router
-from .candidat_email_update import router as candidat_email_router
 from .password_recovery import router as password_recovery_router
 from .seminaire import router as seminaire_router
 from .event import router as event_router
@@ -36,6 +29,7 @@ from .codev import router as codev_router
 from .elearning import router as elearning_router
 from .suivi_mensuel import router as suivi_mensuel_router
 from .admin_schemas import router as admin_schemas_router
+from .directeur_technique import router as directeur_technique_router
 
 # Configuration des routers avec préfixes et tags
 router_configs = [
@@ -43,30 +37,22 @@ router_configs = [
     (auth_router, "/auth", ["authentification"]),
     (pages_router, "/pages", ["pages"]),
     (accueil_router,"/accueil",  ["accueil"]),
-    (ACD_router,"/ACD",  ["ACD"]),
-    (ACD_preinscriptions_router, "/ACD", ["ACD_preinscriptions"]),
     (inscriptions_router, "/inscriptions", ["inscriptions"]),
-    (ACD_admin_router, "/admin", ["Admin"]),
-    (ACD_jury_decisions_router, "/ACD", ["ACD_jury_decisions"]),
-    (ACD_qpv_router, "/ACD", ["ACD_qpv"]),
-    (ACD_siret_router, "/ACD", ["ACD_siret"]),
-    (rendez_vous_router, "", ["rendez_vous"]),
-    (video_router, "", ["video_rdv"]),
-    (candidat_email_router, "", ["candidat_email"]),
-    (password_recovery_router, "", ["password_recovery"]),
+    (admin_router, "/admin", ["admin"]),
+    (rendez_vous_router, "/rendez_vous", ["rendez_vous"]),
+    (password_recovery_router, "/password_recovery", ["password_recovery"]),
     (seminaire_router, "/seminaires", ["seminaires"]),
     (event_router, "/events", ["events"]),
     (codev_router, "/codev", ["codev"]),
     (elearning_router, "/elearning", ["e-learning"]),
     (suivi_mensuel_router, "/suivi-mensuel", ["suivi_mensuel"]),
-    (admin_schemas_router, "/admin", ["admin_schemas"]),
-
+    (admin_schemas_router, "/admin/schemas", ["admin_schemas"]),
+    (directeur_technique_router, "/directeur-technique", ["directeur_technique"]),
     
     # Gestion des données principales
     (programmes_router, "/programmes", ["programmes"]),
     (candidats_router, "/candidats", ["candidats"]),
     (preinscriptions_router, "/preinscriptions", ["preinscriptions"]),
-    # (inscriptions_router, "/inscriptions", ["inscriptions"]),  # Supprimé car doublon avec ACD_inscriptions_router
     (documents_router, "/documents", ["documents"]),
     (jury_router, "/jury", ["jury"]),
     
@@ -74,30 +60,23 @@ router_configs = [
     (dashboard_router, "/dashboard", ["dashboard"]),
     (pipelines_router, "/pipelines", ["pipelines"]),
     
-    # Routers spéciaux (sans préfixe)
-    (video_router, "", ["video"]),
-    (emargement_router, "", ["emargement"]),
-    (password_recovery_router, "", ["password_recovery"]),
+    # Routers spéciaux (fusionnés dans rendez_vous_router)
 ]
 
 # Export des routers individuels pour utilisation spécifique
 __all__ = [
     "auth_router",
-    "web_router", 
     "accueil_router",
     "programmes_router",
     "candidats_router",
     "preinscriptions_router",
-    "inscriptions_router",  # Supprimé car doublon avec ACD_inscriptions_router 
+    "inscriptions_router",
     "documents_router",
     "jury_router",
     "dashboard_router",
     "pipelines_router",
-    "ACD_qpv_router",
-    "ACD_siret_router",
+    "admin_router",
     "rendez_vous_router",
-    "video_router",
-    "emargement_router",
     "password_recovery_router",
     "seminaire_router",
     "event_router",
@@ -105,5 +84,6 @@ __all__ = [
     "elearning_router",
     "suivi_mensuel_router",
     "admin_schemas_router",
+    "directeur_technique_router",
     "router_configs",
 ]

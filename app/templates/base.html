@@ -16,7 +16,7 @@
   <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.2/css/all.min.css" rel="stylesheet"/>
 
   <!-- CSS consolidé -->
-  <link href="{{ url_for('static', path='css/styles.css') }}?v={{ datetime.now().strftime('%Y%m%d%H%M') }}" rel="stylesheet"/>
+  <link href="{{ url_for('static', path='css/styles.css') }}?v={{ now_formatted() }}" rel="stylesheet"/>
 
   <!-- Variables dynamiques depuis le backend -->
   <style>
@@ -39,7 +39,7 @@
       <button class="icon-button" title="Réduire / Étendre" onclick="toggleSidebar()">
         <i class="fas fa-bars"></i>
       </button>
-      <img  class="avatar" src="{% if utilisateur.photo_profil %}{{ utilisateur.photo_profil }}{% else %}/static/images/utilisateur.png{% endif %}" alt="Logo" style="width:40px; height:40px;">
+      <img  class="avatar" src="{{ get_user_photo_url(utilisateur) }}" alt="Logo" style="width:40px; height:40px;">
       <div class="username">{{ utilisateur.nom_complet }}</div>
       <div class="user-function">{{ utilisateur.role | title }}</div>
       <div style="font-size:16px; color:var(--secondary-color); font-weight:700;">LIA</div>
@@ -48,7 +48,7 @@
     <!-- Réduit : top burger + avatar (optionnel) -->
     <div class="top-icons">
       <button class="icon-button" title="Menu" onclick="toggleSidebar()"><i class="fas fa-bars"></i></button>
-      <img  class="avatar" src="{% if utilisateur.photo_profil %}{{ utilisateur.photo_profil }}{% else %}/static/images/utilisateur.png{% endif %}" alt="Logo" style="width:40px; height:40px;">
+      <img  class="avatar" src="{{ get_user_photo_url(utilisateur) }}" alt="Logo" style="width:40px; height:40px;">
     </div>
 
     <!-- Menu étendu -->
@@ -56,6 +56,51 @@
       <a href="{{ url_for('accueil') }}?programme=public" class="submenu-item {% if '/accueil' in request.url.path %}active{% endif %}">
         <div class="icon"><i class="fas fa-home"></i></div><div>ACCUEIL</div>
       </a>
+      
+      <!-- Accordéon Vues par Rôle -->
+      <div id="acc-roles" class="accordion-menu">
+        <div class="accordion-header" onclick="toggleAccordion('acc-roles')">
+          <div class="icon">
+            <i class="fas fa-user-tag"></i>
+          </div>
+          <div>VUES</div>
+          <div class="accordion-arrow"><i class="fas fa-chevron-down"></i></div>
+        </div>
+        <div class="accordion-content">
+          <!-- Directeur technique -->
+          {% if utilisateur and utilisateur.role in ['administrateur', 'directeur_technique'] %}
+          <a href="{{ url_for('directeur_technique_dashboard') }}" class="submenu-item {% if '/directeur-technique' in request.url.path %}active{% endif %}"
+          style="margin:5px 5px 5px 5px;">
+            <div class="icon"><i class="fas fa-cogs"></i></div><div>Directeur tech.</div>
+          </a>
+          {% endif %}
+          
+          <!-- Responsable de programme -->
+          {% if utilisateur and utilisateur.role in ['administrateur', 'responsable_programme'] %}
+          <a href="{{ url_for('programme_dashboard') }}?programme=public" class="submenu-item {% if '/directeur-technique' in request.url.path %}active{% endif %}"
+          style="margin:5px 5px 5px 5px;">
+            <div class="icon"><i class="fas fa-clipboard-list"></i></div><div>Resp. programme</div>
+          </a>
+          {% endif %}
+          
+          <!-- Coach -->
+          {% if utilisateur and utilisateur.role in ['administrateur', 'conseiller', 'formateur'] %}
+          <a href="" class="submenu-item {% if '/rendez-vous' in request.url.path %}active{% endif %}"
+          style="margin:5px 5px 5px 5px;">
+            <div class="icon"><i class="fas fa-user-graduate"></i></div><div>Coach</div>
+          </a>
+          {% endif %}
+          
+          <!-- Candidat -->
+          {% if utilisateur and utilisateur.role in ['administrateur', 'candidat'] %}
+          <a href="" class="submenu-item {% if '/profil' in request.url.path %}active{% endif %}"
+          style="margin:5px 5px 5px 5px;">
+            <div class="icon"><i class="fas fa-user"></i></div><div>Candidat</div>
+          </a>
+          {% endif %}
+        </div>
+      </div>
+      
       <!-- Programmes dynamiques -->
       {% for programme in get_programmes() %}
       <div id="acc-{{ programme.code|lower }}" class="accordion-menu">
@@ -116,8 +161,7 @@
         </div>
       </div>
       {% endfor %}
-
-
+      
       <button class="more-button" onclick="toggleMoreMenu(event, this)">
         <i class="fas fa-ellipsis-h"></i><span>Plus</span>
       </button>
@@ -195,7 +239,7 @@
     <div class="username-title">{% if current_programme and current_programme != 'ACD' %}{{ current_programme }}{% else %}{{ get_current_programme_title(request) }}{% endif %}</div>
     <div class="user-info">
       <span class="user-role">{{ utilisateur.nom_complet | title }} ({{ utilisateur.role | title }})</span>
-      <div class="avatar" style="background-image: url('{% if utilisateur.photo_profil %}{{ utilisateur.photo_profil }}{% else %}/static/images/utilisateur.png{% endif %}');"></div>
+      <div class="avatar" style="background-image: url('{{ get_user_photo_url(utilisateur) }}');"></div>
       <button class="logout-button" onclick="window.location.href='/auth/logout'">Se déconnecter</button>
     </div>
   </div>
@@ -214,7 +258,7 @@
   <!-- ===== FOOTER GLOBAL ===== -->
   <div class="footer-neumorphism">
     <div class="d-flex justify-content-between align-items-center flex-wrap gap-2">
-      <span class="text-muted small">© {{ now().year }} {{ company_name }} - {{ company_description }}</span>
+      <span class="text-muted small">© {{ current_year() }} {{ company_name }} - {{ company_description }}</span>
       <span class="text-muted small">Version {{ app_version }}</span>
       <span class="text-muted small">Développé par {{ app_author }}</span>
     </div>
@@ -263,6 +307,8 @@
         const el = document.getElementById('acc-af'); if (el) el.classList.add('open');
       } else if (path.includes('/messages') || path.includes('/knowledge-base')){
         const el = document.getElementById('acc-com'); if (el) el.classList.add('open');
+      } else if (path.includes('/admin') || path.includes('/dashboard') || path.includes('/rendez-vous') || path.includes('/profil')){
+        const el = document.getElementById('acc-roles'); if (el) el.classList.add('open');
       }
 
       // Restaurer l'état du sidebar

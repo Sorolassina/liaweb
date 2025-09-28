@@ -16,7 +16,7 @@ class PathConfig:
         self.TEMPLATES_DIR = settings.TEMPLATE_DIR
         self.MEDIA_ROOT = settings.MEDIA_ROOT
         self.FICHIERS_DIR = settings.FICHIERS_DIR
-        self.UPLOAD_DIR = settings.UPLOAD_DIR  # Chemin complet vers uploads
+        self.UPLOAD_DIR = BASE_DIR / settings.UPLOAD_DIR  # Chemin complet vers uploads
         
         # === CHEMINS SPÉCIFIQUES ===
         self.STATIC_MAPS_DIR = self.STATIC_DIR / "maps"
@@ -47,8 +47,8 @@ class PathConfig:
                 "name": "static_files"
             },
             "media": {
-                "path": "/media",
-                "directory": str(self.MEDIA_ROOT),
+                "path": "/uploads",
+                "directory": str(self.UPLOAD_DIR),
                 "name": "media"
             }
         }

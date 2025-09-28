@@ -1,14 +1,23 @@
 """
 Router pour la gestion des jurys
 """
-from fastapi import APIRouter, Depends, HTTPException, status, Query
+from fastapi import APIRouter, Depends, HTTPException, status, Query, Form, Request
+from fastapi.responses import HTMLResponse, RedirectResponse
 from sqlmodel import Session, select
 from typing import List, Optional
 from datetime import datetime, timezone
 
 from app_lia_web.core.database import get_session
+from app_lia_web.core.middleware import get_shared_session
 from app_lia_web.core.security import get_current_user
-from app_lia_web.app.models.base import User, Jury, MembreJury, DecisionJuryTable, Programme, Inscription
+from app_lia_web.core.program_schema_integration import table_exists_anywhere
+import logging
+from app_lia_web.app.models.base import User, Programme, Candidat, Partenaire, ReorientationCandidat
+from app_lia_web.app.models.jury import DecisionJuryCandidat
+from app_lia_web.app.models.jury import Jury, MembreJury, DecisionJuryTable
+from app_lia_web.app.models.inscription import Inscription
+from app_lia_web.app.templates import templates
+from app_lia_web.core.config import settings
 from app_lia_web.app.models.enums import UserRole, DecisionJury
 from app_lia_web.app.schemas import (
     JuryCreate, JuryUpdate, JuryResponse,
@@ -19,10 +28,10 @@ from app_lia_web.app.services import JuryService
 router = APIRouter()
 
 
-@router.post("/jurys", response_model=JuryResponse)
+@router.post("/jurys", response_model=JuryResponse, name="create_jury")
 async def create_jury(
     jury_data: JuryCreate,
-    session: Session = Depends(get_session),
+    session: Session = Depends(get_shared_session),
     current_user: User = Depends(get_current_user)
 ):
     """Crée une nouvelle session de jury (responsable programme seulement)"""
@@ -45,11 +54,11 @@ async def create_jury(
     return JuryResponse.from_orm(jury)
 
 
-@router.get("/jurys", response_model=List[JuryResponse])
+@router.get("/jurys", response_model=List[JuryResponse], name="get_jurys")
 async def get_jurys(
     programme_id: Optional[int] = Query(None, description="Filtrer par programme"),
     statut: Optional[str] = Query(None, description="Filtrer par statut"),
-    session: Session = Depends(get_session),
+    session: Session = Depends(get_shared_session),
     current_user: User = Depends(get_current_user)
 ):
     """Récupère la liste des jurys"""
@@ -62,14 +71,195 @@ async def get_jurys(
     if statut:
         query = query.where(Jury.statut == statut)
     
-    jurys = session.exec(query.order_by(Jury.session_le.desc())).all()
-    return [JuryResponse.from_orm(jury) for jury in jurys]
+    if not table_exists_anywhere("jury", session):
+        return []
+    
+    try:
+        jurys = session.exec(query.order_by(Jury.session_le.desc())).all()
+        return [JuryResponse.from_orm(jury) for jury in jurys]
+    except Exception as e:
+        logging.warning(f"Erreur lors de la récupération des jurys: {e}")
+        return []
 
 
-@router.get("/jurys/{jury_id}", response_model=JuryResponse)
+# ============================================================================
+# ROUTES DÉCISIONS JURY (fusionnées depuis jury_decisions.py)
+# ============================================================================
+
+@router.get("/jury-decisions", name="jury_decisions_list", response_class=HTMLResponse)
+def jury_decisions_list(
+    request: Request,
+    session: Session = Depends(get_shared_session),
+    current_user=Depends(get_current_user),
+    jury_id: Optional[int] = Query(None),
+    decision: Optional[str] = Query(None),
+    q: Optional[str] = Query(None),
+):
+    """Liste des décisions du jury"""
+    try:
+        from app_lia_web.app.services import JuryDecisionService
+        
+        # Utiliser le service pour récupérer les décisions
+        decisions = JuryDecisionService.get_decisions_list(
+            session=session,
+            jury_id=jury_id,
+            decision=decision,
+            search_query=q
+        )
+        
+        # Récupérer les données de contexte
+        context_data = JuryDecisionService.get_decision_context_data(session)
+        
+        return templates.TemplateResponse(
+            "admin/jury_decisions.html",
+            {
+                "request": request,
+                "settings": settings,
+                "utilisateur": current_user,
+                "decisions": decisions,
+                "jurys": context_data["jurys"],
+                "partenaires": context_data["partenaires"],
+                "conseillers": context_data["conseillers"],
+                "current_jury_id": jury_id,
+                "current_decision": decision,
+                "q": q or "",
+                "decision_enum": DecisionJury,
+            },
+        )
+        
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Erreur lors de la récupération des décisions: {str(e)}")
+
+
+@router.post("/jury-decisions/create", name="create_jury_decision_web")
+def create_jury_decision_web(
+    request: Request,
+    candidat_id: int = Form(...),
+    jury_id: int = Form(...),
+    decision: str = Form(...),
+    commentaires: Optional[str] = Form(None),
+    conseiller_id: Optional[int] = Form(None),
+    groupe_codev: Optional[str] = Form(None),
+    promotion_id: Optional[int] = Form(None),
+    partenaire_id: Optional[int] = Form(None),
+    envoyer_mail_candidat: bool = Form(False),
+    envoyer_mail_conseiller: bool = Form(False),
+    envoyer_mail_partenaire: bool = Form(False),
+    session: Session = Depends(get_shared_session),
+    current_user=Depends(get_current_user),
+):
+    """Créer une décision du jury"""
+    try:
+        from app_lia_web.app.services import JuryDecisionService
+        
+        # Utiliser le service pour créer la décision
+        decision_obj = JuryDecisionService.create_decision(
+            session=session,
+            candidat_id=candidat_id,
+            jury_id=jury_id,
+            decision=decision,
+            commentaires=commentaires,
+            conseiller_id=conseiller_id,
+            groupe_codev=groupe_codev,
+            promotion_id=promotion_id,
+            partenaire_id=partenaire_id,
+            envoyer_mail_candidat=envoyer_mail_candidat,
+            envoyer_mail_conseiller=envoyer_mail_conseiller,
+            envoyer_mail_partenaire=envoyer_mail_partenaire,
+            current_user=current_user
+        )
+        
+        return RedirectResponse(
+            url=f"{request.url_for('jury_decisions_list')}?jury_id={jury_id}&success=decision_created", 
+            status_code=303
+        )
+        
+    except ValueError as e:
+        raise HTTPException(status_code=400, detail=str(e))
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Erreur lors de la création de la décision: {str(e)}")
+
+
+@router.post("/jury-decisions/{decision_id}/update", name="update_jury_decision_web")
+def update_jury_decision_web(
+    request: Request,
+    decision_id: int,
+    decision: str = Form(...),
+    commentaires: Optional[str] = Form(None),
+    conseiller_id: Optional[int] = Form(None),
+    groupe_codev: Optional[str] = Form(None),
+    promotion_id: Optional[int] = Form(None),
+    partenaire_id: Optional[int] = Form(None),
+    envoyer_mail_candidat: bool = Form(False),
+    envoyer_mail_conseiller: bool = Form(False),
+    envoyer_mail_partenaire: bool = Form(False),
+    session: Session = Depends(get_shared_session),
+    current_user=Depends(get_current_user),
+):
+    """Mettre à jour une décision du jury"""
+    try:
+        from app_lia_web.app.services import JuryDecisionService
+        
+        # Utiliser le service pour mettre à jour la décision
+        decision_obj = JuryDecisionService.update_decision(
+            session=session,
+            decision_id=decision_id,
+            decision=decision,
+            commentaires=commentaires,
+            conseiller_id=conseiller_id,
+            groupe_codev=groupe_codev,
+            promotion_id=promotion_id,
+            partenaire_id=partenaire_id,
+            envoyer_mail_candidat=envoyer_mail_candidat,
+            envoyer_mail_conseiller=envoyer_mail_conseiller,
+            envoyer_mail_partenaire=envoyer_mail_partenaire,
+            current_user=current_user
+        )
+        
+        return RedirectResponse(
+            url=f"{request.url_for('jury_decisions_list')}?jury_id={decision_obj.jury_id}&success=decision_updated", 
+            status_code=303
+        )
+        
+    except ValueError as e:
+        raise HTTPException(status_code=404, detail=str(e))
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Erreur lors de la mise à jour de la décision: {str(e)}")
+
+
+@router.post("/jury-decisions/{decision_id}/delete", name="delete_jury_decision_web")
+def delete_jury_decision_web(
+    request: Request,
+    decision_id: int,
+    session: Session = Depends(get_shared_session),
+    current_user=Depends(get_current_user),
+):
+    """Supprimer une décision du jury"""
+    try:
+        from app_lia_web.app.services import JuryDecisionService
+        
+        # Utiliser le service pour supprimer la décision
+        jury_id = JuryDecisionService.delete_decision(
+            session=session,
+            decision_id=decision_id,
+            current_user=current_user
+        )
+        
+        return RedirectResponse(
+            url=f"{request.url_for('jury_decisions_list')}?jury_id={jury_id}&success=decision_deleted", 
+            status_code=303
+        )
+        
+    except ValueError as e:
+        raise HTTPException(status_code=404, detail=str(e))
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Erreur lors de la suppression de la décision: {str(e)}")
+
+
+@router.get("/jurys/{jury_id}", response_model=JuryResponse, name="get_jury")
 async def get_jury(
     jury_id: int,
-    session: Session = Depends(get_session),
+    session: Session = Depends(get_shared_session),
     current_user: User = Depends(get_current_user)
 ):
     """Récupère un jury par ID"""
@@ -83,11 +273,11 @@ async def get_jury(
     return JuryResponse.from_orm(jury)
 
 
-@router.put("/jurys/{jury_id}", response_model=JuryResponse)
+@router.put("/jurys/{jury_id}", response_model=JuryResponse, name="update_jury")
 async def update_jury(
     jury_id: int,
     jury_data: JuryUpdate,
-    session: Session = Depends(get_session),
+    session: Session = Depends(get_shared_session),
     current_user: User = Depends(get_current_user)
 ):
     """Met à jour un jury"""
@@ -117,12 +307,12 @@ async def update_jury(
     return JuryResponse.from_orm(jury)
 
 
-@router.post("/jurys/{jury_id}/membres")
+@router.post("/jurys/{jury_id}/membres", name="add_jury_member")
 async def add_jury_member(
     jury_id: int,
     utilisateur_id: int,
     role: str = "membre",
-    session: Session = Depends(get_session),
+    session: Session = Depends(get_shared_session),
     current_user: User = Depends(get_current_user)
 ):
     """Ajoute un membre au jury"""
@@ -176,10 +366,10 @@ async def add_jury_member(
     }
 
 
-@router.get("/jurys/{jury_id}/membres")
+@router.get("/jurys/{jury_id}/membres", name="get_jury_members")
 async def get_jury_members(
     jury_id: int,
-    session: Session = Depends(get_session),
+    session: Session = Depends(get_shared_session),
     current_user: User = Depends(get_current_user)
 ):
     """Récupère les membres d'un jury"""
@@ -198,11 +388,11 @@ async def get_jury_members(
     return [{"id": m.id, "utilisateur_id": m.utilisateur_id, "role": m.role} for m in membres]
 
 
-@router.post("/jurys/{jury_id}/decisions")
+@router.post("/jurys/{jury_id}/decisions", name="create_jury_decision")
 async def create_jury_decision(
     jury_id: int,
     decision_data: DecisionJuryCreate,
-    session: Session = Depends(get_session),
+    session: Session = Depends(get_shared_session),
     current_user: User = Depends(get_current_user)
 ):
     """Crée une décision de jury"""
@@ -270,10 +460,10 @@ async def create_jury_decision(
     }
 
 
-@router.get("/jurys/{jury_id}/decisions")
+@router.get("/jurys/{jury_id}/decisions", name="get_jury_decisions")
 async def get_jury_decisions(
     jury_id: int,
-    session: Session = Depends(get_session),
+    session: Session = Depends(get_shared_session),
     current_user: User = Depends(get_current_user)
 ):
     """Récupère les décisions d'un jury"""
@@ -292,10 +482,10 @@ async def get_jury_decisions(
     return [DecisionJuryResponse.from_orm(d).dict() for d in decisions]
 
 
-@router.get("/programmes/{programme_id}/jurys")
+@router.get("/programmes/{programme_id}/jurys", name="get_programme_jurys")
 async def get_programme_jurys(
     programme_id: int,
-    session: Session = Depends(get_session),
+    session: Session = Depends(get_shared_session),
     current_user: User = Depends(get_current_user)
 ):
     """Récupère les jurys d'un programme"""

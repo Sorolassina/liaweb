@@ -8,7 +8,10 @@ from sqlmodel import Session, select, and_, or_, func
 from datetime import datetime, timezone, date, timedelta
 
 from app_lia_web.core.database import get_session
+from app_lia_web.core.middleware import get_shared_session
 from app_lia_web.core.security import get_current_user
+from app_lia_web.core.program_schema_integration import safe_count_query, table_exists_anywhere
+import logging
 from app_lia_web.app.models.base import User, Programme, Promotion, Groupe
 from app_lia_web.app.models.codev import (
     CycleCodev, GroupeCodev, SeanceCodev, PresentationCodev, 
@@ -48,7 +51,7 @@ def codev_access_required(current_user: User):
 @router.get("/", name="codev_dashboard", response_class=HTMLResponse)
 async def codev_dashboard(
     request: Request,
-    session: Session = Depends(get_session),
+    session: Session = Depends(get_shared_session),
     current_user: User = Depends(get_current_user),
     programme_id: Optional[int] = None
 ):
@@ -56,22 +59,34 @@ async def codev_dashboard(
     codev_access_required(current_user)
     
     # Récupérer les cycles actifs (filtrés par programme si spécifié)
-    query = select(CycleCodev).where(
-        CycleCodev.statut.in_([StatutCycleCodev.PLANIFIE.value, StatutCycleCodev.EN_COURS.value])
-    )
-    
-    if programme_id:
-        query = query.where(CycleCodev.programme_id == programme_id)
-    
-    cycles_actifs = session.exec(
-        query.order_by(CycleCodev.date_debut.desc())
-    ).all()
+    try:
+        query = select(CycleCodev).where(
+            CycleCodev.statut.in_([StatutCycleCodev.PLANIFIE.value, StatutCycleCodev.EN_COURS.value])
+        )
+        
+        if programme_id:
+            query = query.where(CycleCodev.programme_id == programme_id)
+        
+        cycles_actifs = session.exec(
+            query.order_by(CycleCodev.date_debut.desc())
+        ).all()
+    except Exception as e:
+        print(f"⚠️ [WARNING] Erreur lors de la récupération des cycles CoDev: {e}")
+        cycles_actifs = []
     
     # Récupérer les prochaines séances (filtrées par programme si spécifié)
-    prochaines_seances = CodevService.get_prochaines_seances(session, limit=5, programme_id=programme_id)
+    try:
+        prochaines_seances = CodevService.get_prochaines_seances(session, limit=5, programme_id=programme_id)
+    except Exception as e:
+        print(f"⚠️ [WARNING] Erreur lors de la récupération des prochaines séances CoDev: {e}")
+        prochaines_seances = []
     
     # Récupérer les engagements en cours (filtrés par programme si spécifié)
-    engagements_en_cours = CodevService.get_engagements_en_cours(session, programme_id=programme_id)
+    try:
+        engagements_en_cours = CodevService.get_engagements_en_cours(session, programme_id=programme_id)
+    except Exception as e:
+        print(f"⚠️ [WARNING] Erreur lors de la récupération des engagements CoDev: {e}")
+        engagements_en_cours = []
     
     return templates.TemplateResponse(
         "codev/dashboard.html",
@@ -85,10 +100,10 @@ async def codev_dashboard(
         }
     )
 
-@router.get("/cycles", response_class=HTMLResponse)
+@router.get("/cycles", response_class=HTMLResponse, name="codev_cycles")
 async def codev_cycles(
     request: Request,
-    session: Session = Depends(get_session),
+    session: Session = Depends(get_shared_session),
     current_user: User = Depends(get_current_user),
     q: Optional[str] = Query(None)
 ):
@@ -118,10 +133,10 @@ async def codev_cycles(
         }
     )
 
-@router.get("/cycles/creer", response_class=HTMLResponse)
+@router.get("/cycles/creer", response_class=HTMLResponse, name="codev_cycles_create_form")
 async def codev_cycles_creer(
     request: Request,
-    session: Session = Depends(get_session),
+    session: Session = Depends(get_shared_session),
     current_user: User = Depends(get_current_user)
 ):
     """Formulaire de création d'un cycle"""
@@ -155,7 +170,7 @@ async def codev_cycles_creer(
         }
     )
 
-@router.post("/cycles/creer")
+@router.post("/cycles/creer", name="codev_cycles_create")
 async def codev_cycles_creer_post(
     request: Request,
     nom: str = Form(...),
@@ -168,7 +183,7 @@ async def codev_cycles_creer_post(
     duree_seance: int = Form(180),
     animateur_principal_id: Optional[int] = Form(None),
     objectifs_cycle: Optional[str] = Form(None),
-    session: Session = Depends(get_session),
+    session: Session = Depends(get_shared_session),
     current_user: User = Depends(get_current_user)
 ):
     """Création d'un cycle de codéveloppement"""
@@ -202,11 +217,11 @@ async def codev_cycles_creer_post(
             status_code=303
         )
 
-@router.get("/cycles/{cycle_id}", response_class=HTMLResponse)
+@router.get("/cycles/{cycle_id}", response_class=HTMLResponse, name="codev_cycle_detail")
 async def codev_cycle_detail(
     cycle_id: int,
     request: Request,
-    session: Session = Depends(get_session),
+    session: Session = Depends(get_shared_session),
     current_user: User = Depends(get_current_user)
 ):
     """Détail d'un cycle de codéveloppement"""
@@ -236,10 +251,10 @@ async def codev_cycle_detail(
         }
     )
 
-@router.get("/groupes", response_class=HTMLResponse)
+@router.get("/groupes", response_class=HTMLResponse, name="codev_groupes")
 async def codev_groupes(
     request: Request,
-    session: Session = Depends(get_session),
+    session: Session = Depends(get_shared_session),
     current_user: User = Depends(get_current_user),
     cycle_id: Optional[int] = Query(None)
 ):
@@ -267,10 +282,10 @@ async def codev_groupes(
         }
     )
 
-@router.get("/groupes/creer", response_class=HTMLResponse)
+@router.get("/groupes/creer", response_class=HTMLResponse, name="codev_groupes_create_form")
 async def codev_groupes_creer(
     request: Request,
-    session: Session = Depends(get_session),
+    session: Session = Depends(get_shared_session),
     current_user: User = Depends(get_current_user),
     cycle_id: Optional[int] = Query(None)
 ):
@@ -307,7 +322,7 @@ async def codev_groupes_creer(
         }
     )
 
-@router.post("/groupes/creer")
+@router.post("/groupes/creer", name="codev_groupes_create")
 async def codev_groupes_creer_post(
     request: Request,
     cycle_id: int = Form(...),
@@ -315,7 +330,7 @@ async def codev_groupes_creer_post(
     nom_groupe: str = Form(...),
     animateur_id: Optional[int] = Form(None),
     capacite_max: int = Form(12),
-    session: Session = Depends(get_session),
+    session: Session = Depends(get_shared_session),
     current_user: User = Depends(get_current_user)
 ):
     """Création d'un groupe de codéveloppement"""
@@ -343,27 +358,47 @@ async def codev_groupes_creer_post(
             status_code=303
         )
 
-@router.get("/statistiques", response_class=HTMLResponse)
+@router.get("/statistiques", response_class=HTMLResponse, name="codev_statistiques")
 async def codev_statistiques(
     request: Request,
-    session: Session = Depends(get_session),
+    session: Session = Depends(get_shared_session),
     current_user: User = Depends(get_current_user)
 ):
     """Statistiques du système de codéveloppement"""
     codev_access_required(current_user)
     
-    # Statistiques générales
-    nb_cycles = session.exec(select(func.count()).select_from(CycleCodev)).one()
-    nb_groupes = session.exec(select(func.count()).select_from(GroupeCodev)).one()
-    nb_membres = session.exec(select(func.count()).select_from(MembreGroupeCodev)).one()
-    nb_seances = session.exec(select(func.count()).select_from(SeanceCodev)).one()
-    nb_presentations = session.exec(select(func.count()).select_from(PresentationCodev)).one()
+    # Statistiques générales - Version sécurisée
+    nb_cycles = 0
+    if table_exists_anywhere("cycle_codev", session):
+        nb_cycles = safe_count_query(session, CycleCodev)
     
-    # Cycles par statut
-    cycles_par_statut = session.exec(
-        select(CycleCodev.statut, func.count())
-        .group_by(CycleCodev.statut)
-    ).all()
+    nb_groupes = 0
+    if table_exists_anywhere("groupe_codev", session):
+        nb_groupes = safe_count_query(session, GroupeCodev)
+    
+    nb_membres = 0
+    if table_exists_anywhere("membre_groupe_codev", session):
+        nb_membres = safe_count_query(session, MembreGroupeCodev)
+    
+    nb_seances = 0
+    if table_exists_anywhere("seance_codev", session):
+        nb_seances = safe_count_query(session, SeanceCodev)
+    
+    nb_presentations = 0
+    if table_exists_anywhere("presentation_codev", session):
+        nb_presentations = safe_count_query(session, PresentationCodev)
+    
+    # Cycles par statut - Version sécurisée
+    cycles_par_statut = []
+    if table_exists_anywhere("cycle_codev", session):
+        try:
+            cycles_par_statut = session.exec(
+                select(CycleCodev.statut, func.count())
+                .group_by(CycleCodev.statut)
+            ).all()
+        except Exception as e:
+            logging.warning(f"Erreur lors de la récupération des cycles par statut: {e}")
+            cycles_par_statut = []
     
     # Groupes par statut
     groupes_par_statut = session.exec(
@@ -420,10 +455,10 @@ async def codev_statistiques(
         }
     )
 
-@router.get("/seances", response_class=HTMLResponse)
+@router.get("/seances", response_class=HTMLResponse, name="codev_seances")
 async def codev_seances(
     request: Request,
-    session: Session = Depends(get_session),
+    session: Session = Depends(get_shared_session),
     current_user: User = Depends(get_current_user),
     groupe_id: Optional[int] = Query(None),
     statut: Optional[str] = Query(None)
@@ -455,10 +490,10 @@ async def codev_seances(
         }
     )
 
-@router.get("/seances/creer", response_class=HTMLResponse)
+@router.get("/seances/creer", response_class=HTMLResponse, name="codev_seance_create_form")
 async def codev_seance_creer_form(
     request: Request,
-    session: Session = Depends(get_session),
+    session: Session = Depends(get_shared_session),
     current_user: User = Depends(get_current_user)
 ):
     """Formulaire de création d'une séance"""
@@ -488,10 +523,10 @@ async def codev_seance_creer_form(
         }
     )
 
-@router.post("/seances/creer")
+@router.post("/seances/creer", name="codev_seance_create")
 async def codev_seance_creer(
     request: Request,
-    session: Session = Depends(get_session),
+    session: Session = Depends(get_shared_session),
     current_user: User = Depends(get_current_user),
     groupe_id: int = Form(...),
     numero_seance: int = Form(...),
@@ -534,11 +569,11 @@ async def codev_seance_creer(
             status_code=303
         )
 
-@router.get("/presentations/{presentation_id}", response_class=HTMLResponse)
+@router.get("/presentations/{presentation_id}", response_class=HTMLResponse, name="codev_presentation_detail")
 async def codev_presentation_detail(
     presentation_id: int,
     request: Request,
-    session: Session = Depends(get_session),
+    session: Session = Depends(get_shared_session),
     current_user: User = Depends(get_current_user)
 ):
     """Détail d'une présentation de codéveloppement"""
@@ -568,9 +603,9 @@ async def codev_presentation_detail(
 
 # ===== ROUTES API =====
 
-@router.get("/api/codev/cycles", response_model=List[CycleCodevResponse])
+@router.get("/api/codev/cycles", response_model=List[CycleCodevResponse], name="api_codev_cycles")
 async def api_cycles(
-    session: Session = Depends(get_session),
+    session: Session = Depends(get_shared_session),
     current_user: User = Depends(get_current_user),
     statut: Optional[StatutCycleCodev] = Query(None)
 ):
@@ -584,10 +619,10 @@ async def api_cycles(
     cycles = session.exec(stmt.order_by(CycleCodev.date_debut.desc())).all()
     return cycles
 
-@router.post("/api/codev/cycles", response_model=CycleCodevResponse)
+@router.post("/api/codev/cycles", response_model=CycleCodevResponse, name="api_codev_create_cycle")
 async def api_create_cycle(
     cycle_data: CycleCodevCreate,
-    session: Session = Depends(get_session),
+    session: Session = Depends(get_shared_session),
     current_user: User = Depends(get_current_user)
 ):
     """API: Création d'un cycle de codéveloppement"""
@@ -606,10 +641,10 @@ async def api_create_cycle(
     
     return cycle
 
-@router.get("/api/codev/cycles/{cycle_id}/statistiques", response_model=StatistiquesCycleCodev)
+@router.get("/api/codev/cycles/{cycle_id}/statistiques", response_model=StatistiquesCycleCodev, name="api_codev_cycle_stats")
 async def api_cycle_stats(
     cycle_id: int,
-    session: Session = Depends(get_session),
+    session: Session = Depends(get_shared_session),
     current_user: User = Depends(get_current_user)
 ):
     """API: Statistiques d'un cycle de codéveloppement"""
@@ -618,11 +653,11 @@ async def api_cycle_stats(
     stats = CodevService.get_statistiques_cycle(session, cycle_id)
     return stats
 
-@router.post("/api/codev/seances/{seance_id}/planifier")
+@router.post("/api/codev/seances/{seance_id}/planifier", name="api_codev_planifier_seance")
 async def api_planifier_seance(
     seance_id: int,
     planification: PlanificationSeance,
-    session: Session = Depends(get_session),
+    session: Session = Depends(get_shared_session),
     current_user: User = Depends(get_current_user)
 ):
     """API: Planifier les présentations d'une séance"""
@@ -637,11 +672,11 @@ async def api_planifier_seance(
     
     return {"message": f"{len(presentations)} présentations planifiées"}
 
-@router.post("/api/codev/presentations/{presentation_id}/engagement")
+@router.post("/api/codev/presentations/{presentation_id}/engagement", name="api_codev_prendre_engagement")
 async def api_prendre_engagement(
     presentation_id: int,
     engagement: EngagementCandidat,
-    session: Session = Depends(get_session),
+    session: Session = Depends(get_shared_session),
     current_user: User = Depends(get_current_user)
 ):
     """API: Prendre un engagement pour une présentation"""
@@ -656,11 +691,11 @@ async def api_prendre_engagement(
     
     return {"message": "Engagement pris avec succès"}
 
-@router.post("/api/codev/presentations/{presentation_id}/retour")
+@router.post("/api/codev/presentations/{presentation_id}/retour", name="api_codev_ajouter_retour")
 async def api_ajouter_retour(
     presentation_id: int,
     retour: RetourExperience,
-    session: Session = Depends(get_session),
+    session: Session = Depends(get_shared_session),
     current_user: User = Depends(get_current_user)
 ):
     """API: Ajouter un retour d'expérience"""

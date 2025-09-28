@@ -5,8 +5,9 @@ from typing import List
 from sqlmodel import Session, select
 from datetime import datetime,timezone
 import logging
-from app_lia_web.app.models.base import Preinscription, Programme, Candidat, Entreprise, Eligibilite
-from app_lia_web.app.schemas import PreinscriptionCreate
+from app_lia_web.app.models.base import Programme, Candidat, Entreprise
+from app_lia_web.app.models.preinscription import Preinscription, Eligibilite
+# from app_lia_web.app.schemas import PreinscriptionCreate  # Non utilisé
 from app_lia_web.core.utils import EligibilityUtils
 
 logger = logging.getLogger(__name__)
@@ -16,9 +17,9 @@ class PreinscriptionService:
     """Service de gestion des préinscriptions"""
     
     @staticmethod
-    def create_preinscription(session: Session, preinscription_data: PreinscriptionCreate) -> Preinscription:
+    def create_preinscription(session: Session, preinscription_data: dict) -> Preinscription:
         """Crée une nouvelle préinscription"""
-        preinscription = Preinscription(**preinscription_data.dict())
+        preinscription = Preinscription(**preinscription_data)
         session.add(preinscription)
         session.commit()
         session.refresh(preinscription)

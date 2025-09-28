@@ -3,9 +3,15 @@ from sqlmodel import SQLModel, Field, Relationship
 from typing import Optional, List
 from datetime import date, datetime, timezone
 from .password_recovery import PasswordRecoveryCode
+from .preinscription import Preinscription, Eligibilite
+from .inscription import Inscription
+from .jury import Jury, MembreJury, DecisionJuryTable, DecisionJuryCandidat
+from .rendez_vous import RendezVous, EmargementRDV
 from .enums import *
 
 class User(SQLModel, table=True):
+    __tablename__ = "user"
+    
     """Utilisateur du système"""
     id: Optional[int] = Field(default=None, primary_key=True)
     email: str = Field(unique=True, index=True)
@@ -33,6 +39,8 @@ class User(SQLModel, table=True):
     documents_deposes: List["Document"] = Relationship(back_populates="depose_par")
 
 class Programme(SQLModel, table=True):
+    __tablename__ = "programme"
+    
     """Programme de coaching (ACD, ACI, ACT)"""
     id: Optional[int] = Field(default=None, primary_key=True)
     code: str = Field(unique=True, index=True)  # "ACD", "ACI", "ACT"
@@ -62,8 +70,11 @@ class Programme(SQLModel, table=True):
     etapes_pipeline: List["EtapePipeline"] = Relationship(back_populates="programme")
     seminaires: List["Seminaire"] = Relationship(back_populates="programme")
     events: List["Event"] = Relationship(back_populates="programme")
+    sessions_programme: List["SessionProgramme"] = Relationship(back_populates="programme")
 
 class ProgrammeUtilisateur(SQLModel, table=True):
+    __tablename__ = "programme_utilisateur"
+    
     """Affectation d'un utilisateur à un programme avec un rôle spécifique"""
     id: Optional[int] = Field(default=None, primary_key=True)
     programme_id: int = Field(foreign_key="programme.id")
@@ -75,10 +86,12 @@ class ProgrammeUtilisateur(SQLModel, table=True):
     cree_le: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
     
     # Relations
-    programme: Programme = Relationship(back_populates="utilisateurs")
-    utilisateur: User = Relationship(back_populates="programmes_utilisateurs")
+    programme: "Programme" = Relationship(back_populates="utilisateurs")
+    utilisateur: "User" = Relationship(back_populates="programmes_utilisateurs")
 
 class Promotion(SQLModel, table=True):
+    __tablename__ = "promotion"
+    
     """Promotion d'un programme"""
     id: Optional[int] = Field(default=None, primary_key=True)
     programme_id: int = Field(foreign_key="programme.id")
@@ -89,10 +102,12 @@ class Promotion(SQLModel, table=True):
     actif: bool = True
     
     # Relations
-    programme: Programme = Relationship(back_populates="promotions")
+    programme: "Programme" = Relationship(back_populates="promotions")
     inscriptions: List["Inscription"] = Relationship(back_populates="promotion")
 
 class Candidat(SQLModel, table=True):
+    __tablename__ = "candidat"
+    
     """Candidat au programme"""
     id: Optional[int] = Field(default=None, primary_key=True)
     civilite: Optional[str] = None
@@ -120,8 +135,12 @@ class Candidat(SQLModel, table=True):
     preinscriptions: List["Preinscription"] = Relationship(back_populates="candidat")
     inscriptions: List["Inscription"] = Relationship(back_populates="candidat")
     documents: List["Document"] = Relationship(back_populates="candidat")
+    emargements_rdv: List["EmargementRDV"] = Relationship(back_populates="candidat")
+    reorientations: List["ReorientationCandidat"] = Relationship(back_populates="candidat")
 
 class Entreprise(SQLModel, table=True):
+    __tablename__ = "entreprise"
+    
     """Entreprise du candidat"""
     id: Optional[int] = Field(default=None, primary_key=True)
     candidat_id: int = Field(foreign_key="candidat.id")
@@ -145,24 +164,13 @@ class Entreprise(SQLModel, table=True):
     lng: Optional[float] = Field(default=None, index=True)
     
     # Relations
-    candidat: Candidat = Relationship(back_populates="entreprise")
+    candidat: "Candidat" = Relationship(back_populates="entreprise")
 
-class Preinscription(SQLModel, table=True):
-    """Préinscription d'un candidat"""
-    id: Optional[int] = Field(default=None, primary_key=True)
-    programme_id: int = Field(foreign_key="programme.id")
-    candidat_id: int = Field(foreign_key="candidat.id")
-    source: Optional[str] = None  # "formulaire", "import", etc.
-    donnees_brutes_json: Optional[str] = None  # données du formulaire
-    statut: StatutDossier = StatutDossier.SOUMIS
-    cree_le: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
-    
-    # Relations
-    programme: Programme = Relationship(back_populates="preinscriptions")
-    candidat: Candidat = Relationship(back_populates="preinscriptions")
-    eligibilite: Optional["Eligibilite"] = Relationship(back_populates="preinscription")
+# Preinscription et Eligibilite déplacés vers preinscription.py
 
 class Document(SQLModel, table=True):
+    __tablename__ = "document"
+    
     """Document joint par un candidat"""
     id: Optional[int] = Field(default=None, primary_key=True)
     candidat_id: int = Field(foreign_key="candidat.id")
@@ -176,95 +184,14 @@ class Document(SQLModel, table=True):
     depose_le: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
     
     # Relations
-    candidat: Candidat = Relationship(back_populates="documents")
-    depose_par: Optional[User] = Relationship(back_populates="documents_deposes")
+    candidat: "Candidat" = Relationship(back_populates="documents")
+    depose_par: Optional["User"] = Relationship(back_populates="documents_deposes")
 
-class Eligibilite(SQLModel, table=True):
-    """Calcul d'éligibilité d'une préinscription"""
-    id: Optional[int] = Field(default=None, primary_key=True)
-    preinscription_id: int = Field(foreign_key="preinscription.id")
-    ca_seuil_ok: Optional[bool] = None
-    ca_score: Optional[float] = None
-    qpv_ok: Optional[bool] = None
-    anciennete_ok: Optional[bool] = None
-    anciennete_annees: Optional[float] = None
-    verdict: Optional[str] = None  # "ok" | "attention" | "ko"
-    details_json: Optional[str] = None
-    calcule_le: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
-    
-    # Relations
-    preinscription: Preinscription = Relationship(back_populates="eligibilite")
 
-class Inscription(SQLModel, table=True):
-    """Inscription validée d'un candidat"""
-    id: Optional[int] = Field(default=None, primary_key=True)
-    programme_id: int = Field(foreign_key="programme.id")
-    candidat_id: int = Field(foreign_key="candidat.id")
-    promotion_id: Optional[int] = Field(foreign_key="promotion.id")
-    groupe_id: Optional[int] = None
-    conseiller_id: Optional[int] = Field(foreign_key="user.id")
-    referent_id: Optional[int] = Field(foreign_key="user.id")
-    statut: StatutDossier = StatutDossier.EN_EXAMEN
-    date_decision: Optional[datetime] = None
-    email_confirmation_envoye: bool = False
-    cree_le: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
-    
-    # Relations
-    programme: Programme = Relationship(back_populates="inscriptions")
-    candidat: Candidat = Relationship(back_populates="inscriptions")
-    promotion: Optional[Promotion] = Relationship(back_populates="inscriptions")
-    conseiller: Optional[User] = Relationship(
-        back_populates="inscriptions_conseiller",
-        sa_relationship_kwargs={"foreign_keys": "[Inscription.conseiller_id]"}
-    )
-    referent: Optional[User] = Relationship(
-        back_populates="inscriptions_referent",
-        sa_relationship_kwargs={"foreign_keys": "[Inscription.referent_id]"}
-    )
-    decisions_jury: List["DecisionJuryTable"] = Relationship(back_populates="inscription")
-    avancement_etapes: List["AvancementEtape"] = Relationship(back_populates="inscription")
-
-class Jury(SQLModel, table=True):
-    """Session de jury"""
-    id: Optional[int] = Field(default=None, primary_key=True)
-    programme_id: int = Field(foreign_key="programme.id")
-    promotion_id: Optional[int] = Field(foreign_key="promotion.id")
-    session_le: datetime
-    lieu: Optional[str] = None
-    statut: str = "planifie"  # "planifie", "en_cours", "termine"
-    
-    # Relations
-    programme: Programme = Relationship()
-    promotion: Optional[Promotion] = Relationship()
-    membres: List["MembreJury"] = Relationship(back_populates="jury")
-    decisions: List["DecisionJuryTable"] = Relationship(back_populates="jury")
-
-class MembreJury(SQLModel, table=True):
-    """Membre d'un jury"""
-    id: Optional[int] = Field(default=None, primary_key=True)
-    jury_id: int = Field(foreign_key="jury.id")
-    utilisateur_id: int = Field(foreign_key="user.id")
-    role: Optional[str] = None  # "president" | "membre"
-    
-    # Relations
-    jury: Jury = Relationship(back_populates="membres")
-    utilisateur: User = Relationship()
-
-class DecisionJuryTable(SQLModel, table=True):
-    """Décision d'un jury sur une inscription"""
-    id: Optional[int] = Field(default=None, primary_key=True)
-    inscription_id: int = Field(foreign_key="inscription.id")
-    jury_id: int = Field(foreign_key="jury.id")
-    decision: DecisionJury
-    commentaires: Optional[str] = None
-    prises_en_charge_json: Optional[str] = None  # actions suite à handicap etc.
-    decide_le: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
-    
-    # Relations
-    inscription: Inscription = Relationship(back_populates="decisions_jury")
-    jury: Jury = Relationship(back_populates="decisions")
 
 class EtapePipeline(SQLModel, table=True):
+    __tablename__ = "etape_pipeline"
+    
     """Étape du pipeline de formation"""
     id: Optional[int] = Field(default=None, primary_key=True)
     programme_id: int = Field(foreign_key="programme.id")
@@ -275,24 +202,28 @@ class EtapePipeline(SQLModel, table=True):
     type_etape: Optional[str] = None  # "formation", "evaluation", "accompagnement"
     
     # Relations
-    programme: Programme = Relationship(back_populates="etapes_pipeline")
+    programme: "Programme" = Relationship(back_populates="etapes_pipeline")
     avancements: List["AvancementEtape"] = Relationship(back_populates="etape")
 
 class AvancementEtape(SQLModel, table=True):
+    __tablename__ = "avancement_etape"
+    
     """Avancement d'un candidat dans une étape du pipeline"""
     id: Optional[int] = Field(default=None, primary_key=True)
     inscription_id: int = Field(foreign_key="inscription.id")
-    etape_id: int = Field(foreign_key="etapepipeline.id")
+    etape_id: int = Field(foreign_key="etape_pipeline.id")
     statut: StatutEtape = StatutEtape.A_FAIRE
     debut_le: Optional[datetime] = None
     termine_le: Optional[datetime] = None
     notes: Optional[str] = None
     
     # Relations
-    inscription: Inscription = Relationship(back_populates="avancement_etapes")
+    inscription: "Inscription" = Relationship(back_populates="avancement_etapes")
     etape: EtapePipeline = Relationship(back_populates="avancements")
 
 class ActionHandicap(SQLModel, table=True):
+    __tablename__ = "action_handicap"
+    
     """Actions d'accommodation pour handicap"""
     id: Optional[int] = Field(default=None, primary_key=True)
     inscription_id: int = Field(foreign_key="inscription.id")
@@ -304,26 +235,14 @@ class ActionHandicap(SQLModel, table=True):
     cree_le: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
     
     # Relations
-    inscription: Inscription = Relationship()
-    responsable: Optional[User] = Relationship()
+    inscription: "Inscription" = Relationship(back_populates="actions_handicap")
+    responsable: Optional["User"] = Relationship()
 
-class RendezVous(SQLModel, table=True):
-    id: Optional[int] = Field(default=None, primary_key=True)
-    inscription_id: int = Field(foreign_key="inscription.id")
-    conseiller_id: Optional[int] = Field(foreign_key="user.id")
-    type_rdv: TypeRDV = TypeRDV.ENTRETIEN
-    statut: StatutRDV = StatutRDV.PLANIFIE
-    debut: datetime
-    fin: Optional[datetime] = None
-    lieu: Optional[str] = None
-    notes: Optional[str] = None
-    meet_link: Optional[str] = None  # Lien Google Meet unique
-
-    # Relations
-    inscription: "Inscription" = Relationship()
-    conseiller: Optional["User"] = Relationship()
+# RendezVous déplacé vers rendez_vous.py
 
 class SessionProgramme(SQLModel, table=True):
+    __tablename__ = "session_programme"
+    
     id: Optional[int] = Field(default=None, primary_key=True)
     programme_id: int = Field(foreign_key="programme.id", index=True)
     type_session: TypeSession
@@ -335,20 +254,24 @@ class SessionProgramme(SQLModel, table=True):
     capacite: Optional[int] = None
     cree_le: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
 
-    programme: Programme = Relationship()
+    programme: Programme = Relationship(back_populates="sessions_programme")
     participants: List["SessionParticipant"] = Relationship(back_populates="session")
 
 class SessionParticipant(SQLModel, table=True):
+    __tablename__ = "session_participant"
+    
     id: Optional[int] = Field(default=None, primary_key=True)
-    session_id: int = Field(foreign_key="sessionprogramme.id", index=True)
+    session_id: int = Field(foreign_key="session_programme.id", index=True)
     inscription_id: int = Field(foreign_key="inscription.id", index=True)
     presence: StatutPresence = StatutPresence.ABSENT
     note: Optional[str] = None
 
-    session: SessionProgramme = Relationship(back_populates="participants")
-    inscription: "Inscription" = Relationship()
+    session: "SessionProgramme" = Relationship(back_populates="participants")
+    inscription: "Inscription" = Relationship(back_populates="session_participants")
 
 class SuiviMensuel(SQLModel, table=True):
+    __tablename__ = "suivi_mensuel"
+    
     """Suivi mensuel des candidats avec métriques business"""
     id: Optional[int] = Field(default=None, primary_key=True)
     inscription_id: int = Field(foreign_key="inscription.id", index=True)
@@ -391,9 +314,11 @@ class SuiviMensuel(SQLModel, table=True):
     cree_le: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
     modifie_le: Optional[datetime] = None
 
-    inscription: "Inscription" = Relationship()
+    inscription: "Inscription" = Relationship(back_populates="suivi_mensuel")
 
 class Partenaire(SQLModel, table=True):
+    __tablename__ = "partenaire"
+    
     """Partenaires pour la réorientation des candidats"""
     id: Optional[int] = Field(default=None, primary_key=True)
     nom: str = Field(index=True)
@@ -409,47 +334,28 @@ class Partenaire(SQLModel, table=True):
     # Relations
     reorientations: List["ReorientationCandidat"] = Relationship(back_populates="partenaire")
 
-class DecisionJuryCandidat(SQLModel, table=True):
-    """Décisions du jury pour chaque candidat"""
-    id: Optional[int] = Field(default=None, primary_key=True)
-    candidat_id: int = Field(foreign_key="candidat.id", index=True)
-    jury_id: int = Field(foreign_key="jury.id", index=True)
-    decision: DecisionJury = Field(default=DecisionJury.EN_ATTENTE)
-    commentaires: Optional[str] = None
-    conseiller_id: Optional[int] = Field(foreign_key="user.id", default=None)  # Si validé
-    groupe_id: Optional[int] = Field(foreign_key="groupe.id", default=None)  # Si validé
-    promotion_id: Optional[int] = Field(foreign_key="promotion.id", default=None)  # Si validé
-    partenaire_id: Optional[int] = Field(foreign_key="partenaire.id", default=None)  # Si réorienté
-    envoyer_mail_candidat: bool = Field(default=False)
-    envoyer_mail_conseiller: bool = Field(default=False)
-    envoyer_mail_partenaire: bool = Field(default=False)
-    date_decision: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
-    cree_le: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
-    
-    # Relations
-    candidat: "Candidat" = Relationship()
-    jury: "Jury" = Relationship()
-    conseiller: Optional["User"] = Relationship()
-    groupe: Optional["Groupe"] = Relationship()
-    promotion: Optional["Promotion"] = Relationship()
-    partenaire: Optional["Partenaire"] = Relationship()
+# DecisionJuryCandidat déplacé vers jury.py
 
 class ReorientationCandidat(SQLModel, table=True):
+    __tablename__ = "reorientation_candidat"
+    
     """Historique des réorientations"""
     id: Optional[int] = Field(default=None, primary_key=True)
     candidat_id: int = Field(foreign_key="candidat.id", index=True)
     partenaire_id: int = Field(foreign_key="partenaire.id", index=True)
-    decision_jury_id: int = Field(foreign_key="decisionjurycandidat.id", index=True)
+    decision_jury_id: int = Field(foreign_key="decision_jury_candidat.id", index=True)
     motif: Optional[str] = None
     mail_envoye: bool = Field(default=False)
     date_reorientation: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
     
     # Relations
-    candidat: "Candidat" = Relationship()
+    candidat: "Candidat" = Relationship(back_populates="reorientations")
     partenaire: "Partenaire" = Relationship(back_populates="reorientations")
-    decision_jury: "DecisionJuryCandidat" = Relationship()
+    decision_jury: "DecisionJuryCandidat" = Relationship(back_populates="reorientations")
 
 class Groupe(SQLModel, table=True):
+    __tablename__ = "groupe"
+    
     """Groupes de codéveloppement"""
     id: Optional[int] = Field(default=None, primary_key=True)
     nom: str = Field(index=True, max_length=100)
@@ -459,26 +365,8 @@ class Groupe(SQLModel, table=True):
     date_creation: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
     date_modification: Optional[datetime] = Field(default=None)
     
-    # Relations pour le codev (ajoutées dynamiquement)
-    # seances: List["SeanceCodev"] = Relationship(back_populates="groupe")
-    # groupes_codev: List["GroupeCodev"] = Relationship(back_populates="groupe")
+    # Relations pour le codev
+    seances: List["SeanceCodev"] = Relationship(back_populates="groupe")
+    groupes_codev: List["GroupeCodev"] = Relationship(back_populates="groupe")
 
-class EmargementRDV(SQLModel, table=True):
-    """Émargement pour les rendez-vous"""
-    id: Optional[int] = Field(default=None, primary_key=True)
-    rdv_id: int = Field(foreign_key="rendezvous.id", index=True)
-    type_signataire: str = Field(index=True)  # "conseiller" ou "candidat"
-    signataire_id: Optional[int] = Field(foreign_key="user.id", index=True)  # Pour le conseiller
-    candidat_id: Optional[int] = Field(foreign_key="candidat.id", index=True)  # Pour le candidat
-    signature_conseiller: Optional[str] = None  # Signature du conseiller (base64 ou hash)
-    signature_candidat: Optional[str] = None    # Signature du candidat (base64 ou hash)
-    date_signature_conseiller: Optional[datetime] = None
-    date_signature_candidat: Optional[datetime] = None
-    ip_address: Optional[str] = None  # Adresse IP pour traçabilité
-    user_agent: Optional[str] = None  # User agent pour traçabilité
-    cree_le: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
-    
-    # Relations
-    rdv: "RendezVous" = Relationship()
-    signataire: Optional["User"] = Relationship()
-    candidat: Optional["Candidat"] = Relationship()
+# EmargementRDV déplacé vers rendez_vous.py

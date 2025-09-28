@@ -132,7 +132,7 @@ class SchemaRoutingService:
             'seminaires', 'session_seminaires', 'invitation_seminaires',
             'presence_seminaires', 'livrable_seminaires', 'rendu_livrables',
             'events', 'invitation_events', 'presence_events',
-            'ressource_elearnings', 'module_elearnings', 'progression_elearnings',
+            'ressource_elearning', 'module_elearning', 'progression_elearning',
             'objectif_elearnings', 'quiz_elearnings', 'reponse_quizs',
             'certificat_elearnings', 'module_ressources',
             'seance_codevs', 'presentation_codevs', 'contribution_codevs',
@@ -182,6 +182,166 @@ class SchemaRoutingService:
 
 # ===== MIDDLEWARE POUR LE ROUTAGE DES SCHÉMAS =====
 
+class ProgramCreationMiddleware(BaseHTTPMiddleware):
+    """Middleware pour surveiller la création de programmes et créer automatiquement les schémas"""
+    
+    async def dispatch(self, request: Request, call_next):
+        # Traiter la requête
+        response = await call_next(request)
+        
+        # Vérifier si c'est une création de programme (POST sur /programmes ou similar)
+        if (request.method == "POST" and 
+            ("programme" in request.url.path.lower() or 
+             "program" in request.url.path.lower()) and
+            response.status_code in [200, 201]):
+            
+            try:
+                # Extraire les données de la réponse si possible
+                # Pour l'instant, on va juste logger et laisser le système principal gérer
+                logger.info(f"Programme potentiellement créé via {request.url.path}")
+                
+                # Optionnel: déclencher une vérification des programmes
+                # self._check_and_create_missing_schemas()
+                
+            except Exception as e:
+                logger.error(f"Erreur dans ProgramCreationMiddleware: {e}")
+        
+        return response
+    
+    def _check_and_create_missing_schemas(self):
+        """Vérifie et crée les schémas manquants pour les programmes existants"""
+        try:
+            session = next(get_session())
+            manager = ProgramSchemaManager()
+            manager.session = session
+            
+            from app_lia_web.app.models.base import Programme
+            from sqlmodel import select
+            
+            programmes = session.exec(
+                select(Programme).where(Programme.actif == True)
+            ).all()
+            
+            for programme in programmes:
+                if not manager.schema_exists(programme.code):
+                    logger.info(f"Création automatique du schéma pour le programme {programme.code}")
+                    manager.create_program_schema(programme.code)
+                    
+        except Exception as e:
+            logger.error(f"Erreur lors de la vérification des schémas: {e}")
+        finally:
+            if 'session' in locals():
+                session.close()
+
+
+def table_exists_anywhere(table_name: str, session=None, schema: str = None) -> bool:
+    """Vérifie si une table existe dans un schéma spécifique ou le schéma courant"""
+    try:
+        if session is None:
+            session = next(get_session())
+            should_close = True
+        else:
+            should_close = False
+            
+        if schema:
+            # Chercher dans un schéma spécifique
+            result = session.execute(text("""
+                SELECT EXISTS(
+                    SELECT 1 FROM information_schema.tables 
+                    WHERE table_name = :table_name 
+                    AND table_schema = :schema_name
+                )
+            """), {"table_name": table_name, "schema_name": schema})
+        else:
+            # Chercher dans le schéma courant (comportement par défaut)
+            result = session.execute(text("""
+                SELECT EXISTS(
+                    SELECT 1 FROM information_schema.tables 
+                    WHERE table_name = :table_name 
+                    AND table_schema = current_schema()
+                )
+            """), {"table_name": table_name})
+        
+        exists = result.fetchone()[0]
+        
+        if should_close:
+            session.close()
+            
+        return exists
+    except Exception as e:
+        logger.error(f"Erreur lors de la vérification de l'existence de la table {table_name} dans le schéma {schema or 'current'}: {e}")
+        if should_close and 'session' in locals():
+            session.close()
+        return False
+
+
+def safe_count_query(session, model_class, **filters) -> int:
+    """Effectue un comptage sécurisé d'une table (retourne 0 si la table n'existe pas)"""
+    try:
+        # Vérifier si la table existe dans n'importe quel schéma
+        if not table_exists_anywhere(model_class.__tablename__, session):
+            logger.info(f"Table {model_class.__tablename__} n'existe pas - retour 0")
+            return 0
+        
+        # Effectuer le comptage
+        from sqlmodel import select
+        from sqlalchemy import func
+        
+        query = select(func.count(model_class.id))
+        if filters:
+            for key, value in filters.items():
+                if hasattr(model_class, key):
+                    query = query.where(getattr(model_class, key) == value)
+        
+        result = session.exec(query).one() or 0
+        return result
+        
+    except Exception as e:
+        logger.error(f"Erreur lors du comptage de {model_class.__tablename__}: {e}")
+        return 0
+
+
+def check_and_create_program_schemas():
+    """Fonction utilitaire pour vérifier et créer les schémas pour tous les programmes existants"""
+    try:
+        session = next(get_session())
+        manager = ProgramSchemaManager()
+        manager.session = session
+        
+        from app_lia_web.app.models.base import Programme
+        from sqlmodel import select
+        
+        programmes = session.exec(
+            select(Programme).where(Programme.actif == True)
+        ).all()
+        
+        if not programmes:
+            logger.info("Aucun programme actif trouvé - aucun schéma à créer")
+            return
+        
+        logger.info(f"Programmes trouvés: {[p.code for p in programmes]}")
+        
+        for programme in programmes:
+            if not manager.schema_exists(programme.code):
+                logger.info(f"Création du schéma pour le programme {programme.code}")
+                success = manager.create_program_schema(programme.code)
+                if success:
+                    logger.info(f"✅ Schéma {programme.code} créé avec succès")
+                else:
+                    logger.error(f"❌ Échec de création du schéma {programme.code}")
+            else:
+                logger.info(f"ℹ️ Schéma {programme.code} existe déjà")
+                # Vérifier et créer les tables même si le schéma existe
+                manager._create_tables_in_schema(programme.code.lower())
+                
+    except Exception as e:
+        logger.error(f"Erreur lors de la vérification des schémas: {e}")
+        raise
+    finally:
+        if 'session' in locals():
+            session.close()
+
+
 class ProgramSchemaMiddleware(BaseHTTPMiddleware):
     """Middleware pour router automatiquement vers le bon schéma selon le programme"""
     
@@ -190,16 +350,18 @@ class ProgramSchemaMiddleware(BaseHTTPMiddleware):
         programme_code = self._extract_program_from_request(request)
         
         if programme_code:
-            # Stocker le programme en session pour la persistance
-            if not hasattr(request, 'session'):
-                # Initialiser la session si elle n'existe pas
-                request.session = {}
+            # Stocker le programme dans request.state pour la persistance
+            request.state.current_programme = programme_code
+            logger.info(f"Programme {programme_code} stocké dans request.state")
             
-            request.session['current_programme'] = programme_code
-            logger.info(f"Programme {programme_code} stocké en session")
+            # Utiliser la session partagée si disponible, sinon créer une session temporaire
+            if hasattr(request.state, 'shared_session'):
+                session = request.state.shared_session
+                logger.info(f"Utilisation de la session partagée pour {programme_code}")
+            else:
+                session = next(get_session())
+                logger.info(f"Création d'une session temporaire pour {programme_code}")
             
-            # Vérifier si le schéma existe
-            session = next(get_session())
             try:
                 schema_service = ProgramSchemaService(session)
                 
@@ -207,38 +369,41 @@ class ProgramSchemaMiddleware(BaseHTTPMiddleware):
                     logger.warning(f"Schéma {programme_code} n'existe pas, création automatique")
                     schema_service.create_program_schema(programme_code)
                 
-                # Ajouter le schéma au contexte de la requête
-                request.state.program_schema = programme_code.lower()
-                
                 # Créer un service de routage pour cette requête
                 routing_service = SchemaRoutingService(session)
                 routing_service.set_schema(programme_code.lower())
-                request.state.schema_routing_service = routing_service
+                
+                # Ajouter le schéma au contexte de la requête
+                request.state.program_schema = programme_code.lower()
+                
+                #request.state.schema_routing_service = routing_service
                 
                 logger.info(f"Requête routée vers le schéma: {programme_code.lower()}")
                 
             except Exception as e:
                 logger.error(f"Erreur lors de la gestion du schéma {programme_code}: {e}")
             finally:
-                session.close()
+                # Ne fermer la session que si c'est une session temporaire
+                if not hasattr(request.state, 'shared_session'):
+                    session.close()
         else:
             # Si aucun programme détecté, récupérer depuis la session
             programme_code = None
             
-            # Vérifier si la session est disponible
-            try:
-                # Cette ligne peut lever une exception si SessionMiddleware n'est pas installé
-                session_available = hasattr(request, 'session')
-                if session_available and 'current_programme' in request.session:
-                    programme_code = request.session['current_programme']
-                    logger.info(f"Programme {programme_code} récupéré depuis la session")
-            except Exception as e:
-                logger.warning(f"Session non disponible: {e}")
-                session_available = False
+            # Récupérer le programme depuis request.state
+            programme_code = getattr(request.state, 'current_programme', None)
+            if programme_code:
+                logger.info(f"Programme {programme_code} récupéré depuis request.state")
             
             if programme_code:
-                # Configurer le schéma depuis la session
-                session = next(get_session())
+                # Utiliser la session partagée si disponible, sinon créer une session temporaire
+                if hasattr(request.state, 'shared_session'):
+                    session = request.state.shared_session
+                    logger.info(f"Utilisation de la session partagée pour {programme_code} (depuis session)")
+                else:
+                    session = next(get_session())
+                    logger.info(f"Création d'une session temporaire pour {programme_code} (depuis session)")
+                
                 try:
                     schema_service = ProgramSchemaService(session)
                     
@@ -259,11 +424,13 @@ class ProgramSchemaMiddleware(BaseHTTPMiddleware):
                 except Exception as e:
                     logger.error(f"Erreur lors de la gestion du schéma {programme_code}: {e}")
                 finally:
-                    session.close()
+                    # Ne fermer la session que si c'est une session temporaire
+                    if not hasattr(request.state, 'shared_session'):
+                        session.close()
             else:
                 # Aucun programme en session, utiliser le schéma public par défaut
                 request.state.program_schema = 'public'
-                logger.info("Aucun programme en session, utilisation du schéma public")
+                logger.info("Aucun programme en request.state, utilisation du schéma public")
         
         response = await call_next(request)
         return response
@@ -271,27 +438,31 @@ class ProgramSchemaMiddleware(BaseHTTPMiddleware):
     def _extract_program_from_request(self, request: Request) -> str:
         """Extrait le code du programme de la requête"""
         
-        # Méthode 2: Depuis les paramètres de query
-        programme = request.query_params.get('programme')
-        if programme and self._is_valid_program_code(programme.upper()):
-            return programme.upper()
-        
-        # Méthode 3: Depuis les données de formulaire (pour les requêtes POST)
+        # PRIORITÉ 1: Depuis les données de formulaire (pour les requêtes POST)
         if request.method == 'POST':
             try:
                 form_data = request.form()
-                programme = form_data.get('programme')
+                programme = form_data.get('programme') or form_data.get('programme_code')
                 if programme and self._is_valid_program_code(programme.upper()):
                     return programme.upper()
             except:
                 pass
         
-        # Méthode 4: Depuis les headers
+        # PRIORITÉ 2: Depuis les paramètres de query
+        programme = request.query_params.get('programme')
+        print(f"🔍 DEBUG ProgramSchemaMiddleware: programme extrait de query: {programme}")
+        if programme and self._is_valid_program_code(programme.upper()):
+            print(f"✅ DEBUG ProgramSchemaMiddleware: programme {programme.upper()} valide")
+            return programme.upper()
+        elif programme:
+            print(f"❌ DEBUG ProgramSchemaMiddleware: programme {programme.upper()} invalide")
+        
+        # PRIORITÉ 3: Depuis les headers
         programme = request.headers.get('X-Programme')
         if programme and self._is_valid_program_code(programme.upper()):
             return programme.upper()
 
-        # Méthode 1: Depuis l'URL (ex: /ACD/candidats, /CODEV/sessions)
+        # PRIORITÉ 4: Depuis l'URL (ex: /ACD/candidats, /CODEV/sessions)
         path_parts = request.url.path.strip('/').split('/')
         if len(path_parts) > 0:
             potential_program = path_parts[0].upper()
@@ -905,16 +1076,12 @@ def setup_program_schemas(app: FastAPI):
             # logger.error(traceback.format_exc())
 
 def get_current_programme_from_session(request: Request) -> Optional[str]:
-    """Récupère le programme actuel depuis la session utilisateur"""
-    if hasattr(request, 'session') and 'current_programme' in request.session:
-        return request.session['current_programme']
-    return None
+    """Récupère le programme actuel depuis request.state"""
+    return getattr(request.state, 'current_programme', None)
 
 def set_current_programme_in_session(request: Request, programme_code: str) -> None:
-    """Définit le programme actuel dans la session utilisateur"""
-    if not hasattr(request, 'session'):
-        request.session = {}
-    request.session['current_programme'] = programme_code.upper()
+    """Définit le programme actuel dans request.state"""
+    request.state.current_programme = programme_code.upper()
 
 def get_program_schema_from_request(request: Request) -> str:
     """Extrait le schéma du programme depuis la requête"""
@@ -936,6 +1103,31 @@ def configure_sqlmodel_schema(request: Request):
 def get_schema_manager() -> ProgramSchemaManager:
     """Retourne l'instance du gestionnaire de schémas"""
     return schema_manager
+
+def get_current_program_schema(request: Request) -> str:
+    """Récupère le schéma du programme actuel depuis request.state"""
+    if hasattr(request.state, 'program_schema') and request.state.program_schema:
+        return request.state.program_schema
+    return "public"
+
+# ===== EXPORTS PRINCIPAUX =====
+__all__ = [
+    'SchemaAwareModel',
+    'SchemaRoutingService', 
+    'ProgramSchemaMiddleware',
+    'ProgramSchemaService',
+    'ProgramSchemaManager',
+    'get_schema_from_request',
+    'get_schema_routing_service',
+    'get_current_schema',
+    'get_schema_aware_session',
+    'get_current_programme_from_session',
+    'set_current_programme_in_session',
+    'get_program_schema_from_request',
+    'get_current_program_schema',
+    'setup_program_schemas',
+    'get_schema_manager'
+]
 
 # ===== EXEMPLE D'UTILISATION DANS UNE ROUTE =====
 """

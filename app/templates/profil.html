@@ -84,13 +84,7 @@
         <div class="col-lg-4">
           <div class="card h-100">
             <div class="card-body text-center d-flex flex-column justify-content-center">
-              {% if utilisateur.photo_profil %}
-                <img src="{{ utilisateur.photo_profil }}?v={{ timestamp }}" alt="Photo de profil" class="rounded-circle mb-3 mx-auto" width="150" height="150" style="object-fit: cover;">
-              {% else %}
-                <div class="bg-primary rounded-circle d-inline-flex align-items-center justify-content-center mb-3 mx-auto" style="width: 150px; height: 150px;">
-                  <i class="fas fa-user text-white" style="font-size: 4rem;"></i>
-                </div>
-              {% endif %}
+              <img src="{{ get_user_photo_url(utilisateur) }}?v={{ timestamp }}" alt="Photo de profil" class="rounded-circle mb-3 mx-auto" width="150" height="150" style="object-fit: cover;">
               <h5 class="card-title">{{ utilisateur.nom_complet }}</h5>
               <p class="text-muted">{{ utilisateur.role | title }}</p>
               <button type="button" class="btn btn-outline-primary btn-sm" data-bs-toggle="modal" data-bs-target="#changePhotoModal">
@@ -139,12 +133,12 @@
                 </div>
                 <div class="col-md-6">
                   <label class="form-label fw-bold">Membre depuis</label>
-                  <p class="form-control-plaintext">{{ utilisateur.cree_le.strftime('%d/%m/%Y') }}</p>
+                  <p class="form-control-plaintext">{{ utilisateur.cree_le | format_date }}</p>
                 </div>
                 {% if utilisateur.modifie_le %}
                 <div class="col-md-6">
                   <label class="form-label fw-bold">Dernière modification</label>
-                  <p class="form-control-plaintext">{{ utilisateur.modifie_le.strftime('%d/%m/%Y à %H:%M') }}</p>
+                  <p class="form-control-plaintext">{{ utilisateur.modifie_le | format_datetime }}</p>
                 </div>
                 {% endif %}
               </div>
@@ -237,13 +231,7 @@
       <form method="post" action="{{ url_for('profil_photo') }}" enctype="multipart/form-data">
         <div class="modal-body">
           <div class="text-center mb-3">
-            {% if utilisateur.photo_profil %}
-              <img src="{{ utilisateur.photo_profil }}?v={{ timestamp }}" alt="Photo actuelle" class="rounded-circle mb-2" width="100" height="100" style="object-fit: cover;">
-            {% else %}
-              <div class="bg-primary rounded-circle d-inline-flex align-items-center justify-content-center mb-2" style="width: 100px; height: 100px;">
-                <i class="fas fa-user text-white" style="font-size: 2.5rem;"></i>
-              </div>
-            {% endif %}
+            <img src="{{ get_user_photo_url(utilisateur) }}?v={{ timestamp }}" alt="Photo actuelle" class="rounded-circle mb-2" width="100" height="100" style="object-fit: cover;">
             <p class="text-muted">Photo actuelle</p>
           </div>
           <div class="mb-3">

@@ -7,7 +7,8 @@ Vérifie la cohérence entre les enums Python et les données en base
 from typing import Dict, List, Set, Optional, Any
 from sqlmodel import Session, select, text
 from app_lia_web.app.models.enums import *
-from app_lia_web.app.models.base import DecisionJuryCandidat, User, Programme
+from app_lia_web.app.models.base import User, Programme
+from app_lia_web.app.models.jury import DecisionJuryCandidat
 import logging
 
 logger = logging.getLogger(__name__)

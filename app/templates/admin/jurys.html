@@ -131,8 +131,8 @@
         {% for j in jurys %}
         <tr>
           <td>
-            <div class="fw-bold">{{ j.session_le.strftime('%d/%m/%Y') }}</div>
-            <small class="text-muted">{{ j.session_le.strftime('%H:%M') }}</small>
+            <div class="fw-bold">{{ j.session_le | format_date }}</div>
+            <small class="text-muted">{{ j.session_le | format_time }}</small>
           </td>
           <td>
             {% if j.programme %}
@@ -226,12 +226,12 @@
             <div class="col-md-6">
               <label class="form-label">Date <span class="text-danger">*</span></label>
               <input type="date" name="session_date" class="form-control" 
-                     value="{{ j.session_le.strftime('%Y-%m-%d') }}" required>
+                     value="{{ j.session_le | format_date_input }}" required>
             </div>
             <div class="col-md-6">
               <label class="form-label">Heure <span class="text-danger">*</span></label>
               <input type="time" name="session_time" class="form-control" 
-                     value="{{ j.session_le.strftime('%H:%M') }}" required>
+                     value="{{ j.session_le | format_time }}" required>
             </div>
             <div class="col-md-6">
               <label class="form-label">Lieu</label>
@@ -296,8 +296,8 @@
           </div>
           <div class="col-md-6">
             <label class="form-label fw-bold">Date et heure</label>
-            <div class="fw-bold">{{ j.session_le.strftime('%d/%m/%Y') }}</div>
-            <div class="small text-muted">{{ j.session_le.strftime('%H:%M') }}</div>
+            <div class="fw-bold">{{ j.session_le | format_date }}</div>
+            <div class="small text-muted">{{ j.session_le | format_time }}</div>
           </div>
           <div class="col-md-6">
             <label class="form-label fw-bold">Statut</label>
@@ -416,15 +416,8 @@
                 <tr>
                   <td>
                     <div class="d-flex align-items-center">
-                      {% if membre.utilisateur.photo_profil %}
-                        <img src="{{ membre.utilisateur.photo_profil }}?v={{ membre.utilisateur.id }}" alt="Photo" 
-                             class="rounded-circle me-2" width="32" height="32" style="object-fit: cover;">
-                      {% else %}
-                        <div class="bg-secondary rounded-circle me-2 d-flex align-items-center justify-content-center" 
-                             style="width: 32px; height: 32px;">
-                          <i class="fa fa-user text-white"></i>
-                        </div>
-                      {% endif %}
+                      <img src="{{ get_user_photo_url(membre.utilisateur) }}?v={{ membre.utilisateur.id }}" alt="Photo" 
+                           class="rounded-circle me-2" width="32" height="32" style="object-fit: cover;">
                       <div>
                         <div class="fw-bold">{{ membre.utilisateur.nom_complet }}</div>
                         <small class="text-muted">{{ membre.utilisateur.role.replace('_', ' ').title() }}</small>
@@ -501,8 +494,8 @@
                   </div>
                   <div class="col-md-6">
                     <label class="form-label fw-bold">Date et heure</label>
-                    <div class="fw-bold">{{ j.session_le.strftime('%d/%m/%Y') }}</div>
-                    <div class="small text-muted">{{ j.session_le.strftime('%H:%M') }}</div>
+                    <div class="fw-bold">{{ j.session_le | format_date }}</div>
+                    <div class="small text-muted">{{ j.session_le | format_time }}</div>
                   </div>
                   <div class="col-md-6">
                     <label class="form-label fw-bold">Lieu</label>
@@ -561,15 +554,8 @@
                         <tr>
                           <td>
                             <div class="d-flex align-items-center">
-                              {% if membre.utilisateur.photo_profil %}
-                                <img src="{{ membre.utilisateur.photo_profil }}?v={{ membre.utilisateur.id }}" alt="Photo" 
-                                     class="rounded-circle me-2" width="24" height="24" style="object-fit: cover;">
-                              {% else %}
-                                <div class="bg-secondary rounded-circle me-2 d-flex align-items-center justify-content-center" 
-                                     style="width: 24px; height: 24px;">
-                                  <i class="fa fa-user text-white" style="font-size: 10px;"></i>
-                                </div>
-                              {% endif %}
+                              <img src="{{ get_user_photo_url(membre.utilisateur) }}?v={{ membre.utilisateur.id }}" alt="Photo" 
+                                   class="rounded-circle me-2" width="24" height="24" style="object-fit: cover;">
                               <div>
                                 <div class="fw-bold small">{{ membre.utilisateur.nom_complet }}</div>
                                 <small class="text-muted">{{ membre.utilisateur.role.replace('_', ' ').title() }}</small>
@@ -615,7 +601,7 @@
                 <div class="mb-3">
                   <label class="form-label fw-bold">Objet</label>
                   <div class="form-control-plaintext bg-light p-2 rounded">
-                    Invitation au jury - {{ j.programme.code if j.programme else 'Programme' }} - {{ j.session_le.strftime('%d/%m/%Y') }}
+                    Invitation au jury - {{ j.programme.code if j.programme else 'Programme' }} - {{ j.session_le | format_date }}
                   </div>
                 </div>
                 <div class="mb-3">
@@ -625,8 +611,8 @@
                     <p>Vous êtes invité(e) à participer au jury du programme <strong>{{ j.programme.code if j.programme else 'Programme' }}</strong>.</p>
                     <p><strong>Détails du jury :</strong></p>
                     <ul>
-                      <li><strong>Date :</strong> {{ j.session_le.strftime('%d/%m/%Y') }}</li>
-                      <li><strong>Heure :</strong> {{ j.session_le.strftime('%H:%M') }}</li>
+                      <li><strong>Date :</strong> {{ j.session_le | format_date }}</li>
+                      <li><strong>Heure :</strong> {{ j.session_le | format_time }}</li>
                       {% if j.lieu %}
                       <li><strong>Lieu :</strong> {{ j.lieu }}</li>
                       {% endif %}

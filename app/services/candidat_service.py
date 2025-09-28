@@ -4,8 +4,10 @@ Service de gestion des candidats
 from typing import List, Optional, Dict, Any
 from sqlmodel import Session, select
 import logging
-from app_lia_web.app.models.base import Candidat, Preinscription, Entreprise
+from app_lia_web.app.models.base import Candidat, Entreprise
+from app_lia_web.app.models.preinscription import Preinscription
 from app_lia_web.app.schemas import CandidatCreate, CandidatUpdate, CandidatFiltres, PaginationParams
+from app_lia_web.core.program_schema_integration import safe_count_query, table_exists_anywhere
 
 logger = logging.getLogger(__name__)
 
@@ -24,8 +26,14 @@ class CandidatService:
     
     @staticmethod
     def get_candidat_by_email(session: Session, email: str) -> Optional[Candidat]:
-        """Récupère un candidat par email"""
-        return session.exec(select(Candidat).where(Candidat.email == email)).first()
+        """Récupère un candidat par email - Version sécurisée"""
+        if not table_exists_anywhere("candidat", session):
+            return None
+        try:
+            return session.exec(select(Candidat).where(Candidat.email == email)).first()
+        except Exception as e:
+            logging.warning(f"Erreur lors de la récupération du candidat par email: {e}")
+            return None
     
     @staticmethod
     def get_candidats_with_filters(session: Session, filtres: CandidatFiltres, pagination: PaginationParams) -> Dict[str, Any]:
@@ -42,11 +50,19 @@ class CandidatService:
         if filtres.territoire:
             query = query.join(Entreprise).where(Entreprise.territoire == filtres.territoire)
         
-        # Pagination
+        # Pagination - Version sécurisée
         offset = (pagination.page - 1) * pagination.taille
-        total = session.exec(select(Candidat)).count()
+        total = 0
+        if table_exists_anywhere("candidat", session):
+            total = safe_count_query(session, Candidat)
         
-        candidats = session.exec(query.offset(offset).limit(pagination.taille)).all()
+        candidats = []
+        if table_exists_anywhere("candidat", session):
+            try:
+                candidats = session.exec(query.offset(offset).limit(pagination.taille)).all()
+            except Exception as e:
+                logging.warning(f"Erreur lors de la récupération des candidats avec filtres: {e}")
+                candidats = []
         
         return {
             "items": candidats,

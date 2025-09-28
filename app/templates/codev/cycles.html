@@ -205,7 +205,7 @@
         
         <div class="cycle-info-item">
           <i class="fas fa-calendar-alt"></i>
-          {{ cycle.date_debut.strftime('%d/%m/%Y') }} - {{ cycle.date_fin.strftime('%d/%m/%Y') }}
+          {{ cycle.date_debut | format_date }} - {{ cycle.date_fin | format_date }}
         </div>
         
         <div class="cycle-info-item">
