@@ -3,11 +3,11 @@ from datetime import datetime, timezone
 from typing import List, Optional, Dict
 import secrets
 import string
-from app_lia_web.app.models.event import Event, InvitationEvent, PresenceEvent
-from app_lia_web.app.models.enums import TypeInvitation
-from app_lia_web.app.schemas.event_schemas import EventCreate, EventUpdate, InvitationEventCreate, PresenceEventCreate
-from app_lia_web.app.services.email_service import EmailService
-from app_lia_web.core.program_schema_integration import table_exists_anywhere
+from ..models.event import Event, InvitationEvent, PresenceEvent
+from ..models.enums import TypeInvitation
+from ..schemas.event_schemas import EventCreate, EventUpdate, InvitationEventCreate, PresenceEventCreate
+from .email_service import EmailService
+from ..core.program_schema_integration import table_exists_anywhere
 
 class EventService:
     def __init__(self):
@@ -332,7 +332,7 @@ class EventService:
                 print(f"   📝 Présence trouvée pour inscription {invitation.inscription_id}: {existing_presence.presence}")
                 presences.append(existing_presence)
             else:
-                from app_lia_web.app.models.seminaire import Inscription
+                from ..models.seminaire import Inscription
                 inscription = db.get(Inscription, invitation.inscription_id)
                 if inscription:
                     # Créer une présence par défaut
@@ -449,7 +449,7 @@ class EventService:
             return
         
         if invitation.type_invitation == TypeInvitation.INDIVIDUELLE and invitation.inscription_id:
-            from app_lia_web.app.models.base import Inscription
+            from ..models.base import Inscription
             inscription = db.get(Inscription, invitation.inscription_id)
             if inscription and inscription.candidat:
                 email = inscription.candidat.email
@@ -464,7 +464,7 @@ class EventService:
         subject = f"Invitation à l'événement : {event.titre}"
         
         # Générer les URLs dynamiquement
-        from app_lia_web.core.config import settings
+        from ..core.config import settings
         base_url = settings.get_base_url_for_email()
         
         template_data = {

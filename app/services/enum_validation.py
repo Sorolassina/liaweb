@@ -6,9 +6,9 @@ Vérifie la cohérence entre les enums Python et les données en base
 
 from typing import Dict, List, Set, Optional, Any
 from sqlmodel import Session, select, text
-from app_lia_web.app.models.enums import *
-from app_lia_web.app.models.base import User, Programme
-from app_lia_web.app.models.jury import DecisionJuryCandidat
+from ..models.enums import *
+from ..models.base import User, Programme
+from ..models.jury import DecisionJuryCandidat
 import logging
 
 logger = logging.getLogger(__name__)
@@ -65,15 +65,27 @@ class EnumValidationService:
             "has_errors": False
         }
         
-        # Récupérer toutes les valeurs uniques en base
-        query = select(DecisionJuryCandidat.decision).distinct()
-        db_decisions = self.session.exec(query).all()
-        result["db_values"] = set(str(d) for d in db_decisions)
-        
-        # Vérifier les valeurs invalides
-        valid_values = set(result["enum_values"])
-        result["invalid_values"] = list(result["db_values"] - valid_values)
-        result["has_errors"] = len(result["invalid_values"]) > 0
+        try:
+            # Vérifier si la table existe dans le schéma public ou dans un schéma de programme
+            from ..core.program_schema_integration import table_exists_anywhere
+            
+            if table_exists_anywhere("decision_jury_candidat", self.session):
+                # Récupérer toutes les valeurs uniques en base
+                query = select(DecisionJuryCandidat.decision).distinct()
+                db_decisions = self.session.exec(query).all()
+                result["db_values"] = set(str(d) for d in db_decisions)
+                
+                # Vérifier les valeurs invalides
+                valid_values = set(result["enum_values"])
+                result["invalid_values"] = list(result["db_values"] - valid_values)
+                result["has_errors"] = len(result["invalid_values"]) > 0
+            else:
+                # Table n'existe pas encore, pas d'erreur
+                logger.info("Table decision_jury_candidat n'existe pas encore")
+                
+        except Exception as e:
+            logger.warning(f"Erreur lors de la validation des décisions de jury: {e}")
+            # Ne pas bloquer la validation si la table n'existe pas
         
         return result
     
@@ -86,17 +98,29 @@ class EnumValidationService:
             "has_errors": False
         }
         
-        # Récupérer toutes les valeurs uniques en base (non null)
-        query = select(DecisionJuryCandidat.groupe_codev).where(
-            DecisionJuryCandidat.groupe_codev.is_not(None)
-        ).distinct()
-        db_groupes = self.session.exec(query).all()
-        result["db_values"] = set(g for g in db_groupes if g)
-        
-        # Vérifier les valeurs invalides
-        valid_values = set(result["enum_values"])
-        result["invalid_values"] = list(result["db_values"] - valid_values)
-        result["has_errors"] = len(result["invalid_values"]) > 0
+        try:
+            # Vérifier si la table existe dans le schéma public ou dans un schéma de programme
+            from ..core.program_schema_integration import table_exists_anywhere
+            
+            if table_exists_anywhere("decision_jury_candidat", self.session):
+                # Récupérer toutes les valeurs uniques en base (non null)
+                query = select(DecisionJuryCandidat.groupe_codev).where(
+                    DecisionJuryCandidat.groupe_codev.is_not(None)
+                ).distinct()
+                db_groupes = self.session.exec(query).all()
+                result["db_values"] = set(g for g in db_groupes if g)
+                
+                # Vérifier les valeurs invalides
+                valid_values = set(result["enum_values"])
+                result["invalid_values"] = list(result["db_values"] - valid_values)
+                result["has_errors"] = len(result["invalid_values"]) > 0
+            else:
+                # Table n'existe pas encore, pas d'erreur
+                logger.info("Table decision_jury_candidat n'existe pas encore")
+                
+        except Exception as e:
+            logger.warning(f"Erreur lors de la validation des groupes codev: {e}")
+            # Ne pas bloquer la validation si la table n'existe pas
         
         return result
     
@@ -109,15 +133,27 @@ class EnumValidationService:
             "has_errors": False
         }
         
-        # Récupérer toutes les valeurs uniques en base
-        query = text("SELECT DISTINCT type_document FROM document WHERE type_document IS NOT NULL")
-        db_types = self.session.exec(query).all()
-        result["db_values"] = set(t[0] for t in db_types)
-        
-        # Vérifier les valeurs invalides
-        valid_values = set(result["enum_values"])
-        result["invalid_values"] = list(result["db_values"] - valid_values)
-        result["has_errors"] = len(result["invalid_values"]) > 0
+        try:
+            # Vérifier si la table existe dans le schéma public ou dans un schéma de programme
+            from ..core.program_schema_integration import table_exists_anywhere
+            
+            if table_exists_anywhere("document", self.session):
+                # Récupérer toutes les valeurs uniques en base
+                query = text("SELECT DISTINCT type_document FROM document WHERE type_document IS NOT NULL")
+                db_types = self.session.exec(query).all()
+                result["db_values"] = set(t[0] for t in db_types)
+                
+                # Vérifier les valeurs invalides
+                valid_values = set(result["enum_values"])
+                result["invalid_values"] = list(result["db_values"] - valid_values)
+                result["has_errors"] = len(result["invalid_values"]) > 0
+            else:
+                # Table n'existe pas encore, pas d'erreur
+                logger.info("Table document n'existe pas encore")
+                
+        except Exception as e:
+            logger.warning(f"Erreur lors de la validation des types de documents: {e}")
+            # Ne pas bloquer la validation si la table n'existe pas
         
         return result
     
@@ -172,12 +208,9 @@ class EnumValidationService:
                         UPDATE decisionjurycandidat 
                         SET groupe_codev = :new_value 
                         WHERE groupe_codev = :old_value
-                    """)
-                    result_obj = self.session.exec(query, {
-                        "old_value": old_value,
-                        "new_value": new_value
-                    })
-                    result["updated_count"] += result_obj.rowcount
+                    """).bindparams(new_value=new_value, old_value=old_value)
+                    result_obj = self.session.exec(query)
+                    result["updated_count"] += result_obj.rowcount if hasattr(result_obj, 'rowcount') else 0
             
             self.session.commit()
             result["success"] = True

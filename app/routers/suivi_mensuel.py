@@ -4,17 +4,17 @@ from sqlmodel import Session, select
 from typing import List, Optional
 from datetime import date, datetime, timezone
 
-from app_lia_web.core.database import get_session
-from app_lia_web.core.middleware import get_shared_session
-from app_lia_web.core.security import get_current_user
-from app_lia_web.core.program_schema_integration import table_exists_anywhere
-from app_lia_web.app.models.base import User, Programme, Inscription, Candidat, SuiviMensuel
-from app_lia_web.app.schemas.suivi_mensuel_schemas import (
+from ..core.database import get_session
+from ..core.middleware import get_shared_session
+from ..core.security import get_current_user
+from ..core.program_schema_integration import table_exists_anywhere
+from ..models.base import User, Programme, Inscription, Candidat, SuiviMensuel
+from ..schemas.suivi_mensuel_schemas import (
     SuiviMensuelCreate, SuiviMensuelUpdate, SuiviMensuelFilter
 )
-from app_lia_web.app.services.suivi_mensuel_service import SuiviMensuelService
-from app_lia_web.app.templates import templates
-from app_lia_web.app.services.file_upload_service import FileUploadService
+from ..services.suivi_mensuel_service import SuiviMensuelService
+from ..templates import templates
+from ..services.file_upload_service import FileUploadService
 
 router = APIRouter()
 suivi_mensuel_service = SuiviMensuelService()
@@ -124,7 +124,7 @@ async def liste_candidats_valides(
         print(f"🔍 DEBUG: Statistiques - total_candidats: {total_candidats}, programmes_count: {programmes_count}")
         
         return templates.TemplateResponse(
-            "suivi_mensuel/liste_candidat.html",
+            "pages/suivi_mensuel/liste_candidat.html",
             {
                 "request": request,
                 "utilisateur": current_user,
@@ -204,7 +204,7 @@ async def creer_suivi_mensuel_form(
     }
 
     return templates.TemplateResponse(
-        "suivi_mensuel/form_business.html",
+        "pages/suivi_mensuel/form_business.html",
         {
             "request": request,
             "utilisateur": current_user,
@@ -285,7 +285,7 @@ async def creer_suivi_mensuel(
     except ValueError as e:
         inscriptions = suivi_mensuel_service.get_inscriptions_for_form(db)
         return templates.TemplateResponse(
-            "suivi_mensuel/form_business.html",
+            "pages/suivi_mensuel/form_business.html",
             {
                 "request": request,
                 "utilisateur": current_user,
@@ -335,7 +335,7 @@ async def modifier_suivi_mensuel_form(
     inscriptions = suivi_mensuel_service.get_inscriptions_for_form(db)
 
     return templates.TemplateResponse(
-        "suivi_mensuel/form_business.html",
+        "pages/suivi_mensuel/form_business.html",
         {
             "request": request,
             "utilisateur": current_user,
@@ -437,7 +437,7 @@ async def modifier_suivi_mensuel(
         suivi = suivi_mensuel_service.get_suivi_mensuel(db, suivi_id)
         inscriptions = suivi_mensuel_service.get_inscriptions_for_form(db)
         return templates.TemplateResponse(
-            "suivi_mensuel/form_business.html",
+            "pages/suivi_mensuel/form_business.html",
             {
                 "request": request,
                 "utilisateur": current_user,
@@ -514,7 +514,7 @@ async def suivis_par_inscription(
     stats = suivi_mensuel_service.get_suivi_mensuel_stats(db, filters)
 
     return templates.TemplateResponse(
-        "suivi_mensuel/inscription.html",
+        "pages/suivi_mensuel/inscription.html",
         {
             "request": request,
             "utilisateur": current_user,
@@ -543,7 +543,7 @@ async def suivis_par_programme(
     stats = suivi_mensuel_service.get_suivi_mensuel_stats(db, filters)
 
     return templates.TemplateResponse(
-        "suivi_mensuel/programme.html",
+        "pages/suivi_mensuel/programme.html",
         {
             "request": request,
             "utilisateur": current_user,

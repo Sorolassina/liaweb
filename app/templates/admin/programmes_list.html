@@ -1,40 +1,49 @@
 {% extends "admin/base_admin.html" %}
 {% block admin_content %}
 
-<!-- Notifications -->
-{% if request.query_params.get('success') == '1' %}
-  <div class="alert alert-success alert-dismissible fade show" role="alert">
-    <i class="fa fa-check-circle me-2"></i>
-    {% if request.query_params.get('action') == 'add' %}
-      Programme créé avec succès !
-    {% elif request.query_params.get('action') == 'update' %}
-      Programme mis à jour avec succès !
-    {% elif request.query_params.get('action') == 'delete' %}
-      Programme supprimé avec succès !
-    {% elif request.query_params.get('action') == 'add_member' %}
-      Membre d'équipe ajouté avec succès !
-    {% elif request.query_params.get('action') == 'remove_member' %}
-      Membre d'équipe retiré avec succès !
-    {% elif request.query_params.get('action') == 'add_step' %}
-      Étape ajoutée avec succès !
-    {% elif request.query_params.get('action') == 'update_step' %}
-      Étape mise à jour avec succès !
-    {% elif request.query_params.get('action') == 'remove_step' %}
-      Étape supprimée avec succès !
-    {% endif %}
-    <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
-  </div>
+{# Messages toast #}
+{% set success_flag = request.query_params.get('success') %}
+{% set action = request.query_params.get('action') %}
+{% if success_flag %}
+  {% set success_message = 'Opération réussie !' %}
+  {% if action == 'add' %}
+    {% set success_message = 'Programme créé avec succès !' %}
+  {% elif action == 'update' %}
+    {% set success_message = 'Programme mis à jour avec succès !' %}
+  {% elif action == 'delete' %}
+    {% set success_message = 'Programme supprimé avec succès !' %}
+  {% elif action == 'add_member' %}
+    {% set success_message = "Membre d'équipe ajouté avec succès !" %}
+  {% elif action == 'remove_member' %}
+    {% set success_message = "Membre d'équipe retiré avec succès !" %}
+  {% elif action == 'add_step' %}
+    {% set success_message = 'Étape ajoutée avec succès !' %}
+  {% elif action == 'update_step' %}
+    {% set success_message = 'Étape mise à jour avec succès !' %}
+  {% elif action == 'remove_step' %}
+    {% set success_message = 'Étape supprimée avec succès !' %}
+  {% endif %}
+  <div class="toast-message visually-hidden" data-type="success" data-message="{{ success_message }}"></div>
+{% endif %}
+{% if request.query_params.get('error') %}
+  <div class="toast-message visually-hidden" data-type="error" data-message="{{ request.query_params.get('message', 'Une erreur est survenue') }}"></div>
 {% endif %}
 
 <div class="d-flex justify-content-between align-items-center mb-3">
   <h5 class="m-0">Programmes</h5>
+  
   <a class="submenu-item" href="{{ url_for('admin_programmes_new') }}">
     <i class="fa fa-plus me-2"></i>Nouveau programme
   </a>
 </div>
 
 <div class="card-neumo p-3">
-  <div class="users-table-containerP">
+  <div class="d-flex justify-content-between align-items-center mb-3">
+    <h6 class="m-0" style="color: var(--secondary-color);">Liste des programmes</h6>
+    <span class="badge bg-primary">{{ progs|length }} programme{% if progs|length != 1 %}s{% endif %}</span>
+  </div>
+
+  <div class="users-table-container">
     <table class="table align-middle">
     <thead>
       <tr>
@@ -80,19 +89,20 @@
         </td>
         <td class="text-end">
           <div class="btn-group btn-group-sm">
-            <a class="submenu-item" href="{{ url_for('admin_programmes_edit', prog_id=p.id) }}" title="Modifier">
+            <a class="btn btn-outline-primary admin-action" href="{{ url_for('admin_programmes_edit', prog_id=p.id) }}" title="Modifier">
               <i class="fa fa-edit"></i>
             </a>
-            <button type="button" class="btn btn-outline-info" data-bs-toggle="modal" data-bs-target="#viewModal{{ p.id }}" title="Voir les détails">
+            <!-- Bouton pour le modal de visualisation -->
+            <button type="button" class="btn btn-outline-info admin-action" data-bs-toggle="modal" data-bs-target="#viewModal{{ p.id }}" title="Voir les détails">
               <i class="fa fa-eye"></i>
             </button>
-            <button type="button" class="btn btn-outline-warning" data-bs-toggle="modal" data-bs-target="#teamModal{{ p.id }}" title="Gérer l'équipe">
+            <button type="button" class="btn btn-outline-warning admin-action" data-bs-toggle="modal" data-bs-target="#teamModal{{ p.id }}" title="Gérer l'équipe">
               <i class="fa fa-users"></i>
             </button>
-            <button type="button" class="btn btn-outline-info" data-bs-toggle="modal" data-bs-target="#stepsModal{{ p.id }}" title="Gérer les étapes">
+            <button type="button" class="btn btn-outline-info admin-action" data-bs-toggle="modal" data-bs-target="#stepsModal{{ p.id }}" title="Gérer les étapes">
               <i class="fa fa-list-ol"></i>
             </button>
-            <button type="button" class="btn btn-outline-danger" data-bs-toggle="modal" data-bs-target="#deleteModal{{ p.id }}" title="Supprimer">
+            <button type="button" class="btn btn-outline-danger admin-action" data-bs-toggle="modal" data-bs-target="#deleteModal{{ p.id }}" title="Supprimer">
               <i class="fa fa-trash"></i>
             </button>
           </div>
@@ -297,11 +307,11 @@
                 </td>
                 <td class="text-end">
                   <div class="btn-group btn-group-sm">
-                    <button class="btn btn-outline-primary" title="Modifier" onclick="editMember({{ p.id }}, {{ pu.id }})">
+                    <button class="btn btn-outline-primary admin-action" title="Modifier" onclick="editMember({{ p.id }}, {{ pu.id }})">
                       <i class="fa fa-edit"></i>
                     </button>
                     <form method="post" action="{{ url_for('admin_programme_remove_user', prog_id=p.id, user_id=pu.utilisateur_id) }}" class="d-inline">
-                      <button type="submit" class="btn btn-outline-danger" title="Retirer" 
+                      <button type="submit" class="btn btn-outline-danger admin-action" title="Retirer" 
                               onclick="return confirm('Retirer cet utilisateur du programme ?')">
                         <i class="fa fa-times"></i>
                       </button>
@@ -437,11 +447,11 @@
                       </td>
                       <td class="text-end">
                         <div class="btn-group btn-group-sm">
-                          <button type="button" class="btn btn-outline-primary" onclick="editStep({{ p.id }}, {{ etape.id }})" title="Modifier">
+                          <button type="button" class="btn btn-outline-primary admin-action" onclick="editStep({{ p.id }}, {{ etape.id }})" title="Modifier">
                             <i class="fa fa-edit"></i>
                           </button>
                           <form method="post" action="{{ url_for('admin_etapes_delete', etape_id=etape.id) }}" class="d-inline">
-                            <button type="submit" class="btn btn-outline-danger" onclick="return confirm('Supprimer cette étape ?')" title="Supprimer">
+                            <button type="submit" class="btn btn-outline-danger admin-action" onclick="return confirm('Supprimer cette étape ?')" title="Supprimer">
                               <i class="fa fa-trash"></i>
                             </button>
                           </form>

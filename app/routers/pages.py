@@ -2,15 +2,15 @@
 from fastapi import APIRouter, Request, Depends
 from fastapi.responses import HTMLResponse
 from sqlmodel import select, func
-from app_lia_web.core.database import get_session
-from app_lia_web.core.middleware import get_shared_session
-from app_lia_web.core.security import get_current_user, require_permission
-from app_lia_web.app.models.base import Programme, User, Candidat, Document
-from app_lia_web.app.models.inscription import Inscription
-from app_lia_web.app.models.jury import Jury
-from app_lia_web.app.models.enums import UserRole
-from app_lia_web.app.templates import templates
-from app_lia_web.core.program_schema_integration import safe_count_query, table_exists_anywhere
+from ..core.database import get_session
+from ..core.middleware import get_shared_session
+from ..core.security import get_current_user, require_permission
+from ..models.base import Programme, User, Candidat, Document
+from ..models.inscription import Inscription
+from ..models.jury import Jury
+from ..models.enums import UserRole
+from ..templates import templates
+from ..core.program_schema_integration import safe_count_query, table_exists_anywhere
 import logging
 
 router = APIRouter()
@@ -68,7 +68,7 @@ def page_directeur(request: Request, session=Depends(get_shared_session), u=Depe
     jurys = session.exec(select(Jury).order_by(Jury.session_le).limit(6)).all()
 
     # "Santé" (exemple : lecture depuis config/env)
-    from app_lia_web.core.config import settings
+    from ..core.config import settings
     health = {
         "smtp_ok": bool(settings.SMTP_HOST and settings.SMTP_USER and settings.SMTP_PASSWORD),
         "pappers_ok": bool(settings.PAPPERS_API_KEY),
@@ -87,7 +87,7 @@ def page_directeur(request: Request, session=Depends(get_shared_session), u=Depe
     roles = [u.role]
 
     return templates.TemplateResponse(
-        "pages/directeur.html",
+        "pages/directeur_technique/dashboard.html",
         {
             "request": request,
             "kpi": kpi,
@@ -123,7 +123,7 @@ def page_rs(request: Request, session=Depends(get_shared_session), u=Depends(get
     # Groupes enrichis (exemple simple)
     groupes = [{"nom": "Groupe ACD-G1", "programme_nom": "ACD"}]
     dossiers = []  # à remplir avec vos requêtes
-    return templates.TemplateResponse("pages/responsable_structure.html", {
+    return templates.TemplateResponse("pages/espaces/responsable_programme.html", {
         "request": request, "kpi": kpi, "programmes": programmes, "groupes": groupes, "dossiers": dossiers
     })
 
@@ -136,7 +136,7 @@ def page_rp(programme_id: int, request: Request, session=Depends(get_shared_sess
     kpi = {"inscriptions_en_attente": 0, "validees": 0, "documents_manquants": 0, "progres_pipeline": 0}
     dossiers = []  # injecter vos dossiers + eligibilite
     etapes = []    # injecter etapes actives du pipeline
-    return templates.TemplateResponse("pages/responsable_programme.html", {
+    return templates.TemplateResponse("pages/espaces/responsable_programme.html", {
         "request": request, "programme": programme, "kpi": kpi, "dossiers": dossiers, "etapes": etapes
     })
 
@@ -146,7 +146,7 @@ def page_conseiller(request: Request, session=Depends(get_shared_session), u=Dep
     require_permission(u, [UserRole.CONSEILLER.value, UserRole.ADMINISTRATEUR.value])
     
     a_completer = []  # id, candidat_nom, pieces_manquantes
-    return templates.TemplateResponse("pages/conseiller.html", {
+    return templates.TemplateResponse("pages/espaces/conseiller.html", {
         "request": request, "a_completer": a_completer
     })
 
@@ -157,7 +157,7 @@ def page_jury(request: Request, session=Depends(get_shared_session), u=Depends(g
     
     jurys = session.exec(select(Jury).order_by(Jury.session_le)).all()
     dossiers = []  # peupler les dossiers soumis au jury
-    return templates.TemplateResponse("pages/jury_externe.html", {
+    return templates.TemplateResponse("jury_externe.html", {
         "request": request, "jurys": jurys, "dossiers": dossiers
     })
 
@@ -168,7 +168,7 @@ def page_coach(request: Request, session=Depends(get_shared_session), u=Depends(
     
     seances = []  # agenda coaching
     groupes = []  # groupes suivis
-    return templates.TemplateResponse("pages/coach.html", {
+    return templates.TemplateResponse("pages/espaces/coach.html", {
         "request": request, "seances": seances, "groupes": groupes
     })
 
@@ -193,7 +193,7 @@ def page_candidat(request: Request, session=Depends(get_shared_session), u=Depen
             logging.warning(f"Erreur lors de la récupération des documents: {e}")
             docs = []
     kpi = {"statut": "en_attente", "progression": 0, "docs": len(docs)}
-    return templates.TemplateResponse("pages/candidat.html", {
+    return templates.TemplateResponse("pages/espaces/candidat.html", {
         "request": request, "candidat": candidat, "documents": docs, "kpi": kpi
     })
 
@@ -229,7 +229,7 @@ def page_drh_daf(request: Request, session=Depends(get_shared_session), u=Depend
     roles = [u.role]
 
     return templates.TemplateResponse(
-        "pages/drh_daf.html",
+        "pages/espaces/drh_daf.html",
         {
             "request": request,
             "kpi": kpi,

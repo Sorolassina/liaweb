@@ -6,18 +6,18 @@ from sqlmodel import Session, select, func
 from typing import Dict, Any
 from datetime import datetime, timezone, timedelta
 
-from app_lia_web.core.database import get_session
-from app_lia_web.core.middleware import get_shared_session
-from app_lia_web.core.security import get_current_user
-from app_lia_web.core.program_schema_integration import safe_count_query, table_exists_anywhere
+from ..core.database import get_session
+from ..core.middleware import get_shared_session
+from ..core.security import get_current_user
+from ..core.program_schema_integration import safe_count_query, table_exists_anywhere
 import logging
-from app_lia_web.app.models.base import User, Programme, Candidat
-from app_lia_web.app.models.preinscription import Preinscription
-from app_lia_web.app.models.inscription import Inscription
-from app_lia_web.app.models.jury import Jury
-from app_lia_web.app.models.enums import UserRole, StatutDossier
-from app_lia_web.app.schemas import StatistiquesResponse
-from app_lia_web.app.services import StatistiquesService
+from ..models.base import User, Programme, Candidat
+from ..models.preinscription import Preinscription
+from ..models.inscription import Inscription
+from ..models.jury import Jury
+from ..models.enums import UserRole, StatutDossier
+from ..schemas import StatistiquesResponse
+from ..services import StatistiquesService
 
 router = APIRouter()
 

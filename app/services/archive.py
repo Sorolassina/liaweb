@@ -11,9 +11,9 @@ import shutil
 from sqlmodel import Session, select, text
 from sqlalchemy import create_engine, MetaData
 
-from app_lia_web.app.models.archive import Archive, TypeArchive, StatutArchive, RegleNettoyage, LogNettoyage
-from app_lia_web.app.models.base import User
-from app_lia_web.core.config import settings
+from ..models.archive import Archive, TypeArchive, StatutArchive, RegleNettoyage, LogNettoyage
+from ..models.base import User
+from ..core.config import settings
 
 class ArchiveService:
     """Service de gestion des archives et sauvegardes"""

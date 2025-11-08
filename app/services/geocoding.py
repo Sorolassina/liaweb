@@ -3,7 +3,7 @@ from __future__ import annotations
 import httpx, asyncio, urllib.parse
 from typing import Optional, Tuple
 from sqlmodel import Session, select
-from app_lia_web.app.models.base import Entreprise
+from ..models.base import Entreprise
 
 BAN_ENDPOINT = "https://api-adresse.data.gouv.fr/search/"  # search?q=... (voir doc) :contentReference[oaicite:2]{index=2}
 

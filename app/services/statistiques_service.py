@@ -3,13 +3,13 @@ Service de calcul des statistiques
 """
 from sqlmodel import Session, select
 import logging
-from app_lia_web.app.models.base import Programme
-from app_lia_web.app.models.preinscription import Preinscription
-from app_lia_web.app.models.inscription import Inscription
-from app_lia_web.app.models.jury import Jury
-from app_lia_web.app.models.enums import StatutDossier
-from app_lia_web.app.schemas import StatistiquesResponse
-from app_lia_web.core.program_schema_integration import safe_count_query, table_exists_anywhere
+from ..models.base import Programme
+from ..models.preinscription import Preinscription
+from ..models.inscription import Inscription
+from ..models.jury import Jury
+from ..models.enums import StatutDossier
+from ..schemas import StatistiquesResponse
+from ..core.program_schema_integration import safe_count_query, table_exists_anywhere
 
 logger = logging.getLogger(__name__)
 

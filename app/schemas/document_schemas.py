@@ -4,7 +4,7 @@ Schémas Pydantic pour les documents
 from pydantic import BaseModel
 from typing import Optional
 from datetime import datetime
-from app_lia_web.app.models.enums import TypeDocument
+from ..models.enums import TypeDocument
 
 
 class DocumentBase(BaseModel):

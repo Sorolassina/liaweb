@@ -1,0 +1,19 @@
+{% if messages %}
+    <script>
+        // Convertir les messages flash en notifications toast
+        document.addEventListener('DOMContentLoaded', function() {
+            {% for category, message in messages %}
+                {% if category == 'success' %}
+                    showSuccess('{{ message | replace("'", "\\'") | safe }}');
+                {% elif category == 'error' or category == 'danger' %}
+                    showError('{{ message | replace("'", "\\'") | safe }}');
+                {% elif category == 'warning' %}
+                    showWarning('{{ message | replace("'", "\\'") | safe }}');
+                {% else %}
+                    showInfo('{{ message | replace("'", "\\'") | safe }}');
+                {% endif %}
+            {% endfor %}
+        });
+    </script>
+{% endif %}
+

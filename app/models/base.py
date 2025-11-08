@@ -8,6 +8,10 @@ from .inscription import Inscription
 from .jury import Jury, MembreJury, DecisionJuryTable, DecisionJuryCandidat
 from .rendez_vous import RendezVous, EmargementRDV
 from .enums import *
+# Import des modèles de message pour les relations (éviter import circulaire)
+from typing import TYPE_CHECKING
+if TYPE_CHECKING:
+    from .message import Conversation, Message
 
 class User(SQLModel, table=True):
     __tablename__ = "user"
@@ -23,11 +27,18 @@ class User(SQLModel, table=True):
     actif: bool = True
     derniere_connexion: Optional[datetime] = None
     photo_profil: Optional[str] = None  # Chemin vers la photo de profil
+    programme_id: Optional[int] = Field(default=None, foreign_key="programme.id")
     cree_le: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
     
     # Relations
-    programmes_responsable: List["Programme"] = Relationship(back_populates="responsable")
     programmes_utilisateurs: List["ProgrammeUtilisateur"] = Relationship(back_populates="utilisateur")
+    programme: Optional["Programme"] = Relationship(
+        back_populates="utilisateurs_directs",
+        sa_relationship_kwargs={
+            "primaryjoin": "User.programme_id == Programme.id",
+            "foreign_keys": "User.programme_id"
+        }
+    )
     inscriptions_conseiller: List["Inscription"] = Relationship(
         back_populates="conseiller",
         sa_relationship_kwargs={"foreign_keys": "[Inscription.conseiller_id]"}
@@ -37,6 +48,15 @@ class User(SQLModel, table=True):
         sa_relationship_kwargs={"foreign_keys": "[Inscription.referent_id]"}
     )
     documents_deposes: List["Document"] = Relationship(back_populates="depose_par")
+    conversations_user1: List["Conversation"] = Relationship(
+        sa_relationship_kwargs={"foreign_keys": "[Conversation.user1_id]"}
+    )
+    conversations_user2: List["Conversation"] = Relationship(
+        sa_relationship_kwargs={"foreign_keys": "[Conversation.user2_id]"}
+    )
+    messages_envoyes: List["Message"] = Relationship(
+        sa_relationship_kwargs={"foreign_keys": "[Message.sender_id]"}
+    )
 
 class Programme(SQLModel, table=True):
     __tablename__ = "programme"
@@ -60,10 +80,23 @@ class Programme(SQLModel, table=True):
     ca_seuil_min: Optional[float] = None
     ca_seuil_max: Optional[float] = None
     anciennete_min_annees: Optional[int] = None
+    anciennete_max_annees: Optional[int] = None
     
     # Relations
-    responsable: Optional[User] = Relationship(back_populates="programmes_responsable")
+    responsable: Optional[User] = Relationship(
+        sa_relationship_kwargs={
+            "primaryjoin": "Programme.responsable_id == User.id",
+            "foreign_keys": "Programme.responsable_id"
+        }
+    )
     utilisateurs: List["ProgrammeUtilisateur"] = Relationship(back_populates="programme")
+    utilisateurs_directs: List["User"] = Relationship(
+        back_populates="programme",
+        sa_relationship_kwargs={
+            "primaryjoin": "User.programme_id == Programme.id",
+            "foreign_keys": "User.programme_id"
+        }
+    )
     promotions: List["Promotion"] = Relationship(back_populates="programme")
     preinscriptions: List["Preinscription"] = Relationship(back_populates="programme")
     inscriptions: List["Inscription"] = Relationship(back_populates="programme")
@@ -120,7 +153,6 @@ class Candidat(SQLModel, table=True):
     niveau_etudes: Optional[str] = None
     secteur_activite: Optional[str] = None
     photo_profil: Optional[str] = None  # Chemin vers la photo de profil
-    statut: Optional[str] = Field(default="EN_ATTENTE")  # Statut du candidat
     # Géocodage (nouveaux champs)
     lat: Optional[float] = Field(default=None, index=True)
     lng: Optional[float] = Field(default=None, index=True)

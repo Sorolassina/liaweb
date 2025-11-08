@@ -21,35 +21,34 @@ from fastapi.staticfiles import StaticFiles  # Servir les fichiers statiques
 from fastapi.templating import Jinja2Templates  # Moteur de templates
 
 # === IMPORTS INTERNES - CONFIGURATION ===
-from app_lia_web.core.config import settings, BASE_DIR  # Configuration globale de l'app
-from app_lia_web.core.path_config import path_config  # Configuration centralisée des chemins
-from app_lia_web.core.enum_middleware import add_enum_validation_middleware  # Validation des enums
-from app_lia_web.core.database import create_db_and_tables, test_db_connection  # Gestion DB
-from app_lia_web.core.middleware import setup_all_middlewares  # Middlewares personnalisés
-from app_lia_web.app.services import UserService  # Service de gestion des utilisateurs
-from app_lia_web.app.services.database_migration import DatabaseMigrationService  # Migrations DB
-from app_lia_web.app.routers import router_configs  # Configuration des routes
-from app_lia_web.core.program_schema_integration import setup_program_schemas, ProgramSchemaManager  # Schémas par programme
+from .core.config import settings, BASE_DIR  # Configuration globale de l'app
+from .core.path_config import path_config  # Configuration centralisée des chemins
+from .core.enum_middleware import add_enum_validation_middleware  # Validation des enums
+from .core.database import create_db_and_tables, test_db_connection  # Gestion DB
+from .core.middleware import setup_all_middlewares  # Middlewares personnalisés
+from .services import UserService  # Service de gestion des utilisateurs
+from .routers import router_configs  # Configuration des routes
+from .core.program_schema_integration import ProgramSchemaManager  # Schémas par programme
 
 # === IMPORTS INTERNES - BASE DE DONNÉES ===
-from app_lia_web.core.database import get_session  # Session de base de données
+from .core.database import get_session  # Session de base de données
 from sqlmodel import Session  # ORM SQLModel
 from fastapi import Depends  # Injection de dépendances
 
 # === IMPORTS INTERNES - MODÈLES ===
-from app_lia_web.app.models.base import Programme  # Modèles principaux
-from app_lia_web.app.models.preinscription import Preinscription
-from app_lia_web.app.models.inscription import Inscription
-from app_lia_web.app.models.jury import Jury
+from .models.base import Programme  # Modèles principaux
+from .models.preinscription import Preinscription
+from .models.inscription import Inscription
+from .models.jury import Jury
 from sqlmodel import func  # Fonctions SQL (COUNT, etc.)
-from app_lia_web.core.security import authenticate_user, create_access_token  # Authentification
-from app_lia_web.core.config import settings  # Configuration (réimport)
+from .core.security import authenticate_user, create_access_token  # Authentification
+from .core.config import settings  # Configuration (réimport)
 from fastapi.security import OAuth2PasswordRequestForm  # Formulaire d'authentification OAuth2
 from fastapi import Depends, HTTPException, status  # Gestion des erreurs HTTP
 
 import uuid  # Génération d'identifiants uniques
 
-from app_lia_web.app.templates import templates # Import du système de templates Jinja2
+from .templates import templates # Import du système de templates Jinja2
 
 from starlette.exceptions import HTTPException as StarletteHTTPException  # Exceptions HTTP Starlette
 
@@ -99,27 +98,14 @@ app.state.settings = settings
 # ============================================================================
 # CONFIGURATION DES MIDDLEWARES
 # ============================================================================
-
-# Configuration du système de schémas par programme
-# Cette fonction configure le middleware et les routes pour la gestion des schémas
-setup_program_schemas(app)
-
 # Configuration de tous les middlewares personnalisés de l'application
 # Ces middlewares gèrent la sécurité, les logs, la validation, etc.
+
 setup_all_middlewares(
     app,  # Instance de l'application FastAPI
     allowed_hosts=getattr(settings, "ALLOWED_HOSTS", ["localhost", "127.0.0.0.1"]),  # Hôtes autorisés
     secret_key=settings.SECRET_KEY,  # Clé secrète pour les sessions/tokens
 )
-
-# Configuration du middleware de session partagée EN DERNIER
-# pour qu'il soit exécuté EN PREMIER et disponible pour tous les autres middlewares
-from app_lia_web.core.middleware import SharedSessionMiddleware
-app.add_middleware(SharedSessionMiddleware)
-
-# Ajout du middleware de validation des enums au démarrage
-# Ce middleware valide automatiquement les valeurs d'enum dans les requêtes
-enum_middleware = add_enum_validation_middleware(app)
 
 # ============================================================================
 # CONFIGURATION CORS (Cross-Origin Resource Sharing)
@@ -140,10 +126,6 @@ if settings.DEBUG and not cors_origins:
     allow_headers=["*"],
 )
 """
-
-# Middleware pour surveiller la création de programmes
-from app_lia_web.core.program_schema_integration import ProgramCreationMiddleware
-app.add_middleware(ProgramCreationMiddleware)
 
 # ============================================================================
 # CONFIGURATION DES FICHIERS STATIQUES ET TEMPLATES
@@ -221,7 +203,7 @@ def maybe_bootstrap_database() -> None:
     if not psql:
         return  # psql introuvable, impossible d'exécuter le SQL
 
-    # === CONFIGURATION DE LA CONNEXION POSTGRESQL ===
+# === CONFIGURATION DE LA CONNEXION POSTGRESQL ===
     # Connexion superuser (settings > env > défauts)
     PGHOST = settings.PGHOST
     PGPORT = str(settings.PGPORT)
@@ -271,7 +253,7 @@ def ensure_admin_user():
     """
     try:
         # Créer une session de base de données
-        from app_lia_web.core.database import get_session
+        from .core.database import get_session
         session = next(get_session())
         
         # Utiliser le service utilisateur pour vérifier/créer l'admin
@@ -340,37 +322,94 @@ def debug_routers():
 @app.get("/media/{file_path:path}", name="serve_uploaded_file")
 async def serve_uploaded_file(file_path: str):
     """
-    Route globale pour servir les fichiers uploadés (photos de profil, documents, etc.).
-    Cette route gère la sécurité et le type MIME des fichiers.
+    Route globale pour servir les fichiers uploadés et médias.
+    - Les fichiers (PDF, Word, etc.) sont dans uploads/
+    - Les médias (images, vidéos, MP3, etc.) sont dans media/
+    Utilise FileUploadService qui gère path_config de manière centralisée.
+    Supporte les anciens et nouveaux formats de chemin.
     """
     from pathlib import Path
-    from fastapi.responses import FileResponse
     from fastapi import HTTPException
+    from fastapi.responses import FileResponse
     import mimetypes
     
-    # Construire le chemin complet vers le fichier
-    full_path = Path(settings.UPLOAD_DIR) / file_path
+    # Normaliser les séparateurs de chemin (Windows utilise \ mais on stocke avec /)
+    file_path = file_path.replace('\\', '/')
     
-    # Vérifier que le fichier existe
-    if not full_path.exists():
-        print(f"🔍 Fichier non trouvé: {full_path}")
-        raise HTTPException(status_code=404, detail="Fichier non trouvé")
+    # Utiliser FileUploadService pour servir les fichiers
+    from .services.file_upload_service import FileUploadService
     
-    # Vérifier que le fichier est dans le dossier uploads (sécurité contre path traversal)
+    # Essayer d'abord de servir depuis media/ (nouveaux médias)
     try:
-        full_path.resolve().relative_to(Path(settings.UPLOAD_DIR).resolve())
-    except ValueError:
-        raise HTTPException(status_code=403, detail="Accès non autorisé")
-    
-    # Déterminer le type MIME du fichier
-    mime_type, _ = mimetypes.guess_type(str(full_path))
-    
-    # Retourner le fichier avec le bon type MIME
-    return FileResponse(
-        path=str(full_path),
-        media_type=mime_type or "application/octet-stream",
-        filename=full_path.name
-    )
+        return FileUploadService.serve_media_file(file_path)
+    except HTTPException as e:
+        # Si le fichier n'existe pas dans media/, essayer uploads/ (anciens fichiers)
+        if e.status_code == 404:
+            try:
+                return FileUploadService.serve_file(file_path)
+            except HTTPException as e2:
+                # Si toujours pas trouvé, essayer l'ancien format (media_root)
+                if e2.status_code == 404:
+                    media_root = settings.MEDIA_ROOT
+                    if media_root and media_root.exists():
+                        # Essayer avec le chemin direct dans media_root
+                        old_path = media_root / file_path
+                        if old_path.exists():
+                            # Vérifier la sécurité
+                            try:
+                                old_path.resolve().relative_to(media_root.resolve())
+                            except ValueError:
+                                raise HTTPException(status_code=403, detail="Accès non autorisé")
+                            
+                            # Déterminer le type MIME
+                            mime_type, _ = mimetypes.guess_type(str(old_path))
+                            
+                            print(f"✅ Fichier trouvé dans l'ancien emplacement: {old_path}")
+                            return FileResponse(
+                                path=str(old_path),
+                                media_type=mime_type or "application/octet-stream",
+                                filename=old_path.name
+                            )
+                        else:
+                            # Essayer une recherche récursive par nom de fichier dans media_root/Preinscrits
+                            parts = file_path.split('/')
+                            if len(parts) >= 3 and parts[0] == 'Preinscrits':
+                                search_dir = media_root / "Preinscrits"
+                                if search_dir.exists():
+                                    filename = parts[-1]  # Nom du fichier
+                                    # Chercher récursivement
+                                    for found_file in search_dir.rglob(filename):
+                                        if found_file.is_file():
+                                            # Vérifier la sécurité
+                                            try:
+                                                found_file.resolve().relative_to(media_root.resolve())
+                                            except ValueError:
+                                                continue
+                                            
+                                            # Déterminer le type MIME
+                                            mime_type, _ = mimetypes.guess_type(str(found_file))
+                                            
+                                            print(f"✅ Fichier trouvé dans l'ancien emplacement (recherche récursive): {found_file}")
+                                            return FileResponse(
+                                                path=str(found_file),
+                                                media_type=mime_type or "application/octet-stream",
+                                                filename=found_file.name
+                                            )
+                    
+                    # Si toujours pas trouvé, afficher les logs de debug
+                    print(f"🔍 Fichier non trouvé dans media/: {path_config.MEDIA_DIR / file_path}")
+                    print(f"🔍 Fichier non trouvé dans uploads/: {path_config.UPLOAD_DIR / file_path}")
+                    print(f"🔍 Chemin recherché: {file_path}")
+                    print(f"🔍 MEDIA_DIR: {path_config.MEDIA_DIR}")
+                    print(f"🔍 UPLOAD_DIR: {path_config.UPLOAD_DIR}")
+                    print(f"🔍 MEDIA_ROOT: {media_root}")
+                    raise HTTPException(status_code=404, detail="Fichier non trouvé")
+                else:
+                    # Répercuter les autres erreurs HTTP (403, etc.)
+                    raise
+        else:
+            # Répercuter les autres erreurs HTTP (403, etc.)
+            raise
 
 # ============================================================================
 # GESTION DU CYCLE DE VIE DE L'APPLICATION (STARTUP)
@@ -384,9 +423,9 @@ async def on_startup():
     1. Bootstrap SQL
     2. Test de connexion DB
     3. Création des tables ORM
-    4. Migration automatique
-    5. Vérification administrateur
-    6. Création des schémas par programme
+    4. Création des schémas par programme et leurs tables
+    5. Migration automatique (ajout des colonnes manquantes)
+    6. Vérification administrateur
     """
     print("=" * 60)
     print("🚀 DÉMARRAGE DE L'APPLICATION")
@@ -407,55 +446,32 @@ async def on_startup():
         print(f"❌ ÉTAPE 2 ÉCHEC: Connexion DB - {e}")
         pass  # Continuer même en cas d'erreur
 
-    # === ÉTAPE 3: CRÉATION DES TABLES ORM DANS LE SCHÉMA PUBLIC ===
-    print("📋 ÉTAPE 3: Création des tables ORM")
-    create_db_and_tables()  # Créer toutes les tables SQLModel
-    print("✅ ÉTAPE 3 TERMINÉE: Tables ORM créées")
-    
-    # === ÉTAPE 4: MIGRATION AUTOMATIQUE DE LA BASE DE DONNÉES ===
-    print("📋 ÉTAPE 4: Migration automatique")
+    # === ÉTAPE 3: CRÉATION DES TABLES ORM DANS LE SCHÉMA PUBLIC (AVEC MIGRATION) ===
+    print("📋 ÉTAPE 3: Création des tables ORM et migration automatique")
     try:
-        # Créer une session et le service de migration
-        session = next(get_session())
-        migration_service = DatabaseMigrationService(session)
-        
-        # Effectuer la migration automatique
-        migration_results = migration_service.migrate_database()
-        
-        # Afficher les résultats de la migration
-        if migration_results["enums_updated"]:
-            print(f"📝 Enums mis à jour: {migration_results['enums_updated']}")
-        if migration_results["tables_created"]:
-            print(f"📋 Tables créées: {migration_results['tables_created']}")
-        if migration_results["columns_added"]:
-            print(f"🔧 Colonnes ajoutées: {migration_results['columns_added']}")
-        if migration_results["errors"]:
-            print(f"⚠️ Erreurs de migration: {migration_results['errors']}")
-        else:
-            print("✅ Migration automatique terminée avec succès")
-            
-        print("✅ ÉTAPE 4 TERMINÉE: Migration automatique")
-            
+        create_db_and_tables()  # Créer toutes les tables SQLModel du schéma public et migrer les colonnes
     except Exception as e:
-        print(f"❌ ÉTAPE 4 ÉCHEC: Migration automatique - {e}")
-        pass  # Continuer même en cas d'erreur
+        print(f"❌ ÉTAPE 3 ÉCHEC: Création des tables ORM - {e}")
+        import traceback
+        print(traceback.format_exc())
+
+    print("✅ ÉTAPE 3 TERMINÉE: Tables ORM créées et migrées")
+    
+    # === ÉTAPE 4: CRÉATION DES SCHÉMAS PAR PROGRAMME ET LEURS TABLES ===
+    print("📋 ÉTAPE 4: Création des schémas par programme et leurs tables")
+    try:
+        from .core.database import create_program_schemas_and_tables
+        create_program_schemas_and_tables()  # Créer les schémas et tables pour chaque programme
+        print("✅ ÉTAPE 4 TERMINÉE: Schémas par programme créés")
+    except Exception as e:
+        print(f"❌ ÉTAPE 4 ÉCHEC: Création des schémas par programme - {e}")
+        import traceback
+        print(traceback.format_exc())
     
     # === ÉTAPE 5: VÉRIFICATION ET CRÉATION DE L'ADMINISTRATEUR ===
     print("📋 ÉTAPE 5: Vérification administrateur")
     ensure_admin_user()  # S'assurer qu'un admin existe
     print("✅ ÉTAPE 5 TERMINÉE: Administrateur vérifié")
-    
-    # === ÉTAPE 6: VÉRIFICATION ET CRÉATION DES SCHÉMAS PAR PROGRAMME ===
-    print("📋 ÉTAPE 6: Vérification et création des schémas par programme")
-    try:
-        from app_lia_web.core.program_schema_integration import check_and_create_program_schemas
-        check_and_create_program_schemas()
-        print("✅ ÉTAPE 6 TERMINÉE: Vérification et création des schémas par programme")
-        
-    except Exception as e:
-        print(f"❌ ÉTAPE 6 ÉCHEC: Vérification et création des schémas - {e}")
-        import traceback
-        print(traceback.format_exc())
     
     print("=" * 60)
     print("🎉 DÉMARRAGE DE L'APPLICATION TERMINÉ")
@@ -473,7 +489,7 @@ async def root_get(request: Request):
     """
     print("✅", TEMPLATES_DIR)  # Debug: afficher le chemin des templates
     return templates.TemplateResponse(
-        "login.html",  # Template de connexion
+        "auth/login.html",  # Template de connexion
         {
             "request": request, 
             "app_name": settings.APP_NAME, 
@@ -486,15 +502,14 @@ async def root_get(request: Request):
 # === IMPORTS POUR LES ROUTES D'AUTHENTIFICATION ===
 from fastapi.exceptions import HTTPException
 from fastapi import status
-from app_lia_web.core.security import get_current_user
-from app_lia_web.app.models.base import User
-from app_lia_web.app.models.enums import UserRole
-from app_lia_web.app.models.base import Programme
-from app_lia_web.app.models.preinscription import Preinscription
-from app_lia_web.app.models.inscription import Inscription
-from app_lia_web.app.models.jury import Jury
-from app_lia_web.core.database import get_session
-from app_lia_web.app.schemas import UserResponse
+from .core.security import get_current_user
+from .models.base import User, Programme
+from .models.enums import UserRole
+from .models.preinscription import Preinscription
+from .models.inscription import Inscription
+from .models.jury import Jury
+from .core.database import get_session
+from .schemas import UserResponse
 from sqlmodel import select, func
 
 
@@ -524,7 +539,7 @@ async def login(
     if not user:
         # Identifiants incorrects - retourner le template avec message d'erreur
         return templates.TemplateResponse(
-            "login.html",
+            "auth/login.html",
             {
                 "request": request,
                 "app_name": settings.APP_NAME,
@@ -585,7 +600,7 @@ async def root_post(
         else:
             # Identifiants incorrects - afficher le template avec erreur
             return templates.TemplateResponse(
-                "login.html",
+                "auth/login.html",
                 {
                     "request": request,
                     "app_name": settings.APP_NAME,
@@ -599,7 +614,7 @@ async def root_post(
     except Exception as e:
         # En cas d'erreur système - afficher le template avec erreur générique
         return templates.TemplateResponse(
-            "login.html",
+            "auth/login.html",
             {
                 "request": request,
                 "app_name": settings.APP_NAME,
@@ -710,10 +725,10 @@ if __name__ == "__main__":
     Cette section ne s'exécute que si le fichier est lancé directement.
     """
     uvicorn.run(
-        "app_lia_web.app.main:app",  # Module et application FastAPI
+        "app.main:app",  # Module et application FastAPI (relatif depuis app_lia_web)
         host="0.0.0.0",             # Écouter sur toutes les interfaces
         port=8000,                  # Port par défaut
-        reload=bool(settings.DEBUG), # Rechargement automatique en mode debug
+        reload=False, #bool(settings.DEBUG), # Rechargement automatique en mode debug
         log_level="info",           # Niveau de log
     )
    

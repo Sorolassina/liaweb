@@ -1,65 +1,50 @@
 {% extends "admin/base_admin.html" %}
 {% block admin_content %}
 
-<!-- Messages de succès/erreur -->
-{% if request.query_params.get('success') %}
-  {% set success_type = request.query_params.get('success') %}
+{# Messages toast #}
+{% set success_type = request.query_params.get('success') %}
+{% if success_type %}
+  {% set success_message = 'Opération réussie !' %}
   {% if success_type == 'member_added' %}
-    <div class="alert alert-success alert-dismissible fade show" role="alert">
-      <i class="fa fa-check-circle me-2"></i>Membre ajouté au jury avec succès !
-      <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
-    </div>
+    {% set success_message = 'Membre ajouté au jury avec succès !' %}
   {% elif success_type == 'member_deleted' %}
-    <div class="alert alert-info alert-dismissible fade show" role="alert">
-      <i class="fa fa-info-circle me-2"></i>Membre retiré du jury avec succès !
-      <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
-    </div>
+    {% set success_message = 'Membre retiré du jury avec succès !' %}
   {% elif success_type == 'invitations_sent' %}
-    <div class="alert alert-success alert-dismissible fade show" role="alert">
-      <i class="fa fa-envelope me-2"></i>Invitations envoyées avec succès ! ({{ request.query_params.get('count', 0) }} email(s))
-      <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
-    </div>
+    {% set success_message = 'Invitations envoyées avec succès ! (' ~ request.query_params.get('count', 0) ~ ' email(s))' %}
   {% elif success_type == 'jury_updated' %}
-    <div class="alert alert-success alert-dismissible fade show" role="alert">
-      <i class="fa fa-check-circle me-2"></i>Jury mis à jour avec succès !
-      <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
-    </div>
+    {% set success_message = 'Jury mis à jour avec succès !' %}
   {% endif %}
+  <div class="toast-message visually-hidden" data-type="success" data-message="{{ success_message }}"></div>
 {% endif %}
-
-{% if request.query_params.get('error') %}
-  {% set error_type = request.query_params.get('error') %}
+{% set error_type = request.query_params.get('error') %}
+{% if error_type %}
+  {% set error_message = request.query_params.get('message', 'Une erreur est survenue') %}
   {% if error_type == 'already_member' %}
-    <div class="alert alert-warning alert-dismissible fade show" role="alert">
-      <i class="fa fa-exclamation-triangle me-2"></i>Cet utilisateur est déjà membre de ce jury !
-      <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
-    </div>
+    {% set error_message = "Cet utilisateur est déjà membre de ce jury !" %}
   {% elif error_type == 'no_members' %}
-    <div class="alert alert-warning alert-dismissible fade show" role="alert">
-      <i class="fa fa-exclamation-triangle me-2"></i>Aucun membre assigné au jury pour envoyer les invitations !
-      <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
-    </div>
+    {% set error_message = "Aucun membre assigné au jury pour envoyer les invitations !" %}
   {% endif %}
+  <div class="toast-message visually-hidden" data-type="error" data-message="{{ error_message }}"></div>
 {% endif %}
 
 <div class="d-flex justify-content-between align-items-center mb-3">
   <h5 class="m-0">
-    <i class="fa fa-gavel me-2"></i>Gestion des jurys
+    <i class="fa fa-gavel me-2" aria-hidden="true"></i>Gestion des jurys
   </h5>
-  <button class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#addJuryModal">
-    <i class="fa fa-plus me-2"></i>Nouveau jury
-  </button>
+  <a href="#" class="submenu-item" data-modal-target="addJuryModal" role="button">
+    <i class="fa fa-plus me-2" aria-hidden="true"></i>Nouveau jury
+  </a>
 </div>
 
 <!-- Modal d'ajout de jury -->
-<div class="modal fade" id="addJuryModal" tabindex="-1">
-  <div class="modal-dialog">
+<div class="modal-lg" id="addJuryModal">
+  
     <div class="modal-content">
       <div class="modal-header">
         <h5 class="modal-title">
           <i class="fa fa-plus me-2"></i>+ jury
         </h5>
-        <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+        <button type="button" class="modal-close" data-close-modal="addJuryModal" title="Fermer">&times;</button>
       </div>
       <form method="post" action="{{ url_for('admin_jurys_add') }}">
         <div class="modal-body">
@@ -106,17 +91,21 @@
           </div>
         </div>
         <div class="modal-footer">
-          <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Annuler</button>
+          <button type="button" class="btn btn-secondary" data-close-modal="addJuryModal">Annuler</button>
           <button type="submit" class="btn btn-primary">
             <i class="fa fa-save me-2"></i>Créer le jury
           </button>
         </div>
       </form>
     </div>
-  </div>
+  
 </div>
 
 <div class="card-neumo p-3">
+  <div class="d-flex justify-content-between align-items-center mb-3">
+    <h6 class="m-0" style="color: var(--secondary-color);"><i class="fa fa-gavel me-2" aria-hidden="true"></i>Liste des jurys</h6>
+    <span class="badge bg-primary">{{ jurys|length }} jury{% if jurys|length != 1 %}s{% endif %}</span>
+  </div>
   <div class="users-table-container">
     <table class="table align-middle">
       <thead>
@@ -162,19 +151,19 @@
           </td>
           <td class="text-end">
             <div class="btn-group btn-group-sm">
-              <button class="btn btn-outline-info" data-bs-toggle="modal" data-bs-target="#viewJuryModal{{ j.id }}" title="Voir détails">
+              <button class="btn btn-outline-info admin-action" type="button" data-modal-target="viewJuryModal{{ j.id }}" title="Voir détails">
                 <i class="fa fa-eye"></i>
               </button>
-              <button class="btn btn-outline-primary" data-bs-toggle="modal" data-bs-target="#editJuryModal{{ j.id }}" title="Modifier">
+              <button class="btn btn-outline-primary admin-action" type="button" data-modal-target="editJuryModal{{ j.id }}" title="Modifier">
                 <i class="fa fa-edit"></i>
               </button>
-              <button class="btn btn-outline-success" data-bs-toggle="modal" data-bs-target="#membersJuryModal{{ j.id }}" title="Gérer les membres">
+              <button class="btn btn-outline-success admin-action" type="button" data-modal-target="membersJuryModal{{ j.id }}" title="Gérer les membres">
                 <i class="fa fa-users"></i>
               </button>
-              <button class="btn btn-outline-warning" data-bs-toggle="modal" data-bs-target="#invitationsJuryModal{{ j.id }}" title="Envoyer invitations">
+              <button class="btn btn-outline-warning admin-action" type="button" data-modal-target="invitationsJuryModal{{ j.id }}" title="Envoyer invitations">
                 <i class="fa fa-envelope"></i>
               </button>
-              <button class="btn btn-outline-danger" onclick="deleteJury({{ j.id }})" title="Supprimer">
+              <button class="btn btn-outline-danger admin-action js-delete-jury" type="button" data-jury-id="{{ j.id }}" title="Supprimer">
                 <i class="fa fa-trash"></i>
               </button>
             </div>
@@ -194,14 +183,13 @@
 
 <!-- Modals d'édition pour chaque jury -->
 {% for j in jurys %}
-<div class="modal fade" id="editJuryModal{{ j.id }}" tabindex="-1">
-  <div class="modal-dialog">
-    <div class="modal-content">
+<div class="modal-lg" id="editJuryModal{{ j.id }}">
+  <div class="modal-content">
       <div class="modal-header">
         <h5 class="modal-title">
           <i class="fa fa-edit me-2"></i>Modifier le jury
         </h5>
-        <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+        <button type="button" class="modal-close" data-close-modal="editJuryModal{{ j.id }}" title="Fermer">&times;</button>
       </div>
       <form method="post" action="{{ url_for('admin_jury_update', jury_id=j.id) }}">
         <div class="modal-body">
@@ -248,27 +236,25 @@
           </div>
         </div>
         <div class="modal-footer">
-          <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Annuler</button>
+          <button type="button" class="btn btn-secondary" data-close-modal="editJuryModal{{ j.id }}">Annuler</button>
           <button type="submit" class="btn btn-primary">
             <i class="fa fa-save me-2"></i>Enregistrer
           </button>
         </div>
       </form>
     </div>
-  </div>
 </div>
 {% endfor %}
 
 <!-- Modals de visualisation et gestion des membres pour chaque jury -->
 {% for j in jurys %}
-<div class="modal fade" id="viewJuryModal{{ j.id }}" tabindex="-1">
-  <div class="modal-dialog modal-lg">
-    <div class="modal-content">
+<div class="modal-lg" id="viewJuryModal{{ j.id }}">
+  <div class="modal-content">
       <div class="modal-header">
         <h5 class="modal-title">
           <i class="fa fa-gavel me-2"></i>Détails du jury
         </h5>
-        <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+        <button type="button" class="modal-close" data-close-modal="viewJuryModal{{ j.id }}" title="Fermer">&times;</button>
       </div>
       <div class="modal-body">
         <!-- Informations du jury -->
@@ -327,21 +313,19 @@
 
       </div>
       <div class="modal-footer">
-        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Fermer</button>
+        <button type="button" class="btn btn-secondary" data-close-modal="viewJuryModal{{ j.id }}">Fermer</button>
       </div>
     </div>
-  </div>
 </div>
 
 <!-- Modal de gestion des membres pour chaque jury -->
-<div class="modal fade" id="membersJuryModal{{ j.id }}" tabindex="-1">
-  <div class="modal-dialog modal-lg">
-    <div class="modal-content">
+<div class="modal-xl" id="membersJuryModal{{ j.id }}">
+  <div class="modal-content">
       <div class="modal-header">
         <h5 class="modal-title">
           <i class="fa fa-users me-2"></i>Gestion des membres - Jury {{ j.id }}
         </h5>
-        <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+        <button type="button" class="modal-close" data-close-modal="membersJuryModal{{ j.id }}" title="Fermer">&times;</button>
       </div>
       <div class="modal-body">
         <!-- Accordéon pour ajouter un membre -->
@@ -356,11 +340,11 @@
             <div id="collapseAdd{{ j.id }}" class="accordion-collapse collapse" 
                  aria-labelledby="headingAdd{{ j.id }}" data-bs-parent="#addMemberAccordion{{ j.id }}">
               <div class="accordion-body">
-                <form method="post" action="{{ url_for('admin_jury_membre_add', jury_id=j.id) }}">
+                <form method="post" action="{{ url_for('admin_jury_add_member', jury_id=j.id) }}">
                   <div class="row g-3">
                     <div class="col-md-6">
                       <label class="form-label">Utilisateur</label>
-                      <select class="form-select" name="utilisateur_id" required>
+                      <select class="form-select" name="membre_id" required>
                         <option value="">— Sélectionnez un utilisateur —</option>
                         {% for user in users %}
                           {% set already_member = j.membres | selectattr('utilisateur_id', 'equalto', user.id) | list %}
@@ -433,8 +417,8 @@
                     </a>
                   </td>
                   <td class="text-end">
-                    <button class="btn btn-outline-danger btn-sm" onclick="removeMember({{ j.id }}, {{ membre.id }})" title="Retirer">
-                      <i class="fa fa-trash"></i>
+                    <button class="btn btn-outline-danger admin-action btn-sm js-remove-member" type="button" data-jury-id="{{ j.id }}" data-member-id="{{ membre.id }}" title="Retirer">
+                      <i class="fa fa-times"></i>
                     </button>
                   </td>
                 </tr>
@@ -451,21 +435,19 @@
         </div>
       </div>
       <div class="modal-footer">
-        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Fermer</button>
+        <button type="button" class="btn btn-secondary" data-close-modal="membersJuryModal{{ j.id }}">Fermer</button>
       </div>
     </div>
-  </div>
 </div>
 
 <!-- Modal d'envoi d'invitations pour chaque jury -->
-<div class="modal fade" id="invitationsJuryModal{{ j.id }}" tabindex="-1">
-  <div class="modal-dialog modal-lg">
-    <div class="modal-content">
+<div class="modal-xl" id="invitationsJuryModal{{ j.id }}">
+  <div class="modal-content">
       <div class="modal-header">
         <h5 class="modal-title">
           <i class="fa fa-envelope me-2"></i>Envoyer les invitations - Jury {{ j.id }}
         </h5>
-        <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+        <button type="button" class="modal-close" data-close-modal="invitationsJuryModal{{ j.id }}" title="Fermer">&times;</button>
       </div>
       <div class="modal-body">
         <!-- Accordéon pour les informations du jury -->
@@ -576,7 +558,7 @@
                 {% else %}
                   <div class="alert alert-warning">
                     <i class="fa fa-exclamation-triangle me-2"></i>Aucun membre assigné au jury. 
-                    <a href="#" data-bs-dismiss="modal" data-bs-toggle="modal" data-bs-target="#membersJuryModal{{ j.id }}">
+                    <a href="#" class="js-switch-modal" data-switch-from="invitationsJuryModal{{ j.id }}" data-switch-to="membersJuryModal{{ j.id }}">
                       Ajouter des membres d'abord.
                     </a>
                   </div>
@@ -630,15 +612,14 @@
         </div>
       </div>
       <div class="modal-footer">
-        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Annuler</button>
+        <button type="button" class="btn btn-secondary" data-close-modal="invitationsJuryModal{{ j.id }}">Annuler</button>
         {% if j.membres %}
-          <button type="button" class="btn btn-warning" onclick="sendInvitations({{ j.id }})">
+          <button type="button" class="btn btn-warning js-send-invitations" data-jury-id="{{ j.id }}">
             <i class="fa fa-envelope me-2"></i>Envoyer les invitations
           </button>
         {% endif %}
       </div>
     </div>
-  </div>
 </div>
 
 {% endfor %}
@@ -654,22 +635,112 @@
       setTimeout(() => {
         if (action === 'add_member' || action === 'remove_member') {
           // Rouvrir le modal de gestion des membres
-          const modal = document.getElementById(`membersJuryModal${juryId}`);
-          if (modal) {
-            const bsModal = new bootstrap.Modal(modal);
-            bsModal.show();
-          }
+          const modalId = `membersJuryModal${juryId}`;
+          handleOpenModal(modalId);
+        } else if (action === 'invitations') {
+          const modalId = `invitationsJuryModal${juryId}`;
+          handleOpenModal(modalId);
         }
       }, 100);
     }
 
+    document.querySelectorAll('[data-modal-target]').forEach((trigger) => {
+      trigger.addEventListener('click', (event) => {
+        if (trigger.tagName === 'A') {
+          event.preventDefault();
+        }
+        const modalId = trigger.getAttribute('data-modal-target');
+        handleOpenModal(modalId);
+      });
+    });
+
+    document.querySelectorAll('[data-close-modal]').forEach((trigger) => {
+      trigger.addEventListener('click', (event) => {
+        event.preventDefault();
+        const modalId = trigger.getAttribute('data-close-modal');
+        handleCloseModal(modalId);
+      });
+    });
+
+    document.querySelectorAll('.js-switch-modal').forEach((link) => {
+      link.addEventListener('click', (event) => {
+        event.preventDefault();
+        const fromId = link.getAttribute('data-switch-from');
+        const toId = link.getAttribute('data-switch-to');
+        switchModal(fromId, toId);
+      });
+    });
+
+    document.querySelectorAll('.js-delete-jury').forEach((btn) => {
+      btn.addEventListener('click', () => {
+        const jury = btn.getAttribute('data-jury-id');
+        if (jury) {
+          deleteJury(jury);
+        }
+      });
+    });
+
+    document.querySelectorAll('.js-remove-member').forEach((btn) => {
+      btn.addEventListener('click', () => {
+        const jury = btn.getAttribute('data-jury-id');
+        const member = btn.getAttribute('data-member-id');
+        if (jury && member) {
+          removeMember(jury, member);
+        }
+      });
+    });
+
+    document.querySelectorAll('.js-send-invitations').forEach((btn) => {
+      btn.addEventListener('click', () => {
+        const jury = btn.getAttribute('data-jury-id');
+        if (jury) {
+          sendInvitations(jury);
+        }
+      });
+    });
+
   });
+
+function handleOpenModal(modalId) {
+  if (!modalId) {
+    return;
+  }
+  if (typeof openModal === 'function') {
+    openModal(modalId);
+  } else {
+    const modal = document.getElementById(modalId);
+    if (modal) {
+      modal.classList.add('show');
+    }
+  }
+}
+
+function handleCloseModal(modalId) {
+  if (!modalId) {
+    return;
+  }
+  if (typeof closeModal === 'function') {
+    closeModal(modalId);
+  } else {
+    const modal = document.getElementById(modalId);
+    if (modal) {
+      modal.classList.remove('show');
+    }
+  }
+}
+
+function switchModal(fromId, toId) {
+  handleCloseModal(fromId);
+  setTimeout(() => {
+    handleOpenModal(toId);
+  }, 50);
+}
 
 function deleteJury(juryId) {
   if (confirm('Êtes-vous sûr de vouloir supprimer ce jury ? Cette action est irréversible.')) {
     const form = document.createElement('form');
     form.method = 'POST';
-    form.action = `{{ url_for('admin_jury_delete', jury_id='${juryId}') }}`;
+    form.action = "{{ url_for('admin_jury_delete', jury_id='JURY_ID') }}".replace('JURY_ID', juryId);
     document.body.appendChild(form);
     form.submit();
   }
@@ -679,7 +750,9 @@ function removeMember(juryId, membreId) {
   if (confirm('Êtes-vous sûr de vouloir retirer ce membre du jury ?')) {
     const form = document.createElement('form');
     form.method = 'POST';
-    form.action = `{{ url_for('admin_jury_membre_delete', jury_id='${juryId}', membre_id='${membreId}') }}`;
+    form.action = "{{ url_for('admin_jury_remove_member', jury_id='JURY_ID', membre_id='MEMBRE_ID') }}"
+      .replace('JURY_ID', juryId)
+      .replace('MEMBRE_ID', membreId);
     document.body.appendChild(form);
     form.submit();
   }
@@ -689,7 +762,7 @@ function sendInvitations(juryId) {
   if (confirm('Envoyer les invitations par email à tous les membres du jury ?')) {
     const form = document.createElement('form');
     form.method = 'POST';
-    form.action = `{{ url_for('admin_jury_send_invitations', jury_id='${juryId}') }}`;
+    form.action = "{{ url_for('admin_jury_send_invitations', jury_id='JURY_ID') }}".replace('JURY_ID', juryId);
     document.body.appendChild(form);
     form.submit();
   }

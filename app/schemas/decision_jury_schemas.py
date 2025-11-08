@@ -4,7 +4,7 @@ Schémas Pydantic pour les décisions de jury
 from pydantic import BaseModel
 from typing import Optional
 from datetime import datetime
-from app_lia_web.app.models.enums import DecisionJury
+from ..models.enums import DecisionJury
 
 
 class DecisionJuryBase(BaseModel):

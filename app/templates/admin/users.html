@@ -1,105 +1,90 @@
 {% extends "admin/base_admin.html" %}
+{% from "components/modal.html" import modal_with_footer %}
 {% block admin_content %}
 
-<!-- Messages flash -->
-{% if request.query_params.get('success') %}
-<div class="alert alert-success alert-dismissible fade show" role="alert">
-  <i class="fa fa-check-circle me-2"></i>
-  {% if request.query_params.get('action') == 'add' %}
-    Utilisateur créé avec succès !
-  {% elif request.query_params.get('action') == 'update' %}
-    Utilisateur modifié avec succès !
-  {% elif request.query_params.get('action') == 'photo' %}
-    Photo de profil mise à jour avec succès !
-  {% elif request.query_params.get('action') == 'toggle' %}
-    Statut de l'utilisateur modifié avec succès !
-  {% elif request.query_params.get('action') == 'delete' %}
-    Utilisateur supprimé avec succès !
-  {% else %}
-    Opération réussie !
+{# Messages toast #}
+{% set success_flag = request.query_params.get('success') %}
+{% set action = request.query_params.get('action') %}
+{% if success_flag %}
+  {% set success_message = 'Opération réussie !' %}
+  {% if action == 'add' %}
+    {% set success_message = 'Utilisateur créé avec succès !' %}
+  {% elif action == 'update' %}
+    {% set success_message = 'Utilisateur modifié avec succès !' %}
+  {% elif action == 'photo' %}
+    {% set success_message = 'Photo de profil mise à jour avec succès !' %}
+  {% elif action == 'toggle' %}
+    {% set success_message = "Statut de l'utilisateur modifié avec succès !" %}
+  {% elif action == 'delete' %}
+    {% set success_message = 'Utilisateur supprimé avec succès !' %}
   {% endif %}
-  <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
-</div>
+  <div class="toast-message visually-hidden" data-type="success" data-message="{{ success_message }}"></div>
 {% endif %}
-
 {% if request.query_params.get('error') %}
-<div class="alert alert-danger alert-dismissible fade show" role="alert">
-  <i class="fa fa-exclamation-triangle me-2"></i>
-  {{ request.query_params.get('message', 'Une erreur est survenue') }}
-  <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
-</div>
+  <div class="toast-message visually-hidden" data-type="error" data-message="{{ request.query_params.get('message', 'Une erreur est survenue') }}"></div>
 {% endif %}
 
 <div class="d-flex justify-content-between align-items-center mb-3">
   <h5 class="m-0">Utilisateurs</h5>
-  <form class="d-flex gap-2" method="get" action="{{ url_for('profil') }}">
-    <input class="form-control" name="q" value="{{ q }}" placeholder="Rechercher...">
-    <button class="btn btn-outline-secondary"><i class="fa fa-search"></i></button>
-  </form>
+  <a href="#" class="submenu-item" data-modal-target="addUserModal" role="button">
+    <i class="fa fa-user-plus me-2"></i>Nouvel utilisateur
+  </a>
 </div>
 
-<div class="card-neumo p-4 mb-3">
-  <div class="d-flex justify-content-between align-items-center mb-3" data-bs-toggle="collapse" data-bs-target="#addUserForm" aria-expanded="false" aria-controls="addUserForm" style="cursor: pointer;">
-    <h6 class="m-0"><i class="fa fa-user-plus me-2"></i>Ajouter un nouvel utilisateur</h6>
-    <i class="fa fa-chevron-down" id="addUserIcon"></i>
-  </div>
-  
-  <div class="collapse" id="addUserForm">
+<div class="modal-xl" id="addUserModal">
+  <div class="modal-content">
+    <div class="modal-header">
+      <h5 class="modal-title"><i class="fa fa-user-plus me-2"></i>Ajouter un nouvel utilisateur</h5>
+      <button type="button" class="modal-close" data-close-modal="addUserModal" title="Fermer">&times;</button>
+    </div>
     <form method="post" action="{{ url_for('admin_users_add') }}" enctype="multipart/form-data">
-      <div class="row g-3">
-        <!-- Informations personnelles -->
-        <div class="col-md-6">
-          <label for="nom_complet" class="form-label">Nom complet <span class="text-danger">*</span></label>
-          <input type="text" class="form-control" id="nom_complet" name="nom_complet" placeholder="Ex: Jean Dupont" required>
-        </div>
-        <div class="col-md-6">
-          <label for="email" class="form-label">Email <span class="text-danger">*</span></label>
-          <input type="email" class="form-control" id="email" name="email" placeholder="exemple@email.com" required>
-        </div>
-        <div class="col-md-6">
-          <label for="telephone" class="form-label">Téléphone</label>
-          <input type="tel" class="form-control" id="telephone" name="telephone" placeholder="06 12 34 56 78">
-        </div>
-        <div class="col-md-6">
-          <label for="mot_de_passe" class="form-label">Mot de passe <span class="text-danger">*</span></label>
-          <input type="password" class="form-control" id="mot_de_passe" name="mot_de_passe" placeholder="Laissez vide pour 'ChangeMe123!'">
-          <div class="form-text">Laissez vide pour utiliser "ChangeMe123!" par défaut</div>
-        </div>
-        
-        <!-- Rôle et type -->
-        <div class="col-md-6">
-          <label for="role" class="form-label">Rôle <span class="text-danger">*</span></label>
-          <select class="form-select" id="role" name="role" required>
-            <option value="">Sélectionner un rôle</option>
-            {% for role in UserRole %}
-              <option value="{{ role.value }}">{{ role.name.replace('_',' ').title() }}</option>
-            {% endfor %}
-          </select>
-        </div>
-        <div class="col-md-6">
-          <label for="type_utilisateur" class="form-label">Type d'utilisateur <span class="text-danger">*</span></label>
-          <select class="form-select" id="type_utilisateur" name="type_utilisateur" required>
-            <option value="INTERNE">Interne</option>
-            <option value="EXTERNE">Externe</option>
-          </select>
-        </div>
-        
-        <!-- Photo de profil -->
-        <div class="col-12">
-          <label for="photo_profil" class="form-label">Photo de profil</label>
-          <input type="file" class="form-control" id="photo_profil" name="photo_profil" accept="image/*">
-          <div class="form-text">JPG, PNG, GIF (max 2MB) - Optionnel</div>
-        </div>
-        
-        <!-- Bouton d'action -->
-        <div class="col-12">
-          <hr class="my-3">
-          <div class="d-flex justify-content-end">
-            <button type="submit" class="btn btn-primary">
-              <i class="fa fa-plus me-2"></i>Ajouter l'utilisateur
-            </button>
+      <div class="modal-body">
+        <div class="row g-3">
+          <div class="col-md-6">
+            <label for="add_nom_complet" class="form-label">Nom complet <span class="text-danger">*</span></label>
+            <input type="text" class="form-control" id="add_nom_complet" name="nom_complet" placeholder="Ex: Jean Dupont" required>
+          </div>
+          <div class="col-md-6">
+            <label for="add_email" class="form-label">Email <span class="text-danger">*</span></label>
+            <input type="email" class="form-control" id="add_email" name="email" placeholder="exemple@email.com" required>
+          </div>
+          <div class="col-md-6">
+            <label for="add_telephone" class="form-label">Téléphone</label>
+            <input type="tel" class="form-control" id="add_telephone" name="telephone" placeholder="06 12 34 56 78">
+          </div>
+          <div class="col-md-6">
+            <label for="add_mot_de_passe" class="form-label">Mot de passe <span class="text-danger">*</span></label>
+            <input type="password" class="form-control" id="add_mot_de_passe" name="mot_de_passe" placeholder="Laissez vide pour 'ChangeMe123!'">
+            <div class="form-text">Laissez vide pour utiliser "ChangeMe123!" par défaut</div>
+          </div>
+          <div class="col-md-6">
+            <label for="add_role" class="form-label">Rôle <span class="text-danger">*</span></label>
+            <select class="form-select" id="add_role" name="role" required>
+              <option value="">Sélectionner un rôle</option>
+              {% for role in UserRole %}
+                <option value="{{ role.value }}">{{ role.name.replace('_',' ').title() }}</option>
+              {% endfor %}
+            </select>
+          </div>
+          <div class="col-md-6">
+            <label for="add_type_utilisateur" class="form-label">Type d'utilisateur <span class="text-danger">*</span></label>
+            <select class="form-select" id="add_type_utilisateur" name="type_utilisateur" required>
+              <option value="INTERNE">Interne</option>
+              <option value="EXTERNE">Externe</option>
+            </select>
+          </div>
+          <div class="col-12">
+            <label for="add_photo_profil" class="form-label">Photo de profil</label>
+            <input type="file" class="form-control" id="add_photo_profil" name="photo_profil" accept="image/*">
+            <div class="form-text">JPG, PNG, GIF (max 2MB) - Optionnel</div>
           </div>
         </div>
+      </div>
+      <div class="modal-footer">
+        <button type="button" class="btn btn-secondary" data-close-modal="addUserModal">Annuler</button>
+        <button type="submit" class="btn btn-primary">
+          <i class="fa fa-plus me-2"></i>Ajouter l'utilisateur
+        </button>
       </div>
     </form>
   </div>
@@ -107,17 +92,40 @@
 
 <script>
 document.addEventListener('DOMContentLoaded', function() {
-  const addUserForm = document.getElementById('addUserForm');
-  const addUserIcon = document.getElementById('addUserIcon');
-  
-  addUserForm.addEventListener('show.bs.collapse', function() {
-    addUserIcon.classList.remove('fa-chevron-down');
-    addUserIcon.classList.add('fa-chevron-up');
+  document.querySelectorAll('[data-modal-target]').forEach(function(el) {
+    el.addEventListener('click', function(event) {
+      if (el.tagName === 'A') {
+        event.preventDefault();
+      }
+      const modalId = el.getAttribute('data-modal-target');
+      if (!modalId) return;
+      if (typeof openModal === 'function') {
+        openModal(modalId);
+      } else {
+        const modal = document.getElementById(modalId);
+        if (modal) {
+          modal.classList.add('show');
+          document.body.classList.add('modal-open');
+        }
+      }
+    }, { capture: true });
   });
-  
-  addUserForm.addEventListener('hide.bs.collapse', function() {
-    addUserIcon.classList.remove('fa-chevron-up');
-    addUserIcon.classList.add('fa-chevron-down');
+
+  document.querySelectorAll('[data-close-modal]').forEach(function(el) {
+    el.addEventListener('click', function(event) {
+      event.preventDefault();
+      const modalId = el.getAttribute('data-close-modal');
+      if (!modalId) return;
+      if (typeof closeModal === 'function') {
+        closeModal(modalId);
+      } else {
+        const modal = document.getElementById(modalId);
+        if (modal) {
+          modal.classList.remove('show');
+          document.body.classList.remove('modal-open');
+        }
+      }
+    });
   });
   
   // Auto-dismiss alerts after 3 seconds
@@ -128,10 +136,15 @@ document.addEventListener('DOMContentLoaded', function() {
       bsAlert.close();
     }, 3000); // 3 seconds
   });
+
 });
 </script>
 
 <div class="card-neumo p-3">
+  <div class="d-flex justify-content-between align-items-center mb-3">
+    <h6 class="m-0" style="color: var(--secondary-color);">Liste des utilisateurs</h6>
+    <span class="badge bg-primary">{{ users|length }} utilisateur{% if users|length != 1 %}s{% endif %}</span>
+  </div>
   <div class="users-table-container">
     <table class="table align-middle">
     <thead>
@@ -151,13 +164,11 @@ document.addEventListener('DOMContentLoaded', function() {
             {% if u.photo_profil %}
               <img src="{{ get_user_photo_url(u) }}?v={{ u.id }}&t={{ timestamp }}" alt="Photo de {{ u.nom_complet }}" class="rounded-circle me-2" width="40" height="40" style="object-fit: cover;">
             {% else %}
-              <div class="rounded-circle bg-secondary d-flex align-items-center justify-content-center me-2" style="width: 40px; height: 40px;">
+              <div class="rounded-circle bg-secondary d-flex align-items-center justify-content-center me-2 avatar-placeholder">
                 <i class="fa fa-user text-white"></i>
               </div>
             {% endif %}
-            <button type="button" class="btn btn-sm btn-outline-secondary" data-bs-toggle="modal" data-bs-target="#photoModal{{ u.id }}">
-              <i class="fa fa-camera"></i>
-            </button>
+            <button type="button" class="btn btn-sm btn-outline-secondary" data-modal-target="photoModal{{ u.id }}" title="Changer la photo" aria-label="Changer la photo"><i class="fa fa-camera" aria-hidden="true"></i><span class="visually-hidden">Changer la photo</span></button>
           </div>
         </td>
         <td class="fw-bold">{{ u.nom_complet }}</td>
@@ -165,22 +176,17 @@ document.addEventListener('DOMContentLoaded', function() {
         <td>{% if u.actif %}<span class="badge bg-success">Oui</span>{% else %}<span class="badge bg-secondary">Non</span>{% endif %}</td>
         <td class="text-end">
           <div class="btn-group btn-group-sm">
-            <button type="button" class="btn btn-outline-primary" data-bs-toggle="modal" data-bs-target="#editModal{{ u.id }}">
-              <i class="fa fa-edit"></i>
-            </button>
+            <button type="button" class="btn btn-outline-primary admin-action" data-modal-target="editModal{{ u.id }}" title="Modifier" aria-label="Modifier"><i class="fa fa-edit" aria-hidden="true"></i><span class="visually-hidden">Modifier</span></button>
             <form method="post" action="{{ url_for('admin_users_toggle', uid=u.id) }}" class="d-inline">
-              <button class="btn {% if u.actif %}btn-outline-warning{% else %}btn-outline-success{% endif %}" 
-                      title="{% if u.actif %}Désactiver l'utilisateur{% else %}Activer l'utilisateur{% endif %}">
+              <button type="submit" class="btn {% if u.actif %}btn-outline-warning{% else %}btn-outline-success{% endif %} admin-action" title="{% if u.actif %}Désactiver l'utilisateur{% else %}Activer l'utilisateur{% endif %}" aria-label="{% if u.actif %}Désactiver l'utilisateur{% else %}Activer l'utilisateur{% endif %}">
                 {% if u.actif %}
-                  <i class="fa fa-pause"></i>
+                  <i class="fa fa-pause" aria-hidden="true"></i><span class="visually-hidden">Désactiver</span>
                 {% else %}
-                  <i class="fa fa-play"></i>
+                  <i class="fa fa-play" aria-hidden="true"></i><span class="visually-hidden">Activer</span>
                 {% endif %}
               </button>
             </form>
-            <button type="button" class="btn btn-outline-danger" data-bs-toggle="modal" data-bs-target="#deleteModal{{ u.id }}">
-              <i class="fa fa-trash"></i> 
-            </button>
+            <button type="button" class="btn btn-outline-danger admin-action" data-modal-target="deleteModal{{ u.id }}" title="Supprimer" aria-label="Supprimer"><i class="fa fa-trash" aria-hidden="true"></i><span class="visually-hidden">Supprimer</span></button>
           </div>
         </td>
       </tr>
@@ -192,50 +198,27 @@ document.addEventListener('DOMContentLoaded', function() {
   </div>
 </div>
 
-<!-- Modals pour changer les photos de profil -->
 {% for u in users %}
-<div class="modal fade" id="photoModal{{ u.id }}" tabindex="-1" aria-labelledby="photoModalLabel{{ u.id }}" aria-hidden="true">
-  <div class="modal-dialog">
-    <div class="modal-content">
-      <div class="modal-header">
-        <h5 class="modal-title" id="photoModalLabel{{ u.id }}">Changer la photo de {{ u.nom_complet }}</h5>
-        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
-      </div>
-      <form method="post" action="{{ url_for('admin_users_photo', uid=u.id) }}" enctype="multipart/form-data">
-        <div class="modal-body">
-          <div class="text-center mb-3">
-            {% if u.photo_profil %}
-              <img src="{{ get_user_photo_url(u) }}?v={{ u.id }}&t={{ timestamp }}" alt="Photo actuelle" class="rounded-circle mb-2" width="100" height="100" style="object-fit: cover;">
-            {% else %}
-              <div class="rounded-circle bg-secondary d-flex align-items-center justify-content-center mx-auto mb-2" style="width: 100px; height: 100px;">
-                <i class="fa fa-user text-white" style="font-size: 2rem;"></i>
-              </div>
-            {% endif %}
-          </div>
-          <div class="mb-3">
-            <label for="photo_profil{{ u.id }}" class="form-label">Nouvelle photo de profil</label>
-            <input type="file" class="form-control" id="photo_profil{{ u.id }}" name="photo_profil" accept="image/*" required>
-            <div class="form-text">JPG, PNG, GIF (max 2MB)</div>
-          </div>
+{% call modal_with_footer('photoModal' ~ u.id, 'Changer la photo de ' ~ u.nom_complet, 'md', 'Changer la photo') %}
+  <form id="{{ 'photoModal' ~ u.id }}-form" method="post" action="{{ url_for('admin_users_photo', uid=u.id) }}" enctype="multipart/form-data">
+    <div class="text-center mb-3">
+      {% if u.photo_profil %}
+        <img src="{{ get_user_photo_url(u) }}?v={{ u.id }}&t={{ timestamp }}" alt="Photo actuelle" class="rounded-circle mb-2" width="100" height="100" style="object-fit: cover;">
+      {% else %}
+        <div class="rounded-circle bg-secondary d-flex align-items-center justify-content-center mx-auto mb-2 avatar-lg-placeholder">
+          <i class="fa fa-user text-white avatar-lg-icon"></i>
         </div>
-        <div class="modal-footer">
-          <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Annuler</button>
-          <button type="submit" class="btn btn-primary">Changer la photo</button>
-        </div>
-      </form>
+      {% endif %}
     </div>
-  </div>
-</div>
-
-<!-- Modals pour éditer les utilisateurs -->
-<div class="modal fade" id="editModal{{ u.id }}" tabindex="-1" aria-labelledby="editModalLabel{{ u.id }}" aria-hidden="true">
-  <div class="modal-dialog modal-lg">
-    <div class="modal-content">
-      <div class="modal-header">
-        <h5 class="modal-title" id="editModalLabel{{ u.id }}">Modifier {{ u.nom_complet }}</h5>
-        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
-      </div>
-      <form method="post" action="{{ url_for('admin_users_update', uid=u.id) }}" enctype="multipart/form-data">
+    <div class="mb-3">
+      <label for="photo_profil{{ u.id }}" class="form-label">Nouvelle photo de profil</label>
+      <input type="file" class="form-control" id="photo_profil{{ u.id }}" name="photo_profil" accept="image/*" required>
+      <div class="form-text">JPG, PNG, GIF (max 2MB)</div>
+    </div>
+  </form>
+{% endcall %}
+{% call modal_with_footer('editModal' ~ u.id, 'Modifier ' ~ u.nom_complet, 'xl', '<i class="fa fa-save me-1"></i>Mettre à jour') %}
+  <form id="{{ 'editModal' ~ u.id }}-form" method="post" action="{{ url_for('admin_users_update', uid=u.id) }}" enctype="multipart/form-data">
         <div class="modal-body">
           <div class="row g-3">
             <div class="col-md-6">
@@ -272,46 +255,14 @@ document.addEventListener('DOMContentLoaded', function() {
             </div>
           </div>
         </div>
-        <div class="modal-footer">
-          <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Annuler</button>
-          <button type="submit" class="btn btn-primary">Enregistrer les modifications</button>
-        </div>
-      </form>
-    </div>
-  </div>
-</div>
-
-<!-- Modals pour supprimer les utilisateurs -->
-<div class="modal fade" id="deleteModal{{ u.id }}" tabindex="-1" aria-labelledby="deleteModalLabel{{ u.id }}" aria-hidden="true">
-  <div class="modal-dialog">
-    <div class="modal-content">
-      <div class="modal-header">
-        <h5 class="modal-title" id="deleteModalLabel{{ u.id }}">Confirmer la suppression</h5>
-        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
-      </div>
-      <div class="modal-body">
-        <div class="text-center mb-3">
-          <i class="fa fa-exclamation-triangle text-warning" style="font-size: 3rem;"></i>
-        </div>
-        <p class="text-center mb-3">
-          Êtes-vous sûr de vouloir supprimer l'utilisateur <strong>{{ u.nom_complet }}</strong> ?
-        </p>
-        <div class="alert alert-warning">
-          <i class="fa fa-info-circle me-2"></i>
-          <strong>Attention :</strong> Cette action est irréversible. Toutes les données associées à cet utilisateur seront supprimées définitivement.
-        </div>
-      </div>
-      <div class="modal-footer">
-        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Annuler</button>
-        <form method="post" action="{{ url_for('admin_users_delete', uid=u.id) }}" class="d-inline">
-          <button type="submit" class="btn btn-danger">
-            <i class="fa fa-trash me-2"></i>Supprimer définitivement
-          </button>
-        </form>
-      </div>
-    </div>
-  </div>
-</div>
+  </form>
+{% endcall %}
+{% call modal_with_footer('deleteModal' ~ u.id, 'Supprimer l\'utilisateur', 'md', '<i class="fa fa-trash me-1"></i>Supprimer', 'Annuler') %}
+  <form id="{{ 'deleteModal' ~ u.id }}-form" method="post" action="{{ url_for('admin_users_delete', uid=u.id) }}">
+    <p>Êtes-vous sûr de vouloir supprimer <strong>{{ u.nom_complet }}</strong> ?</p>
+    <p class="text-muted">Cette action est irréversible.</p>
+  </form>
+{% endcall %}
 {% endfor %}
 
 {% endblock %}

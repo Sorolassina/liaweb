@@ -7,20 +7,20 @@ from typing import List, Optional
 from datetime import datetime
 from pathlib import Path
 
-from app_lia_web.core.database import get_session
-from app_lia_web.core.middleware import get_shared_session
-from app_lia_web.core.security import get_current_user
-from app_lia_web.core.program_schema_integration import table_exists_anywhere
+from ..core.database import get_session
+from ..core.middleware import get_shared_session
+from ..core.security import get_current_user
+from ..core.program_schema_integration import table_exists_anywhere
 import logging
-from app_lia_web.app.models.base import User, Programme, Inscription
-from app_lia_web.app.models.elearning import (
+from ..models.base import User, Programme, Inscription
+from ..models.elearning import (
     RessourceElearning, ModuleElearning, ProgressionElearning,
     ObjectifElearning, QuizElearning, ReponseQuiz, CertificatElearning,
     ModuleRessource
 )
-from app_lia_web.app.services.elearning_service import ElearningService
-from app_lia_web.app.services.file_upload_service import FileUploadService
-from app_lia_web.app.schemas.elearning import (
+from ..services.elearning_service import ElearningService
+from ..services.file_upload_service import FileUploadService
+from ..schemas.elearning import (
     RessourceElearningCreate, RessourceElearningUpdate,
     ModuleElearningCreate, ModuleElearningUpdate,
     ProgressionElearningCreate, ProgressionElearningUpdate,
@@ -31,7 +31,7 @@ from app_lia_web.app.schemas.elearning import (
     StatistiquesElearningCandidat, StatistiquesElearningProgramme,
     RapportProgressionElearning, FileUploadInfo
 )
-from app_lia_web.app.templates import templates
+from ..templates import templates
 
 router = APIRouter()
 
@@ -82,7 +82,7 @@ async def elearning_dashboard(
     print(f"🔍 DEBUG: {len(stats_programmes)} programmes avec stats valides")
     
     return templates.TemplateResponse(
-        "elearning/dashboard.html",
+        "pages/elearning/dashboard.html",
         {
             "request": request,
             "utilisateur": current_user,
@@ -156,7 +156,7 @@ async def elearning_modules(
             print(f"  - Module {m.id}: {m.titre} (statut: {m.statut}, actif: {m.actif}, difficulte: {m.difficulte})")
         
         return templates.TemplateResponse(
-            "elearning/modules.html",
+            "pages/elearning/modules.html",
             {
                 "request": request,
                 "utilisateur": current_user,
@@ -184,7 +184,7 @@ async def elearning_module_creer_form(
     programmes = session.exec(select(Programme).where(Programme.actif == True)).all()
     
     return templates.TemplateResponse(
-        "elearning/module_form.html",
+        "pages/elearning/module_form.html",
         {
             "request": request,
             "utilisateur": current_user,
@@ -208,7 +208,7 @@ async def elearning_module_edit_form(
     programmes = session.exec(select(Programme).where(Programme.actif == True)).all()
     
     return templates.TemplateResponse(
-        "elearning/module_form.html",
+        "pages/elearning/module_form.html",
         {
             "request": request,
             "utilisateur": current_user,
@@ -258,7 +258,7 @@ async def elearning_module_edit(
         # En cas d'erreur, retourner au formulaire avec un message d'erreur
         programmes = session.exec(select(Programme).where(Programme.actif == True)).all()
         return templates.TemplateResponse(
-            "elearning/module_form.html",
+            "pages/elearning/module_form.html",
             {
                 "request": request,
                 "utilisateur": current_user,
@@ -303,7 +303,7 @@ async def elearning_module_creer(
         # En cas d'erreur, retourner au formulaire avec un message d'erreur
         programmes = session.exec(select(Programme).where(Programme.actif == True)).all()
         return templates.TemplateResponse(
-            "elearning/module_form.html",
+            "pages/elearning/module_form.html",
             {
                 "request": request,
                 "utilisateur": current_user,
@@ -372,7 +372,7 @@ async def elearning_module_detail(
         print(f"🔍 DEBUG: Ressource {ressources}")
     
     return templates.TemplateResponse(
-        "elearning/module_detail.html",
+        "pages/elearning/module_detail.html",
         {
             "request": request,
             "utilisateur": current_user,
@@ -401,7 +401,7 @@ async def start_ressource(
         ).first()
     
     return templates.TemplateResponse(
-        "elearning/ressource_player.html",
+        "pages/elearning/ressource_player.html",
         {
             "request": request,
             "utilisateur": current_user,
@@ -426,7 +426,7 @@ async def elearning_ressource_creer_form(
     return_url = request.query_params.get("return_url")
     
     return templates.TemplateResponse(
-        "elearning/ressource_form.html",
+        "pages/elearning/ressource_form.html",
         {
             "request": request,
             "utilisateur": current_user,
@@ -539,7 +539,7 @@ async def elearning_ressource_creer(
         print("❌ Aucun contenu détecté - rien à créer")
         # Rien à créer
         return templates.TemplateResponse(
-            "elearning/ressource_form.html",
+            "pages/elearning/ressource_form.html",
             {
                 "request": request,
                 "utilisateur": current_user,
@@ -603,7 +603,7 @@ async def elearning_ressource_creer(
     if not fichiers_info and not urls_candidates:
         print("❌ Aucun contenu valide - retour au formulaire")
         return templates.TemplateResponse(
-            "elearning/ressource_form.html",
+            "pages/elearning/ressource_form.html",
             {
                 "request": request,
                 "utilisateur": current_user,
@@ -661,7 +661,7 @@ async def elearning_ressource_creer(
                 pass
         errors.append(f"Préparation ressource: {str(e)}")
         return templates.TemplateResponse(
-            "elearning/ressource_form.html",
+            "pages/elearning/ressource_form.html",
             {
                 "request": request,
                 "utilisateur": current_user,
@@ -705,7 +705,7 @@ async def elearning_ressource_creer(
                 pass
         errors.append(f"Création ressource: {str(e)}")
         return templates.TemplateResponse(
-            "elearning/ressource_form.html",
+            "pages/elearning/ressource_form.html",
             {
                 "request": request,
                 "utilisateur": current_user,
@@ -728,7 +728,7 @@ async def elearning_ressource_creer(
         print("❌ Aucune ressource créée - retour au formulaire")
         # Rien n'a pu être créé : on retourne au formulaire avec erreurs
         return templates.TemplateResponse(
-            "elearning/ressource_form.html",
+            "pages/elearning/ressource_form.html",
             {
                 "request": request,
                 "utilisateur": current_user,
@@ -781,7 +781,7 @@ async def elearning_ressource_edit_form(
         raise HTTPException(status_code=404, detail="Ressource non trouvée")
     
     return templates.TemplateResponse(
-        "elearning/ressource_form.html",
+        "pages/elearning/ressource_form.html",
         {
             "request": request,
             "utilisateur": current_user,
@@ -865,7 +865,7 @@ async def elearning_ressource_edit(
                 except HTTPException as e:
                     print(f"❌ Erreur de fichier {file_type}: {e.detail}")
                     return templates.TemplateResponse(
-                        "elearning/ressource_form.html",
+                        "pages/elearning/ressource_form.html",
                         {
                             "request": request,
                             "utilisateur": current_user,
@@ -947,7 +947,7 @@ async def elearning_ressource_edit(
         session.rollback()
         # Retourner au formulaire avec un message d'erreur
         return templates.TemplateResponse(
-            "elearning/ressource_form.html",
+            "pages/elearning/ressource_form.html",
             {
                 "request": request,
                 "utilisateur": current_user,
@@ -993,7 +993,7 @@ async def elearning_statistiques(
     stats_ressources = ElearningService.get_stats_ressources_par_type(session)
     
     return templates.TemplateResponse(
-        "elearning/statistiques.html",
+        "pages/elearning/statistiques.html",
         {
             "request": request,
             "utilisateur": current_user,
@@ -1028,7 +1028,7 @@ async def elearning_candidat_progression(
     progressions = ElearningService.get_progression_candidat(session, inscription_id)
     
     return templates.TemplateResponse(
-        "elearning/candidat_progression.html",
+        "pages/elearning/candidat_progression.html",
         {
             "request": request,
             "utilisateur": current_user,

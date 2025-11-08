@@ -1,0 +1,17 @@
+<div class="user-menu">
+    {% if current_user %}
+        <div class="user-info">
+            <span class="user-name">{{ current_user.full_name or current_user.email }}</span>
+            <img src="{{ profile_picture_url(current_user) }}" alt="Avatar {{ current_user.full_name or current_user.email }}" class="user-avatar">
+        </div>
+        <div class="user-dropdown">
+            <a href="#" onclick="alert('Fonctionnalité en développement'); return false;">Mon Profil</a>
+            <a href="{{ url_for('parametres_systeme') }}">Paramètres</a>
+            <hr>
+            <a href="{{ url_for('logout') }}">Déconnexion</a>
+        </div>
+    {% else %}
+        <a href="{{ url_for('login_page') }}" class="btn btn-primary">Connexion</a>
+    {% endif %}
+</div>
+

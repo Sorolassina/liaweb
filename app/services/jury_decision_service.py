@@ -6,10 +6,10 @@ from sqlmodel import Session, select
 from datetime import datetime, timezone
 import logging
 
-from app_lia_web.app.models.base import Candidat, Partenaire, ReorientationCandidat, User
-from app_lia_web.app.models.jury import Jury, DecisionJuryCandidat
-from app_lia_web.app.models.enums import DecisionJury, UserRole
-from app_lia_web.app.services.audit import log_activity
+from ..models.base import Candidat, Partenaire, ReorientationCandidat, User
+from ..models.jury import Jury, DecisionJuryCandidat
+from ..models.enums import DecisionJury, UserRole
+from .audit import log_activity
 
 logger = logging.getLogger(__name__)
 

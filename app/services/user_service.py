@@ -4,11 +4,11 @@ Service de gestion des utilisateurs
 from typing import List, Optional
 from sqlmodel import Session, select
 import logging
-from app_lia_web.app.models.base import User
-from app_lia_web.app.models.enums import UserRole, TypeUtilisateur
-from app_lia_web.app.schemas import UserCreate, UserUpdate
-from app_lia_web.core.security import get_password_hash, verify_password
-from app_lia_web.core.config import settings
+from ..models.base import User
+from ..models.enums import UserRole, TypeUtilisateur
+from ..schemas.user_schemas import UserCreate, UserUpdate
+from ..core.security import get_password_hash, verify_password
+from ..core.config import settings
 
 logger = logging.getLogger(__name__)
 

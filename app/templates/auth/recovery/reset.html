@@ -1,0 +1,525 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Nouveau mot de passe - {{ app_name }}</title>
+    
+    <!-- Favicon -->
+    <link rel="icon" type="image/x-icon" href="{{ static_versioned_url(static_url('favicon.ico')) }}">
+    
+    <!-- CSS de base -->
+    <link rel="stylesheet" href="{{ static_versioned_url(static_url('css/base.css')) }}">
+    <link rel="stylesheet" href="{{ static_versioned_url(static_url('css/theme.css')) }}">
+    
+    <style>
+        /* ========================================
+           STYLES SPÉCIFIQUES À LA PAGE DE RÉINITIALISATION
+           ======================================== */
+        
+        .recovery-container {
+            height: 100vh;
+            width: 100vw;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            background-size: cover;
+            background-position: center;
+            background-repeat: no-repeat;
+            transition: background-image 1s ease-in-out;
+            padding: 20px;
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            overflow: hidden;
+        }
+        
+        .recovery-card {
+            background: rgba(255, 255, 255, 0.15);
+            backdrop-filter: blur(10px);
+            -webkit-backdrop-filter: blur(10px);
+            border-radius: 20px;
+            box-shadow: 0 8px 32px rgba(0, 0, 0, 0.2);
+            border: 1px solid rgba(255, 255, 255, 0.3);
+            padding: 40px;
+            width: 100%;
+            max-width: 450px;
+            text-align: center;
+        }
+        
+        /* Horloge */
+        .clock-widget {
+            position: absolute;
+            top: 50px;
+            left: 50px;
+            color: white;
+            text-shadow: 0 2px 10px rgba(0, 0, 0, 0.5);
+            z-index: 10;
+            font-family: 'Segoe UI', sans-serif;
+            user-select: none;
+        }
+        
+        /* Copyright */
+        .copyright {
+            position: absolute;
+            bottom: 20px;
+            right: 30px;
+            color: white;
+            font-size: 12px;
+            text-shadow: 0 1px 3px rgba(0, 0, 0, 0.5);
+            opacity: 0.8;
+            font-family: 'Segoe UI', sans-serif;
+            z-index: 10;
+        }
+        
+        .clock-time {
+            font-size: 6rem;
+            font-weight: 200;
+            line-height: 1;
+            letter-spacing: -2px;
+            margin-bottom: 0.25rem;
+        }
+        
+        .clock-date {
+            font-size: 1.5rem;
+            font-weight: 300;
+            opacity: 0.95;
+            letter-spacing: 0.5px;
+        }
+        
+        .recovery-header {
+            margin-bottom: 30px;
+        }
+        
+        .recovery-logo {
+            color: var(--white-color);
+            font-size: 28px;
+            font-weight: bold;
+            margin-bottom: 10px;
+        }
+        
+        .recovery-title {
+            color: var(--white-color);
+            font-size: 24px;
+            margin-bottom: 10px;
+        }
+        
+        .recovery-subtitle {
+            color: var(--white-color);
+            font-size: 14px;
+            margin-bottom: 30px;
+            opacity: 0.9;
+        }
+        
+        .email-display {
+            background: #f8f9fa;
+            padding: 10px 15px;
+            border-radius: 8px;
+            margin-bottom: 20px;
+            font-weight: 500;
+            color: var(--secondary-color);
+        }
+        
+        .form-group {
+            margin-bottom: 20px;
+            text-align: left;
+        }
+        
+        .form-label {
+            display: block;
+            margin-bottom: 8px;
+            color: var(--secondary-color);
+            font-weight: 500;
+        }
+        
+        .form-control {
+            width: 100%;
+            padding: 12px 15px;
+            border: 2px solid #e0e0e0;
+            border-radius: 8px;
+            font-size: 16px;
+            transition: border-color 0.3s ease;
+            box-sizing: border-box;
+        }
+        
+        .form-control:focus {
+            outline: none;
+            border-color: var(--primary-color);
+            box-shadow: 0 0 0 3px rgba(255, 211, 0, 0.1);
+        }
+        
+        .password-strength {
+            margin-top: 5px;
+            font-size: 12px;
+        }
+        
+        .strength-bar {
+            height: 4px;
+            background: #e0e0e0;
+            border-radius: 2px;
+            margin-top: 5px;
+            overflow: hidden;
+        }
+        
+        .strength-fill {
+            height: 100%;
+            transition: all 0.3s ease;
+            border-radius: 2px;
+        }
+        
+        .strength-weak { background: var(--danger-color); width: 25%; }
+        .strength-medium { background: var(--warning-color); width: 50%; }
+        .strength-good { background: var(--success-color); width: 75%; }
+        .strength-strong { background: var(--info-color); width: 100%; }
+        
+        .btn-reset {
+            width: 100%;
+            padding: 15px;
+            background: var(--primary-color);
+            color: var(--secondary-color);
+            border: none;
+            border-radius: 8px;
+            font-size: 16px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            margin-top: 10px;
+        }
+        
+        .btn-reset:hover {
+            background: var(--accent-color);
+            transform: translateY(-2px);
+            box-shadow: 0 5px 15px rgba(0,0,0,0.2);
+        }
+        
+        .btn-reset:disabled {
+            background: #ccc;
+            cursor: not-allowed;
+            transform: none;
+            box-shadow: none;
+        }
+        
+        .alert {
+            padding: 15px;
+            border-radius: 8px;
+            margin-bottom: 20px;
+            font-size: 14px;
+        }
+        
+        .alert-error {
+            background: var(--danger-light);
+            color: var(--danger-dark);
+            border: 1px solid var(--danger-border);
+        }
+        
+        .back-links {
+            margin-top: 20px;
+            text-align: center;
+        }
+        
+        .back-links a {
+            color: var(--primary-color);
+            text-decoration: none;
+            font-weight: 500;
+            margin: 0 10px;
+        }
+        
+        .back-links a:hover {
+            text-decoration: underline;
+        }
+        
+        .help-text {
+            font-size: 12px;
+            color: #666;
+            margin-top: 10px;
+            text-align: left;
+        }
+        
+        .requirements {
+            background: #f8f9fa;
+            padding: 15px;
+            border-radius: 8px;
+            margin-top: 10px;
+            font-size: 12px;
+            text-align: left;
+        }
+        
+        .requirements ul {
+            margin: 0;
+            padding-left: 20px;
+        }
+        
+        .requirements li {
+            margin-bottom: 5px;
+        }
+        
+        .requirements .valid {
+            color: #28a745;
+        }
+        
+        .requirements .invalid {
+            color: #dc3545;
+        }
+        
+        @media (max-width: 480px) {
+            .recovery-card {
+                padding: 30px 20px;
+                margin: 10px;
+            }
+            
+            .recovery-title {
+                font-size: 20px;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="recovery-container">
+        
+        <!-- Horloge style Windows -->
+        <div class="clock-widget">
+            <div class="clock-time" id="clock-time">00:00</div>
+            <div class="clock-date" id="clock-date">Chargement...</div>
+        </div>
+        
+        <!-- Copyright -->
+        <div class="copyright">
+            © Soro Lassina W.
+        </div>
+        
+        <div class="recovery-card">
+            <div class="recovery-header">
+                <img src="{{ static_versioned_url(static_url('images/Logo-accueil.png')) }}" alt="Logo" style="width: 80px; height: 80px; margin: 0 auto 15px auto; display: block; border-radius: 50%; object-fit: cover; box-shadow: 0 4px 12px rgba(0,0,0,0.15);">
+                <div class="recovery-logo">{{ app_name }}</div>
+                <h1 class="recovery-title">Nouveau mot de passe</h1>
+                <p class="recovery-subtitle">Choisissez un mot de passe sécurisé</p>
+            </div>
+            
+            {% if email %}
+            <div class="email-display">
+                <i class="fas fa-envelope"></i> {{ email }}
+            </div>
+            {% endif %}
+            
+            {% if error %}
+            <div class="alert alert-error">
+                <i class="fas fa-exclamation-triangle"></i> {{ error }}
+            </div>
+            {% endif %}
+            
+            <form method="POST" action="{{ url_for('reset_password_post') }}" id="resetForm">
+                <input type="hidden" name="email" value="{{ email or '' }}">
+                <input type="hidden" name="code" value="{{ code or '' }}">
+                
+                <div class="form-group">
+                    <label for="new_password" class="form-label">
+                        <i class="fas fa-lock"></i> Nouveau mot de passe
+                    </label>
+                    <input 
+                        type="password" 
+                        id="new_password" 
+                        name="new_password" 
+                        class="form-control" 
+                        placeholder="Saisissez votre nouveau mot de passe"
+                        required
+                        autocomplete="new-password"
+                    >
+                    <div class="password-strength" id="strengthText">Force du mot de passe</div>
+                    <div class="strength-bar">
+                        <div class="strength-fill" id="strengthBar"></div>
+                    </div>
+                    
+                    <div class="requirements" id="requirements">
+                        <strong>Exigences :</strong>
+                        <ul>
+                            <li id="req-length" class="invalid">Au moins 8 caractères</li>
+                            <li id="req-upper" class="invalid">Une majuscule</li>
+                            <li id="req-lower" class="invalid">Une minuscule</li>
+                            <li id="req-digit" class="invalid">Un chiffre</li>
+                        </ul>
+                    </div>
+                </div>
+                
+                <div class="form-group">
+                    <label for="confirm_password" class="form-label">
+                        <i class="fas fa-lock"></i> Confirmer le mot de passe
+                    </label>
+                    <input 
+                        type="password" 
+                        id="confirm_password" 
+                        name="confirm_password" 
+                        class="form-control" 
+                        placeholder="Confirmez votre nouveau mot de passe"
+                        required
+                        autocomplete="new-password"
+                    >
+                    <div class="help-text">
+                        Saisissez à nouveau le mot de passe pour confirmation
+                    </div>
+                </div>
+                
+                <button type="submit" class="btn-reset" id="submitBtn" disabled>
+                    <i class="fas fa-save"></i> Réinitialiser le mot de passe
+                </button>
+            </form>
+            
+            <div class="back-links">
+                <a href="{{ url_for('verify_recovery_code_get') }}?email={{ email or '' }}">
+                    <i class="fas fa-arrow-left"></i> Retour
+                </a>
+                <a href="{{ url_for('login_page') }}">
+                    <i class="fas fa-home"></i> Connexion
+                </a>
+            </div>
+        </div>
+    </div>
+    
+    <!-- Font Awesome pour les icônes -->
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
+    
+    <script>
+        document.addEventListener('DOMContentLoaded', function() {
+            const newPasswordInput = document.querySelector('#new_password');
+            const confirmPasswordInput = document.querySelector('#confirm_password');
+            const submitBtn = document.querySelector('#submitBtn');
+            const strengthBar = document.querySelector('#strengthBar');
+            const strengthText = document.querySelector('#strengthText');
+            const requirements = document.querySelector('#requirements');
+            
+            // Éléments des exigences
+            const reqLength = document.querySelector('#req-length');
+            const reqUpper = document.querySelector('#req-upper');
+            const reqLower = document.querySelector('#req-lower');
+            const reqDigit = document.querySelector('#req-digit');
+            
+            function checkPasswordStrength(password) {
+                let score = 0;
+                let strength = 'weak';
+                
+                // Vérifier les exigences
+                const hasLength = password.length >= 8;
+                const hasUpper = /[A-Z]/.test(password);
+                const hasLower = /[a-z]/.test(password);
+                const hasDigit = /[0-9]/.test(password);
+                
+                // Mettre à jour les indicateurs visuels
+                reqLength.className = hasLength ? 'valid' : 'invalid';
+                reqUpper.className = hasUpper ? 'valid' : 'invalid';
+                reqLower.className = hasLower ? 'valid' : 'invalid';
+                reqDigit.className = hasDigit ? 'valid' : 'invalid';
+                
+                // Calculer le score
+                if (hasLength) score += 25;
+                if (hasUpper) score += 25;
+                if (hasLower) score += 25;
+                if (hasDigit) score += 25;
+                
+                // Déterminer la force
+                if (score >= 100) strength = 'strong';
+                else if (score >= 75) strength = 'good';
+                else if (score >= 50) strength = 'medium';
+                else strength = 'weak';
+                
+                // Mettre à jour l'affichage
+                strengthBar.className = `strength-fill strength-${strength}`;
+                
+                const strengthLabels = {
+                    weak: 'Faible',
+                    medium: 'Moyen',
+                    good: 'Bon',
+                    strong: 'Fort'
+                };
+                
+                strengthText.textContent = `Force du mot de passe : ${strengthLabels[strength]}`;
+                
+                return score >= 100; // Toutes les exigences remplies
+            }
+            
+            function checkPasswordsMatch() {
+                const newPassword = newPasswordInput.value;
+                const confirmPassword = confirmPasswordInput.value;
+                
+                if (confirmPassword && newPassword !== confirmPassword) {
+                    confirmPasswordInput.style.borderColor = getComputedStyle(document.documentElement).getPropertyValue('--danger-color');
+                    return false;
+                } else {
+                    confirmPasswordInput.style.borderColor = getComputedStyle(document.documentElement).getPropertyValue('--gray-300');
+                    return true;
+                }
+            }
+            
+            function updateSubmitButton() {
+                const isPasswordValid = checkPasswordStrength(newPasswordInput.value);
+                const doPasswordsMatch = checkPasswordsMatch();
+                
+                submitBtn.disabled = !(isPasswordValid && doPasswordsMatch);
+            }
+            
+            // Événements
+            newPasswordInput.addEventListener('input', updateSubmitButton);
+            confirmPasswordInput.addEventListener('input', updateSubmitButton);
+            
+            // Soumission du formulaire
+            document.querySelector('#resetForm').addEventListener('submit', function(e) {
+                if (submitBtn.disabled) {
+                    e.preventDefault();
+                    alert('Veuillez remplir tous les champs correctement');
+                    return;
+                }
+                
+                submitBtn.disabled = true;
+                submitBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Réinitialisation...';
+            });
+            
+            // Focus automatique
+            newPasswordInput.focus();
+        });
+        
+        // ====================================
+        // HORLOGE TEMPS RÉEL
+        // ====================================
+        function updateClock() {
+            const now = new Date();
+            const hours = now.getHours().toString().padStart(2, '0');
+            const minutes = now.getMinutes().toString().padStart(2, '0');
+            const timeString = `${hours}:${minutes}`;
+            
+            const options = { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' };
+            const dateString = now.toLocaleDateString('fr-FR', options);
+            const dateFormatted = dateString.charAt(0).toUpperCase() + dateString.slice(1);
+            
+            const timeEl = document.getElementById('clock-time');
+            const dateEl = document.getElementById('clock-date');
+            if (timeEl) timeEl.textContent = timeString;
+            if (dateEl) dateEl.textContent = dateFormatted;
+        }
+        
+        updateClock();
+        setInterval(updateClock, 1000);
+        
+        // ====================================
+        // ROTATION DES IMAGES DE FOND
+        // ====================================
+        const backgroundImages = [
+            '{{ static_url("images/backgroundlogin/alexander-slattery-LI748t0BK8w-unsplash.jpg") }}',
+            '{{ static_url("images/backgroundlogin/christian-joudrey-u_nsiSvPEak-unsplash.jpg") }}',
+            '{{ static_url("images/backgroundlogin/jonatan-pie-3l3RwQdHRHg-unsplash.jpg") }}',
+            '{{ static_url("images/BGLogin.jpg") }}'
+        ];
+        
+        let currentImageIndex = 0;
+        const recoveryContainer = document.querySelector('.recovery-container');
+        
+        function changeBackgroundImage() {
+            const imageUrl = backgroundImages[currentImageIndex];
+            recoveryContainer.style.backgroundImage = `url('${imageUrl}')`;
+            currentImageIndex = (currentImageIndex + 1) % backgroundImages.length;
+        }
+        
+        changeBackgroundImage();
+        setInterval(changeBackgroundImage, 10000);
+    </script>
+</body>
+</html>

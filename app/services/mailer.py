@@ -3,7 +3,7 @@ import smtplib, ssl
 from email.message import EmailMessage as MimeEmail
 from email.utils import formataddr
 from typing import Optional, List
-from app_lia_web.core.config import settings
+from ..core.config import settings
 
 class Attachment:
     def __init__(self, filename: str, content: bytes, mimetype: str = "application/octet-stream"):

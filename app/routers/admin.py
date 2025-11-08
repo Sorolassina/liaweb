@@ -6,7 +6,7 @@ import time
 from sqlalchemy import func, delete
 from typing import Optional, Literal
 
-from fastapi import APIRouter, Depends, Form, HTTPException, Query, Request, File, UploadFile
+from fastapi import APIRouter, Depends, Form, HTTPException, Query, Request, File, UploadFile, status
 from fastapi.responses import HTMLResponse, RedirectResponse, StreamingResponse, FileResponse
 from fastapi.staticfiles import StaticFiles
 from sqlalchemy import func, and_
@@ -14,37 +14,49 @@ from sqlmodel import Session, select
 import os
 from pathlib import Path
 
-from app_lia_web.core.database import get_session
-from app_lia_web.core.middleware import get_shared_session
-from app_lia_web.core.config import settings
-from app_lia_web.core.security import get_current_user
-from app_lia_web.core.program_schema_integration import safe_count_query, table_exists_anywhere
+from ..core.database import get_session
+from ..core.middleware import get_shared_session
+from ..core.config import settings
+from ..core.security import get_current_user
+from ..core.program_schema_integration import (
+    get_current_program_schema,
+    SchemaRoutingService,
+)
 import logging
-from app_lia_web.core.path_config import path_config
-from app_lia_web.app.services.file_upload_service import FileUploadService
-from app_lia_web.app.templates import templates
+from ..core.path_config import path_config
+from ..services.file_upload_service import FileUploadService
+from ..templates import templates
 
-from app_lia_web.app.models.base import (
+from ..models.base import (
     User, TypeUtilisateur,
     Programme, EtapePipeline, Preinscription, Inscription, Jury, ProgrammeUtilisateur, MembreJury, Promotion, Partenaire, Groupe, DecisionJuryCandidat
 )
-from app_lia_web.app.models.enums import UserRole as UserRoleEnum
-from app_lia_web.app.models.admin import AppSetting
-from app_lia_web.app.models.permissions import PermissionRole, PermissionUtilisateur, LogPermission, NiveauPermission, TypeRessource
-from app_lia_web.app.models.archive import Archive, TypeArchive, StatutArchive, RegleNettoyage, LogNettoyage
-from app_lia_web.app.services.permissions import PermissionService
-from app_lia_web.app.services.archive import ArchiveService
-from app_lia_web.app.services.database_migration import DatabaseMigrationService
-from app_lia_web.app.services.audit import log_activity
-from app_lia_web.app.models.activity import ActivityLog
-from app_lia_web.app.schemas import UserResponse
+from ..models.enums import UserRole as UserRoleEnum
+from ..models.admin import AppSetting
+from ..models.archive import Archive, TypeArchive, StatutArchive, RegleNettoyage, LogNettoyage
+from ..services.archive import ArchiveService
+from ..services.audit import log_activity
+from ..models.activity import ActivityLog
+
+
+
+logger = logging.getLogger("app.admin")
 
 router = APIRouter()
+
+def configure_schema(session: Session, request: Optional[Request], programme: Optional[str] = None) -> str:
+    base_programme = None
+    if request is not None:
+        base_programme = request.query_params.get("programme") or get_current_program_schema(request)
+    programme_code = programme or base_programme or "public"
+    routing_service = SchemaRoutingService(session)
+    routing_service.set_schema(programme_code)
+    return programme_code
 
 # Fonction pour sauvegarder les photos de profil
 async def save_profile_photo(photo: UploadFile, user_id: int, old_photo_path: str = None) -> str:
     """Sauvegarde une photo de profil et retourne le chemin relatif"""
-    from app_lia_web.core.config import Settings
+    from ..core.config import Settings
     settings = Settings()
     
     print(f"🔍 [DEBUG] save_profile_photo appelée avec user_id={user_id}, filename={photo.filename}")
@@ -100,134 +112,21 @@ def admin_required(user: User):
     return user
 
 # ===== DASHBOARD =====
-@router.get("/", name="admin_dashboard", response_class=HTMLResponse)
-async def admin_dashboard(
+@router.get("/", name="admin_root")
+async def admin_root(
     request: Request,
-    session: Session = Depends(get_shared_session),
-    current_user: User = Depends(get_current_user)
-):
-    """
-    Page d'administration - Dashboard principal pour les administrateurs.
-    Cette route affiche les KPIs et la liste des utilisateurs.
-    """
-    # Vérifier les permissions - seuls les admins et directeurs techniques peuvent accéder
-    if current_user.role not in [UserRoleEnum.ADMINISTRATEUR.value, UserRoleEnum.DIRECTEUR_TECHNIQUE.value]:
-        raise HTTPException(
-            status_code=status.HTTP_403_FORBIDDEN,
-            detail="Accès non autorisé"
-        )
-    
-    # === CALCUL DES KPIs (Key Performance Indicators) - Version sécurisée ===
-    nb_prog = 0
-    if table_exists_anywhere("programme", session):
-        nb_prog = safe_count_query(session, Programme)  # Nombre de programmes
-    
-    nb_pre = 0
-    if table_exists_anywhere("preinscription", session):
-        nb_pre = safe_count_query(session, Preinscription)  # Nombre de préinscriptions
-    
-    nb_insc = 0
-    if table_exists_anywhere("inscription", session):
-        nb_insc = safe_count_query(session, Inscription)  # Nombre d'inscriptions
-    nb_jury = 0  # Nombre de jurys - Version sécurisée
-    if table_exists_anywhere("jury", session):
-        try:
-            nb_jury = session.exec(select(func.count()).select_from(Jury)).one()
-        except Exception as e:
-            logging.warning(f"Erreur lors du comptage des jurys: {e}")
-            nb_jury = 0
-
-    # === RÉCUPÉRATION DES UTILISATEURS ===
-    # Récupérer tous les utilisateurs depuis la base de données
-    all_users = []
-    if table_exists_anywhere("user", session):
-        try:
-            all_users = session.exec(select(User)).all()
-        except Exception as e:
-            logging.warning(f"Erreur lors de la récupération des utilisateurs: {e}")
-            all_users = []
-    
-    users_data = [UserResponse.from_orm(user) for user in all_users]
-
-    # Retourner le template admin avec toutes les données
-    return templates.TemplateResponse(
-        "admin/dashboard.html",
-        {
-            "request": request,
-            "titre": "Administration",
-            "utilisateur": UserResponse.from_orm(current_user),
-            "roles": [current_user.role],
-            
-            # KPIs pour le dashboard
-            "kpi": {
-                "programmes": nb_prog,
-                "preinscriptions": nb_pre,
-                "inscriptions": nb_insc,
-                "jurys": nb_jury,
-            },
-            "users": users_data,  # Liste réelle des utilisateurs
-            "app_name": settings.APP_NAME,
-            "version": settings.VERSION,
-            "author": settings.AUTHOR,
-            "settings": settings
-        }
-    )
-
-@router.get("/home", name="admin_home", response_class=HTMLResponse)
-def admin_home(
-    request: Request,
-    session: Session = Depends(get_shared_session),
     current_user: User = Depends(get_current_user)
 ):
     admin_required(current_user)
+    return RedirectResponse(url=request.url_for("admin_programmes"), status_code=status.HTTP_302_FOUND)
 
-    total_prog = safe_count_query(session, Programme)
-    total_pre = safe_count_query(session, Preinscription)
-    total_insc = safe_count_query(session, Inscription)
-    total_users = safe_count_query(session, User)
-
-    jurys_next = []
-    if table_exists_anywhere("jury", session):
-        try:
-            jurys_next = session.exec(select(Jury).where(Jury.session_le >= datetime.now(timezone.utc)).order_by(Jury.session_le)).all()
-        except Exception as e:
-            logging.warning(f"Erreur lors de la récupération des jurys à venir: {e}")
-            jurys_next = []
-
-    insc_by_prog = []
-    if table_exists_anywhere("inscription", session):
-        try:
-            insc_by_prog = session.exec(
-                select(Programme.code, func.count(Inscription.id))
-                .join(Inscription, isouter=True)
-                .group_by(Programme.code)
-                .order_by(Programme.code)
-            ).all()
-        except Exception as e:
-            logging.warning(f"Erreur lors de la récupération des inscriptions par programme: {e}")
-            insc_by_prog = []
-
-    return templates.TemplateResponse(
-        "admin/dashboard.html",
-        {
-            "request": request,
-            "settings": settings,
-            "utilisateur": current_user,
-            "kpi": {
-                "programmes": int(total_prog),
-                "preinscriptions": int(total_pre),
-                "inscriptions": int(total_insc),
-                "utilisateurs": int(total_users),
-            },
-            "jurys_next": jurys_next,
-            "insc_by_prog": insc_by_prog,
-        },
-    )
 
 # ===== PROGRAMMES =====
 @router.get("/programmes", response_class=HTMLResponse, name="admin_programmes")
 def admin_programmes(request: Request, session: Session = Depends(get_shared_session), current_user: User = Depends(get_current_user)):
     admin_required(current_user)
+    request.state.admin_title = "Gestion des programmes"
+    configure_schema(session, request)
     progs = session.exec(select(Programme).order_by(Programme.code)).all()
     
     # Récupérer tous les utilisateurs actifs pour les modals d'équipe
@@ -260,13 +159,14 @@ def admin_programmes(request: Request, session: Session = Depends(get_shared_ses
         ]
         
         # Récupérer les étapes du pipeline pour ce programme
-        if table_exists_anywhere("etape_pipeline", session):
-            try:
-                etapes_par_programme[prog.id] = session.exec(select(EtapePipeline).where(EtapePipeline.programme_id == prog.id).order_by(EtapePipeline.ordre)).all()
-            except Exception as e:
-                logging.warning(f"Erreur lors de la récupération des étapes du pipeline pour le programme {prog.id}: {e}")
-                etapes_par_programme[prog.id] = []
-        else:
+        try:
+            etapes_par_programme[prog.id] = session.exec(
+                select(EtapePipeline)
+                .where(EtapePipeline.programme_id == prog.id)
+                .order_by(EtapePipeline.ordre)
+            ).all()
+        except Exception as e:
+            logger.warning(f"Erreur lors de la récupération des étapes du pipeline pour le programme {prog.id}: {e}")
             etapes_par_programme[prog.id] = []
     
     timestamp = int(time.time())
@@ -286,6 +186,8 @@ def admin_programmes(request: Request, session: Session = Depends(get_shared_ses
 @router.get("/programmes/new",name="admin_programmes_new", response_class=HTMLResponse)
 def admin_programme_new(request: Request, session: Session = Depends(get_shared_session), current_user: User = Depends(get_current_user)):
     admin_required(current_user)
+    request.state.admin_title = "Gestion des programmes"
+    configure_schema(session, request)
     # Récupérer tous les utilisateurs actifs pour le dropdown responsable
     users = session.exec(select(User).where(User.actif == True).order_by(User.nom_complet)).all()
     
@@ -312,6 +214,8 @@ def admin_programme_edit(
     current_user: User = Depends(get_current_user)):
 
     admin_required(current_user)
+    request.state.admin_title = "Gestion des programmes"
+    configure_schema(session, request)
     prog = session.get(Programme, prog_id)
     if not prog:
         raise HTTPException(status_code=404, detail="Programme introuvable")
@@ -332,13 +236,14 @@ def admin_programme_edit(
     programme_users = session.exec(select(ProgrammeUtilisateur).where(ProgrammeUtilisateur.programme_id == prog.id).order_by(ProgrammeUtilisateur.role_programme)).all()
     
     # Récupérer les étapes du pipeline pour ce programme (après les requêtes critiques)
-    if table_exists_anywhere("etape_pipeline", session):
-        try:
-            steps = session.exec(select(EtapePipeline).where(EtapePipeline.programme_id == prog.id).order_by(EtapePipeline.ordre)).all()
-        except Exception as e:
-            logging.warning(f"Erreur lors de la récupération des étapes du pipeline pour le programme {prog.id}: {e}")
-            steps = []
-    else:
+    try:
+        steps = session.exec(
+            select(EtapePipeline)
+            .where(EtapePipeline.programme_id == prog.id)
+            .order_by(EtapePipeline.ordre)
+        ).all()
+    except Exception as e:
+        logger.warning(f"Erreur lors de la récupération des étapes du pipeline pour le programme {prog.id}: {e}")
         steps = []
     
     return templates.TemplateResponse("admin/programme_form.html", {
@@ -380,6 +285,7 @@ def admin_programme_save(
     print(f"📝 [DEBUG] actif: {actif}")
     
     admin_required(current_user)
+    configure_schema(session, request)
     def _to_float(s: Optional[str]) -> Optional[float]:
         if not s: return None
         try: return float(s.replace(" ", "").replace(",", "."))
@@ -463,6 +369,7 @@ def admin_programme_update(
     cible_femmes_pct: Optional[str] = Form(None),
 ):
     admin_required(current_user)
+    configure_schema(session, request)
     prog = session.get(Programme, prog_id)
     if not prog:
         raise HTTPException(status_code=404, detail="Programme introuvable")
@@ -501,9 +408,10 @@ def admin_programme_delete(
     prog_id: int,
     request: Request,
     session: Session = Depends(get_shared_session),
-    current_user: User = Depends(get_current_user),
+    current_user: User = Depends(get_current_user)
 ):
     admin_required(current_user)
+    configure_schema(session, request)
     prog = session.get(Programme, prog_id)
     if not prog:
         raise HTTPException(status_code=404, detail="Programme introuvable")
@@ -514,11 +422,10 @@ def admin_programme_delete(
         raise HTTPException(status_code=400, detail=f"Impossible de supprimer le programme {prog.code} : {inscriptions_count} inscription(s) liée(s)")
     
     # Supprimer les étapes du pipeline
-    if table_exists_anywhere("etape_pipeline", session):
-        try:
-            session.exec(delete(EtapePipeline).where(EtapePipeline.programme_id == prog_id))
-        except Exception as e:
-            logging.warning(f"Erreur lors de la suppression des étapes du pipeline pour le programme {prog_id}: {e}")
+    try:
+        session.exec(delete(EtapePipeline).where(EtapePipeline.programme_id == prog_id))
+    except Exception as e:
+        logger.warning(f"Erreur lors de la suppression des étapes du pipeline pour le programme {prog_id}: {e}")
     
     # Supprimer le programme
     session.delete(prog)
@@ -531,20 +438,19 @@ def admin_programme_delete(
     return RedirectResponse(url=f"{request.url_for('admin_programmes')}?success=1&action=delete&t={timestamp}", status_code=303)
 
 @router.post("/programmes/{prog_id}/etapes/add", name="admin_programmes_add_step")
-def admin_programme_add_step(
+def admin_programmes_add_step(
     prog_id: int,
     request: Request,
-    libelle: str = Form(...),
-    code: str = Form(...),
-    ordre: int = Form(...),
-    type_etape: Optional[str] = Form(None),
-    active: Literal["on", "off", ""] = Form("on"),
     session: Session = Depends(get_shared_session),
     current_user: User = Depends(get_current_user),
+    code: str = Form(...),
+    libelle: str = Form(...),
+    ordre: int = Form(...),
+    type_etape: Optional[str] = Form(None),
+    active: Optional[str] = Form(None)
 ):
     admin_required(current_user)
-    if not table_exists_anywhere("etape_pipeline", session):
-        raise HTTPException(status_code=404, detail="Table des étapes de pipeline non disponible")
+    configure_schema(session, request)
     prog = session.get(Programme, prog_id)
     if not prog: raise HTTPException(status_code=404, detail="Programme introuvable")
     st = EtapePipeline(programme_id=prog.id, libelle=libelle, code=code, ordre=int(ordre), type_etape=type_etape, active=(active != "off"))
@@ -555,22 +461,21 @@ def admin_programme_add_step(
     timestamp = int(time.time())
     return RedirectResponse(url=f"{request.url_for('admin_programmes')}?success=1&action=add_step&prog_id={prog_id}&t={timestamp}", status_code=303)
 
-@router.post("/etapes/{step_id}/update", name="admin_step_update")
-def admin_step_update(
-    step_id: int,
+@router.post("/programmes/{prog_id}/etapes/{etape_id}/update", name="admin_etapes_update")
+def admin_etapes_update(
+    prog_id: int,
+    etape_id: int,
     request: Request,
-    libelle: str = Form(...),
-    code: str = Form(...),
-    ordre: int = Form(...),
-    type_etape: Optional[str] = Form(None),
-    active: Literal["on", "off", ""] = Form("on"),
     session: Session = Depends(get_shared_session),
     current_user: User = Depends(get_current_user),
+    libelle: str = Form(...),
+    ordre: int = Form(...),
+    type_etape: Optional[str] = Form(None),
+    active: Optional[str] = Form(None)
 ):
     admin_required(current_user)
-    if not table_exists_anywhere("etape_pipeline", session):
-        raise HTTPException(status_code=404, detail="Table des étapes de pipeline non disponible")
-    st = session.get(EtapePipeline, step_id)
+    configure_schema(session, request)
+    st = session.get(EtapePipeline, etape_id)
     if not st: raise HTTPException(status_code=404, detail="Étape introuvable")
     st.libelle = libelle; st.code = code; st.ordre = int(ordre); st.type_etape = type_etape; st.active = (active != "off")
     log_activity(session, user=current_user, action="STEP_UPDATE", entity="EtapePipeline", entity_id=st.id,
@@ -579,16 +484,21 @@ def admin_step_update(
     timestamp = int(time.time())
     return RedirectResponse(url=f"{request.url_for('admin_programmes')}?success=1&action=update_step&prog_id={st.programme_id}&t={timestamp}", status_code=303)
 
-@router.post("/etapes/{step_id}/delete", name="admin_step_delete")
-def admin_step_delete(step_id: int, request: Request, session: Session = Depends(get_shared_session), current_user: User = Depends(get_current_user)):
+@router.post("/programmes/{prog_id}/etapes/{etape_id}/delete", name="admin_etapes_delete")
+def admin_etapes_delete(
+    prog_id: int,
+    etape_id: int,
+    request: Request,
+    session: Session = Depends(get_shared_session),
+    current_user: User = Depends(get_current_user)
+):
     admin_required(current_user)
-    if not table_exists_anywhere("etape_pipeline", session):
-        raise HTTPException(status_code=404, detail="Table des étapes de pipeline non disponible")
-    st = session.get(EtapePipeline, step_id)
+    configure_schema(session, request)
+    st = session.get(EtapePipeline, etape_id)
     if not st: raise HTTPException(status_code=404, detail="Étape introuvable")
     prog_id = st.programme_id
     session.delete(st)
-    log_activity(session, user=current_user, action="STEP_DELETE", entity="EtapePipeline", entity_id=step_id,
+    log_activity(session, user=current_user, action="STEP_DELETE", entity="EtapePipeline", entity_id=etape_id,
                  activity_data={"programme_id": prog_id}, request=request)
     session.commit()
     timestamp = int(time.time())
@@ -599,12 +509,11 @@ def admin_step_delete(step_id: int, request: Request, session: Session = Depends
 def admin_programme_add_user(
     prog_id: int,
     request: Request,
-    utilisateur_id: int = Form(...),
-    role_programme: str = Form(...),
     session: Session = Depends(get_shared_session),
     current_user: User = Depends(get_current_user),
 ):
     admin_required(current_user)
+    configure_schema(session, request)
     prog = session.get(Programme, prog_id)
     if not prog: raise HTTPException(status_code=404, detail="Programme introuvable")
     
@@ -641,6 +550,7 @@ def admin_programme_remove_user(
     current_user: User = Depends(get_current_user),
 ):
     admin_required(current_user)
+    configure_schema(session, request)
     pu = session.exec(select(ProgrammeUtilisateur).where(
         ProgrammeUtilisateur.programme_id == prog_id,
         ProgrammeUtilisateur.utilisateur_id == user_id
@@ -661,6 +571,8 @@ def admin_programme_remove_user(
 @router.get("/users", response_class=HTMLResponse, name="admin_users")
 def admin_users(request: Request, session: Session = Depends(get_shared_session), current_user: User = Depends(get_current_user), q: Optional[str] = Query(None)):
     admin_required(current_user)
+    request.state.admin_title = "Gestion des utilisateurs"
+    configure_schema(session, request)
     stmt = select(User)
     if q:
         like = f"%{q}%"
@@ -694,7 +606,7 @@ async def admin_users_add(
     current_user: User = Depends(get_current_user)
 ):
     admin_required(current_user)
-    from app_lia_web.core.security import get_password_hash
+    from ..core.security import get_password_hash
     if session.exec(select(User).where(User.email==email)).first():
         raise HTTPException(status_code=400, detail="Email déjà utilisé")
     
@@ -750,6 +662,7 @@ async def admin_users_add(
 @router.post("/users/{uid}/toggle", name="admin_users_toggle")
 def admin_users_toggle(uid: int, request: Request, session: Session = Depends(get_shared_session), current_user: User = Depends(get_current_user)):
     admin_required(current_user)
+    configure_schema(session, request)
     u = session.get(User, uid)
     if not u: raise HTTPException(status_code=404, detail="Utilisateur introuvable")
     u.actif = not bool(u.actif)
@@ -774,6 +687,7 @@ def admin_users_update(
     current_user: User = Depends(get_current_user)
 ):
     admin_required(current_user)
+    configure_schema(session, request)
     u = session.get(User, uid)
     if not u: raise HTTPException(status_code=404, detail="Utilisateur introuvable")
     
@@ -825,7 +739,7 @@ def admin_users_update(
     
     # Mettre à jour le mot de passe si fourni
     if mot_de_passe and mot_de_passe.strip():
-        from app_lia_web.core.security import get_password_hash
+        from ..core.security import get_password_hash
         u.mot_de_passe_hash = get_password_hash(mot_de_passe)
         old_values["password_changed"] = True
     
@@ -850,57 +764,74 @@ def admin_users_update(
 
 # ===== JURYS =====
 @router.get("/jurys", response_class=HTMLResponse, name="admin_jurys")
-def admin_jurys(request: Request, session: Session = Depends(get_shared_session), current_user: User = Depends(get_current_user)):
+def admin_jurys(
+    request: Request,
+    session: Session = Depends(get_shared_session),
+    current_user: User = Depends(get_current_user),
+    programme: Optional[str] = Query(None),
+):
     admin_required(current_user)
-    
+    request.state.admin_title = "Gestion des jurys"
+
+    # Déterminer le schéma courant (middleware ou paramètre ?programme=...)
+    programme_code = configure_schema(session, request, programme)
+    logger.info("🏛️ [ADMIN/JURYS] Schéma actif: %s", programme_code)
+
     # Charger les jurys avec leurs relations - Version sécurisée
     from sqlalchemy.orm import joinedload
     jurys = []
-    if table_exists_anywhere("jury", session):
-        try:
-            jurys = session.exec(
-                select(Jury)
-                .options(
-                    joinedload(Jury.programme),
-                    joinedload(Jury.promotion)
-                )
-                .order_by(Jury.session_le.desc())
-            ).all()
-        except Exception as e:
-            logging.warning(f"Erreur lors de la récupération des jurys: {e}")
-            jurys = []
+    logger.info("🧾 [ADMIN/JURYS] Chargement des données jurys")
+    try:
+        jurys = session.exec(
+            select(Jury)
+            .options(
+                joinedload(Jury.programme),
+                joinedload(Jury.promotion)
+            )
+            .order_by(Jury.session_le.desc())
+        ).all()
+    except Exception as e:
+        logger.warning(f"Erreur lors de la récupération des jurys: {e}")
+        jurys = []
+    logger.info("🧑‍⚖️ [ADMIN/JURYS] Jurys chargés: %d", len(jurys))
     
     progs = []
-    if table_exists_anywhere("programme", session):
-        try:
-            progs = session.exec(select(Programme).order_by(Programme.code)).all()
-        except Exception as e:
-            logging.warning(f"Erreur lors de la récupération des programmes: {e}")
-            progs = []
+    try:
+        progs = session.exec(select(Programme).order_by(Programme.code)).all()
+    except Exception as e:
+        logger.warning(f"Erreur lors de la récupération des programmes: {e}")
+        progs = []
+    logger.info("📚 [ADMIN/JURYS] Programmes chargés: %d", len(progs))
     
     promotions = []
-    if table_exists_anywhere("promotion", session):
-        try:
-            promotions = session.exec(select(Promotion).order_by(Promotion.libelle)).all()
-        except Exception as e:
-            logging.warning(f"Erreur lors de la récupération des promotions: {e}")
-            promotions = []
+    try:
+        promotions = session.exec(select(Promotion).order_by(Promotion.libelle)).all()
+    except Exception as e:
+        logger.warning(f"Erreur lors de la récupération des promotions: {e}")
+        promotions = []
+    logger.info("🎓 [ADMIN/JURYS] Promotions chargées: %d", len(promotions))
     
     groupes = []
-    if table_exists_anywhere("groupe", session):
-        try:
-            groupes = session.exec(select(Groupe).where(Groupe.actif == True).order_by(Groupe.nom)).all()
-        except Exception as e:
-            logging.warning(f"Erreur lors de la récupération des groupes: {e}")
-            groupes = []
+    try:
+        groupes = session.exec(select(Groupe).where(Groupe.actif == True).order_by(Groupe.nom)).all()
+    except Exception as e:
+        logger.warning(f"Erreur lors de la récupération des groupes: {e}")
+        groupes = []
+    logger.info("👥 [ADMIN/JURYS] Groupes actifs: %d", len(groupes))
     
     users = []
-    if table_exists_anywhere("user", session):
-        try:
-            users = session.exec(select(User).where(User.actif == True)).all()
-        except Exception as e:
-            logging.warning(f"Erreur lors de la récupération des utilisateurs: {e}")
-            users = []
+    try:
+        users = session.exec(select(User).where(User.actif == True)).all()
+    except Exception as e:
+        logger.warning(f"Erreur lors de la récupération des utilisateurs: {e}")
+        users = []
+    logger.info("👤 [ADMIN/JURYS] Utilisateurs actifs: %d", len(users))
+    logger.info("🏷️ [ADMIN/JURYS] Premier programme: %s", progs[0].code if progs else "<aucun>")
+    if jurys:
+        premier_prog = getattr(jurys[0].programme, "code", "-")
+        logger.info("🔎 [ADMIN/JURYS] Premier jury: id=%s, programme=%s", jurys[0].id, premier_prog)
+    else:
+        logger.info("🔎 [ADMIN/JURYS] Premier jury: <aucun>")
     
     return templates.TemplateResponse("admin/jurys.html", {
         "request": request, 
@@ -915,34 +846,36 @@ def admin_jurys(request: Request, session: Session = Depends(get_shared_session)
 
 @router.post("/jurys/add")
 def admin_jurys_add(programme_id: int = Form(...), session_date: str = Form(...), session_time: str = Form(...), 
-                    lieu: Optional[str] = Form(None), statut: str = Form("planifie"), promotion_id: Optional[str] = Form(None),
-                    request: Request = None, session: Session = Depends(get_shared_session), current_user: User = Depends(get_current_user)):
-    admin_required(current_user)
-    prog = session.get(Programme, programme_id)
-    if not prog: raise HTTPException(status_code=404, detail="Programme introuvable")
-    
-    # Combiner la date et l'heure
-    dt = datetime.fromisoformat(f"{session_date}T{session_time}")
-    j = Jury(programme_id=prog.id, session_le=dt, lieu=lieu or None, statut=statut, 
-             promotion_id=int(promotion_id) if promotion_id else None)
-    session.add(j)
-    log_activity(session, user=current_user, action="JURY_ADD", entity="Jury", entity_id=None,
-                 activity_data={"programme_id": prog.id, "session_le": dt.isoformat(), "lieu": lieu, "statut": statut}, request=request)
-    session.commit()
-    return RedirectResponse(url=request.url_for("admin_jurys"), status_code=303)
+                     lieu: Optional[str] = Form(None), statut: str = Form("planifie"), promotion_id: Optional[str] = Form(None),
+                     request: Request = None, session: Session = Depends(get_shared_session), current_user: User = Depends(get_current_user)):
+     admin_required(current_user)
+     configure_schema(session, request)
+     prog = session.get(Programme, programme_id)
+     if not prog: raise HTTPException(status_code=404, detail="Programme introuvable")
+     
+     # Combiner la date et l'heure
+     dt = datetime.fromisoformat(f"{session_date}T{session_time}")
+     j = Jury(programme_id=prog.id, session_le=dt, lieu=lieu or None, statut=statut, 
+              promotion_id=int(promotion_id) if promotion_id else None)
+     session.add(j)
+     log_activity(session, user=current_user, action="JURY_ADD", entity="Jury", entity_id=None,
+                  activity_data={"programme_id": prog.id, "session_le": dt.isoformat(), "lieu": lieu, "statut": statut}, request=request)
+     session.commit()
+     return RedirectResponse(url=request.url_for("admin_jurys"), status_code=303)
 
 @router.post("/jurys/{jury_id}/update")
 def admin_jury_update(jury_id: int, 
-                     programme_id: int = Form(...), 
-                     session_date: str = Form(...), 
-                     session_time: str = Form(...), 
-                     lieu: Optional[str] = Form(None),
-                     statut: str = Form("planifie"),
-                     promotion_id: Optional[str] = Form(None),
-                     request: Request = None, 
-                     session: Session = Depends(get_shared_session), 
-                     current_user: User = Depends(get_current_user)):
+                      programme_id: int = Form(...), 
+                      session_date: str = Form(...), 
+                      session_time: str = Form(...), 
+                      lieu: Optional[str] = Form(None),
+                      statut: str = Form("planifie"),
+                      promotion_id: Optional[str] = Form(None),
+                      request: Request = None, 
+                      session: Session = Depends(get_shared_session), 
+                      current_user: User = Depends(get_current_user)):
     admin_required(current_user)
+    configure_schema(session, request)
     jury = session.get(Jury, jury_id)
     if not jury:
         raise HTTPException(status_code=404, detail="Jury introuvable")
@@ -961,13 +894,14 @@ def admin_jury_update(jury_id: int,
     session.commit()
     
     log_activity(session, user=current_user, action="JURY_UPDATE", entity="Jury", entity_id=jury_id,
-                 activity_data={"programme_id": programme_id, "session_le": session_le, "statut": statut}, request=request)
+                 activity_data={"programme_id": programme_id, "session_le": dt.isoformat(), "statut": statut}, request=request)
     
     return RedirectResponse(url=f"{request.url_for('admin_jurys')}?success=jury_updated&jury_id={jury_id}", status_code=303)
 
 @router.post("/jurys/{jury_id}/delete")
-def admin_jury_delete(jury_id: int, request: Request, session: Session = Depends(get_shared_session), current_user: User = Depends(get_current_user)):
+def admin_jury_delete(jury_id: int, request: Request = None, session: Session = Depends(get_shared_session), current_user: User = Depends(get_current_user)):
     admin_required(current_user)
+    configure_schema(session, request)
     jury = session.get(Jury, jury_id)
     if not jury:
         raise HTTPException(status_code=404, detail="Jury introuvable")
@@ -985,39 +919,37 @@ def admin_jury_delete(jury_id: int, request: Request, session: Session = Depends
     return RedirectResponse(url=request.url_for("admin_jurys"), status_code=303)
 
 @router.post("/jurys/{jury_id}/membres/add")
-def admin_jury_membre_add(jury_id: int, 
-                         utilisateur_id: int = Form(...),
-                         role: str = Form("membre"),
-                         request: Request = None, 
-                         session: Session = Depends(get_shared_session), 
-                         current_user: User = Depends(get_current_user)):
+def admin_jury_add_member(jury_id: int, request: Request, session: Session = Depends(get_shared_session), current_user: User = Depends(get_current_user),
+                           membre_id: int = Form(...), role: str = Form(...)):
     admin_required(current_user)
+    configure_schema(session, request)
     jury = session.get(Jury, jury_id)
     if not jury:
         raise HTTPException(status_code=404, detail="Jury introuvable")
     
-    user = session.get(User, utilisateur_id)
+    user = session.get(User, membre_id)
     if not user:
         raise HTTPException(status_code=404, detail="Utilisateur introuvable")
     
     # Vérifier si l'utilisateur n'est pas déjà membre
-    existing = session.exec(select(MembreJury).where(MembreJury.jury_id == jury_id, MembreJury.utilisateur_id == utilisateur_id)).first()
+    existing = session.exec(select(MembreJury).where(MembreJury.jury_id == jury_id, MembreJury.utilisateur_id == membre_id)).first()
     if existing:
-        return RedirectResponse(url=f"{request.url_for('admin_jury_detail', jury_id=jury_id)}?error=already_member", status_code=303)
+        return RedirectResponse(url=f"{request.url_for('admin_jurys')}?error=already_member&jury_id={jury_id}&action=add_member", status_code=303)
     
     # Ajouter le membre
-    membre = MembreJury(jury_id=jury_id, utilisateur_id=utilisateur_id, role=role)
+    membre = MembreJury(jury_id=jury_id, utilisateur_id=membre_id, role=role)
     session.add(membre)
     session.commit()
     
     log_activity(session, user=current_user, action="JURY_MEMBER_ADD", entity="Jury", entity_id=jury_id,
-                 activity_data={"utilisateur_id": utilisateur_id, "role": role}, request=request)
+                 activity_data={"utilisateur_id": membre_id, "role": role}, request=request)
     
     return RedirectResponse(url=f"{request.url_for('admin_jurys')}?success=member_added&jury_id={jury_id}&action=add_member", status_code=303)
 
 @router.post("/jurys/{jury_id}/membres/{membre_id}/delete")
-def admin_jury_membre_delete(jury_id: int, membre_id: int, request: Request, session: Session = Depends(get_shared_session), current_user: User = Depends(get_current_user)):
+def admin_jury_remove_member(jury_id: int, membre_id: int, request: Request, session: Session = Depends(get_shared_session), current_user: User = Depends(get_current_user)):
     admin_required(current_user)
+    configure_schema(session, request)
     membre = session.get(MembreJury, membre_id)
     if not membre or membre.jury_id != jury_id:
         raise HTTPException(status_code=404, detail="Membre introuvable")
@@ -1033,6 +965,7 @@ def admin_jury_membre_delete(jury_id: int, membre_id: int, request: Request, ses
 @router.post("/jurys/{jury_id}/send-invitations")
 def admin_jury_send_invitations(jury_id: int, request: Request, session: Session = Depends(get_shared_session), current_user: User = Depends(get_current_user)):
     admin_required(current_user)
+    configure_schema(session, request)
     jury = session.get(Jury, jury_id)
     if not jury:
         raise HTTPException(status_code=404, detail="Jury introuvable")
@@ -1041,7 +974,7 @@ def admin_jury_send_invitations(jury_id: int, request: Request, session: Session
     membres = session.exec(select(MembreJury).where(MembreJury.jury_id == jury_id)).all()
     
     if not membres:
-        return RedirectResponse(url=f"{request.url_for('admin_jury_detail', jury_id=jury_id)}?error=no_members", status_code=303)
+        return RedirectResponse(url=f"{request.url_for('admin_jurys')}?error=no_members&jury_id={jury_id}&action=invitations", status_code=303)
     
     # Envoyer les invitations par email
     sent_count = 0
@@ -1059,286 +992,46 @@ def admin_jury_send_invitations(jury_id: int, request: Request, session: Session
     
     return RedirectResponse(url=f"{request.url_for('admin_jurys')}?success=invitations_sent&count={sent_count}&jury_id={jury_id}", status_code=303)
 
-@router.get("/logs", response_class=HTMLResponse, name="admin_logs")
-def admin_logs(request: Request, session: Session = Depends(get_shared_session), current_user: User = Depends(get_current_user)):
-    admin_required(current_user)
-    
-    # Récupérer les logs avec pagination (plus besoin de jointure)
-    
-    logs = session.exec(
-        select(ActivityLog)
-        .order_by(ActivityLog.created_at.desc())
-        .limit(100)  # Limiter à 100 logs récents
-    ).all()
-    
-    return templates.TemplateResponse("admin/logs.html", {
-        "request": request,
-        "settings": settings,
-        "utilisateur": current_user,
-        "logs": logs
-    })
-
-# ===== PERMISSIONS =====
-@router.get("/permissions", response_class=HTMLResponse, name="admin_permissions")
-def admin_permissions(request: Request, session: Session = Depends(get_shared_session), current_user: User = Depends(get_current_user)):
-    admin_required(current_user)
-    
-    # Initialiser les permissions par défaut si nécessaire
-    permission_service = PermissionService(session)
-    if table_exists_anywhere("permission_role", session):
-        try:
-            permission_service.initialize_default_permissions()
-        except Exception as e:
-            logging.warning(f"Erreur lors de l'initialisation des permissions: {e}")
-    
-    # Récupérer la matrice des permissions
-    permission_matrix = {}
-    if table_exists_anywhere("permission_role", session):
-        try:
-            permission_matrix = permission_service.get_permission_matrix()
-        except Exception as e:
-            logging.warning(f"Erreur lors de la récupération de la matrice des permissions: {e}")
-            permission_matrix = {}
-    
-    # Récupérer les utilisateurs pour les permissions spécifiques
-    users = []
-    if table_exists_anywhere("user", session):
-        try:
-            users = session.exec(select(User).where(User.actif == True)).all()
-        except Exception as e:
-            logging.warning(f"Erreur lors de la récupération des utilisateurs: {e}")
-            users = []
-    
-    return templates.TemplateResponse("admin/permissions.html", {
-        "request": request,
-        "settings": settings,
-        "utilisateur": current_user,
-        "permission_matrix": permission_matrix,
-        "users": users,
-        "resource_types": list(TypeRessource),
-        "permission_levels": list(NiveauPermission),
-        "all_roles": permission_service.get_all_roles()
-    })
-
-@router.post("/permissions/grant")
-def admin_grant_permission(
-    target_user_id: int = Form(...),
-    resource: TypeRessource = Form(...),
-    permission_level: NiveauPermission = Form(...),
-    reason: str = Form(None),
-    request: Request = None,
-    session: Session = Depends(get_shared_session),
-    current_user: User = Depends(get_current_user)
-):
-    admin_required(current_user)
-    
-    permission_service = PermissionService(session)
-    success = permission_service.grant_permission(
-        current_user, target_user_id, resource, permission_level, reason
-    )
-    
-    if success:
-        return RedirectResponse(url=request.url_for("admin_permissions") + "?success=permission_granted", status_code=303)
-    else:
-        return RedirectResponse(url=request.url_for("admin_permissions") + "?error=permission_grant_failed", status_code=303)
-
-@router.post("/permissions/revoke")
-def admin_revoke_permission(
-    target_user_id: int = Form(...),
-    resource: TypeRessource = Form(...),
-    reason: str = Form(None),
-    request: Request = None,
-    session: Session = Depends(get_shared_session),
-    current_user: User = Depends(get_current_user)
-):
-    admin_required(current_user)
-    
-    permission_service = PermissionService(session)
-    success = permission_service.revoke_permission(current_user, target_user_id, resource, reason)
-    
-    if success:
-        return RedirectResponse(url=request.url_for("admin_permissions") + "?success=permission_revoked", status_code=303)
-    else:
-        return RedirectResponse(url=request.url_for("admin_permissions") + "?error=permission_revoke_failed", status_code=303)
-
-@router.post("/permissions/update-role")
-def admin_update_role_permission(
-    role: str = Form(...),
-    resource: str = Form(...),
-    permission_level: str = Form(...),
-    reason: str = Form(None),
-    request: Request = None,
-    session: Session = Depends(get_shared_session),
-    current_user: User = Depends(get_current_user)
-):
-    admin_required(current_user)
-    
-    try:
-        permission_service = PermissionService(session)
-        
-        # Convertir les chaînes en enums
-        resource_enum = TypeRessource(resource)
-        permission_enum = NiveauPermission(permission_level)
-        
-        # Mettre à jour la permission pour le rôle
-        success = permission_service.update_role_permission(
-            current_user, role, resource_enum, permission_enum, reason
-        )
-        
-        if success:
-            return RedirectResponse(url=request.url_for("admin_permissions") + "?success=role_permission_updated", status_code=303)
-        else:
-            return RedirectResponse(url=request.url_for("admin_permissions") + "?error=role_permission_update_failed", status_code=303)
-            
-    except ValueError as e:
-        # Erreur de conversion des enums
-        return RedirectResponse(url=request.url_for("admin_permissions") + "?error=invalid_permission_data", status_code=303)
-    except Exception as e:
-        print(f"❌ Erreur lors de la mise à jour de permission de rôle: {e}")
-        return RedirectResponse(url=request.url_for("admin_permissions") + "?error=role_permission_update_failed", status_code=303)
-
-@router.get("/database-status", response_class=HTMLResponse, name="admin_database_status")
-def admin_database_status(request: Request, session: Session = Depends(get_shared_session), current_user: User = Depends(get_current_user)):
-    admin_required(current_user)
-    
-    migration_service = DatabaseMigrationService(session)
-    db_status = migration_service.get_database_status()
-    
-    return templates.TemplateResponse("admin/database_status.html", {
-        "request": request,
-        "settings": settings,
-        "utilisateur": current_user,
-        "db_status": db_status
-    })
-
-@router.post("/database-migrate")
-def admin_database_migrate(request: Request, session: Session = Depends(get_shared_session), current_user: User = Depends(get_current_user)):
-    admin_required(current_user)
-    
-    migration_service = DatabaseMigrationService(session)
-    migration_results = migration_service.migrate_database()
-    
-    # Log de l'action
-    log_activity(session, user=current_user, action="DATABASE_MIGRATION", 
-                entity="Database", activity_data=migration_results, request=request)
-    
-    return RedirectResponse(url=request.url_for("admin_database_status") + "?success=migration_completed", status_code=303)
-
-# ===== ARCHIVES ET SAUVEGARDES =====
-@router.get("/archives", response_class=HTMLResponse, name="admin_archives")
-def admin_archives(request: Request, session: Session = Depends(get_shared_session), current_user: User = Depends(get_current_user)):
-    admin_required(current_user)
-    
-    archive_service = ArchiveService(session)
-    archives = []
-    if table_exists_anywhere("archive", session):
-        try:
-            archives = archive_service.get_archive_list()
-        except Exception as e:
-            logging.warning(f"Erreur lors de la récupération des archives: {e}")
-            archives = []
-    
-    return templates.TemplateResponse("admin/archives.html", {
-        "request": request,
-        "settings": settings,
-        "utilisateur": current_user,
-        "archives": archives,
-        "archive_types": list(TypeArchive),
-        "archive_statuses": list(StatutArchive)
-    })
-
-@router.post("/archives/create")
-def admin_create_backup(
-    description: str = Form(None),
-    request: Request = None,
-    session: Session = Depends(get_shared_session),
-    current_user: User = Depends(get_current_user)
-):
-    admin_required(current_user)
-    
-    archive_service = ArchiveService(session)
-    archive = archive_service.create_full_backup(current_user, description)
-    
-    if archive:
-        return RedirectResponse(url=request.url_for("admin_archives") + "?success=backup_created", status_code=303)
-    else:
-        return RedirectResponse(url=request.url_for("admin_archives") + "?error=backup_failed", status_code=303)
-
-@router.post("/archives/{archive_id}/restore")
-def admin_restore_backup(
-    archive_id: int,
-    request: Request = None,
-    session: Session = Depends(get_shared_session),
-    current_user: User = Depends(get_current_user)
-):
-    admin_required(current_user)
-    
-    archive_service = ArchiveService(session)
-    success = archive_service.restore_from_backup(archive_id, current_user)
-    
-    if success:
-        return RedirectResponse(url=request.url_for("admin_archives") + "?success=backup_restored", status_code=303)
-    else:
-        return RedirectResponse(url=request.url_for("admin_archives") + "?error=restore_failed", status_code=303)
-
-@router.post("/archives/{archive_id}/delete")
-def admin_delete_archive(
-    archive_id: int,
-    request: Request = None,
-    session: Session = Depends(get_shared_session),
-    current_user: User = Depends(get_current_user)
-):
-    admin_required(current_user)
-    
-    archive_service = ArchiveService(session)
-    success = archive_service.delete_archive(archive_id, current_user)
-    
-    if success:
-        return RedirectResponse(url=request.url_for("admin_archives") + "?success=archive_deleted", status_code=303)
-    else:
-        return RedirectResponse(url=request.url_for("admin_archives") + "?error=delete_failed", status_code=303)
-
-@router.post("/cleanup/execute")
-def admin_execute_cleanup(
-    request: Request = None,
-    session: Session = Depends(get_shared_session),
-    current_user: User = Depends(get_current_user)
-):
-    admin_required(current_user)
-    
-    archive_service = ArchiveService(session)
-    cleanup_stats = archive_service.cleanup_old_data(current_user)
-    
-    if cleanup_stats:
-        return RedirectResponse(url=request.url_for("admin_archives") + "?success=cleanup_completed", status_code=303)
-    else:
-        return RedirectResponse(url=request.url_for("admin_archives") + "?error=cleanup_failed", status_code=303)
-
-# ===== PARAMÈTRES =====
 @router.get("/settings", response_class=HTMLResponse, name="admin_settings")
-def admin_settings(request: Request, session: Session = Depends(get_shared_session), current_user: User = Depends(get_current_user)):
+def admin_settings(
+    request: Request,
+    session: Session = Depends(get_shared_session),
+    current_user: User = Depends(get_current_user),
+):
     admin_required(current_user)
-    def getv(k, default=""):
-        if not table_exists_anywhere("app_setting", session):
-            return default
-        try:
-            x = session.exec(select(AppSetting).where(AppSetting.key==k)).first()
-            return x.value if x else default
-        except Exception as e:
-            logging.warning(f"Erreur lors de la récupération du paramètre {k}: {e}")
-            return default
-    ctx = {
-        "THEME_PRIMARY": getv("THEME_PRIMARY", getattr(settings, "THEME_PRIMARY", "#ffd300")),
-        "THEME_SECONDARY": getv("THEME_SECONDARY", getattr(settings, "THEME_SECONDARY", "#111827")),
-        "MAX_UPLOAD_SIZE_MB": getv("MAX_UPLOAD_SIZE_MB", str(getattr(settings, "MAX_UPLOAD_SIZE_MB", 5))),
-        "SMTP_HOST": getv("SMTP_HOST", getattr(settings, "SMTP_HOST", "")),
-        "SMTP_PORT": getv("SMTP_PORT", str(getattr(settings, "SMTP_PORT", ""))),
-        "SMTP_USER": getv("SMTP_USER", getattr(settings, "SMTP_USER", "")),
-        "SMTP_TLS": getv("SMTP_TLS", str(getattr(settings, "SMTP_TLS", True))),
-    }
-    return templates.TemplateResponse("admin/settings.html", {"request": request, "settings": settings, "utilisateur": current_user, "cfg": ctx})
+    request.state.admin_title = "Paramètres de l'administration"
+    configure_schema(session, request)
 
-@router.post("/settings/save")
+    def get_value(key: str, default: str = "") -> str:
+        try:
+            setting = session.exec(select(AppSetting).where(AppSetting.key == key)).first()
+            return setting.value if setting else default
+        except Exception as exc:
+            logger.warning("Erreur lors de la récupération du paramètre %s: %s", key, exc)
+            return default
+
+    context = {
+        "THEME_PRIMARY": get_value("THEME_PRIMARY", getattr(settings, "THEME_PRIMARY", "#ffd300")),
+        "THEME_SECONDARY": get_value("THEME_SECONDARY", getattr(settings, "THEME_SECONDARY", "#111827")),
+        "MAX_UPLOAD_SIZE_MB": get_value("MAX_UPLOAD_SIZE_MB", str(getattr(settings, "MAX_UPLOAD_SIZE_MB", 5))),
+        "SMTP_HOST": get_value("SMTP_HOST", getattr(settings, "SMTP_HOST", "")),
+        "SMTP_PORT": get_value("SMTP_PORT", str(getattr(settings, "SMTP_PORT", ""))),
+        "SMTP_USER": get_value("SMTP_USER", getattr(settings, "SMTP_USER", "")),
+        "SMTP_TLS": get_value("SMTP_TLS", str(getattr(settings, "SMTP_TLS", True))),
+    }
+
+    return templates.TemplateResponse(
+        "admin/settings.html",
+        {
+            "request": request,
+            "settings": settings,
+            "utilisateur": current_user,
+            "cfg": context,
+        },
+    )
+
+
+@router.post("/settings/save", name="admin_settings_save")
 def admin_settings_save(
     THEME_PRIMARY: Optional[str] = Form(None),
     THEME_SECONDARY: Optional[str] = Form(None),
@@ -1352,13 +1045,19 @@ def admin_settings_save(
     current_user: User = Depends(get_current_user),
 ):
     admin_required(current_user)
-    def upsert(k: str, v: Optional[str]):
-        if v is None: return
-        row = session.exec(select(AppSetting).where(AppSetting.key==k)).first()
-        if not row:
-            row = AppSetting(key=k, value=v); session.add(row)
-        else:
-            row.value = v; row.updated_at = datetime.now(timezone.utc)
+    configure_schema(session, request)
+
+    def upsert(key: str, value: Optional[str]) -> None:
+        if value is None:
+            return
+        try:
+            setting = session.exec(select(AppSetting).where(AppSetting.key == key)).first()
+            if setting is None:
+                session.add(AppSetting(key=key, value=value))
+            else:
+                setting.value = value
+        except Exception as exc:
+            logger.warning("Erreur lors de la mise à jour du paramètre %s: %s", key, exc)
 
     upsert("THEME_PRIMARY", THEME_PRIMARY)
     upsert("THEME_SECONDARY", THEME_SECONDARY)
@@ -1368,13 +1067,29 @@ def admin_settings_save(
     upsert("SMTP_USER", SMTP_USER)
     upsert("SMTP_TLS", SMTP_TLS)
 
-    # log
-    log_activity(session, user=current_user, action="SETTINGS_SAVE", entity="AppSetting", entity_id=None,
-                 activity_data={"keys": ["THEME_PRIMARY","THEME_SECONDARY","MAX_UPLOAD_SIZE_MB","SMTP_*"]}, request=request)
+    log_activity(
+        session,
+        user=current_user,
+        action="SETTINGS_SAVE",
+        entity="AppSetting",
+        entity_id=None,
+        activity_data={
+            "keys": [
+                "THEME_PRIMARY",
+                "THEME_SECONDARY",
+                "MAX_UPLOAD_SIZE_MB",
+                "SMTP_HOST",
+                "SMTP_PORT",
+                "SMTP_USER",
+                "SMTP_TLS",
+            ]
+        },
+        request=request,
+    )
     session.commit()
     return RedirectResponse(url=request.url_for("admin_settings"), status_code=303)
 
-# ===== LOGS =====
+
 @router.get("/logs", response_class=HTMLResponse)
 def admin_logs(
     request: Request,
@@ -1389,6 +1104,8 @@ def admin_logs(
     page_size: int = Query(50, ge=10, le=200),
 ):
     admin_required(current_user)
+    request.state.admin_title = "Traçabilité des actions"
+    configure_schema(session, request)
     stmt = select(ActivityLog)
     conds = []
     if q:
@@ -1429,6 +1146,7 @@ def admin_logs(
             "request": request,
             "settings": settings,
             "utilisateur": current_user,
+            "logs": rows,
             "rows": rows,
             "q": q or "",
             "action": action or "",
@@ -1480,6 +1198,7 @@ async def admin_users_photo(
 ):
     print(f"🚀 [DEBUG] admin_users_photo appelée avec uid={uid}")
     admin_required(current_user)
+    configure_schema(session, request)
     
     print(f"🔍 [DEBUG] Recherche de l'utilisateur avec id={uid}")
     u = session.get(User, uid)
@@ -1525,6 +1244,7 @@ def admin_users_delete(
 ):
     print(f"🚀 [DEBUG] admin_users_delete appelée avec uid={uid}")
     admin_required(current_user)
+    configure_schema(session, request)
     
     print(f"🔍 [DEBUG] Recherche de l'utilisateur avec id={uid}")
     u = session.get(User, uid)
@@ -1551,7 +1271,7 @@ def admin_users_delete(
         )
     
     # Vérifier si l'utilisateur est membre d'équipe d'un programme
-    from app_lia_web.app.models.base import ProgrammeUtilisateur
+    from ..models.base import ProgrammeUtilisateur
     membres_equipe = session.exec(select(ProgrammeUtilisateur).where(ProgrammeUtilisateur.utilisateur_id == u.id)).all()
     if membres_equipe:
         programmes_membre = []
@@ -1567,7 +1287,7 @@ def admin_users_delete(
         )
     
     # Vérifier si l'utilisateur est conseiller ou référent dans des inscriptions
-    from app_lia_web.app.models.inscription import Inscription
+    from ..models.inscription import Inscription
     inscriptions_conseiller = session.exec(select(Inscription).where(Inscription.conseiller_id == u.id)).all()
     inscriptions_referent = session.exec(select(Inscription).where(Inscription.referent_id == u.id)).all()
     if inscriptions_conseiller or inscriptions_referent:
@@ -1579,7 +1299,7 @@ def admin_users_delete(
         )
     
     # Vérifier si l'utilisateur a déposé des documents
-    from app_lia_web.app.models.base import Document
+    from ..models.base import Document
     documents_deposes = session.exec(select(Document).where(Document.depose_par_id == u.id)).all()
     if documents_deposes:
         print(f"❌ [DEBUG] Utilisateur a déposé des documents")
@@ -1629,6 +1349,8 @@ def admin_users_delete(
 @router.get("/partenaires", response_class=HTMLResponse, name="admin_partenaires")
 def admin_partenaires(request: Request, session: Session = Depends(get_shared_session), current_user: User = Depends(get_current_user), q: Optional[str] = Query(None)):
     admin_required(current_user)
+    request.state.admin_title = "Gestion des partenaires"
+    configure_schema(session, request)
     stmt = select(Partenaire)
     if q:
         like = f"%{q}%"
@@ -1658,6 +1380,7 @@ def admin_partenaires_add(
     current_user: User = Depends(get_current_user)
 ):
     admin_required(current_user)
+    configure_schema(session, request)
     
     # Vérifier si un partenaire avec ce nom existe déjà
     existing = session.exec(select(Partenaire).where(Partenaire.nom == nom.strip())).first()
@@ -1749,6 +1472,7 @@ def admin_partenaires_update(
 @router.post("/partenaires/{partenaire_id}/toggle")
 def admin_partenaires_toggle(partenaire_id: int, request: Request, session: Session = Depends(get_shared_session), current_user: User = Depends(get_current_user)):
     admin_required(current_user)
+    configure_schema(session, request)
     partenaire = session.get(Partenaire, partenaire_id)
     if not partenaire:
         raise HTTPException(status_code=404, detail="Partenaire introuvable")
@@ -1773,15 +1497,15 @@ def admin_partenaires_delete(
     if not partenaire:
         raise HTTPException(status_code=404, detail="Partenaire introuvable")
     
-    # Vérifier si le partenaire est utilisé dans des réorientations - Version sécurisée
-    from app_lia_web.app.models.jury import DecisionJuryCandidat
-    reorientations_count = 0
-    if table_exists_anywhere("decision_jury_candidat", session):
-        try:
-            reorientations_count = session.exec(select(func.count(DecisionJuryCandidat.id)).where(DecisionJuryCandidat.partenaire_id == partenaire_id)).first()
-        except Exception as e:
-            logging.warning(f"Erreur lors de la vérification des réorientations: {e}")
-            reorientations_count = 0
+    # Vérifier si le partenaire est utilisé dans des réorientations
+    from ..models.jury import DecisionJuryCandidat
+    try:
+        reorientations_count = session.exec(
+            select(func.count(DecisionJuryCandidat.id)).where(DecisionJuryCandidat.partenaire_id == partenaire_id)
+        ).first()
+    except Exception as e:
+        logger.warning(f"Erreur lors de la vérification des réorientations: {e}")
+        reorientations_count = 0
     
     if reorientations_count > 0:
         timestamp = int(datetime.now(timezone.utc).timestamp())
@@ -1812,6 +1536,8 @@ def admin_partenaires_delete(
 @router.get("/promotions", response_class=HTMLResponse, name="admin_promotions")
 def admin_promotions(request: Request, session: Session = Depends(get_shared_session), current_user: User = Depends(get_current_user), q: Optional[str] = Query(None)):
     admin_required(current_user)
+    request.state.admin_title = "Gestion des promotions"
+    configure_schema(session, request)
     stmt = select(Promotion)
     if q:
         like = f"%{q}%"
@@ -1847,6 +1573,7 @@ def admin_promotions_add(
     current_user: User = Depends(get_current_user)
 ):
     admin_required(current_user)
+    configure_schema(session, request)
     
     # Vérifier que le programme existe
     programme = session.get(Programme, programme_id)
@@ -1891,6 +1618,7 @@ def admin_promotions_update(
     current_user: User = Depends(get_current_user)
 ):
     admin_required(current_user)
+    configure_schema(session, request)
     promotion = session.get(Promotion, promotion_id)
     if not promotion:
         raise HTTPException(status_code=404, detail="Promotion introuvable")
@@ -1945,6 +1673,7 @@ def admin_promotions_update(
 @router.post("/promotions/{promotion_id}/toggle")
 def admin_promotions_toggle(promotion_id: int, request: Request, session: Session = Depends(get_shared_session), current_user: User = Depends(get_current_user)):
     admin_required(current_user)
+    configure_schema(session, request)
     promotion = session.get(Promotion, promotion_id)
     if not promotion:
         raise HTTPException(status_code=404, detail="Promotion introuvable")
@@ -1965,18 +1694,19 @@ def admin_promotions_delete(
     current_user: User = Depends(get_current_user)
 ):
     admin_required(current_user)
+    configure_schema(session, request)
     promotion = session.get(Promotion, promotion_id)
     if not promotion:
         raise HTTPException(status_code=404, detail="Promotion introuvable")
     
     # Vérifier si la promotion est utilisée dans des inscriptions - Version sécurisée
-    inscriptions_count = 0
-    if table_exists_anywhere("inscription", session):
-        try:
-            inscriptions_count = session.exec(select(func.count(Inscription.id)).where(Inscription.promotion_id == promotion_id)).first()
-        except Exception as e:
-            logging.warning(f"Erreur lors de la vérification des inscriptions: {e}")
-            inscriptions_count = 0
+    try:
+        inscriptions_count = session.exec(
+            select(func.count(Inscription.id)).where(Inscription.promotion_id == promotion_id)
+        ).first()
+    except Exception as e:
+        logger.warning(f"Erreur lors de la vérification des inscriptions: {e}")
+        inscriptions_count = 0
     if inscriptions_count > 0:
         timestamp = int(datetime.now(timezone.utc).timestamp())
         return RedirectResponse(
@@ -1985,13 +1715,13 @@ def admin_promotions_delete(
         )
     
     # Vérifier si la promotion est utilisée dans des jurys - Version sécurisée
-    jurys_count = 0
-    if table_exists_anywhere("jury", session):
-        try:
-            jurys_count = session.exec(select(func.count(Jury.id)).where(Jury.promotion_id == promotion_id)).first()
-        except Exception as e:
-            logging.warning(f"Erreur lors de la vérification des jurys: {e}")
-            jurys_count = 0
+    try:
+        jurys_count = session.exec(
+            select(func.count(Jury.id)).where(Jury.promotion_id == promotion_id)
+        ).first()
+    except Exception as e:
+        logger.warning(f"Erreur lors de la vérification des jurys: {e}")
+        jurys_count = 0
     if jurys_count > 0:
         timestamp = int(datetime.now(timezone.utc).timestamp())
         return RedirectResponse(
@@ -2021,6 +1751,8 @@ def admin_promotions_delete(
 @router.get("/groupes", response_class=HTMLResponse, name="admin_groupes")
 def admin_groupes(request: Request, session: Session = Depends(get_shared_session), current_user: User = Depends(get_current_user), q: Optional[str] = Query(None)):
     admin_required(current_user)
+    request.state.admin_title = "Gestion des groupes"
+    configure_schema(session, request)
     stmt = select(Groupe)
     if q:
         like = f"%{q}%"
@@ -2046,6 +1778,7 @@ def admin_groupes_add(
     current_user: User = Depends(get_current_user)
 ):
     admin_required(current_user)
+    configure_schema(session, request)
     
     # Vérifier si un groupe avec ce nom existe déjà
     existing = session.exec(select(Groupe).where(Groupe.nom == nom.strip())).first()
@@ -2147,13 +1880,13 @@ def admin_groupes_delete(
         raise HTTPException(status_code=404, detail="Groupe introuvable")
     
     # Vérifier si le groupe est utilisé dans des décisions de jury - Version sécurisée
-    decisions_count = 0
-    if table_exists_anywhere("decision_jury_candidat", session):
-        try:
-            decisions_count = session.exec(select(func.count(DecisionJuryCandidat.id)).where(DecisionJuryCandidat.groupe_id == groupe_id)).first()
-        except Exception as e:
-            logging.warning(f"Erreur lors de la vérification des décisions de jury: {e}")
-            decisions_count = 0
+    try:
+        decisions_count = session.exec(
+            select(func.count(DecisionJuryCandidat.id)).where(DecisionJuryCandidat.groupe_id == groupe_id)
+        ).first()
+    except Exception as e:
+        logger.warning(f"Erreur lors de la vérification des décisions de jury: {e}")
+        decisions_count = 0
     if decisions_count > 0:
         timestamp = int(datetime.now(timezone.utc).timestamp())
         return RedirectResponse(
@@ -2178,6 +1911,65 @@ def admin_groupes_delete(
     timestamp = int(datetime.now(timezone.utc).timestamp())
     return RedirectResponse(url=f"{request.url_for('admin_groupes')}?success=1&action=delete&t={timestamp}", status_code=303)
 
+# ===== ARCHIVES =====
+@router.get("/archives/iframe", response_class=HTMLResponse, name="admin_archives_iframe")
+def admin_archives_iframe(
+    request: Request,
+    session: Session = Depends(get_shared_session),
+    current_user: User = Depends(get_current_user),
+):
+    """Version iframe de la page archives (sans layout complet)."""
+    admin_required(current_user)
+    configure_schema(session, request)
+
+    archive_service = ArchiveService(session)
+    archives = []
+    try:
+        archives = archive_service.get_archive_list()
+    except Exception as exc:
+        logger.warning("Erreur lors de la récupération des archives (iframe): %s", exc)
+
+    return templates.TemplateResponse(
+        "admin/archives_iframe.html",
+        {
+            "request": request,
+            "settings": settings,
+            "utilisateur": current_user,
+            "archives": archives,
+        },
+    )
+
+
+@router.get("/archives", response_class=HTMLResponse, name="admin_archives")
+def admin_archives(
+    request: Request,
+    session: Session = Depends(get_shared_session),
+    current_user: User = Depends(get_current_user),
+):
+    admin_required(current_user)
+    request.state.admin_title = "Gestion des archives"
+    configure_schema(session, request)
+
+    archive_service = ArchiveService(session)
+    archives = []
+    try:
+        archives = archive_service.get_archive_list()
+    except Exception as exc:
+        logger.warning("Erreur lors de la récupération des archives: %s", exc)
+
+    return templates.TemplateResponse(
+        "admin/archives.html",
+        {
+            "request": request,
+            "settings": settings,
+            "utilisateur": current_user,
+            "archives": archives,
+            "archive_types": list(TypeArchive),
+            "archive_statuses": list(StatutArchive),
+        },
+    )
+
+
 # ===== ARCHIVES - NETTOYAGE, EXPORT, IMPORT =====
 @router.post("/archives/cleanup")
 def admin_archives_cleanup(
@@ -2186,6 +1978,7 @@ def admin_archives_cleanup(
     current_user: User = Depends(get_current_user)
 ):
     admin_required(current_user)
+    configure_schema(session, request)
     
     archive_service = ArchiveService(session)
     try:
@@ -2205,6 +1998,7 @@ def admin_archives_download(
     current_user: User = Depends(get_current_user)
 ):
     admin_required(current_user)
+    configure_schema(session, None)
     
     archive_service = ArchiveService(session)
     archive = session.get(Archive, archive_id)
@@ -2237,6 +2031,7 @@ def admin_archives_export(
     current_user: User = Depends(get_current_user)
 ):
     admin_required(current_user)
+    configure_schema(session, request)
     
     archive_service = ArchiveService(session)
     
@@ -2324,6 +2119,7 @@ def admin_archives_import(
     current_user: User = Depends(get_current_user)
 ):
     admin_required(current_user)
+    configure_schema(session, request)
     
     # Vérifier le type de fichier
     if not file.filename.endswith('.zip'):
@@ -2416,6 +2212,7 @@ def admin_archives_bulk_delete(
     current_user: User = Depends(get_current_user)
 ):
     admin_required(current_user)
+    configure_schema(session, request)
     
     try:
         ids = [int(id.strip()) for id in archive_ids.split(',') if id.strip()]

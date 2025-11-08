@@ -3,7 +3,7 @@ Service de routage dynamique vers les schémas par programme
 """
 from typing import Type, Any, Optional
 from sqlmodel import SQLModel, Session
-from app_lia_web.app.models.base import (
+from ..models.base import (
     Candidat, Preinscription, Inscription,
     Entreprise, Document, Eligibilite, DecisionJuryTable
 )

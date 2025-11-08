@@ -1,89 +1,69 @@
 {% extends "admin/base_admin.html" %}
+{% from "components/modal.html" import modal_with_footer %}
 {% block admin_content %}
 
-<!-- Messages flash -->
-{% if request.query_params.get('success') %}
-<div class="alert alert-success alert-dismissible fade show" role="alert">
-  <i class="fa fa-check-circle me-2"></i>
-  {% if request.query_params.get('action') == 'add' %}
-    Groupe créé avec succès !
-  {% elif request.query_params.get('action') == 'update' %}
-    Groupe modifié avec succès !
-  {% elif request.query_params.get('action') == 'toggle' %}
-    Statut du groupe modifié avec succès !
-  {% elif request.query_params.get('action') == 'delete' %}
-    Groupe supprimé avec succès !
-  {% else %}
-    Opération réussie !
+{# Messages toast #}
+{% set success_flag = request.query_params.get('success') %}
+{% set action = request.query_params.get('action') %}
+{% if success_flag %}
+  {% set success_message = 'Opération réussie !' %}
+  {% if action == 'add' %}
+    {% set success_message = 'Groupe créé avec succès !' %}
+  {% elif action == 'update' %}
+    {% set success_message = 'Groupe mis à jour avec succès !' %}
+  {% elif action == 'toggle' %}
+    {% set success_message = 'Statut du groupe modifié avec succès !' %}
+  {% elif action == 'delete' %}
+    {% set success_message = 'Groupe supprimé avec succès !' %}
   {% endif %}
-  <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
-</div>
+  <div class="toast-message visually-hidden" data-type="success" data-message="{{ success_message }}"></div>
 {% endif %}
-
 {% if request.query_params.get('error') %}
-<div class="alert alert-danger alert-dismissible fade show" role="alert">
-  <i class="fa fa-exclamation-triangle me-2"></i>
-  {{ request.query_params.get('message', 'Une erreur est survenue') }}
-  <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
-</div>
+  <div class="toast-message visually-hidden" data-type="error" data-message="{{ request.query_params.get('message', 'Une erreur est survenue') }}"></div>
 {% endif %}
 
 <div class="d-flex justify-content-between align-items-center mb-3">
   <h5 class="m-0">
     <i class="fa fa-users-cog me-2"></i>Gestion des groupes de codéveloppement
   </h5>
-  <button class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#addGroupeModal">
+  <a href="#" class="submenu-item" data-modal-target="addGroupeModal" role="button">
     <i class="fa fa-plus me-2"></i>Nouveau groupe
-  </button>
+  </a>
 </div>
 
 <!-- Modal d'ajout de groupe -->
-<div class="modal fade" id="addGroupeModal" tabindex="-1">
-  <div class="modal-dialog">
-    <div class="modal-content">
-      <div class="modal-header">
-        <h5 class="modal-title">
-          <i class="fa fa-plus me-2"></i>Nouveau groupe
-        </h5>
-        <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+{% call modal_with_footer('addGroupeModal', '<i class="fa fa-plus me-2"></i>Nouveau groupe', 'xl', '<i class="fa fa-save me-2"></i>Créer le groupe') %}
+  <form id="addGroupeModal-form" method="post" action="{{ url_for('admin_groupes_add') }}">
+    <div class="row g-3">
+      <div class="col-md-6">
+        <label class="form-label" for="groupe_nom_create">Nom du groupe <span class="text-danger">*</span></label>
+        <input id="groupe_nom_create" type="text" name="nom" class="form-control" required placeholder="Ex: Groupe Innovation 2024">
       </div>
-      <form method="post" action="{{ url_for('admin_groupes_add') }}">
-        <div class="modal-body">
-          <div class="row g-3">
-            <div class="col-12">
-              <label class="form-label">Nom du groupe <span class="text-danger">*</span></label>
-              <input type="text" name="nom" class="form-control" required placeholder="Ex: Groupe Alpha, Groupe Beta">
-            </div>
-            <div class="col-12">
-              <label class="form-label">Description</label>
-              <textarea name="description" class="form-control" rows="3" placeholder="Description du groupe (optionnel)"></textarea>
-            </div>
-            <div class="col-md-6">
-              <label class="form-label">Capacité maximale</label>
-              <input type="number" name="capacite_max" class="form-control" placeholder="Ex: 12" min="1">
-            </div>
-            <div class="col-md-6">
-              <label class="form-label">Statut</label>
-              <select name="actif" class="form-select">
-                <option value="on" selected>Actif</option>
-                <option value="off">Inactif</option>
-              </select>
-            </div>
-          </div>
-        </div>
-        <div class="modal-footer">
-          <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Annuler</button>
-          <button type="submit" class="btn btn-primary">
-            <i class="fa fa-save me-2"></i>Créer le groupe
-          </button>
-        </div>
-      </form>
+      <div class="col-md-3">
+        <label class="form-label" for="groupe_capacite_create">Capacité maximale</label>
+        <input id="groupe_capacite_create" type="number" name="capacite_max" class="form-control" min="1" placeholder="Ex: 12">
+      </div>
+      <div class="col-md-3">
+        <label class="form-label" for="groupe_actif_create">Statut</label>
+        <select id="groupe_actif_create" name="actif" class="form-select">
+          <option value="on" selected>Actif</option>
+          <option value="off">Inactif</option>
+        </select>
+      </div>
+      <div class="col-12">
+        <label class="form-label" for="groupe_description_create">Description</label>
+        <textarea id="groupe_description_create" name="description" class="form-control" rows="3" placeholder="Décrivez l'objectif du groupe..."></textarea>
+      </div>
     </div>
-  </div>
-</div>
+  </form>
+{% endcall %}
 
 <!-- Liste des groupes -->
 <div class="card-neumo p-3">
+  <div class="d-flex justify-content-between align-items-center mb-3">
+    <h6 class="m-0" style="color: var(--secondary-color);">Liste des groupes</h6>
+    <span class="badge bg-primary">{{ groupes|length }} groupe{% if groupes|length != 1 %}s{% endif %}</span>
+  </div>
   <div class="users-table-container">
     <table class="table align-middle">
       <thead>
@@ -136,13 +116,13 @@
           </td>
           <td class="text-end">
             <div class="btn-group btn-group-sm">
-              <button class="btn btn-outline-primary" data-bs-toggle="modal" data-bs-target="#editGroupeModal{{ groupe.id }}" title="Modifier">
+              <button type="button" class="btn btn-outline-primary admin-action" data-modal-target="editGroupeModal{{ groupe.id }}" title="Modifier">
                 <i class="fa fa-edit"></i>
               </button>
-              <button class="btn btn-outline-warning" onclick="toggleGroupe({{ groupe.id }})" title="{% if groupe.actif %}Désactiver{% else %}Activer{% endif %}">
-                <i class="fa fa-{% if groupe.actif %}pause{% else %}play{% endif %}"></i>
+              <button type="button" class="btn btn-outline-warning admin-action js-toggle-groupe" data-groupe-id="{{ groupe.id }}" data-groupe-status="{{ 'desactiver' if groupe.actif else 'activer' }}" title="{{ 'Désactiver' if groupe.actif else 'Activer' }}">
+                <i class="fa fa-{{ 'pause' if groupe.actif else 'play' }}"></i>
               </button>
-              <button class="btn btn-outline-danger" onclick="deleteGroupe({{ groupe.id }}, '{{ groupe.nom }}')" title="Supprimer">
+              <button type="button" class="btn btn-outline-danger admin-action js-delete-groupe" data-groupe-id="{{ groupe.id }}" data-groupe-nom="{{ groupe.nom }}" title="Supprimer">
                 <i class="fa fa-trash"></i>
               </button>
             </div>
@@ -162,71 +142,99 @@
 
 <!-- Modals d'édition pour chaque groupe -->
 {% for groupe in groupes %}
-<div class="modal fade" id="editGroupeModal{{ groupe.id }}" tabindex="-1">
-  <div class="modal-dialog">
-    <div class="modal-content">
-      <div class="modal-header">
-        <h5 class="modal-title">
-          <i class="fa fa-edit me-2"></i>Modifier le groupe
-        </h5>
-        <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+{% set modal_id = 'editGroupeModal' ~ groupe.id %}
+{% call modal_with_footer(modal_id, '<i class="fa fa-edit me-2"></i>Modifier le groupe', 'xl', '<i class="fa fa-save me-2"></i>Enregistrer') %}
+  <form id="{{ modal_id }}-form" method="post" action="{{ url_for('admin_groupes_update', groupe_id=groupe.id) }}">
+    <div class="row g-3">
+      <div class="col-12">
+        <label class="form-label" for="groupe_nom_edit_{{ groupe.id }}">Nom du groupe <span class="text-danger">*</span></label>
+        <input id="groupe_nom_edit_{{ groupe.id }}" type="text" name="nom" class="form-control" value="{{ groupe.nom }}" required>
       </div>
-      <form method="post" action="{{ url_for('admin_groupes_update', groupe_id=groupe.id) }}">
-        <div class="modal-body">
-          <div class="row g-3">
-            <div class="col-12">
-              <label class="form-label">Nom du groupe <span class="text-danger">*</span></label>
-              <input type="text" name="nom" class="form-control" value="{{ groupe.nom }}" required>
-            </div>
-            <div class="col-12">
-              <label class="form-label">Description</label>
-              <textarea name="description" class="form-control" rows="3">{{ groupe.description or '' }}</textarea>
-            </div>
-            <div class="col-md-6">
-              <label class="form-label">Capacité maximale</label>
-              <input type="number" name="capacite_max" class="form-control" value="{{ groupe.capacite_max or '' }}" min="1">
-            </div>
-            <div class="col-md-6">
-              <label class="form-label">Statut</label>
-              <select name="actif" class="form-select">
-                <option value="on" {% if groupe.actif %}selected{% endif %}>Actif</option>
-                <option value="off" {% if not groupe.actif %}selected{% endif %}>Inactif</option>
-              </select>
-            </div>
-          </div>
-        </div>
-        <div class="modal-footer">
-          <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Annuler</button>
-          <button type="submit" class="btn btn-primary">
-            <i class="fa fa-save me-2"></i>Enregistrer
-          </button>
-        </div>
-      </form>
+      <div class="col-12">
+        <label class="form-label" for="groupe_description_edit_{{ groupe.id }}">Description</label>
+        <textarea id="groupe_description_edit_{{ groupe.id }}" name="description" class="form-control" rows="3">{{ groupe.description or '' }}</textarea>
+      </div>
+      <div class="col-md-6">
+        <label class="form-label" for="groupe_capacite_edit_{{ groupe.id }}">Capacité maximale</label>
+        <input id="groupe_capacite_edit_{{ groupe.id }}" type="number" name="capacite_max" class="form-control" value="{{ groupe.capacite_max or '' }}" min="1">
+      </div>
+      <div class="col-md-6">
+        <label class="form-label" for="groupe_actif_edit_{{ groupe.id }}">Statut</label>
+        <select id="groupe_actif_edit_{{ groupe.id }}" name="actif" class="form-select">
+          <option value="on" {% if groupe.actif %}selected{% endif %}>Actif</option>
+          <option value="off" {% if not groupe.actif %}selected{% endif %}>Inactif</option>
+        </select>
+      </div>
     </div>
-  </div>
-</div>
+  </form>
+{% endcall %}
 {% endfor %}
 
 <script>
-function toggleGroupe(groupeId) {
-  if (confirm('Êtes-vous sûr de vouloir changer le statut de ce groupe ?')) {
-    const form = document.createElement('form');
-    form.method = 'POST';
-    form.action = `{{ url_for('admin_groupes_toggle', groupe_id='${groupeId}') }}`;
-    document.body.appendChild(form);
-    form.submit();
-  }
-}
+document.addEventListener('DOMContentLoaded', function() {
+  document.querySelectorAll('[data-modal-target]').forEach(function(el) {
+    el.addEventListener('click', function(event) {
+      if (el.tagName === 'A') {
+        event.preventDefault();
+      }
+      const modalId = el.getAttribute('data-modal-target');
+      if (!modalId) return;
+      if (typeof openModal === 'function') {
+        openModal(modalId);
+      } else {
+        const modal = document.getElementById(modalId);
+        if (modal) {
+          modal.classList.add('show');
+          document.body.classList.add('modal-open');
+        }
+      }
+    }, { capture: true });
+  });
 
-function deleteGroupe(groupeId, groupeNom) {
-  if (confirm(`Êtes-vous sûr de vouloir supprimer le groupe "${groupeNom}" ?\n\nCette action est irréversible.`)) {
-    const form = document.createElement('form');
-    form.method = 'POST';
-    form.action = `{{ url_for('admin_groupes_delete', groupe_id='${groupeId}') }}`;
-    document.body.appendChild(form);
-    form.submit();
-  }
-}
+  document.querySelectorAll('[data-close-modal]').forEach(function(el) {
+    el.addEventListener('click', function(event) {
+      event.preventDefault();
+      const modalId = el.getAttribute('data-close-modal');
+      if (!modalId) return;
+      if (typeof closeModal === 'function') {
+        closeModal(modalId);
+      } else {
+        const modal = document.getElementById(modalId);
+        if (modal) {
+          modal.classList.remove('show');
+          document.body.classList.remove('modal-open');
+        }
+      }
+    });
+  });
+
+  document.querySelectorAll('.js-toggle-groupe').forEach(function(btn) {
+    btn.addEventListener('click', function() {
+      const groupeId = btn.getAttribute('data-groupe-id');
+      if (!groupeId) return;
+      if (!confirm("Êtes-vous sûr de vouloir changer le statut de ce groupe ?")) return;
+      const form = document.createElement('form');
+      form.method = 'POST';
+      form.action = `/admin/groupes/${groupeId}/toggle`;
+      document.body.appendChild(form);
+      form.submit();
+    });
+  });
+
+  document.querySelectorAll('.js-delete-groupe').forEach(function(btn) {
+    btn.addEventListener('click', function() {
+      const groupeId = btn.getAttribute('data-groupe-id');
+      const groupeNom = btn.getAttribute('data-groupe-nom') || '';
+      if (!groupeId) return;
+      if (!confirm(`Êtes-vous sûr de vouloir supprimer le groupe "${groupeNom}" ?\n\nCette action est irréversible.`)) return;
+      const form = document.createElement('form');
+      form.method = 'POST';
+      form.action = `/admin/groupes/${groupeId}/delete`;
+      document.body.appendChild(form);
+      form.submit();
+    });
+  });
+});
 </script>
 
 {% endblock %}

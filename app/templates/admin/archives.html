@@ -1,60 +1,62 @@
 {% extends "admin/base_admin.html" %}
 
 {% block admin_content %}
+{# Messages toast #}
+{% set success_flag = request.query_params.get('success') %}
+{% if success_flag %}
+  {% set success_message = 'Action réalisée avec succès.' %}
+  {% if success_flag == 'backup_created' %}
+    {% set success_message = 'Sauvegarde créée avec succès.' %}
+  {% elif success_flag == 'backup_restored' %}
+    {% set success_message = 'Sauvegarde restaurée avec succès.' %}
+  {% elif success_flag == 'archive_deleted' %}
+    {% set success_message = 'Archive supprimée avec succès.' %}
+  {% elif success_flag == 'cleanup_completed' %}
+    {% set success_message = 'Nettoyage des archives terminé !' %}
+  {% elif success_flag == 'export_created' %}
+    {% set success_message = 'Export créé avec succès !' %}
+  {% elif success_flag == 'import_completed' %}
+    {% set success_message = 'Import terminé avec succès !' %}
+  {% elif success_flag == 'bulk_delete_completed' %}
+    {% set success_message = request.query_params.get('count', 0) ~ ' archive(s) supprimée(s) !' %}
+  {% endif %}
+  <div class="toast-message visually-hidden" data-type="success" data-message="{{ success_message }}"></div>
+{% endif %}
+{% set error_flag = request.query_params.get('error') %}
+{% if error_flag %}
+  {% set error_message = request.query_params.get('message', 'Une erreur est survenue.') %}
+  {% if error_flag == 'backup_failed' %}
+    {% set error_message = 'Échec de la création de sauvegarde.' %}
+  {% elif error_flag == 'restore_failed' %}
+    {% set error_message = 'Échec de la restauration.' %}
+  {% elif error_flag == 'delete_failed' %}
+    {% set error_message = 'Échec de la suppression.' %}
+  {% elif error_flag == 'cleanup_failed' %}
+    {% set error_message = 'Erreur lors du nettoyage des archives.' %}
+  {% elif error_flag == 'export_failed' %}
+    {% set error_message = "Erreur lors de l'export." %}
+  {% elif error_flag == 'file_not_found' %}
+    {% set error_message = "Fichier d'export non trouvé - vérifiez les permissions du dossier archives." %}
+  {% elif error_flag == 'import_failed' %}
+    {% set error_message = "Erreur lors de l'import." %}
+  {% elif error_flag == 'bulk_delete_failed' %}
+    {% set error_message = 'Erreur lors de la suppression en lot.' %}
+  {% endif %}
+  <div class="toast-message visually-hidden" data-type="error" data-message="{{ error_message }}"></div>
+{% endif %}
+
 <div class="card-neumo p-4">
   <div class="d-flex justify-content-between align-items-center mb-4">
-    <h5 class="m-0">
-      <i class="fa fa-archive me-2"></i>Archives et sauvegardes
+    <h5 class="m-0 text-on-secondary">
+      <i class="fa fa-archive me-2 icon-on-secondary"></i>Archives et sauvegardes
     </h5>
-    <button class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#createBackupModal">
-      <i class="fa fa-plus me-2"></i>Nouvelle sauvegarde
-    </button>
+    <div class="d-flex align-items-center gap-2">
+      <span class="badge bg-primary">{{ archives|length }} archive{% if archives|length != 1 %}s{% endif %}</span>
+      <button class="btn btn-primary" type="button" onclick="openModal('createBackupModal')">
+        <i class="fa fa-plus me-2"></i>Nouvelle sauvegarde
+      </button>
+    </div>
   </div>
-
-  <!-- Messages de succès/erreur -->
-  {% if request.query_params.get('success') %}
-    <div class="alert alert-success alert-dismissible fade show" role="alert">
-      {% if request.query_params.get('success') == 'backup_created' %}
-        <i class="fa fa-check-circle me-2"></i>Sauvegarde créée avec succès
-      {% elif request.query_params.get('success') == 'backup_restored' %}
-        <i class="fa fa-check-circle me-2"></i>Sauvegarde restaurée avec succès
-      {% elif request.query_params.get('success') == 'archive_deleted' %}
-        <i class="fa fa-check-circle me-2"></i>Archive supprimée avec succès
-      {% elif request.query_params.get('success') == 'cleanup_completed' %}
-        <i class="fa fa-broom me-2"></i>Nettoyage des archives terminé !
-      {% elif request.query_params.get('success') == 'export_created' %}
-        <i class="fa fa-download me-2"></i>Export créé avec succès !
-      {% elif request.query_params.get('success') == 'import_completed' %}
-        <i class="fa fa-upload me-2"></i>Import terminé avec succès !
-      {% elif request.query_params.get('success') == 'bulk_delete_completed' %}
-        <i class="fa fa-trash me-2"></i>{{ request.query_params.get('count', 0) }} archive(s) supprimée(s) !
-      {% endif %}
-      <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
-    </div>
-  {% endif %}
-
-  {% if request.query_params.get('error') %}
-    <div class="alert alert-danger alert-dismissible fade show" role="alert">
-      {% if request.query_params.get('error') == 'backup_failed' %}
-        <i class="fa fa-exclamation-circle me-2"></i>Échec de la création de sauvegarde
-      {% elif request.query_params.get('error') == 'restore_failed' %}
-        <i class="fa fa-exclamation-circle me-2"></i>Échec de la restauration
-      {% elif request.query_params.get('error') == 'delete_failed' %}
-        <i class="fa fa-exclamation-circle me-2"></i>Échec de la suppression
-      {% elif request.query_params.get('error') == 'cleanup_failed' %}
-        <i class="fa fa-exclamation-triangle me-2"></i>Erreur lors du nettoyage
-      {% elif request.query_params.get('error') == 'export_failed' %}
-        <i class="fa fa-exclamation-triangle me-2"></i>Erreur lors de l'export
-      {% elif request.query_params.get('error') == 'file_not_found' %}
-        <i class="fa fa-file-o me-2"></i>Fichier d'export non trouvé - Vérifiez les permissions du dossier archives
-      {% elif request.query_params.get('error') == 'import_failed' %}
-        <i class="fa fa-exclamation-triangle me-2"></i>Erreur lors de l'import
-      {% elif request.query_params.get('error') == 'bulk_delete_failed' %}
-        <i class="fa fa-exclamation-triangle me-2"></i>Erreur lors de la suppression en lot
-      {% endif %}
-      <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
-    </div>
-  {% endif %}
 
   <!-- Actions rapides -->
   <div class="row g-3 mb-4">
@@ -168,14 +170,14 @@
           <td class="text-end">
             <div class="btn-group btn-group-sm">
               {% if archive.statut == 'TERMINE' %}
-                <button class="btn btn-outline-primary" onclick="downloadArchive({{ archive.id }})" title="Télécharger">
+                <button class="btn btn-outline-primary admin-action" onclick="downloadArchive({{ archive.id }})" title="Télécharger">
                   <i class="fa fa-download"></i>
                 </button>
-                <button class="btn btn-outline-success" onclick="restoreArchive({{ archive.id }})" title="Restaurer">
+                <button class="btn btn-outline-success admin-action" onclick="restoreArchive({{ archive.id }})" title="Restaurer">
                   <i class="fa fa-upload"></i>
                 </button>
               {% endif %}
-              <button class="btn btn-outline-danger" onclick="deleteArchive({{ archive.id }})" title="Supprimer">
+              <button class="btn btn-outline-danger admin-action" onclick="deleteArchive({{ archive.id }})" title="Supprimer">
                 <i class="fa fa-trash"></i>
               </button>
             </div>

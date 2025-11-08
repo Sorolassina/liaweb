@@ -3,7 +3,7 @@ Module de métriques pour l'analyse des données par schéma
 """
 from typing import List
 from sqlmodel import Session, text
-from app_lia_web.core.database import get_session
+from ...core.database import get_session
 import logging
 
 logger = logging.getLogger(__name__)

@@ -2,7 +2,7 @@
 from datetime import datetime
 from typing import Optional
 from pydantic import BaseModel
-from app_lia_web.app.models.enums import TypeRDV, StatutRDV
+from ..models.enums import TypeRDV, StatutRDV
 
 class RendezVousBase(BaseModel):
     """Schéma de base pour un rendez-vous"""

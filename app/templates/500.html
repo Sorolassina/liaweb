@@ -1,58 +1,376 @@
-{% extends "base.html" %}
+{% extends "layouts/base_public.html" %}
 
-{% block title %}Erreur serveur (500) - {{ super() }}{% endblock %}
+{% block title %}Erreur serveur (500) - {{ app_name }}{% endblock %}
 
 {% block extra_head %}
+<link href="/static/css/cards.css" rel="stylesheet"/>
 <style>
-  :root{ --lia-jaune:#ffd300; --lia-noir:#0b0b0b; --lia-blanc:#ffffff; }
-  .err-wrap{ min-height: calc(100vh - 120px); display:flex; align-items:center; justify-content:center; padding:32px 16px; background: var(--gray-50); }
-  .err-card{
-    background:#fff; border:1px solid var(--gray-200); border-radius:16px; padding:32px; max-width:760px; width:100%;
-    box-shadow:0 6px 18px rgba(0,0,0,.06); text-align:center;
+  .error-container {
+    min-height: calc(100vh - 120px);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 40px 20px;
+    background: linear-gradient(135deg, #f5f7fa 0%, #e8ecf1 100%);
   }
-  .code{
-    display:inline-block; font-size:84px; font-weight:900; line-height:1; letter-spacing:.03em; color: var(--lia-noir);
-    text-shadow: 0 2px 0 var(--lia-jaune), 0 4px 0 rgba(0,0,0,.05);
+  
+  .error-card {
+    background: var(--white-color);
+    border: 2px solid var(--primary-color);
+    border-radius: 24px;
+    padding: 56px 48px;
+    max-width: 700px;
+    width: 100%;
+    box-shadow: 0 16px 48px rgba(0, 0, 0, 0.12);
+    text-align: center;
+    position: relative;
+    overflow: hidden;
   }
-  .badge-ghost{ display:inline-block; margin-top:8px; padding:6px 12px; border-radius:999px; background:#ffe8e6; color:#8a1f11; font-weight:600; font-size:12px; border:1px dashed #ffb7ad; }
-  .lead{ font-size:18px; color:var(--gray-700); margin:12px 0 6px; }
-  .muted{ color:var(--gray-500); font-size:14px; }
-  .hint{ margin-top:20px; font-size:13px; color:var(--gray-500); }
-
-  .actions{ display:flex; gap:12px; justify-content:center; margin-top:24px; flex-wrap:wrap; }
-  .btn-lia{ background: var(--lia-jaune); color: var(--lia-noir); border:none; padding:10px 16px; border-radius:10px; font-weight:600; }
-  .btn-outline{ background:#fff; color:var(--lia-noir); border:1px solid var(--gray-300); padding:10px 16px; border-radius:10px; font-weight:600; }
-
-  .meta{
-    margin-top:16px; display:flex; gap:12px; justify-content:center; flex-wrap:wrap; font-size:12px; color:var(--gray-600);
+  
+  .error-card::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    height: 8px;
+    background: linear-gradient(90deg, var(--primary-color), var(--primary-dark));
   }
-  .meta .tag{ border:1px solid var(--gray-300); border-radius:999px; padding:4px 10px; background:#fff; }
+  
+  .error-icon-wrapper {
+    position: relative;
+    width: 140px;
+    height: 140px;
+    margin: 0 auto 32px;
+  }
+  
+  .error-icon {
+    width: 100%;
+    height: 100%;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: linear-gradient(145deg, #fee2e2, #fecaca);
+    box-shadow: 0 12px 24px rgba(239, 68, 68, 0.25);
+    position: relative;
+  }
+  
+  .error-icon::after {
+    content: '';
+    position: absolute;
+    inset: -4px;
+    border-radius: 50%;
+    background: linear-gradient(145deg, rgba(239, 68, 68, 0.1), rgba(220, 38, 38, 0.05));
+    z-index: -1;
+  }
+  
+  .error-icon i {
+    font-size: 4.5rem;
+    color: #dc2626;
+    animation: pulse 2s ease-in-out infinite;
+  }
+  
+  @keyframes pulse {
+    0%, 100% {
+      transform: scale(1);
+      opacity: 1;
+    }
+    50% {
+      transform: scale(1.05);
+      opacity: 0.9;
+    }
+  }
+  
+  .error-code {
+    font-size: 140px;
+    font-weight: 900;
+    line-height: 1;
+    letter-spacing: -0.08em;
+    background: linear-gradient(135deg, var(--primary-color), var(--primary-dark));
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
+    margin-bottom: 20px;
+    text-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+  }
+  
+  .error-badge {
+    display: inline-block;
+    margin-bottom: 28px;
+    padding: 12px 24px;
+    border-radius: 999px;
+    background: linear-gradient(135deg, #fee2e2, #fecaca);
+    color: #991b1b;
+    font-weight: 700;
+    font-size: 15px;
+    border: 2px solid #fecaca;
+    box-shadow: 0 4px 8px rgba(239, 68, 68, 0.15);
+  }
+  
+  .error-title {
+    font-size: 32px;
+    color: var(--secondary-color);
+    margin: 0 0 16px;
+    font-weight: 800;
+    line-height: 1.2;
+  }
+  
+  .error-message {
+    color: var(--gray-dark);
+    font-size: 17px;
+    line-height: 1.75;
+    margin-bottom: 40px;
+    max-width: 580px;
+    margin-left: auto;
+    margin-right: auto;
+  }
+  
+  .error-actions {
+    display: flex;
+    gap: 16px;
+    justify-content: center;
+    margin-top: 40px;
+    flex-wrap: wrap;
+  }
+  
+  .btn-error-primary {
+    background: linear-gradient(135deg, var(--primary-color), var(--primary-dark));
+    color: var(--white-color);
+    border: none;
+    padding: 16px 32px;
+    border-radius: 14px;
+    font-weight: 700;
+    font-size: 16px;
+    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+    text-decoration: none;
+    box-shadow: 0 6px 16px rgba(0, 0, 0, 0.2);
+    display: inline-flex;
+    align-items: center;
+    gap: 10px;
+    position: relative;
+    overflow: hidden;
+  }
+  
+  .btn-error-primary::before {
+    content: '';
+    position: absolute;
+    inset: 0;
+    background: linear-gradient(135deg, var(--primary-dark), var(--primary-color));
+    opacity: 0;
+    transition: opacity 0.3s ease;
+  }
+  
+  .btn-error-primary:hover::before {
+    opacity: 1;
+  }
+  
+  .btn-error-primary:hover {
+    transform: translateY(-3px);
+    box-shadow: 0 8px 24px rgba(0, 0, 0, 0.25);
+    color: var(--white-color);
+  }
+  
+  .btn-error-primary i,
+  .btn-error-primary span {
+    position: relative;
+    z-index: 1;
+  }
+  
+  .btn-error-secondary {
+    background: var(--white-color);
+    color: var(--secondary-color);
+    border: 2px solid var(--gray-dark);
+    padding: 16px 32px;
+    border-radius: 14px;
+    font-weight: 700;
+    font-size: 16px;
+    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+    text-decoration: none;
+    display: inline-flex;
+    align-items: center;
+    gap: 10px;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+  }
+  
+  .btn-error-secondary:hover {
+    background: var(--secondary-color);
+    color: var(--white-color);
+    border-color: var(--secondary-color);
+    transform: translateY(-3px);
+    box-shadow: 0 6px 16px rgba(0, 0, 0, 0.2);
+  }
+  
+  .error-meta {
+    margin-top: 40px;
+    padding-top: 32px;
+    border-top: 2px solid color-mix(in srgb, var(--gray-dark) 20%, transparent);
+    display: flex;
+    gap: 16px;
+    justify-content: center;
+    flex-wrap: wrap;
+    font-size: 14px;
+    color: var(--gray-dark);
+  }
+  
+  .error-meta .tag {
+    border: 1px solid color-mix(in srgb, var(--gray-dark) 30%, transparent);
+    border-radius: 999px;
+    padding: 8px 16px;
+    background: var(--white-color);
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.05);
+  }
+  
+  .error-meta .tag strong {
+    color: var(--secondary-color);
+    font-weight: 700;
+  }
+  
+  .error-hint {
+    margin-top: 32px;
+    font-size: 15px;
+    color: var(--gray-dark);
+    line-height: 1.7;
+    padding: 16px;
+    background: color-mix(in srgb, var(--primary-color) 5%, transparent);
+    border-radius: 12px;
+    border-left: 4px solid var(--primary-color);
+  }
+  
+  @media (max-width: 768px) {
+    .error-card {
+      padding: 40px 32px;
+      border-radius: 20px;
+    }
+    
+    .error-code {
+      font-size: 100px;
+    }
+    
+    .error-icon-wrapper {
+      width: 120px;
+      height: 120px;
+      margin-bottom: 24px;
+    }
+    
+    .error-icon i {
+      font-size: 3.5rem;
+    }
+    
+    .error-title {
+      font-size: 26px;
+    }
+    
+    .error-message {
+      font-size: 16px;
+    }
+    
+    .error-actions {
+      flex-direction: column;
+      align-items: stretch;
+      gap: 12px;
+    }
+    
+    .btn-error-primary,
+    .btn-error-secondary {
+      width: 100%;
+      justify-content: center;
+      padding: 14px 28px;
+    }
+    
+    .error-meta {
+      flex-direction: column;
+      gap: 12px;
+    }
+    
+    .error-meta .tag {
+      width: 100%;
+      justify-content: center;
+    }
+  }
+  
+  @media (max-width: 480px) {
+    .error-card {
+      padding: 32px 24px;
+    }
+    
+    .error-code {
+      font-size: 80px;
+    }
+    
+    .error-title {
+      font-size: 22px;
+    }
+  }
 </style>
 {% endblock %}
 
 {% block content %}
-<div class="err-wrap">
-  <div class="err-card">
-    <div class="code">500</div>
-    <div class="badge-ghost">Erreur interne du serveur</div>
+<div class="error-container">
+  <div class="error-card">
+    <div class="error-icon-wrapper">
+      <div class="error-icon">
+        <i class="fas fa-exclamation-triangle"></i>
+      </div>
+    </div>
+    <div class="error-code">500</div>
+    <div class="error-badge">Erreur interne du serveur</div>
 
-    <p class="lead">Désolé, un incident est survenu lors du traitement de votre requête.</p>
-    <p class="muted">L’équipe technique a été notifiée si la journalisation est active.</p>
+    <h1 class="error-title">Oups, quelque chose s'est mal passé</h1>
+    <p class="error-message">
+      Désolé, un incident est survenu lors du traitement de votre requête.<br>
+      L'équipe technique a été notifiée et travaille à résoudre le problème.
+    </p>
 
-    <div class="meta">
-      <span class="tag"><strong>Incident :</strong> {{ incident_id }}</span>
-      <span class="tag"><strong>Chemin :</strong> {{ path }}</span>
-      <span class="tag"><strong>Date :</strong> {{ now_formatted('%d/%m/%Y %H:%M') }}</span>
+    {% if error_message %}
+    <div class="error-meta">
+      <span class="tag">
+        <i class="fas fa-info-circle"></i>
+        <span>{{ error_message }}</span>
+      </span>
+    </div>
+    {% endif %}
+
+    {% if incident_id or path or now %}
+    <div class="error-meta">
+      {% if incident_id %}
+      <span class="tag">
+        <strong>Incident :</strong>
+        <span>{{ incident_id }}</span>
+      </span>
+      {% endif %}
+      {% if path %}
+      <span class="tag">
+        <strong>Chemin :</strong>
+        <span>{{ path }}</span>
+      </span>
+      {% endif %}
+      {% if now %}
+      <span class="tag">
+        <strong>Date :</strong>
+        <span>{{ now }}</span>
+      </span>
+      {% endif %}
+    </div>
+    {% endif %}
+
+    <div class="error-actions">
+      <a href="{{ url_for('accueil') }}" class="btn-error-primary">
+        <i class="fas fa-home"></i>
+        <span>Retour à l'accueil</span>
+      </a>
+      <a href="javascript:location.reload()" class="btn-error-secondary">
+        <i class="fas fa-redo"></i>
+        <span>Réessayer</span>
+      </a>
     </div>
 
-    <div class="actions">
-      <a href="{{ url_for('accueil') }}" class="btn btn-lia submenu-item">← Retour à l'accueil</a>
-      <a href="javascript:location.reload()" class="btn btn-outline submenu-item">Réessayer</a>
-      <a href="{{ url_for('accueil') }}" class="btn btn-outline submenu-item">Contacter le support</a>
-    </div>
-
-    <div class="hint">
-      Si le problème persiste, communiquez l’ID d’incident au support pour faciliter le diagnostic.
+    <div class="error-hint">
+      <i class="fas fa-lightbulb me-2"></i>
+      Si le problème persiste, veuillez contacter le support technique avec l'ID d'incident ci-dessus.
     </div>
   </div>
 </div>

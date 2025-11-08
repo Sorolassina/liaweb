@@ -4,7 +4,7 @@ Schémas Pydantic pour la recherche et les filtres
 from pydantic import BaseModel, Field
 from typing import List, Optional
 from datetime import date
-from app_lia_web.app.models.enums import StatutDossier
+from ..models.enums import StatutDossier
 
 
 class CandidatFiltres(BaseModel):

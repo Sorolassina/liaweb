@@ -9,18 +9,18 @@ import os
 import shutil
 from datetime import datetime, timezone
 
-from app_lia_web.core.database import get_session
-from app_lia_web.core.middleware import get_shared_session
-from app_lia_web.core.security import get_current_user
-from app_lia_web.core.program_schema_integration import table_exists_anywhere
+from ..core.database import get_session
+from ..core.middleware import get_shared_session
+from ..core.security import get_current_user
+from ..core.program_schema_integration import table_exists_anywhere
 import logging
-from app_lia_web.core.utils import FileUtils
-from app_lia_web.app.models.base import User, Document, Candidat
-from app_lia_web.app.models.enums import UserRole, TypeDocument
-from app_lia_web.app.schemas import DocumentResponse
-from app_lia_web.core.config import settings
-from app_lia_web.core.path_config import path_config
-from app_lia_web.app.services.file_upload_service import FileUploadService
+from ..core.utils import FileUtils
+from ..models.base import User, Document, Candidat
+from ..models.enums import UserRole, TypeDocument
+from ..schemas import DocumentResponse
+from ..core.config import settings
+from ..core.path_config import path_config
+from ..services.file_upload_service import FileUploadService
 
 router = APIRouter()
 
@@ -51,7 +51,7 @@ async def upload_document(
         )
     
     # Vérifier le type de fichier
-    from app_lia_web.core.config import Settings
+    from ..core.config import Settings
     settings = Settings()
     
     if not FileUtils.is_allowed_file(file.filename, settings.ALLOWED_DOC_EXTENSIONS):

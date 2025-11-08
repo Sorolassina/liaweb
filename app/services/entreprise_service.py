@@ -4,9 +4,9 @@ Service de gestion des entreprises
 from typing import Optional
 from sqlmodel import Session, select
 import logging
-from app_lia_web.app.models.base import Entreprise
-from app_lia_web.app.schemas import EntrepriseCreate
-from app_lia_web.core.utils import PappersUtils, QPVUtils
+from ..models.base import Entreprise
+from ..schemas import EntrepriseCreate
+from ..core.utils import PappersUtils, QPVUtils
 
 logger = logging.getLogger(__name__)
 

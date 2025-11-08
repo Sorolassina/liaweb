@@ -30,6 +30,7 @@ from .elearning import router as elearning_router
 from .suivi_mensuel import router as suivi_mensuel_router
 from .admin_schemas import router as admin_schemas_router
 from .directeur_technique import router as directeur_technique_router
+from .messages import router as messages_router
 
 # Configuration des routers avec préfixes et tags
 router_configs = [
@@ -48,6 +49,7 @@ router_configs = [
     (suivi_mensuel_router, "/suivi-mensuel", ["suivi_mensuel"]),
     (admin_schemas_router, "/admin/schemas", ["admin_schemas"]),
     (directeur_technique_router, "/directeur-technique", ["directeur_technique"]),
+    (messages_router, "/api/v1/messages", ["messages"]),
     
     # Gestion des données principales
     (programmes_router, "/programmes", ["programmes"]),

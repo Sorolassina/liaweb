@@ -15,13 +15,25 @@ from selenium.webdriver.support.ui import WebDriverWait
 from selenium.webdriver.support import expected_conditions as EC
 from fastapi import Request
 
-from app_lia_web.core.config import settings
-from app_lia_web.app.services.file_upload_service import FileUploadService
-from app_lia_web.app.schemas.preinscription_schemas import Adresse
+from ..core.config import settings
+from .file_upload_service import FileUploadService
+from ..schemas.preinscription_schemas import Adresse
+from typing import Optional
+from pathlib import Path
+import tempfile
+import base64
 
-FileUploadService = FileUploadService()
+def _encode_file_to_base64(file_path: str) -> str:
+    """Helper function pour encoder un fichier en base64"""
+    with open(file_path, "rb") as f:
+        return base64.b64encode(f.read()).decode("utf-8")
 
-async def verif_qpv(address_coords, request: Request):
+async def verif_qpv(
+    address_coords, 
+    request: Request,
+    programme_code: Optional[str] = None,
+    subfolder_id: Optional[int] = None
+):
 
     base_url = settings.get_base_url(request)  # Récupérer l'URL dynamique
     print("✅ Adresse validée au niveau du service :", address_coords)
@@ -164,31 +176,98 @@ async def verif_qpv(address_coords, request: Request):
             ),
         ).add_to(m)
         
-        # Définir les chemins des fichiers
-        map_file = os.path.join(settings.STATIC_MAPS_DIR, f"map_{nouvel_adre}.html")
-        image_file = os.path.join(settings.STATIC_IMAGES_DIR, f"map_{nouvel_adre}.png")
-
-        # Sauvegarde HTML et image
-        m.save(map_file)
-        # Sauvegarde en image avec `selenium headless`
-        save_map_as_image(map_file, image_file)
-
-        maps_url=f"/static/maps/map_{nouvel_adre}.html"
-        img_url=f"/static/images/map_{nouvel_adre}.png"
-
-        # Vérifie si l’image existe avant d’essayer de l’encoder
-        if os.path.exists(image_file):
-            encoded_image = FileUploadService.encode_file_to_base64(image_file)
-        else:
-            encoded_image = None  # Si l’image n’existe pas
+        # Créer des fichiers temporaires pour la génération
+        with tempfile.TemporaryDirectory() as temp_dir:
+            temp_map_file = os.path.join(temp_dir, f"map_{nouvel_adre}.html")
+            temp_image_file = os.path.join(temp_dir, f"map_{nouvel_adre}.png")
+            
+            # Sauvegarde HTML et image dans le répertoire temporaire
+            m.save(temp_map_file)
+            save_map_as_image(temp_map_file, temp_image_file)
+            
+            # Sauvegarder via FileUploadService si programme_code et subfolder_id sont fournis
+            maps_url = None
+            img_url = None
+            encoded_image = None
+            
+            if programme_code and subfolder_id:
+                try:
+                    # Sauvegarder la carte HTML
+                    from fastapi import UploadFile
+                    from io import BytesIO
+                    
+                    # Lire le fichier HTML
+                    with open(temp_map_file, 'rb') as f:
+                        html_content = f.read()
+                    html_file = UploadFile(
+                        filename=f"map_{nouvel_adre}.html",
+                        file=BytesIO(html_content)
+                    )
+                    
+                    # Sauvegarder la carte HTML dans uploads/ (document)
+                    map_info = await FileUploadService.save_file_async(
+                        file=html_file,
+                        resource_type="document",
+                        folder_name="QPV",
+                        programme_code=programme_code,
+                        subfolder_id=subfolder_id
+                    )
+                    maps_url = map_info.get("file_url", "")
+                    
+                    # Lire l'image PNG
+                    with open(temp_image_file, 'rb') as f:
+                        image_content = f.read()
+                    image_file = UploadFile(
+                        filename=f"map_{nouvel_adre}.png",
+                        file=BytesIO(image_content)
+                    )
+                    
+                    # Sauvegarder l'image via save_media_file
+                    image_info = await FileUploadService.save_media_file(
+                        file=image_file,
+                        media_type="qpv_map",
+                        programme_code=programme_code,
+                        subfolder_id=subfolder_id
+                    )
+                    img_url = image_info.get("file_url", "")
+                    
+                    # Encoder l'image en base64 pour la réponse (utilisé ailleurs dans l'application)
+                    encoded_image = _encode_file_to_base64(temp_image_file)
+                    
+                except Exception as e:
+                    print(f"⚠️ [QPV] Erreur lors de la sauvegarde via FileUploadService: {e}")
+                    # Fallback vers l'ancien système si erreur
+                    maps_url = f"/static/maps/map_{nouvel_adre}.html"
+                    img_url = f"/static/images/map_{nouvel_adre}.png"
+                    if os.path.exists(temp_image_file):
+                        encoded_image = _encode_file_to_base64(temp_image_file)
+            else:
+                # Fallback vers l'ancien système si pas de programme_code/subfolder_id
+                map_file = os.path.join(settings.STATIC_MAPS_DIR, f"map_{nouvel_adre}.html")
+                image_file = os.path.join(settings.STATIC_IMAGES_DIR, f"map_{nouvel_adre}.png")
+                
+                # Créer les répertoires s'ils n'existent pas
+                os.makedirs(os.path.dirname(map_file), exist_ok=True)
+                os.makedirs(os.path.dirname(image_file), exist_ok=True)
+                
+                # Copier les fichiers temporaires vers les répertoires statiques
+                import shutil
+                shutil.copy2(temp_map_file, map_file)
+                shutil.copy2(temp_image_file, image_file)
+                
+                maps_url = f"/static/maps/map_{nouvel_adre}.html"
+                img_url = f"/static/images/map_{nouvel_adre}.png"
+                
+                if os.path.exists(image_file):
+                    encoded_image = _encode_file_to_base64(image_file)
 
         return {
             "address": address,
-            "nom_qp": f'{etat_qpv}:{qpv_name}',
+            "nom_qp": f'{etat_qpv}:{qpv_name}' if qpv_name else f'{etat_qpv}:',
             "distance_m": distance_m,
-            "carte": f"{base_url.strip()}{maps_url.strip()}",
-            "image_url": f"{base_url.strip()}{img_url.strip()}",
-            "image_encoded": f"data:image/png;base64,{encoded_image}"
+            "carte": maps_url if maps_url else "",  # Chemin relatif seulement (ex: /uploads/QPV/... ou /media/...)
+            "image_url": img_url if img_url else "",  # Chemin relatif seulement (ex: /media/qpv_map/...)
+            "image_encoded": f"data:image/png;base64,{encoded_image}" if encoded_image else ""  # Base64 pour utilisation ailleurs
         }
     
     else:
@@ -227,31 +306,98 @@ async def verif_qpv(address_coords, request: Request):
             ),
         ).add_to(m)
 
-        # Définir les chemins des fichiers
-        map_file = os.path.join(settings.STATIC_MAPS_DIR, f"map_{nouvel_adre}.html")
-        image_file = os.path.join(settings.STATIC_IMAGES_DIR, f"map_{nouvel_adre}.png")
-        
-        # Sauvegarde HTML et image
-        m.save(map_file)
-        save_map_as_image(map_file, image_file)
-
-        maps_url=f"/static/maps/map_{nouvel_adre}.html"
-        img_url=f"/static/images/map_{nouvel_adre}.png"
-
-
-        # Vérifie si l’image existe avant d’essayer de l’encoder
-        if os.path.exists(image_file):
-            encoded_image = FileUploadService.encode_file_to_base64(image_file)
-        else:
-            encoded_image = None  # Si l’image n’existe pas
+        # Créer des fichiers temporaires pour la génération
+        with tempfile.TemporaryDirectory() as temp_dir:
+            temp_map_file = os.path.join(temp_dir, f"map_{nouvel_adre}.html")
+            temp_image_file = os.path.join(temp_dir, f"map_{nouvel_adre}.png")
+            
+            # Sauvegarde HTML et image dans le répertoire temporaire
+            m.save(temp_map_file)
+            save_map_as_image(temp_map_file, temp_image_file)
+            
+            # Sauvegarder via FileUploadService si programme_code et subfolder_id sont fournis
+            maps_url = None
+            img_url = None
+            encoded_image = None
+            
+            if programme_code and subfolder_id:
+                try:
+                    # Sauvegarder la carte HTML
+                    from fastapi import UploadFile
+                    from io import BytesIO
+                    
+                    # Lire le fichier HTML
+                    with open(temp_map_file, 'rb') as f:
+                        html_content = f.read()
+                    html_file = UploadFile(
+                        filename=f"map_{nouvel_adre}.html",
+                        file=BytesIO(html_content)
+                    )
+                    
+                    # Sauvegarder la carte HTML dans uploads/ (document)
+                    map_info = await FileUploadService.save_file_async(
+                        file=html_file,
+                        resource_type="document",
+                        folder_name="QPV",
+                        programme_code=programme_code,
+                        subfolder_id=subfolder_id
+                    )
+                    maps_url = map_info.get("file_url", "")
+                    
+                    # Lire l'image PNG
+                    with open(temp_image_file, 'rb') as f:
+                        image_content = f.read()
+                    image_file = UploadFile(
+                        filename=f"map_{nouvel_adre}.png",
+                        file=BytesIO(image_content)
+                    )
+                    
+                    # Sauvegarder l'image via save_media_file dans media/
+                    image_info = await FileUploadService.save_media_file(
+                        file=image_file,
+                        media_type="qpv_map",
+                        programme_code=programme_code,
+                        subfolder_id=subfolder_id
+                    )
+                    img_url = image_info.get("file_url", "")
+                    
+                    # Encoder l'image en base64 pour la réponse (utilisé ailleurs dans l'application)
+                    encoded_image = _encode_file_to_base64(temp_image_file)
+                    
+                except Exception as e:
+                    print(f"⚠️ [QPV] Erreur lors de la sauvegarde via FileUploadService: {e}")
+                    # Fallback vers l'ancien système si erreur
+                    maps_url = f"/static/maps/map_{nouvel_adre}.html"
+                    img_url = f"/static/images/map_{nouvel_adre}.png"
+                    if os.path.exists(temp_image_file):
+                        encoded_image = _encode_file_to_base64(temp_image_file)
+            else:
+                # Fallback vers l'ancien système si pas de programme_code/subfolder_id
+                map_file = os.path.join(settings.STATIC_MAPS_DIR, f"map_{nouvel_adre}.html")
+                image_file = os.path.join(settings.STATIC_IMAGES_DIR, f"map_{nouvel_adre}.png")
+                
+                # Créer les répertoires s'ils n'existent pas
+                os.makedirs(os.path.dirname(map_file), exist_ok=True)
+                os.makedirs(os.path.dirname(image_file), exist_ok=True)
+                
+                # Copier les fichiers temporaires vers les répertoires statiques
+                import shutil
+                shutil.copy2(temp_map_file, map_file)
+                shutil.copy2(temp_image_file, image_file)
+                
+                maps_url = f"/static/maps/map_{nouvel_adre}.html"
+                img_url = f"/static/images/map_{nouvel_adre}.png"
+                
+                if os.path.exists(image_file):
+                    encoded_image = _encode_file_to_base64(image_file)
             
         return {
             "address": address,
             "nom_qp": "Aucun QPV",
             "distance_m": "N/A",
-            "carte": f"{base_url.strip()}{maps_url.strip()}",
-            "image_url": f"{base_url.strip()}{img_url.strip()}",
-            "image_encoded": f"data:image/png;base64,{encoded_image}"
+            "carte": maps_url if maps_url else "",  # Chemin relatif seulement (ex: /uploads/QPV/... ou /media/...)
+            "image_url": img_url if img_url else "",  # Chemin relatif seulement (ex: /media/qpv_map/...)
+            "image_encoded": f"data:image/png;base64,{encoded_image}" if encoded_image else ""  # Base64 pour utilisation ailleurs
         }
 
 def save_map_as_image(map_path, image_path):

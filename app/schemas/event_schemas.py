@@ -1,7 +1,7 @@
 from pydantic import BaseModel
 from datetime import datetime, date
 from typing import Optional, List
-from app_lia_web.app.models.event import StatutEvent, TypeInvitationEvent, StatutInvitationEvent, MethodeSignatureEvent
+from ..models.event import StatutEvent, TypeInvitationEvent, StatutInvitationEvent, MethodeSignatureEvent
 
 # === SCHÉMAS DE BASE ===
 

@@ -4,8 +4,8 @@ Service pour la gestion des pipelines de formation
 from typing import List, Dict, Any
 from sqlmodel import Session, select
 import logging
-from app_lia_web.app.models.base import EtapePipeline, AvancementEtape, Inscription, Candidat
-from app_lia_web.core.program_schema_integration import table_exists_anywhere
+from ..models.base import EtapePipeline, AvancementEtape, Inscription, Candidat
+from ..core.program_schema_integration import table_exists_anywhere
 
 logger = logging.getLogger(__name__)
 

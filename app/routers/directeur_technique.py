@@ -13,11 +13,11 @@ from fastapi import APIRouter, Depends, HTTPException, Request
 from fastapi.responses import HTMLResponse
 from sqlmodel import Session, and_, func, select, text
 
-from app_lia_web.core.database import get_session
-from app_lia_web.core.middleware import get_shared_session
-from app_lia_web.core.program_schema_integration import safe_count_query, table_exists_anywhere
+from ..core.database import get_session
+from ..core.middleware import get_shared_session
+from ..core.program_schema_integration import safe_count_query, table_exists_anywhere
 import logging
-from app_lia_web.app.models.base import (
+from ..models.base import (
     User,
     Programme,
     Candidat,
@@ -26,10 +26,10 @@ from app_lia_web.app.models.base import (
     Entreprise,
     Eligibilite,
 )
-from app_lia_web.app.models.enums import UserRole, StatutDossier
-from app_lia_web.core.security import get_current_user
-from app_lia_web.core.config import settings
-from app_lia_web.app.templates import templates
+from ..models.enums import UserRole, StatutDossier
+from ..core.security import get_current_user
+from ..core.config import settings
+from ..templates import templates
 
 
 # ============ Utils sécurité & SQL ============
@@ -756,8 +756,8 @@ async def directeur_technique_dashboard(
     nombre_coachs = session.exec(select(func.count(User.id)).where(User.role == "coach")).first() or 0
 
     # 12 RDV (public) - avec gestion d'erreur pour colonnes manquantes
-    from app_lia_web.app.models.rendez_vous import RendezVous
-    from app_lia_web.app.models.enums import StatutRDV
+    from ..models.rendez_vous import RendezVous
+    from ..models.enums import StatutRDV
     try:
         rdv_planifies = session.exec(
             select(func.count(RendezVous.id)).where(RendezVous.statut == "planifie")
@@ -773,7 +773,7 @@ async def directeur_technique_dashboard(
         rdv_planifies = rdv_realises = rdv_annules = 0
 
     # 13 Événements (public) - avec gestion d'erreur
-    from app_lia_web.app.models.event import Event, StatutEvent
+    from ..models.event import Event, StatutEvent
     date_limite = today + timedelta(days=30)
     try:
         evenements_en_approche = session.exec(
@@ -899,7 +899,7 @@ async def directeur_technique_dashboard(
         regions_valides_data.append(int(regions_sans_region))
 
     return templates.TemplateResponse(
-        "directeur_technique/dashboard.html",
+        "pages/directeur_technique/dashboard.html",
         {
             "request": request,
             "utilisateur": current_user,

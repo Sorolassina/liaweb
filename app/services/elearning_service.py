@@ -4,15 +4,15 @@ from typing import List, Optional, Dict, Any
 from datetime import datetime, timezone
 import json
 import logging
-from app_lia_web.core.program_schema_integration import safe_count_query, table_exists_anywhere
+from ..core.program_schema_integration import safe_count_query, table_exists_anywhere
 
-from app_lia_web.app.models.elearning import (
+from ..models.elearning import (
     RessourceElearning, ModuleElearning, ProgressionElearning,
     ObjectifElearning, QuizElearning, ReponseQuiz, CertificatElearning,
     ModuleRessource
 )
-from app_lia_web.app.models.base import Inscription, User, Programme
-from app_lia_web.app.schemas.elearning import (
+from ..models.base import Inscription, User, Programme
+from ..schemas.elearning import (
     RessourceElearningCreate, RessourceElearningUpdate,
     ModuleElearningCreate, ModuleElearningUpdate,
     ProgressionElearningCreate, ProgressionElearningUpdate,

@@ -4,7 +4,7 @@ Schémas Pydantic pour les utilisateurs
 from pydantic import BaseModel, EmailStr, Field
 from typing import Optional
 from datetime import datetime
-from app_lia_web.app.models.enums import UserRole, TypeUtilisateur
+from ..models.enums import UserRole, TypeUtilisateur
 
 
 class UserBase(BaseModel):

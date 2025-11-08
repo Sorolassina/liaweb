@@ -1,0 +1,710 @@
+{% extends "layouts/base_public.html" %}
+{% block head_extra %}
+
+{% block title %}
+Formulaire de préinscription {{ programme.code }}
+{% endblock %}
+<style>
+  .card-neumo{ 
+    background:var(--white-color); 
+    border-radius:18px; 
+    box-shadow:var(--shadow);
+    border:1px solid color-mix(in srgb, var(--secondary-color) 8%, transparent); 
+    transition: transform .2s ease, box-shadow .2s ease;
+    max-width: 960px;
+    margin: 0 auto;
+  }
+  .card-neumo:hover{ transform: translateY(-2px); box-shadow: var(--shadow-lg); }
+  .section-title{ color:var(--secondary-color); font-weight:900; margin:0 0 1.2rem; font-size: 1.4rem; text-align: center; }
+  .hint{ font-size:.9rem; color: var(--gray-dark); margin-top: .25rem; }
+
+  .form-label { font-weight: 600; color: var(--secondary-color); margin-bottom: .5rem; }
+  .form-label.required::after { content: " *"; color: var(--danger-color); font-weight: bold; }
+  .form-control, .form-select {
+    border-radius: 12px; border: 1px solid color-mix(in srgb, var(--secondary-color) 20%, transparent);
+    transition: border-color .2s ease, box-shadow .2s ease;
+  }
+  .form-control:focus, .form-select:focus {
+    border-color: var(--primary-color);
+    box-shadow: 0 0 0 0.2rem color-mix(in srgb, var(--primary-color) 25%, transparent);
+  }
+  
+  /* États de validation */
+  .form-control.is-valid, .form-select.is-valid {
+    border-color: var(--success-color) !important;
+    box-shadow: 0 0 0 0.2rem color-mix(in srgb, var(--success-color) 25%, transparent) !important;
+  }
+  
+  .form-control.is-invalid, .form-select.is-invalid {
+    border-color: var(--danger-color) !important;
+    box-shadow: 0 0 0 0.2rem color-mix(in srgb, var(--danger-color) 25%, transparent) !important;
+  }
+  
+  .field-error {
+    color: var(--danger-color);
+    font-size: 0.875rem;
+    margin-top: 0.25rem;
+    display: flex;
+    align-items: center;
+    gap: 0.25rem;
+  }
+  
+  .btn-primary { background: var(--primary-color); border: none; border-radius: 12px; padding: 12px 24px; font-weight: 600; }
+  .btn-outline { border-radius: 12px; }
+
+  /* Bloc avatar */
+  .avatar-uploader{
+    display:flex; gap:16px; align-items:center; background:var(--white-color);
+    border:1px dashed color-mix(in srgb, var(--secondary-color) 25%, transparent);
+    padding:14px; border-radius:16px;
+  }
+  .avatar-preview{
+    width:100px;height:100px;border-radius:12px;overflow:hidden;flex:0 0 auto;
+    box-shadow: var(--shadow);
+    background:var(--light-color) center/cover no-repeat;
+  }
+  .avatar-preview img{ width:100%; height:100%; object-fit:cover; display:block; }
+  .avatar-actions{ display:flex; flex-direction:column; gap:8px; }
+
+  /* Repeater Documents */
+  .doc-row{
+    display:grid; grid-template-columns: 1fr 1fr 1.5fr auto; gap:10px; align-items:center;
+    padding:10px; border-radius:12px; background:var(--light-color); border:1px solid color-mix(in srgb, var(--secondary-color) 10%, transparent);
+  }
+  .doc-row + .doc-row{ margin-top:10px; }
+  .doc-row .remove{
+    border:0; background:var(--white-color); border-radius:10px; width:38px; height:38px;
+    display:flex; align-items:center; justify-content:center; box-shadow: var(--shadow-sm);
+  }
+  .doc-row .remove:hover{ background:color-mix(in srgb, var(--secondary-color) 5%, transparent); }
+  .docs-help{ font-size:.9rem; color:var(--gray-dark); }
+
+  @media (max-width: 768px){
+    .doc-row{ grid-template-columns: 1fr; }
+  }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="card">
+  <div class="card-header">
+    <h3><i class="fas fa-file-alt"></i>Préinscription {{ programme.code if programme else "" }}{% if programme and programme.nom %} — {{ programme.nom }}{% endif %}</h3>
+  </div>
+  <div class="card-body">
+  
+  <!-- Message d'information sur les champs obligatoires -->
+  <div class="alert alert-info mb-4" style="border-radius: 12px; border-left: 4px solid var(--primary-color); background-color: color-mix(in srgb, var(--primary-color) 10%, transparent); color: var(--primary-color); padding: 1rem;">
+    <div style="display: flex; align-items: center; gap: 0.5rem;">
+      <i class="fas fa-info-circle" style="font-size: 1.2rem;"></i>
+      <strong>Information :</strong>
+    </div>
+    <div style="margin-top: 0.5rem; margin-left: 1.7rem; font-size: 0.9rem;">
+      Les champs marqués d'un <span style="color: var(--danger-color); font-weight: bold;">*</span> sont obligatoires.
+    </div>
+  </div>
+  
+  {% if error %}
+  <script>
+    // Afficher l'erreur via le système de toast notifications centralisé
+    document.addEventListener('DOMContentLoaded', function() {
+      if (typeof showError === 'function') {
+        showError('{{ error | replace("'", "\\'") | safe }}', 'Erreur');
+      } else {
+        // Fallback si showError n'est pas encore chargé
+        setTimeout(function() {
+          if (typeof showError === 'function') {
+            showError('{{ error | replace("'", "\\'") | safe }}', 'Erreur');
+          }
+        }, 100);
+      }
+    });
+  </script>
+  {% endif %}
+  
+  {% if not error %}
+  <form method="post" enctype="multipart/form-data"
+        action="/preinscriptions/submit" class="needs-validation" novalidate>
+    
+    <!-- Sélection du programme -->
+    {% if not invite %}
+    <div class="card mb-4">
+      <div class="card-header bg-primary text-white">
+        <h5 class="mb-0"><i class="fas fa-graduation-cap me-2"></i>Sélection du programme</h5>
+      </div>
+      <div class="card-body">
+        <label class="form-label required">Programme</label>
+        <select name="programme_code" class="form-select" required>
+          {% if programme %}
+            <option value="{{ programme.code }}">{{ programme.code }} — {{ programme.nom }}</option>
+          {% else %}
+            <option value="">— Choisir un programme —</option>
+            {% if programmes_actifs %}
+              {% for prog in programmes_actifs %}
+                <option value="{{ prog.code }}">{{ prog.code }} — {{ prog.nom }}</option>
+              {% endfor %}
+            {% else %}
+             
+            {% endif %}
+          {% endif %}
+        </select>
+        {% if not programmes_actifs %}
+          <div class="hint text-warning mt-2">
+            <i class="fas fa-exclamation-triangle me-1"></i>
+            Aucun programme actif trouvé. Les programmes affichés sont des exemples.
+          </div>
+        {% endif %}
+      </div>
+    </div>
+    {% endif %}
+
+    <!-- Accordion pour organiser les informations -->
+    <div class="accordion" id="preinscriptionAccordion">
+      
+      <!-- Informations personnelles -->
+      <div class="accordion-item">
+        <h2 class="accordion-header" id="headingPersonal">
+          <button class="accordion-button" type="button" data-bs-toggle="collapse" data-bs-target="#collapsePersonal" aria-expanded="true" aria-controls="collapsePersonal">
+            <i class="fas fa-user me-2"></i>Informations personnelles
+          </button>
+        </h2>
+        <div id="collapsePersonal" class="accordion-collapse collapse show" aria-labelledby="headingPersonal" data-bs-parent="#preinscriptionAccordion">
+          <div class="accordion-body">
+            <!-- Photo de profil -->
+            <div class="mb-4">
+              <label class="form-label">Photo de profil (optionnel)</label>
+              <div class="avatar-uploader">
+                <div class="avatar-preview" id="avatarPreview">
+                  <img id="avatarImg" src="{{ get_user_photo_url(utilisateur) }}" alt="Aperçu">
+                </div>
+                <div class="avatar-actions">
+                  <input type="file" accept="image/*" name="photo_profil" id="photoProfil" class="form-control" title="Sélectionner une photo de profil" />
+                  <div class="hint">Formats recommandés : JPG/PNG — 2 Mo max.</div>
+                </div>
+              </div>
+            </div>
+
+            <div class="row g-3">
+              <div class="col-md-3">
+                <label class="form-label required">Civilité</label>
+                <select name="civilite" class="form-select" required>
+                  <option value="">— Choisir —</option>
+                  <option value="Mme">Mme</option><option value="M.">M.</option>
+                </select>
+              </div>
+              <div class="col-md-5">
+                <label class="form-label required">Nom</label>
+                <input name="nom" class="form-control" placeholder="Votre nom de famille" required>
+              </div>
+              <div class="col-md-4">
+                <label class="form-label required">Prénom</label>
+                <input name="prenom" class="form-control" placeholder="Votre prénom" required>
+              </div>
+
+              <div class="col-md-4">
+                <label class="form-label required">Date de naissance</label>
+                <input type="date" name="date_naissance" class="form-control" required>
+              </div>
+              <div class="col-md-4">
+                <label class="form-label required">Email</label>
+                <input type="email" name="email" class="form-control" value="{{ prefill_email or invite.email if invite else '' }}" 
+                       pattern="[a-z0-9._%+-]+@[a-z0-9.-]+\.[a-z]{2,}$" 
+                       title="Veuillez entrer une adresse email valide (ex: nom@domaine.com)" 
+                       placeholder="votre.email@exemple.com" required>
+                <div class="hint">Format: nom@domaine.com</div>
+              </div>
+              <div class="col-md-4">
+                <label class="form-label required">Téléphone</label>
+                <input type="tel" name="telephone" class="form-control" 
+                       pattern="^(?:(?:\+|00)33|0)\s*[1-9](?:[\s.-]*\d{2}){4}$"
+                       title="Veuillez entrer un numéro de téléphone français valide (ex: 06 12 34 56 78)" 
+                       placeholder="06 12 34 56 78" required>
+                <div class="hint">Format: 06 12 34 56 78 ou +33 6 12 34 56 78</div>
+              </div>
+
+              <!-- Adresse personnelle décomposée -->
+              <div class="col-12">
+                <label class="form-label fw-bold required">Adresse personnelle</label>
+              </div>
+              <div class="col-md-2">
+                <label class="form-label required">N°</label>
+                <input name="numero_personnel" class="form-control" 
+                       placeholder="10" required>
+              </div>
+              <div class="col-md-6">
+                <label class="form-label required">Rue</label>
+                <input name="rue_personnel" class="form-control" 
+                       placeholder="Rue de la Paix" required>
+              </div>
+              <div class="col-md-2">
+                <label class="form-label required">Code postal</label>
+                <input name="code_postal_personnel" class="form-control" 
+                       placeholder="75001" pattern="[0-9]{5}" required>
+              </div>
+              <div class="col-md-2">
+                <label class="form-label required">Ville</label>
+                <input name="ville_personnel" class="form-control" 
+                       placeholder="Paris" required>
+              </div>
+              <!-- Champ caché pour l'adresse consolidée -->
+              <input type="hidden" name="adresse_personnelle" id="adresse_personnelle_consolidee">
+
+              <div class="col-md-6">
+                <label class="form-label">Niveau d'études</label>
+                <select name="niveau_etudes" class="form-select">
+                  <option value="">— Sélectionner votre niveau —</option>
+                  <option value="BAC">BAC</option>
+                  <option value="BAC+2">BAC+2</option>
+                  <option value="BAC+3">BAC+3</option>
+                  <option value="BAC+4">BAC+4</option>
+                  <option value="BAC+5">BAC+5</option>
+                  <option value="BAC+6">BAC+6</option>
+                  <option value="BAC+7">BAC+7</option>
+                  <option value="BAC+8">BAC+8</option>
+                  <option value="BAC+9">BAC+9</option>
+                  <option value="BAC+10">BAC+10</option>
+                  <option value="BAC+11">BAC+11</option>
+                </select>
+              </div>
+              <div class="col-md-6">
+                <label class="form-label">Secteur d'activité</label>
+                <select name="secteur_activite" class="form-select">
+                  <option value="">— Sélectionner votre secteur —</option>
+                  <option value="Restauration">Restauration</option>
+                  <option value="Hôtellerie">Hôtellerie</option>
+                  <option value="Commerce">Commerce</option>
+                  <option value="Santé">Santé</option>
+                  <option value="Education">Education</option>
+                  <option value="Informatique">Informatique</option>
+                  <option value="Autre">Autre</option>
+                </select>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Informations entreprise -->
+      <div class="accordion-item">
+        <h2 class="accordion-header" id="headingCompany">
+          <button class="accordion-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#collapseCompany" aria-expanded="false" aria-controls="collapseCompany">
+            <i class="fas fa-building me-2"></i>Informations entreprise
+          </button>
+        </h2>
+        <div id="collapseCompany" class="accordion-collapse collapse" aria-labelledby="headingCompany" data-bs-parent="#preinscriptionAccordion">
+          <div class="accordion-body">
+            <div class="row g-3">
+              <!-- Adresse entreprise décomposée -->
+              <div class="col-12">
+                <label class="form-label fw-bold">Adresse de l'entreprise</label>
+              </div>
+              <div class="col-md-2">
+                <label class="form-label">N°</label>
+                <input name="numero_entreprise" class="form-control" 
+                       placeholder="25">
+              </div>
+              <div class="col-md-6">
+                <label class="form-label">Rue</label>
+                <input name="rue_entreprise" class="form-control" 
+                       placeholder="Avenue des Champs-Élysées">
+              </div>
+              <div class="col-md-2">
+                <label class="form-label">Code postal</label>
+                <input name="code_postal_entreprise" class="form-control" 
+                       placeholder="75008" pattern="[0-9]{5}">
+              </div>
+              <div class="col-md-2">
+                <label class="form-label">Ville</label>
+                <input name="ville_entreprise" class="form-control" 
+                       placeholder="Paris">
+              </div>
+              <!-- Champ caché pour l'adresse consolidée -->
+              <input type="hidden" name="adresse_entreprise" id="adresse_entreprise_consolidee">
+              <div class="col-md-4">
+                <label class="form-label">Date de création (entreprise)</label>
+                <input type="date" name="date_creation_entreprise" class="form-control">
+              </div>
+              <div class="col-md-4">
+                <label class="form-label">Chiffre d'affaires (EUR)</label>
+                <select name="chiffre_affaire" class="form-select">
+                  <option value="">— Sélectionner une tranche —</option>
+                  <option value="0 - 10 000 €">0 - 10 000 €</option>
+                  <option value="10 000 - 50 000 €">10 000 - 50 000 €</option>
+                  <option value="50 000 - 100 000 €">50 000 - 100 000 €</option>
+                  <option value="100 000 - 500 000 €">100 000 - 500 000 €</option>
+                  <option value="500 000 - 1 000 000 €">500 000 - 1 000 000 €</option>
+                  <option value="1 000 000 € et plus">1 000 000 € et plus</option>
+                </select>
+              </div>
+              <div class="col-md-4">
+                <label class="form-label">SIRET (optionnel)</label>
+                <input type="text" name="siret" class="form-control" 
+                       pattern="^[0-9]{14}$"
+                       title="Le SIRET doit contenir exactement 14 chiffres"
+                       placeholder="12345678901234"
+                       maxlength="14">
+                <div class="hint">14 chiffres sans espaces (ex: 12345678901234)</div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Informations restauration -->
+      <div class="accordion-item">
+        <h2 class="accordion-header" id="headingRestaurant">
+          <button class="accordion-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#collapseRestaurant" aria-expanded="false" aria-controls="collapseRestaurant">
+            <i class="fas fa-utensils me-2"></i>Informations restauration
+          </button>
+        </h2>
+        <div id="collapseRestaurant" class="accordion-collapse collapse" aria-labelledby="headingRestaurant" data-bs-parent="#preinscriptionAccordion">
+          <div class="accordion-body">
+            <div class="row g-3">
+              <div class="col-12">
+                <label class="form-label">Spécialité culinaire</label>
+                <input name="specialite_culinaire" class="form-control" placeholder="Ex: Cuisine française, Italienne, Asiatique, etc.">
+              </div>
+              <div class="col-12">
+                <label class="form-label">Nom du concept</label>
+                <input name="nom_concept" class="form-control" placeholder="Ex: Le Bistrot du Coin, Pizza Express, Sushi Bar, etc.">
+              </div>
+              <div class="col-md-6">
+                <label class="form-label">Site internet</label>
+                <input type="url" name="site_internet" class="form-control" placeholder="https://www.monrestaurant.com">
+              </div>
+              <div class="col-md-6">
+                <label class="form-label">Réseaux sociaux</label>
+                <input name="lien_reseaux_sociaux" class="form-control" placeholder="Facebook, Instagram, Twitter, etc.">
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Informations supplémentaires -->
+      <div class="accordion-item">
+        <h2 class="accordion-header" id="headingAdditional">
+          <button class="accordion-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#collapseAdditional" aria-expanded="false" aria-controls="collapseAdditional">
+            <i class="fas fa-info-circle me-2"></i>Informations supplémentaires
+          </button>
+        </h2>
+        <div id="collapseAdditional" class="accordion-collapse collapse" aria-labelledby="headingAdditional" data-bs-parent="#preinscriptionAccordion">
+          <div class="accordion-body">
+            <div class="row g-3">
+              <div class="col-12">
+                <div class="form-check">
+                  <input class="form-check-input" type="checkbox" name="handicap" value="true" id="handicap">
+                  <label class="form-check-label" for="handicap">
+                    Reconnaissance de handicap
+                  </label>
+                </div>
+              </div>
+              <div class="col-12">
+                <div class="form-check">
+                  <input class="form-check-input" type="checkbox" name="qpv" value="true" id="qpv">
+                  <label class="form-check-label" for="qpv">
+                    Situé en Zone de Revitalisation Rurale (QPV)
+                  </label>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Documents -->
+      <div class="accordion-item">
+        <h2 class="accordion-header" id="headingDocuments">
+          <button class="accordion-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#collapseDocuments" aria-expanded="false" aria-controls="collapseDocuments">
+            <i class="fas fa-file-upload me-2"></i>Documents à fournir
+          </button>
+        </h2>
+        <div id="collapseDocuments" class="accordion-collapse collapse" aria-labelledby="headingDocuments" data-bs-parent="#preinscriptionAccordion">
+          <div class="accordion-body">
+            <div class="row g-3">
+              <!-- Documents joints (repeater) -->
+              <div class="col-12">
+                <label class="form-label">Documents (optionnel)</label>
+                <div class="docs-help mb-2">Ajoutez vos documents et indiquez leur type et un titre (ex: "Justif_domicile_mars2025").</div>
+                <div id="docsContainer"></div>
+                <button type="button" class="btn btn-outline mt-2" id="addDocBtn">
+                  <i class="fa fa-plus me-1"></i> Ajouter un document
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+    </div>
+
+    <!-- Boutons d'action -->
+    <div class="d-flex justify-content-between align-items-center mt-4">
+      <div class="hint">Vos données sont utilisées pour étudier votre éligibilité au programme, conformément à notre politique de confidentialité.</div>
+      <button class="btn btn-primary"><i class="fa fa-check me-1"></i> Soumettre</button>
+    </div>
+  </form>
+  {% endif %}
+  </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<style>
+  /* Amélioration des accordéons */
+  .accordion-button {
+    font-weight: 600;
+    color: var(--secondary-color);
+  }
+  
+  .accordion-button:not(.collapsed) {
+    background-color: var(--secondary-color);
+    color: var(--white-color);
+  }
+  
+  .accordion-button:focus {
+    box-shadow: 0 0 0 0.25rem color-mix(in srgb, var(--primary-color) 25%, transparent);
+  }
+  
+  .accordion-body {
+    background-color: var(--light-color);
+  }
+  
+  /* Card pour la sélection du programme */
+  .card-header.bg-primary {
+    background: var(--primary-color)!important;
+    color: var(--white-color)!important;
+    
+  }
+  
+  /* Amélioration des hints */
+  .hint {
+    font-size: 0.875rem;
+    color: var(--gray-medium);
+    margin-top: 0.25rem;
+  }
+  
+  /* Validation des champs */
+  .form-control.is-valid {
+    border-color: var(--success-color);
+  }
+  
+  .form-control.is-invalid {
+    border-color: var(--danger-color);
+  }
+  
+  .field-error {
+    color: var(--danger-color);
+    font-size: 0.875rem;
+    margin-top: 0.25rem;
+  }
+</style>
+
+<script>
+  // Validation en temps réel
+  function validateField(field, pattern, errorMessage) {
+    const value = field.value.trim();
+    const isValid = pattern.test(value);
+    
+    // Supprimer les anciens messages d'erreur
+    const existingError = field.parentNode.querySelector('.field-error');
+    if (existingError) existingError.remove();
+    
+    // Supprimer les anciennes classes d'erreur
+    field.classList.remove('is-invalid', 'is-valid');
+    
+    if (value === '') {
+      // Champ vide = pas d'erreur (sauf si required)
+      if (field.hasAttribute('required')) {
+        field.classList.add('is-invalid');
+        showFieldError(field, 'Ce champ est obligatoire');
+      }
+      return;
+    }
+    
+    if (isValid) {
+      field.classList.add('is-valid');
+    } else {
+      field.classList.add('is-invalid');
+      showFieldError(field, errorMessage);
+    }
+  }
+  
+  function showFieldError(field, message) {
+    const errorDiv = document.createElement('div');
+    errorDiv.className = 'field-error text-danger mt-1';
+    errorDiv.style.fontSize = '0.875rem';
+    errorDiv.innerHTML = `<i class="fas fa-exclamation-triangle me-1"></i>${message}`;
+    field.parentNode.appendChild(errorDiv);
+  }
+  
+  // Configuration des validations
+  const validations = {
+    'email': {
+      pattern: /^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$/,
+      message: 'Format email invalide (ex: nom@domaine.com)'
+    },
+    'telephone': {
+      pattern: /^(?:(?:\+|00)33|0)\s*[1-9](?:[\s.-]*\d{2}){4}$/,
+      message: 'Format téléphone invalide (ex: 06 12 34 56 78)'
+    },
+    'siret': {
+      pattern: /^[0-9]{14}$/,
+      message: 'Le SIRET doit contenir exactement 14 chiffres'
+    }
+  };
+  
+  // Appliquer la validation sur tous les champs
+  document.addEventListener('DOMContentLoaded', function() {
+    // Validation email
+    const emailField = document.querySelector('input[name="email"]');
+    if (emailField) {
+      emailField.addEventListener('blur', () => {
+        validateField(emailField, validations.email.pattern, validations.email.message);
+      });
+    }
+    
+    // Validation téléphone
+    const phoneField = document.querySelector('input[name="telephone"]');
+    if (phoneField) {
+      phoneField.addEventListener('blur', () => {
+        validateField(phoneField, validations.telephone.pattern, validations.telephone.message);
+      });
+    }
+    
+    // Validation SIRET
+    const siretField = document.querySelector('input[name="siret"]');
+    if (siretField) {
+      siretField.addEventListener('blur', () => {
+        validateField(siretField, validations.siret.pattern, validations.siret.message);
+      });
+    }
+    
+    // Validation des champs obligatoires
+    const requiredFields = document.querySelectorAll('input[required], select[required]');
+    requiredFields.forEach(field => {
+      field.addEventListener('blur', () => {
+        const value = field.value.trim();
+        field.classList.remove('is-invalid', 'is-valid');
+        
+        if (value === '') {
+          field.classList.add('is-invalid');
+          showFieldError(field, 'Ce champ est obligatoire');
+        } else {
+          field.classList.add('is-valid');
+        }
+      });
+    });
+
+    // Consolidation automatique des adresses
+    function consolidateAddress(prefix) {
+      const numero = document.querySelector(`input[name="${prefix}_numero"]`)?.value?.trim() || '';
+      const rue = document.querySelector(`input[name="${prefix}_rue"]`)?.value?.trim() || '';
+      const codePostal = document.querySelector(`input[name="${prefix}_code_postal"]`)?.value?.trim() || '';
+      const ville = document.querySelector(`input[name="${prefix}_ville"]`)?.value?.trim() || '';
+      
+      const addressParts = [numero, rue, codePostal, ville].filter(part => part !== '');
+      const consolidatedAddress = addressParts.join(', ');
+      
+      const hiddenField = document.getElementById(`${prefix}_consolidee`);
+      if (hiddenField) {
+        hiddenField.value = consolidatedAddress;
+      }
+      
+      return consolidatedAddress;
+    }
+
+    // Écouter les changements sur les champs d'adresse personnelle
+    ['numero_personnel', 'rue_personnel', 'code_postal_personnel', 'ville_personnel'].forEach(fieldName => {
+      const field = document.querySelector(`input[name="${fieldName}"]`);
+      if (field) {
+        field.addEventListener('input', () => {
+          consolidateAddress('adresse_personnelle');
+        });
+        field.addEventListener('blur', () => {
+          consolidateAddress('adresse_personnelle');
+        });
+      }
+    });
+
+    // Écouter les changements sur les champs d'adresse entreprise
+    ['numero_entreprise', 'rue_entreprise', 'code_postal_entreprise', 'ville_entreprise'].forEach(fieldName => {
+      const field = document.querySelector(`input[name="${fieldName}"]`);
+      if (field) {
+        field.addEventListener('input', () => {
+          consolidateAddress('adresse_entreprise');
+        });
+        field.addEventListener('blur', () => {
+          consolidateAddress('adresse_entreprise');
+        });
+      }
+    });
+
+    // Validation spécifique pour les codes postaux
+    const codePostalFields = document.querySelectorAll('input[name*="code_postal"]');
+    codePostalFields.forEach(field => {
+      field.addEventListener('blur', () => {
+        const value = field.value.trim();
+        field.classList.remove('is-invalid', 'is-valid');
+        
+        if (value && !/^\d{5}$/.test(value)) {
+          field.classList.add('is-invalid');
+          showFieldError(field, 'Le code postal doit contenir exactement 5 chiffres');
+        } else if (value) {
+          field.classList.add('is-valid');
+        }
+      });
+    });
+  });
+
+  // Aperçu avatar
+  const fileInput = document.getElementById('photoProfil');
+  const avatarImg = document.getElementById('avatarImg');
+  if (fileInput) {
+    fileInput.addEventListener('change', (e) => {
+      const f = e.target.files && e.target.files[0];
+      if (!f) return;
+      const url = URL.createObjectURL(f);
+      avatarImg.src = url;
+    });
+  }
+
+  // Repeater documents
+  const DOC_TYPES = {{ (doc_types or ["CNI","Kbis","Justificatif de domicile","RIB","CV","Autre"]) | tojson }};
+  const docsContainer = document.getElementById('docsContainer');
+  const addBtn = document.getElementById('addDocBtn');
+
+  function docRowTemplate(idx){
+    const options = DOC_TYPES.map(t => `<option value="${t}">${t}</option>`).join("");
+    return `
+      <div class="doc-row" data-idx="${idx}">
+        <div>
+          <label class="form-label required">Type</label>
+          <select class="form-select" name="doc_type_${idx}" required>
+            <option value="">— Choisir le type —</option>${options}
+          </select>
+        </div>
+        <div>
+          <label class="form-label required">Titre</label>
+          <input class="form-control" name="doc_title_${idx}" placeholder="Ex: Justif_domicile_2025" required>
+        </div>
+        <div>
+          <label class="form-label required">Fichier</label>
+          <input type="file" class="form-control" name="doc_file_${idx}" required>
+        </div>
+        <div>
+          <button type="button" class="remove" title="Supprimer"><i class="fa fa-times"></i></button>
+        </div>
+      </div>
+    `;
+  }
+
+  let docIdx = 0;
+  function addDocRow(){
+    docsContainer.insertAdjacentHTML('beforeend', docRowTemplate(docIdx));
+    const row = docsContainer.querySelector(`.doc-row[data-idx="${docIdx}"]`);
+    row.querySelector('.remove').addEventListener('click', () => row.remove());
+    docIdx += 1;
+  }
+  addBtn.addEventListener('click', addDocRow);
+</script>
+{% endblock %}

@@ -1,57 +1,11 @@
 {% extends "admin/base_admin.html" %}
 
 {% block admin_content %}
-<div class="card-neumo p-4">
-  <div class="d-flex justify-content-between align-items-center mb-4">
-    <h5 class="m-0">
-      <i class="fa fa-history me-2"></i>Logs d'activité
-    </h5>
-    <div class="text-muted small">
-      <i class="fa fa-info-circle me-1"></i>Dernières 100 activités
-    </div>
+<div class="card-neumo p-3">
+  <div class="d-flex justify-content-between align-items-center mb-3">
+    <h6 class="m-0" style="color: var(--secondary-color);">Logs d'activité</h6>
+    <span class="badge bg-primary">{{ logs|length }} entrée{% if logs|length != 1 %}s{% endif %}</span>
   </div>
-
-  <!-- Filtres et recherche -->
-  <div class="row g-3 mb-4">
-    <div class="col-md-4">
-      <div class="input-group">
-        <span class="input-group-text"><i class="fa fa-search"></i></span>
-        <input type="text" class="form-control" id="searchLogs" placeholder="Rechercher dans les logs...">
-      </div>
-    </div>
-    <div class="col-md-3">
-      <select class="form-select" id="filterAction">
-        <option value="">Toutes les actions</option>
-        <option value="USER_ADD">Ajout utilisateur</option>
-        <option value="USER_UPDATE">Modification utilisateur</option>
-        <option value="USER_DELETE">Suppression utilisateur</option>
-        <option value="PROGRAMME_ADD">Ajout programme</option>
-        <option value="PROGRAMME_UPDATE">Modification programme</option>
-        <option value="PROGRAMME_DELETE">Suppression programme</option>
-        <option value="JURY_ADD">Ajout jury</option>
-        <option value="JURY_UPDATE">Modification jury</option>
-        <option value="JURY_DELETE">Suppression jury</option>
-        <option value="JURY_INVITATIONS_SENT">Envoi invitations jury</option>
-      </select>
-    </div>
-    <div class="col-md-3">
-      <select class="form-select" id="filterUser">
-        <option value="">Tous les utilisateurs</option>
-        {% for log in logs %}
-          {% if log.user %}
-            <option value="{{ log.user.id }}">{{ log.user.nom_complet }}</option>
-          {% endif %}
-        {% endfor %}
-      </select>
-    </div>
-    <div class="col-md-2">
-      <button class="btn btn-outline-secondary w-100" onclick="clearFilters()">
-        <i class="fa fa-times me-1"></i>Effacer
-      </button>
-    </div>
-  </div>
-
-  <!-- Tableau des logs -->
   <div class="users-table-container">
     <table class="table align-middle" id="logsTable">
       <thead>
@@ -148,7 +102,7 @@
           </td>
           <td>
             {% if log.activity_data %}
-              <button class="btn btn-outline-info btn-sm" data-bs-toggle="modal" data-bs-target="#detailsModal{{ log.id }}">
+              <button class="btn btn-outline-info admin-action btn-sm" data-modal-target="detailsModal{{ log.id }}" title="Voir les détails">
                 <i class="fa fa-eye"></i>
               </button>
             {% else %}
@@ -176,67 +130,46 @@
 <!-- Modals pour les détails des logs -->
 {% for log in logs %}
 {% if log.activity_data %}
-<div class="modal fade" id="detailsModal{{ log.id }}" tabindex="-1">
-  <div class="modal-dialog modal-lg">
-    <div class="modal-content">
-      <div class="modal-header">
-        <h5 class="modal-title">
-          <i class="fa fa-info-circle me-2"></i>Détails de l'activité
-        </h5>
-        <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
-      </div>
-      <div class="modal-body">
-        <div class="row g-3">
-          <div class="col-md-6">
-            <label class="form-label fw-bold">Action</label>
-            <div class="form-control-plaintext bg-light p-2 rounded">{{ log.action }}</div>
-          </div>
-          <div class="col-md-6">
-            <label class="form-label fw-bold">Entité</label>
-            <div class="form-control-plaintext bg-light p-2 rounded">{{ log.entity }}{% if log.entity_id %} #{{ log.entity_id }}{% endif %}</div>
-          </div>
-          <div class="col-md-6">
-            <label class="form-label fw-bold">Utilisateur</label>
-            <div class="form-control-plaintext bg-light p-2 rounded">
-              {% if log.user_nom_complet %}
-                {{ log.user_nom_complet }}
-                {% if log.user_email %}
-                  ({{ log.user_email }})
-                {% endif %}
-                {% if log.user_role %}
-                  - {{ log.user_role.replace('_', ' ').title() }}
-                {% endif %}
-                {% if not log.user_id %}
-                  <span class="text-warning ms-2">(Utilisateur supprimé)</span>
-                {% endif %}
-              {% else %}
-                <span class="text-danger">Utilisateur inconnu</span>
-              {% endif %}
-            </div>
-          </div>
-          <div class="col-md-6">
-            <label class="form-label fw-bold">Date/Heure</label>
-            <div class="form-control-plaintext bg-light p-2 rounded">{{ log.created_at.strftime('%d/%m/%Y %H:%M:%S') }}</div>
-          </div>
-          <div class="col-md-6">
-            <label class="form-label fw-bold">Adresse IP</label>
-            <div class="form-control-plaintext bg-light p-2 rounded">{{ log.ip_address or 'Non disponible' }}</div>
-          </div>
-          <div class="col-md-6">
-            <label class="form-label fw-bold">User Agent</label>
-            <div class="form-control-plaintext bg-light p-2 rounded small">{{ log.user_agent or 'Non disponible' }}</div>
-          </div>
-          <div class="col-12">
-            <label class="form-label fw-bold">Données de l'activité</label>
-            <div class="form-control-plaintext bg-light p-2 rounded" style="min-height: 100px; font-family: monospace;">
-              <pre>{{ log.activity_data | tojson(indent=2) }}</pre>
-            </div>
+<div class="modal-lg" id="detailsModal{{ log.id }}">
+  <div class="modal-content">
+    <div class="modal-header">
+      <h5 class="modal-title">
+        <i class="fa fa-info-circle me-2"></i>Détails de l'activité
+      </h5>
+      <button type="button" class="modal-close" data-close-modal="detailsModal{{ log.id }}" title="Fermer">&times;</button>
+    </div>
+    <div class="modal-body">
+      <div class="row g-3">
+        <div class="col-md-6">
+          <label class="form-label fw-bold">Action</label>
+          <div class="form-control-plaintext bg-light p-2 rounded">{{ log.action }}</div>
+        </div>
+        <div class="col-md-6">
+          <label class="form-label fw-bold">Entité</label>
+          <div class="form-control-plaintext bg-light p-2 rounded">{{ log.entity }}{% if log.entity_id %} #{{ log.entity_id }}{% endif %}</div>
+        </div>
+        <div class="col-md-6">
+          <label class="form-label fw-bold">Utilisateur</label>
+          <div class="form-control-plaintext bg-light p-2 rounded">
+            {% if log.user_nom_complet %}
+              {{ log.user_nom_complet }}
+            {% else %}
+              <span class="text-muted">Utilisateur inconnu</span>
+            {% endif %}
           </div>
         </div>
+        <div class="col-md-6">
+          <label class="form-label fw-bold">Adresse IP</label>
+          <div class="form-control-plaintext bg-light p-2 rounded">{{ log.ip_address or '—' }}</div>
+        </div>
+        <div class="col-12">
+          <label class="form-label fw-bold">Détails supplémentaires</label>
+          <pre class="bg-light p-3 rounded small">{{ log.activity_data | tojson(indent=2) }}</pre>
+        </div>
       </div>
-      <div class="modal-footer">
-        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Fermer</button>
-      </div>
+    </div>
+    <div class="modal-footer">
+      <button type="button" class="btn btn-secondary" data-close-modal="detailsModal{{ log.id }}">Fermer</button>
     </div>
   </div>
 </div>
@@ -245,43 +178,41 @@
 
 <script>
 document.addEventListener('DOMContentLoaded', function() {
-  const searchInput = document.getElementById('searchLogs');
-  const filterAction = document.getElementById('filterAction');
-  const filterUser = document.getElementById('filterUser');
-  const logRows = document.querySelectorAll('.log-row');
-
-  function filterLogs() {
-    const searchTerm = searchInput.value.toLowerCase();
-    const actionFilter = filterAction.value;
-    const userFilter = filterUser.value;
-
-    logRows.forEach(row => {
-      const searchData = row.getAttribute('data-search');
-      const actionData = row.getAttribute('data-action');
-      const userData = row.getAttribute('data-user');
-
-      const matchesSearch = !searchTerm || searchData.includes(searchTerm);
-      const matchesAction = !actionFilter || actionData === actionFilter;
-      const matchesUser = !userFilter || userData === userFilter;
-
-      if (matchesSearch && matchesAction && matchesUser) {
-        row.style.display = '';
+  document.querySelectorAll('[data-modal-target]').forEach(function(el) {
+    el.addEventListener('click', function(event) {
+      if (el.tagName === 'A') {
+        event.preventDefault();
+      }
+      const modalId = el.getAttribute('data-modal-target');
+      if (!modalId) return;
+      if (typeof openModal === 'function') {
+        openModal(modalId);
       } else {
-        row.style.display = 'none';
+        const modal = document.getElementById(modalId);
+        if (modal) {
+          modal.classList.add('show');
+          document.body.classList.add('modal-open');
+        }
+      }
+    }, { capture: true });
+  });
+
+  document.querySelectorAll('[data-close-modal]').forEach(function(el) {
+    el.addEventListener('click', function(event) {
+      event.preventDefault();
+      const modalId = el.getAttribute('data-close-modal');
+      if (!modalId) return;
+      if (typeof closeModal === 'function') {
+        closeModal(modalId);
+      } else {
+        const modal = document.getElementById(modalId);
+        if (modal) {
+          modal.classList.remove('show');
+          document.body.classList.remove('modal-open');
+        }
       }
     });
-  }
-
-  searchInput.addEventListener('input', filterLogs);
-  filterAction.addEventListener('change', filterLogs);
-  filterUser.addEventListener('change', filterLogs);
-
-  window.clearFilters = function() {
-    searchInput.value = '';
-    filterAction.value = '';
-    filterUser.value = '';
-    filterLogs();
-  };
+  });
 });
 </script>
 {% endblock %}

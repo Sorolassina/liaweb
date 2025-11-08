@@ -1,0 +1,17 @@
+<footer class="footer">
+    <div class="footer-container">
+        <div class="footer-content">
+            <p>&copy; {{ current_year() }} {{ system_settings.company_name or app_name }}. {{ system_settings.footer_text or 'Tous droits réservés' }}.</p>
+            <p style="font-size: 11px; opacity: 0.7; margin-top: 5px;">Développé par skpartner-consulting (V.01)</p>
+        </div>
+        
+        <div class="footer-links">
+            {% if system_settings.company_email %}
+                <a href="mailto:{{ system_settings.company_email }}">Contact</a>
+            {% endif %}
+            <a href="{{ url_for('cgu_page') }}">CGU</a>
+            <a href="{{ url_for('privacy_policy_page') }}?view=true">Charte de Confidentialité</a>
+        </div>
+    </div>
+</footer>
+

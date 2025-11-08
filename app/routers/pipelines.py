@@ -6,15 +6,15 @@ from sqlmodel import Session, select
 from typing import List, Optional
 from datetime import datetime
 
-from app_lia_web.core.database import get_session
-from app_lia_web.core.middleware import get_shared_session
-from app_lia_web.core.security import get_current_user, require_permission
-from app_lia_web.core.program_schema_integration import safe_count_query
+from ..core.database import get_session
+from ..core.middleware import get_shared_session
+from ..core.security import get_current_user, require_permission
+from ..core.program_schema_integration import safe_count_query
 import logging
-from app_lia_web.app.models.base import User, EtapePipeline, AvancementEtape, Programme, Inscription
-from app_lia_web.app.models.enums import UserRole, StatutDossier
-from app_lia_web.app.schemas import EtapePipelineCreate, EtapePipelineUpdate, AvancementEtapeCreate
-from app_lia_web.app.services import PipelineService
+from ..models.base import User, EtapePipeline, AvancementEtape, Programme, Inscription
+from ..models.enums import UserRole, StatutDossier
+from ..schemas import EtapePipelineCreate, EtapePipelineUpdate, AvancementEtapeCreate
+from ..services import PipelineService
 
 router = APIRouter()
 

@@ -1,0 +1,758 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <meta name="version" content="{{ version }}">
+  <meta name="root_path" content="{{ root_path }}">
+  <script>
+      window.root_path = "{{ root_path }}";
+      window.version = "{{ version }}";
+  </script>
+
+  <title>{% block title %}{% if current_programme and current_programme != 'ACD' %}{{ current_programme }} - {{ company_name }}{% else %}{{ get_current_programme_title(request) }} - {{ company_name }}{% endif %}{% endblock %}</title>
+  
+  <!-- Métadonnées de l'entreprise -->
+  <meta name="description" content="{{ company_description }}">
+  <meta name="author" content="{{ app_author }}">
+  <meta name="company" content="{{ company_name }}">
+  <meta name="version" content="{{ app_version }}">
+
+    <!-- Favicon -->
+  <link rel="icon" type="image/x-icon" href="{{ static_versioning(static_url('favicon.ico')) }}">
+    
+  <!-- Bootstrap + Icons -->
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet"/>
+  <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.2/css/all.min.css" rel="stylesheet"/>
+
+  <!-- CSS consolidé -->
+  <link href="{{ static_versioning(static_url('css/styles.css')) }}" rel="stylesheet"/>
+
+  <!-- CSS de base -->
+  <link rel="stylesheet" href="{{ static_versioning(static_url('css/base.css')) }}">
+  <link rel="stylesheet" href="{{ static_versioning(static_url('css/theme.css')) }}">
+  <link rel="stylesheet" href="{{ static_versioning(static_url('css/cards.css')) }}">
+  <link rel="stylesheet" href="{{ static_versioning(static_url('css/buttons.css')) }}">
+  <link rel="stylesheet" href="{{ static_versioning(static_url('css/forms.css')) }}">
+  <link rel="stylesheet" href="{{ static_versioning(static_url('css/tables.css')) }}">
+  <link rel="stylesheet" href="{{ static_versioning(static_url('css/modals.css')) }}">
+  <link rel="stylesheet" href="{{ static_versioning(static_url('css/components.css')) }}">
+  <link rel="stylesheet" href="{{ static_versioning(static_url('css/pages.css')) }}">
+  <link rel="stylesheet" href="{{ static_versioning(static_url('css/tresorerie.css')) }}">
+  
+  <!-- Variables dynamiques depuis le backend -->
+  <style>
+    :root {
+      {% if settings and settings.THEME_PRIMARY %}--primary-color: {{ settings.THEME_PRIMARY }};{% endif %}
+      {% if settings and settings.THEME_SECONDARY %}--secondary-color: {{ settings.THEME_SECONDARY }};{% endif %}
+      {% if settings and settings.THEME_WHITE %}--white-color: {{ settings.THEME_WHITE }};{% endif %}
+    }
+  </style>
+
+  {% block head_extra %}{% endblock %}
+</head>
+<body>
+
+    <!-- Global Loading Overlay pour navigation -->
+  <div id="globalLoadingOverlay" class="loading-overlay">
+      <div class="loading-content">
+          <div class="loading-spinner"></div>
+          <div class="loading-text">Chargement...</div>
+          <div class="loading-subtext">Veuillez patienter</div>
+      </div>
+  </div>
+
+  <!-- Toast Notifications -->
+  {% include "components/toast_notifications.html" %}
+
+  <!-- Popup de messagerie -->
+  {% include "components/messagerie.html" %}
+
+  <!-- Bouton de messagerie flottant - Positionné après le body block pour éviter les problèmes de flex -->
+  <div class="messagerie-floating-container">
+      <button onclick="toggleMessagerie()" class="floating-help-button" title="Messagerie">
+          📩
+          <span class="help-tooltip">Messagerie</span>
+          <span class="messagerie-badge hidden">
+              <span class="messagerie-badge-text">0</span>
+          </span>
+      </button>
+  </div>
+
+  {% if utilisateur %}
+  <!-- ===== SIDEBAR ===== -->
+  <nav id="sidebar" class="sidebar hide-scrollbars">
+    <!-- Étendu -->
+    <div class="profile">
+      <button class="icon-button" title="Réduire / Étendre" onclick="toggleSidebar()">
+        <i class="fas fa-bars"></i>
+      </button>
+      <img  class="avatar" src="{{ get_user_photo_url(utilisateur) }}" alt="Logo" style="width:40px; height:40px;">
+      <div class="username">{{ utilisateur.nom_complet }}</div>
+      <div class="user-function">{{ utilisateur.role | title }}</div>
+      <div style="font-size:16px; color:var(--primary-color); font-weight:700;">LIA</div>
+    </div>
+
+    <!-- Réduit : top burger + avatar (optionnel) -->
+    <div class="top-icons">
+      <button class="icon-button" title="Menu" onclick="toggleSidebar()"><i class="fas fa-bars"></i></button>
+      <img  class="avatar" src="{{ get_user_photo_url(utilisateur) }}" alt="Logo" style="width:40px; height:40px;">
+    </div>
+
+    <!-- Menu étendu -->
+    <div class="menu">
+      <a href="{{ url_for('accueil') }}?programme=public" class="submenu-item {% if '/accueil' in request.url.path %}active{% endif %}">
+        <div class="icon"><i class="fas fa-home"></i></div><div>ACCUEIL</div>
+      </a>
+      
+      <!-- Programmes dynamiques -->
+      {% for programme in get_programmes() %}
+      <div id="acc-{{ programme.code|lower }}" class="accordion-menu">
+        <div class="accordion-header" onclick="toggleAccordion('acc-{{ programme.code|lower }}')">
+          <div class="icon">
+            {% if programme.code == 'ACD' %}
+              <i class="fas fa-graduation-cap"></i>
+            {% elif programme.code == 'ACI' %}
+              <i class="fas fa-building"></i>
+            {% elif programme.code == 'ACT' %}
+              <i class="fas fa-handshake"></i>
+            {% elif programme.code == 'ACR' %}
+              <i class="fas fa-seedling"></i>
+            {% else %}
+              <i class="fas fa-star"></i>
+            {% endif %}
+          </div>
+          <div>{{ programme.code }}</div>
+          <div class="accordion-arrow"><i class="fas fa-chevron-down"></i></div>
+        </div>
+        <div class="accordion-content" >
+          <a href="{{ url_for('programme_dashboard') }}?programme={{ programme.code }}" class="submenu-item {% if request.url.path == '/{{ programme.code }}/dashboard' %}active{% endif %}"
+          style="margin:5px 5px 5px 5px;">
+            <div class="icon"><i class="fas fa-tachometer-alt"></i></div><div>Tableau de bord</div>
+          </a>
+          <a href="{{ url_for('preinscriptions_form') }}?programme={{ programme.code }}" class="submenu-item {% if '/{{ programme.code }}/preinscriptions' in request.url.path %}active{% endif %}"
+          style="margin:5px 5px 5px 5px;">
+            <div class="icon"><i class="fas fa-building"></i></div><div>Préinscriptions</div>
+          </a>
+          <a href="{{ url_for('form_inscriptions_display') }}?programme={{ programme.code }}" class="submenu-item {% if '/{{ programme.code }}/inscriptions' in request.url.path %}active{% endif %}"
+          style="margin:5px 5px 5px 5px;">
+            <div class="icon"><i class="fas fa-project-diagram"></i></div><div>Inscriptions</div>
+          </a>
+          <a href="{{ url_for('rendez_vous_list') }}?programme={{ programme.code }}" class="submenu-item {% if '/rendez-vous' in request.url.path %}active{% endif %}"
+          style="margin:5px 5px 5px 5px;">
+            <div class="icon"><i class="fas fa-calendar-alt"></i></div><div>Rendez-vous</div>
+          </a>
+          <a href="{{ url_for('liste_seminaires') }}?programme={{ programme.code }}" class="submenu-item {% if '/seminaires' in request.url.path %}active{% endif %}"
+          style="margin:5px 5px 5px 5px;">
+            <div class="icon"><i class="fas fa-chalkboard-teacher"></i></div><div>Séminaires</div>
+          </a>
+          <a href="{{ url_for('liste_events') }}?programme={{ programme.code }}" class="submenu-item {% if '/events' in request.url.path %}active{% endif %}"
+          style="margin:5px 5px 5px 5px;">
+            <div class="icon"><i class="fas fa-calendar-check"></i></div><div>Événements</div>
+          </a>
+          <a href="{{url_for('codev_dashboard')}}?programme={{ programme.code }}" class="submenu-item {% if '/codev' in request.url.path %}active{% endif %}"
+          style="margin:5px 5px 5px 5px;">
+            <div class="icon"><i class="fas fa-users-cog"></i></div><div>Codev</div>
+          </a>
+          <a href="{{url_for('elearning_modules')}}?programme={{ programme.code }}" class="submenu-item {% if '/elearning' in request.url.path %}active{% endif %}"
+          style="margin:5px 5px 5px 5px;">
+            <div class="icon"><i class="fas fa-laptop"></i></div><div>E-learning</div>
+          </a>
+          <a href="{{url_for('liste_candidats_valides')}}?programme={{ programme.code }}" class="submenu-item {% if '/suivi-mensuel' in request.url.path %}active{% endif %}"
+          style="margin:5px 5px 5px 5px;">
+            <div class="icon"><i class="fas fa-chart-line"></i></div><div>Suivi mensuel</div>
+          </a>
+        </div>
+      </div>
+      {% endfor %}
+      
+      <a href="{{ url_for('admin_root') }}?programme=public" class="submenu-item {% if '/admin' in request.url.path %}active{% endif %}">
+        <div class="icon"><i class="fas fa-cogs"></i></div><div>ADMINISTRATION</div>
+      </a>
+    </div>
+
+    <!-- Menu réduit : icônes -->
+    <div class="menu-icons">
+      <a href="{{ url_for('accueil') }}?programme=public" class="icon-button" title="Accueil">
+        <i class="fas fa-home"></i>
+      </a>
+      <!-- Programmes dynamiques -->
+      {% for programme in get_programmes() %}
+      <button class="icon-button" onclick="toggleProgrammeMenu(event, this, '{{ programme.code }}')" title="{{ programme.code }}">
+        {% if programme.code == 'ACD' %}
+          <i class="fas fa-graduation-cap"></i>
+        {% elif programme.code == 'ACI' %}
+          <i class="fas fa-building"></i>
+        {% elif programme.code == 'ACT' %}
+          <i class="fas fa-handshake"></i>
+        {% elif programme.code == 'ACR' %}
+          <i class="fas fa-seedling"></i>
+        {% else %}
+          <i class="fas fa-star"></i>
+        {% endif %}
+      </button>
+      {% endfor %}
+      <a href="{{ url_for('admin_root') }}?programme=public" class="icon-button" title="Administration">
+        <i class="fas fa-cogs"></i>
+      </a>
+    </div>
+
+    <!-- Footer compact (UNIQUEMENT en réduit) -->
+    <div class="bottom-icon">
+      <button class="icon-button" title="Utilisateur" onclick="toggleUserMenu(event, this)">
+        <i class="fas fa-user-circle"></i>
+      </button>
+    </div>
+
+    <!-- Footer étendu -->
+    <div class="footer">
+      <div class="dropdown" style="display:flex; flex-direction:column; align-items:center;">
+        <a href="#" class="d-flex align-items-center text-decoration-none dropdown-toggle" id="dropdownUser1"
+           data-bs-toggle="dropdown" aria-expanded="false">
+          <i class="fas fa-user-circle fa-2x me-2"></i>
+          <span>{{ utilisateur.nom_complet }}</span>
+        </a>
+        <ul class="dropdown-menu dropdown-menu-dark text-small shadow" aria-labelledby="dropdownUser1">
+          <li><a class="dropdown-item" href="{{ url_for('profil') }}?programme=public">Profile</a></li>
+          <li><hr class="dropdown-divider"></li>
+          <li><a class="dropdown-item" href="{{ url_for('accueil') }}?programme=public">Sign out</a></li>
+        </ul>
+      </div>
+      <div style="margin-top: 10px; font-size: 10px;">
+        <div>© 2025 MycreoAcademy</div>
+        <div>Tous droits réservés.</div>
+      </div>
+    </div>
+  </nav>
+
+  <!-- ===== HEADER ===== -->
+  <div class="header-neumorphism">
+    <div class="logo">
+      {% if company_logo_exists() %}
+        <img src="{{ get_company_logo_url() }}" alt="{{ company_name }}" style="height:40px;">
+        <div class="company-name-header" style="font-size:18px; font-weight:bold; color:var(--primary-color);">{{ company_name }}</div>
+      {% else %}
+        <div class="company-name-header" style="font-size:18px; font-weight:bold; color:var(--primary-color);">{{ company_name }}</div>
+      {% endif %}
+      <div class="current-programme-indicator" style="margin-left: 15px;">
+        <span class="programme-badge" style="background: var(--primary-color); color: white; padding: 4px 8px; border-radius: 12px; font-size: 12px; font-weight: bold;">
+          {{ get_current_programme_from_session(request) }}
+        </span>
+      </div>
+    </div>
+    {% set path = request.url.path %}
+    {% set programme_badge = get_current_programme_from_session(request) %}
+    {% set section_map = [
+      ('/preinscriptions', 'Gestion préinscriptions'),
+      ('/inscriptions', 'Gestion inscriptions'),
+      ('/rendez-vous', 'Gestion rendez-vous'),
+      ('/seminaires', 'Gestion séminaires'),
+      ('/events', 'Gestion événements'),
+      ('/codev', 'Gestion codéveloppement'),
+      ('/elearning', 'Gestion e-learning'),
+      ('/suivi-mensuel', 'Gestion suivi mensuel'),
+      ('/dashboard', 'Tableau de bord'),
+      ('/messages', 'Gestion messages'),
+      ('/documents', 'Gestion documents'),
+      ('/pipelines', 'Gestion pipelines')
+    ] %}
+    {% set section_title = namespace(value=None) %}
+    {% for item in section_map %}
+      {% if section_title.value is none and item[0] in path %}
+        {% set section_title.value = item[1] %}
+      {% endif %}
+    {% endfor %}
+    <div class="username-title">
+      {% if path.startswith('/admin') and request.state and request.state.admin_title is defined and request.state.admin_title %}
+        {{ request.state.admin_title }}
+      {% elif section_title.value %}
+        {{ section_title.value }}{% if programme_badge %} ({{ programme_badge }}){% endif %}
+      {% elif current_programme and current_programme != 'ACD' %}
+        {{ current_programme }}
+      {% else %}
+        {{ get_current_programme_title(request) }}
+      {% endif %}
+    </div>
+    <div class="user-info">
+      <span class="user-role">{{ utilisateur.nom_complet | title }} ({{ utilisateur.role | title }})</span>
+      <div class="avatar" style="background-image: url('{{ get_user_photo_url(utilisateur) }}');"></div>
+      <button class="logout-button" onclick="window.location.href='/auth/logout'">Se déconnecter</button>
+    </div>
+  </div>
+
+  {% endif %}
+
+  <!-- Messages flash -->
+  {% block messages %}
+    {% include "components/flash_messages.html" %}
+  {% endblock %}
+
+  <!-- ===== CONTENU ===== -->
+  <div id="content" class="hide-scrollbars">
+    <div class="container-fluid p-4" >
+      {% block content %}
+      {% endblock %}
+    </div>
+  </div>
+
+  {% if utilisateur %}
+  <!-- ===== FOOTER GLOBAL ===== -->
+  <div class="footer-neumorphism">
+    <div class="d-flex justify-content-between align-items-center flex-wrap gap-2">
+      <span class="text-muted small">© {{ current_year() }} {{ company_name }} - {{ company_description }}</span>
+      <span class="text-muted small">Version {{ app_version }}</span>
+      <span class="text-muted small">Développé par {{ app_author }}</span>
+    </div>
+  </div>
+  {% endif %}
+
+  <!-- JS libs -->
+  <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
+  <script src="https://code.jquery.com/jquery-3.7.1.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+
+  <script>
+    // Informations de l'entreprise (pour debugging)
+    console.log('🏢 Informations entreprise:', {
+      name: '{{ company_name }}',
+      description: '{{ company_description }}',
+      version: '{{ app_version }}',
+      author: '{{ app_author }}',
+      logo_exists: {{ company_logo_exists() | lower }},
+      logo_url: '{{ get_company_logo_url() }}'
+    });
+    
+    // Alias rétro-compatibilité : l'admin appelle "toggleOverlay", la base fournit "openOverlay"
+    window.toggleOverlay = window.toggleOverlay || function(html, anchorEl){
+      if (typeof openOverlay === 'function') { openOverlay(html, anchorEl); }
+      else { console.error('openOverlay n’est pas défini'); }
+    };
+
+    /* ===== ACCORDÉONS ===== */
+    function toggleAccordion(id){
+      const menu = document.getElementById(id);
+      document.querySelectorAll('.accordion-menu').forEach(m => {
+        if (m.id !== id) m.classList.remove('open');
+      });
+      menu.classList.toggle('open');
+    }
+
+    document.addEventListener('DOMContentLoaded', () => {
+      const path = window.location.pathname;
+      if (path === '/dashboard' || path.includes('/clients') || path.includes('/engagements') ||
+          path.includes('/audit-points') || path.includes('/financial') || path.includes('/reports')){
+        const el = document.getElementById('acc-ext'); if (el) el.classList.add('open');
+      } else if (path.includes('/internal-audit') || path.includes('/compliance') || path.includes('/risk-management')){
+        const el = document.getElementById('acc-int'); if (el) el.classList.add('open');
+      } else if (path.includes('/financial-analysis') || path.includes('/trend-analysis') || path.includes('/benchmarking')){
+        const el = document.getElementById('acc-af'); if (el) el.classList.add('open');
+      } else if (path.includes('/messages') || path.includes('/knowledge-base')){
+        const el = document.getElementById('acc-com'); if (el) el.classList.add('open');
+      } else if (path.includes('/admin') || path.includes('/dashboard') || path.includes('/rendez-vous') || path.includes('/profil')){
+        const el = document.getElementById('acc-roles'); if (el) el.classList.add('open');
+      }
+
+      // Restaurer l'état du sidebar
+      const sidebar = document.getElementById('sidebar');
+      if (sidebar){
+        const collapsed = localStorage.getItem('sidebarCollapsed') === 'true';
+        if (collapsed) sidebar.classList.add('collapsed'); else sidebar.classList.remove('collapsed');
+      }
+    });
+
+    /* ===== SIDEBAR TOGGLE ===== */
+    function toggleSidebar(){
+      const sidebar = document.getElementById('sidebar');
+      if (!sidebar) return;
+      const collapsed = sidebar.classList.toggle('collapsed');
+      localStorage.setItem('sidebarCollapsed', collapsed ? 'true' : 'false');
+      closeAnyOverlay();
+    }
+
+    /* ===== OVERLAYS (menus contextuels) ===== */
+    const OVERLAY_ID = 'ctx-overlay';
+    let overlayCloser = null;
+
+    function closeAnyOverlay(){
+      const old = document.getElementById(OVERLAY_ID);
+      if (old) old.remove();
+      if (overlayCloser){
+        document.removeEventListener('click', overlayCloser, true);
+        overlayCloser = null;
+      }
+    }
+
+    function placeOverlayNear(el, overlay){
+      const rect = el.getBoundingClientRect();
+      const margin = 8;
+      const ovw = overlay.offsetWidth || 220;
+      const ovh = overlay.offsetHeight || 160;
+
+      let left = rect.right + margin + window.scrollX;
+      let top  = rect.top + window.scrollY;
+
+      if (left + ovw > window.scrollX + window.innerWidth - margin){
+        left = rect.left + window.scrollX - ovw - margin;
+      }
+      if (top + ovh > window.scrollY + window.innerHeight - margin){
+        top = window.scrollY + window.innerHeight - ovh - margin;
+      }
+      if (top < window.scrollY + margin) top = window.scrollY + margin;
+
+      overlay.style.left = left + 'px';
+      overlay.style.top  = top  + 'px';
+    }
+
+    function openOverlay(html, anchorEl){
+      closeAnyOverlay();
+      const overlay = document.createElement('div');
+      overlay.id = OVERLAY_ID;
+      overlay.className = 'more-menu-overlay';
+      overlay.innerHTML = html;
+      overlay.addEventListener('click', e => e.stopPropagation());
+      document.body.appendChild(overlay);
+      placeOverlayNear(anchorEl, overlay);
+      setTimeout(() => {
+        overlayCloser = (e) => { if (!overlay.contains(e.target)) closeAnyOverlay(); };
+        document.addEventListener('click', overlayCloser, true);
+        document.addEventListener('keydown', (ev) => { if (ev.key === 'Escape') closeAnyOverlay(); }, { once: true });
+      }, 0);
+    }
+
+    // ===== FONCTIONS DE GÉNÉRATION DE MENUS =====
+    
+    function htmlProgrammeMenu(programmeCode){
+      // Génère le menu pour un programme spécifique
+      // Utilise le paramètre programme de manière cohérente pour toutes les routes
+      return `
+        <div class="more-menu-title">${programmeCode}</div>
+        <a href="{{ url_for('programme_dashboard') }}?programme=${programmeCode}"><i class="fas fa-tachometer-alt"></i><span>Tableau de bord</span></a>
+        <a href="{{ url_for('preinscriptions_form') }}?programme=${programmeCode}"><i class="fas fa-building"></i><span>Préinscriptions</span></a>
+        <a href="{{ url_for('form_inscriptions_display') }}?programme=${programmeCode}"><i class="fas fa-project-diagram"></i><span>Inscriptions</span></a>
+        <a href="{{ url_for('rendez_vous_list') }}?programme=${programmeCode}"><i class="fas fa-calendar-alt"></i><span>Rendez-vous</span></a>
+        <a href="{{ url_for('liste_seminaires') }}?programme=${programmeCode}"><i class="fas fa-chalkboard-teacher"></i><span>Séminaires</span></a>
+        <a href="{{ url_for('liste_events') }}?programme=${programmeCode}"><i class="fas fa-calendar-check"></i><span>Événements</span></a>
+        <a href="{{url_for('codev_dashboard')}}?programme=${programmeCode}"><i class="fas fa-users-cog"></i><span>Codev</span></a>
+        <a href="{{url_for('elearning_modules')}}?programme=${programmeCode}"><i class="fas fa-laptop"></i><span>E-learning</span></a>
+        <a href="{{url_for('liste_candidats_valides')}}?programme=${programmeCode}"><i class="fas fa-chart-line"></i><span>Suivi mensuel</span></a>
+      `;
+    }
+
+    // ===== FONCTIONS DE TOGGLE DES MENUS =====
+    
+    function toggleProgrammeMenu(evt, btn, programmeCode){ 
+      if(evt) evt.stopPropagation(); 
+      toggleOverlay(htmlProgrammeMenu(programmeCode), btn || evt.currentTarget); 
+    }
+    
+    // ===== EVENT LISTENERS GLOBAUX =====
+    // Fermer les menus lors du redimensionnement ou du scroll
+    window.addEventListener('resize', closeAnyOverlay);
+    window.addEventListener('scroll', closeAnyOverlay, { passive:true });
+
+    /* Menu utilisateur (footer compact) */
+    function toggleUserMenu(evt, btn){
+      if (evt) evt.stopPropagation();
+      const html = `
+        <div class="more-menu-title">{% if utilisateur %}{{ utilisateur.nom_complet }}{% else %}Utilisateur{% endif %}</div>
+        <a href="{{ url_for('profil') }}?programme=public"><i class="fas fa-id-badge"></i><span>Profil</span></a>
+        <a href="{{ url_for('accueil') }}?programme=public"><i class="fas fa-right-from-bracket"></i><span>Déconnexion</span></a>
+      `;
+      toggleOverlay(html, btn || (evt && evt.currentTarget));
+    }
+  </script>
+
+  <!-- Script pour gérer le sidebar lors de l'ouverture des modals -->
+  <script>
+    document.addEventListener('DOMContentLoaded', function() {
+      console.log('🚀 Script modal sidebar chargé dans base.html');
+      
+      // Écouter l'ouverture des modals Bootstrap
+      document.addEventListener('show.bs.modal', function(event) {
+        console.log('📱 Modal ouvert:', event.target);
+        
+        // Forcer le sidebar en mode réduit
+        const sidebar = document.getElementById('sidebar');
+        console.log('🔍 Sidebar trouvé:', sidebar);
+        if (sidebar) {
+          sidebar.classList.add('collapsed');
+          console.log('✅ Sidebar forcé en mode réduit');
+        } else {
+          console.log('❌ Sidebar non trouvé');
+        }
+      });
+      
+      // Écouter la fermeture des modals Bootstrap
+      document.addEventListener('hidden.bs.modal', function(event) {
+        console.log('📱 Modal fermé:', event.target);
+        
+        // Remettre le sidebar en mode étendu
+        const sidebar = document.getElementById('sidebar');
+        console.log('🔍 Sidebar trouvé (fermeture):', sidebar);
+        if (sidebar) {
+          sidebar.classList.remove('collapsed');
+          console.log('✅ Sidebar remis en mode étendu');
+        } else {
+          console.log('❌ Sidebar non trouvé (fermeture)');
+        }
+      });
+    });
+  </script>
+
+   <!-- Scripts JS de base -->
+   <script src="{{ static_versioning(static_url('js/app.js')) }}"></script>
+    
+   <!-- Script global pour l'overlay de navigation -->
+   <script>
+       // ============================================
+       // GESTION DE L'OVERLAY GLOBAL
+       // ============================================
+       
+
+       // Variable pour stocker les timeouts en cours pour pouvoir les annuler
+       let globalLoadingTimeout = null;
+
+       // Fonction pour afficher l'overlay global
+       function showGlobalLoading(text = 'Chargement...', subtext = 'Veuillez patienter') {
+           const overlay = document.getElementById('globalLoadingOverlay');
+           
+           if (overlay) {
+               // Annuler tout timeout précédent en cours
+               if (globalLoadingTimeout) {
+                   clearTimeout(globalLoadingTimeout);
+                   globalLoadingTimeout = null;
+               }
+               
+               // Ramener en haut de page avant d'activer l'overlay
+               window.scrollTo({ top: 0, behavior: 'smooth' });
+               
+               // Masquer la barre de défilement pour éviter les problèmes de positionnement
+               document.body.style.overflow = 'hidden';
+               
+               const textEl = overlay.querySelector('.loading-text');
+               const subtextEl = overlay.querySelector('.loading-subtext');
+               
+               if (textEl) textEl.textContent = text;
+               if (subtextEl) subtextEl.textContent = subtext;
+               
+               overlay.classList.add('show');
+           }
+       }
+
+       // Fonction pour masquer l'overlay global
+       function hideGlobalLoading() {
+           // Annuler tout timeout en cours
+           if (globalLoadingTimeout) {
+               clearTimeout(globalLoadingTimeout);
+               globalLoadingTimeout = null;
+           }
+           
+           const overlay = document.getElementById('globalLoadingOverlay');
+           
+           if (overlay) {
+               overlay.classList.remove('show');
+               
+               // Restaurer la barre de défilement
+               document.body.style.overflow = '';
+           }
+       }
+
+       // Fonction pour afficher un succès (utilise le système de toast centralisé)
+       function showSuccess(message, title = 'Succès') {
+           hideGlobalLoading();
+           // Utiliser le système de toast depuis toast_notifications.html
+           if (typeof showToast === 'function') {
+               showToast(message, 'success', title);
+           } else {
+               // Fallback si le toast n'est pas encore chargé
+               console.warn('showToast non disponible, affichage différé');
+               setTimeout(() => showToast(message, 'success', title), 100);
+           }
+       }
+       
+       // Fonction pour afficher une erreur (utilise le système de toast centralisé)
+       function showError(message, title = 'Erreur') {
+           hideGlobalLoading();
+           // Utiliser le système de toast depuis toast_notifications.html
+           if (typeof showToast === 'function') {
+               showToast(message, 'error', title);
+           } else {
+               // Fallback si le toast n'est pas encore chargé
+               console.warn('showToast non disponible, affichage différé');
+               setTimeout(() => showToast(message, 'error', title), 100);
+           }
+       }
+
+       // Gestionnaire d'erreur global pour les fetch
+       window.handleFetchError = async function(response, defaultMessage = 'Une erreur est survenue') {
+           hideGlobalLoading();
+           
+           try {
+               const data = await response.json();
+               
+               // Gestion spéciale des erreurs de validation (422)
+               if (response.status === 422 && data.errors) {
+                   let errorMessage = data.detail || 'Erreur de validation des données';
+                   
+                   // Si on a des erreurs détaillées, les afficher
+                   if (data.errors && data.errors.length > 0) {
+                       errorMessage = data.errors.join('\n• ');
+                   }
+                   
+                   showError(errorMessage);
+                   
+                   // Optionnel : mettre en évidence les champs en erreur
+                   if (data.field_errors) {
+                       highlightErrorFields(data.field_errors);
+                   }
+               } else {
+                   // Erreur normale
+                   const errorMessage = data.detail || data.message || defaultMessage;
+                   showError(errorMessage);
+               }
+           } catch {
+               showError(defaultMessage);
+           }
+       }
+       
+       // Fonction pour mettre en évidence les champs en erreur
+       function highlightErrorFields(fieldErrors) {
+           // Retirer les anciens styles d'erreur
+           document.querySelectorAll('.field-error').forEach(el => {
+               el.classList.remove('field-error');
+           });
+           
+           // Ajouter les styles d'erreur aux champs concernés
+           Object.keys(fieldErrors).forEach(fieldName => {
+               const field = document.querySelector(`[name="${fieldName}"]`);
+               if (field) {
+                   field.classList.add('field-error');
+                   field.style.borderColor = '#dc3545';
+                   field.style.backgroundColor = '#fff5f5';
+               }
+           });
+           
+           // Retirer les styles après 5 secondes
+           setTimeout(() => {
+               document.querySelectorAll('.field-error').forEach(el => {
+                   el.classList.remove('field-error');
+                   el.style.borderColor = '';
+                   el.style.backgroundColor = '';
+               });
+           }, 5000);
+       }
+
+       // Intercepter les erreurs non gérées
+       window.addEventListener('error', function(event) {
+           console.error('Erreur non gérée:', event.error);
+           hideGlobalLoading();
+       });
+
+       // Intercepter les rejections de promesses non gérées
+       window.addEventListener('unhandledrejection', function(event) {
+           console.error('Promise rejetée:', event.reason);
+           hideGlobalLoading();
+           showError('Une erreur s\'est produite. Veuillez réessayer.');
+       });
+
+       // Intercepter les clics sur les liens pour afficher l'overlay
+       document.addEventListener('DOMContentLoaded', function() {
+           // Masquer l'overlay au chargement de la page
+           hideGlobalLoading();
+
+           // Masquer l'overlay si la page ne change pas (ex: erreur)
+           window.addEventListener('pageshow', function() {
+               hideGlobalLoading();
+           });
+
+           // Masquer l'overlay si l'utilisateur revient en arrière
+           window.addEventListener('popstate', function() {
+               hideGlobalLoading();
+           });
+       });
+
+       // L'overlay global ne se déclenche que pour les actions asynchrones (AJAX/fetch)
+       // Pas pour la soumission de formulaires GET normaux
+
+       // ========== GESTION GLOBALE DES MODALS - Bloquer scroll arrière-plan ==========
+       // Observer tous les modals pour bloquer le scroll du body
+       const modalObserver = new MutationObserver(function(mutations) {
+           const anyModalOpen = document.querySelector('.modal.show, .modal-sm.show, .modal-md.show, .modal-lg.show, .modal-xl.show');
+           
+           if (anyModalOpen) {
+               // Modal ouvert : bloquer le scroll
+               document.body.classList.add('modal-open');
+           } else {
+               // Tous les modals fermés : débloquer le scroll
+               document.body.classList.remove('modal-open');
+           }
+       });
+
+       // Observer les changements de classe sur tous les modals existants
+       document.addEventListener('DOMContentLoaded', function() {
+           const allModals = document.querySelectorAll('.modal, .modal-sm, .modal-md, .modal-lg, .modal-xl');
+           allModals.forEach(function(modal) {
+               modalObserver.observe(modal, {
+                   attributes: true,
+                   attributeFilter: ['class']
+               });
+           });
+       });
+
+       // Fermer modal en cliquant sur le backdrop
+       document.addEventListener('click', function(e) {
+           if (e.target.classList.contains('modal') || 
+               e.target.classList.contains('modal-sm') || 
+               e.target.classList.contains('modal-md') || 
+               e.target.classList.contains('modal-lg') || 
+               e.target.classList.contains('modal-xl')) {
+               e.target.classList.remove('show');
+           }
+       });
+
+       // Empêcher la fermeture en cliquant sur le contenu du modal
+       document.addEventListener('click', function(e) {
+           if (e.target.classList.contains('modal-content') || e.target.closest('.modal-content')) {
+               e.stopPropagation();
+           }
+       });
+
+       // ========== FONCTIONS GLOBALES POUR LES MODALS ==========
+       // Fonction pour ouvrir un modal
+       function openModal(modalId) {
+           const modal = document.getElementById(modalId);
+           if (modal) {
+               modal.classList.add('show');
+               document.body.classList.add('modal-open');
+           }
+       }
+
+       // Fonction pour fermer un modal spécifique
+       function closeModal(modalId) {
+           const modal = document.getElementById(modalId);
+           if (modal) {
+               modal.classList.remove('show');
+               document.body.classList.remove('modal-open');
+           }
+       }
+
+       // Fonction pour fermer tous les modals ouverts
+       function closeModals() {
+           const openModals = document.querySelectorAll('.modal.show, .modal-sm.show, .modal-md.show, .modal-lg.show, .modal-xl.show');
+           openModals.forEach(function(modal) {
+               modal.classList.remove('show');
+           });
+           document.body.classList.remove('modal-open');
+       }
+
+       // Fermer avec la touche Escape
+       document.addEventListener('keydown', function(event) {
+           if (event.key === 'Escape') {
+               closeModals();
+           }
+       });
+   </script>
+
+  {% block scripts %}{% endblock %}
+</body>
+</html>

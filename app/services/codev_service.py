@@ -5,18 +5,18 @@ from typing import List, Optional, Dict, Any
 from sqlmodel import Session, select, func, and_, or_
 from datetime import datetime, timezone, date, timedelta
 import logging
-from app_lia_web.core.program_schema_integration import safe_count_query, table_exists_anywhere
+from ..core.program_schema_integration import safe_count_query, table_exists_anywhere
 
-from app_lia_web.app.models.codev import (
+from ..models.codev import (
     SeanceCodev, PresentationCodev, ContributionCodev, ParticipationSeance,
     CycleCodev, GroupeCodev, MembreGroupeCodev
 )
-from app_lia_web.app.models.base import Inscription, User, Programme, Promotion, Groupe
-from app_lia_web.app.models.enums import (
+from ..models.base import Inscription, User, Programme, Promotion, Groupe
+from ..models.enums import (
     StatutSeanceCodev, StatutPresentation, TypeContribution,
     StatutCycleCodev, StatutGroupeCodev, StatutMembreGroupe, StatutPresence
 )
-from app_lia_web.app.schemas import (
+from ..schemas import (
     CycleCodevCreate, CycleCodevUpdate,
     GroupeCodevCreate, SeanceCodevCreate, 
     PresentationCodevCreate, ContributionCodevCreate,

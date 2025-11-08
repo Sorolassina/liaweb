@@ -1,0 +1,269 @@
+/* ============================================
+   TABLEAUX - STYLES CENTRALISÉS
+   ============================================ */
+
+/* Table Responsive Wrapper */
+.table-responsive {
+    overflow-x: auto;
+    margin-bottom: 1rem;
+}
+
+/* Table de Données Principale */
+.data-table {
+    width: 100%;
+    background: var(--white-color);
+    border-radius: 12px;
+    overflow: hidden;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.5);
+    border-collapse: collapse;
+    border: 2px solid var(--secondary-color);
+    cursor: pointer;
+}
+
+/* En-tête de Table */
+.data-table thead {
+    background: var(--secondary-color);
+    color: var(--white-color);
+}
+
+.data-table th {
+    padding: 1rem;
+    text-align: left;
+    font-weight: 600;
+    font-size: 0.9rem;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+}
+
+/* Corps de Table */
+.data-table tbody tr {
+    border-bottom: 1px solid var(--gray-200);
+    transition: background 0.2s;
+}
+
+.data-table tbody tr:hover {
+    background: var(--gray-100);
+}
+
+.data-table tbody tr:last-child {
+    border-bottom: none;
+}
+
+.data-table td {
+    padding: 0.75rem 1rem;
+    color: var(--gray-700);
+}
+
+/* Table Striped (rayée) */
+.data-table.table-striped tbody tr:nth-child(even) {
+    background: var(--gray-50);
+}
+
+.data-table.table-striped tbody tr:nth-child(even):hover {
+    background: var(--gray-100);
+}
+
+/* Table Bordered */
+.data-table.table-bordered {
+    border: 1px solid var(--gray-200);
+}
+
+.data-table.table-bordered th,
+.data-table.table-bordered td {
+    border: 1px solid var(--gray-200);
+}
+
+/* Table Compacte */
+.data-table.table-sm th,
+.data-table.table-sm td {
+    padding: 0.5rem 0.75rem;
+    font-size: 0.875rem;
+}
+
+/* Cellules Spéciales */
+.data-table td.text-center {
+    text-align: center;
+}
+
+.data-table td.text-right {
+    text-align: right;
+}
+
+.data-table td.text-muted {
+    color: var(--gray-500);
+}
+
+.data-table td strong {
+    font-weight: 600;
+    color: var(--gray-900);
+}
+
+/* Message Table Vide */
+.data-table .empty-message {
+    text-align: center;
+    padding: 3rem 2rem !important;
+    color: var(--gray-500);
+    font-style: italic;
+}
+
+/* Actions dans Table */
+.table-actions {
+    display: flex;
+    gap: 0.5rem;
+    justify-content: flex-end;
+}
+
+/* Recherche de Table */
+.search-box {
+    position: relative;
+    margin-bottom: 1rem;
+}
+
+.search-box input {
+    width: 100%;
+    max-width: 400px;
+    padding: 0.75rem 1rem;
+    border: 1px solid var(--gray-300);
+    border-radius: 8px;
+    font-size: 1rem;
+    transition: border-color 0.2s;
+}
+
+.search-box input:focus {
+    outline: none;
+    border-color: var(--primary-color);
+    box-shadow: 0 0 0 3px rgba(var(--primary-rgb, 66, 126, 234), 0.1);
+}
+
+.search-box input::placeholder {
+    color: var(--gray-400);
+}
+
+/* Pagination */
+.pagination {
+    display: flex;
+    justify-content: center;
+    gap: 0.5rem;
+    margin-top: 1.5rem;
+}
+
+.pagination button,
+.pagination a {
+    padding: 0.5rem 1rem;
+    border: 1px solid var(--gray-300);
+    background: var(--white-color);
+    color: var(--gray-700);
+    border-radius: 4px;
+    cursor: pointer;
+    text-decoration: none;
+    transition: all 0.2s;
+}
+
+.pagination button:hover,
+.pagination a:hover {
+    background: var(--primary-color);
+    color: var(--white-color);
+    border-color: var(--primary-color);
+}
+
+.pagination button.active,
+.pagination a.active {
+    background: var(--primary-color);
+    color: var(--white-color);
+    border-color: var(--primary-color);
+}
+
+.pagination button:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+}
+
+/* Filtres de Table */
+.filters-bar {
+    display: flex;
+    gap: 1rem;
+    align-items: center;
+    margin-bottom: 1.5rem;
+    flex-wrap: wrap;
+}
+
+.filter-group {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+}
+
+.filter-group label {
+    font-weight: 600;
+    color: var(--gray-700);
+    font-size: 0.9rem;
+}
+
+/* Totaux/Pieds de Table */
+.data-table tfoot {
+    background: var(--gray-100);
+    font-weight: 600;
+}
+
+.data-table tfoot td {
+    padding: 1rem;
+    border-top: 2px solid var(--primary-color);
+}
+
+/* États des Lignes */
+.data-table tr.selected {
+    background: var(--primary-light) !important;
+}
+
+.data-table tr.disabled {
+    opacity: 0.5;
+}
+
+.data-table tr.highlighted {
+    background: #fffacd !important;
+}
+
+/* Responsive */
+@media (max-width: 768px) {
+    .data-table {
+        font-size: 0.875rem;
+    }
+    
+    .data-table th,
+    .data-table td {
+        padding: 0.5rem;
+    }
+    
+    /* Cache certaines colonnes sur mobile */
+    .data-table th.hide-mobile,
+    .data-table td.hide-mobile {
+        display: none;
+    }
+    
+    .table-actions {
+        flex-direction: column;
+        align-items: flex-start;
+    }
+}
+
+/* Table en mode édition */
+.data-table.editable tbody tr {
+    cursor: pointer;
+}
+
+.data-table.editable tbody tr:hover {
+    background: var(--primary-light);
+}
+
+/* Colonne avec icône */
+.data-table .icon-col {
+    width: 50px;
+    text-align: center;
+}
+
+/* Colonne d'actions */
+.data-table .actions-col {
+    width: 120px;
+    text-align: right;
+}
+

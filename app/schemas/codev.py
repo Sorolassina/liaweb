@@ -5,7 +5,7 @@ from typing import Optional, List
 from datetime import datetime, date
 from pydantic import BaseModel, Field
 
-from app_lia_web.app.models.enums import (
+from ..models.enums import (
     StatutSeanceCodev, StatutPresentation, TypeContribution,
     StatutCycleCodev, StatutGroupeCodev, StatutMembreGroupe, StatutPresence
 )

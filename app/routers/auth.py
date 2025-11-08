@@ -9,15 +9,15 @@ from pathlib import Path
 import os
 from datetime import datetime, timezone
 
-from app_lia_web.core.database import get_session
-from app_lia_web.core.middleware import get_shared_session
-from app_lia_web.core.security import get_current_user, create_access_token, authenticate_user
-from app_lia_web.app.models.base import User
-from app_lia_web.app.models.enums import UserRole
-from app_lia_web.app.schemas import UserCreate, UserUpdate, UserResponse, LoginRequest, TokenResponse
-from app_lia_web.app.services import UserService
-from app_lia_web.app.templates import templates
-from app_lia_web.core.config import settings
+from ..core.database import get_session
+from ..core.middleware import get_shared_session
+from ..core.security import get_current_user, create_access_token, authenticate_user
+from ..models.base import User
+from ..models.enums import UserRole
+from ..schemas import UserCreate, UserUpdate, UserResponse, LoginRequest, TokenResponse
+from ..services import UserService
+from ..templates import templates
+from ..core.config import settings
 from datetime import datetime
 from fastapi.responses import HTMLResponse
 from fastapi.responses import RedirectResponse
@@ -219,7 +219,7 @@ async def profil_change_password(
             )
         
         # Mettre à jour le mot de passe
-        from app_lia_web.core.security import get_password_hash
+        from ..core.security import get_password_hash
         current_user.password_hash = get_password_hash(new_password)
         current_user.modifie_le = datetime.now(timezone.utc)
         
@@ -262,7 +262,7 @@ async def profil_photo(
         filename = f"user_{current_user.id}_profile{ext}"
         
         # Sauvegarder le fichier
-        from app_lia_web.core.path_config import path_config
+        from ..core.path_config import path_config
         upload_dir = path_config.UPLOAD_DIR / "profiles"
         upload_dir.mkdir(exist_ok=True)
         

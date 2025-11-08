@@ -4,7 +4,7 @@ Schémas Pydantic pour les candidats
 from pydantic import BaseModel, EmailStr, Field
 from typing import Optional
 from datetime import date
-from app_lia_web.app.models.enums import StatutHandicap
+from ..models.enums import StatutHandicap
 
 
 class CandidatBase(BaseModel):

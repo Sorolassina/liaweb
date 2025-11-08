@@ -74,20 +74,20 @@
                             <td>
                                 <div class="btn-group btn-group-sm">
                                     {% if schema_stats.get(programme.code) %}
-                                        <button class="btn btn-outline-info" onclick="showSchemaStats('{{ programme.code }}')" title="Statistiques">
+                                        <button class="btn btn-outline-info admin-action" onclick="showSchemaStats('{{ programme.code }}')" title="Statistiques">
                                             <i class="fas fa-chart-bar"></i>
                                         </button>
-                                        <button class="btn btn-outline-warning" onclick="migrateData('{{ programme.code }}')" title="Migrer les données">
+                                        <button class="btn btn-outline-warning admin-action" onclick="migrateData('{{ programme.code }}')" title="Migrer les données">
                                             <i class="fas fa-exchange-alt"></i>
                                         </button>
-                                        <button class="btn btn-outline-secondary" onclick="backupSchema('{{ programme.code }}')" title="Sauvegarder">
+                                        <button class="btn btn-outline-secondary admin-action" onclick="backupSchema('{{ programme.code }}')" title="Sauvegarder">
                                             <i class="fas fa-download"></i>
                                         </button>
-                                        <button class="btn btn-outline-danger" onclick="dropSchema('{{ programme.code }}')" title="Supprimer">
+                                        <button class="btn btn-outline-danger admin-action" onclick="dropSchema('{{ programme.code }}')" title="Supprimer">
                                             <i class="fas fa-trash"></i>
                                         </button>
                                     {% else %}
-                                        <button class="btn btn-outline-success" onclick="createSchema('{{ programme.code }}')" title="Créer">
+                                        <button class="btn btn-outline-success admin-action" onclick="createSchema('{{ programme.code }}')" title="Créer">
                                             <i class="fas fa-plus"></i>
                                         </button>
                                     {% endif %}

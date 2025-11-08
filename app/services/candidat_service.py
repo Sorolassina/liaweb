@@ -4,10 +4,10 @@ Service de gestion des candidats
 from typing import List, Optional, Dict, Any
 from sqlmodel import Session, select
 import logging
-from app_lia_web.app.models.base import Candidat, Entreprise
-from app_lia_web.app.models.preinscription import Preinscription
-from app_lia_web.app.schemas import CandidatCreate, CandidatUpdate, CandidatFiltres, PaginationParams
-from app_lia_web.core.program_schema_integration import safe_count_query, table_exists_anywhere
+from ..models.base import Candidat, Entreprise
+from ..models.preinscription import Preinscription
+from ..schemas import CandidatCreate, CandidatUpdate, CandidatFiltres, PaginationParams
+from ..core.program_schema_integration import safe_count_query, table_exists_anywhere
 
 logger = logging.getLogger(__name__)
 

@@ -4,12 +4,12 @@ from typing import List, Optional, Dict, Any
 from sqlmodel import Session, select, and_, or_
 from sqlalchemy import func
 
-from app_lia_web.app.models.base import Candidat, Entreprise, Programme, User
-from app_lia_web.app.models.rendez_vous import RendezVous
-from app_lia_web.app.models.inscription import Inscription
-from app_lia_web.app.models.enums import TypeRDV, StatutRDV
-from app_lia_web.app.schemas.rendez_vous_schemas import RendezVousCreate, RendezVousUpdate, RendezVousFilter
-from app_lia_web.core.program_schema_integration import table_exists_anywhere
+from ..models.base import Candidat, Entreprise, Programme, User
+from ..models.rendez_vous import RendezVous
+from ..models.inscription import Inscription
+from ..models.enums import TypeRDV, StatutRDV
+from ..schemas.rendez_vous_schemas import RendezVousCreate, RendezVousUpdate, RendezVousFilter
+from ..core.program_schema_integration import table_exists_anywhere
 
 class RendezVousService:
     """Service pour la gestion des rendez-vous"""

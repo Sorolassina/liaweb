@@ -6,19 +6,19 @@ from sqlmodel import Session, select
 from typing import List, Optional
 import logging
 
-from app_lia_web.core.database import get_session
-from app_lia_web.core.middleware import get_shared_session
-from app_lia_web.core.security import get_current_user
-from app_lia_web.core.program_schema_integration import safe_count_query, table_exists_anywhere
-from app_lia_web.app.models.base import User, Candidat, Entreprise
-from app_lia_web.app.models.preinscription import Preinscription
-from app_lia_web.app.models.enums import UserRole, StatutDossier
-from app_lia_web.app.schemas import (
+from ..core.database import get_session
+from ..core.middleware import get_shared_session
+from ..core.security import get_current_user
+from ..core.program_schema_integration import safe_count_query, table_exists_anywhere
+from ..models.base import User, Candidat, Entreprise
+from ..models.preinscription import Preinscription
+from ..models.enums import UserRole, StatutDossier
+from ..schemas import (
     CandidatCreate, CandidatUpdate, CandidatResponse,
     EntrepriseCreate, EntrepriseUpdate, EntrepriseResponse,
     CandidatFiltres, PaginationParams, PaginatedResponse
 )
-from app_lia_web.app.services import CandidatService, EntrepriseService
+from ..services import CandidatService, EntrepriseService
 
 router = APIRouter()
 
@@ -278,7 +278,7 @@ def changer_email_candidat(
     Nécessite des permissions administrateur et confirmation
     """
     try:
-        from app_lia_web.app.services import CandidatEmailService
+        from ..services import CandidatEmailService
         
         # Utiliser le service pour changer l'email
         result = CandidatEmailService.change_email_secure(
@@ -311,7 +311,7 @@ def get_email_history(
     Récupère l'historique des changements d'email pour un candidat
     """
     try:
-        from app_lia_web.app.services import CandidatEmailService
+        from ..services import CandidatEmailService
         
         # Utiliser le service pour récupérer l'historique
         result = CandidatEmailService.get_email_history(

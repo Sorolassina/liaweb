@@ -3,12 +3,12 @@ from typing import List, Optional, Set, Dict
 from sqlmodel import Session, select
 from datetime import datetime, timezone
 
-from app_lia_web.app.models.enums import UserRole
-from app_lia_web.app.models.permissions import (
+from ..models.enums import UserRole
+from ..models.permissions import (
     PermissionRole, PermissionUtilisateur, LogPermission,
     NiveauPermission, TypeRessource
 )
-from app_lia_web.app.models.base import User
+from ..models.base import User
 
 class PermissionService:
     """Service de gestion des permissions"""

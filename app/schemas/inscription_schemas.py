@@ -4,7 +4,7 @@ Schémas Pydantic pour les inscriptions
 from pydantic import BaseModel
 from typing import Optional
 from datetime import datetime
-from app_lia_web.app.models.enums import StatutDossier
+from ..models.enums import StatutDossier
 from .programme_schemas import ProgrammeResponse
 from .candidat_schemas import CandidatResponse
 from .user_schemas import UserResponse

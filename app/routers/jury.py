@@ -7,23 +7,23 @@ from sqlmodel import Session, select
 from typing import List, Optional
 from datetime import datetime, timezone
 
-from app_lia_web.core.database import get_session
-from app_lia_web.core.middleware import get_shared_session
-from app_lia_web.core.security import get_current_user
-from app_lia_web.core.program_schema_integration import table_exists_anywhere
+from ..core.database import get_session
+from ..core.middleware import get_shared_session
+from ..core.security import get_current_user
+from ..core.program_schema_integration import table_exists_anywhere
 import logging
-from app_lia_web.app.models.base import User, Programme, Candidat, Partenaire, ReorientationCandidat
-from app_lia_web.app.models.jury import DecisionJuryCandidat
-from app_lia_web.app.models.jury import Jury, MembreJury, DecisionJuryTable
-from app_lia_web.app.models.inscription import Inscription
-from app_lia_web.app.templates import templates
-from app_lia_web.core.config import settings
-from app_lia_web.app.models.enums import UserRole, DecisionJury
-from app_lia_web.app.schemas import (
+from ..models.base import User, Programme, Candidat, Partenaire, ReorientationCandidat
+from ..models.jury import DecisionJuryCandidat
+from ..models.jury import Jury, MembreJury, DecisionJuryTable
+from ..models.inscription import Inscription
+from ..templates import templates
+from ..core.config import settings
+from ..models.enums import UserRole, DecisionJury
+from ..schemas import (
     JuryCreate, JuryUpdate, JuryResponse,
     DecisionJuryCreate, DecisionJuryResponse
 )
-from app_lia_web.app.services import JuryService
+from ..services import JuryService
 
 router = APIRouter()
 
@@ -97,7 +97,7 @@ def jury_decisions_list(
 ):
     """Liste des décisions du jury"""
     try:
-        from app_lia_web.app.services import JuryDecisionService
+        from ..services import JuryDecisionService
         
         # Utiliser le service pour récupérer les décisions
         decisions = JuryDecisionService.get_decisions_list(
@@ -150,7 +150,7 @@ def create_jury_decision_web(
 ):
     """Créer une décision du jury"""
     try:
-        from app_lia_web.app.services import JuryDecisionService
+        from ..services import JuryDecisionService
         
         # Utiliser le service pour créer la décision
         decision_obj = JuryDecisionService.create_decision(
@@ -198,7 +198,7 @@ def update_jury_decision_web(
 ):
     """Mettre à jour une décision du jury"""
     try:
-        from app_lia_web.app.services import JuryDecisionService
+        from ..services import JuryDecisionService
         
         # Utiliser le service pour mettre à jour la décision
         decision_obj = JuryDecisionService.update_decision(
@@ -236,7 +236,7 @@ def delete_jury_decision_web(
 ):
     """Supprimer une décision du jury"""
     try:
-        from app_lia_web.app.services import JuryDecisionService
+        from ..services import JuryDecisionService
         
         # Utiliser le service pour supprimer la décision
         jury_id = JuryDecisionService.delete_decision(

@@ -4,8 +4,8 @@ Service de gestion des programmes
 from typing import List, Optional
 from sqlmodel import Session, select
 import logging
-from app_lia_web.app.models.base import Programme
-from app_lia_web.app.schemas import ProgrammeCreate, ProgrammeUpdate
+from ..models.base import Programme
+from ..schemas import ProgrammeCreate, ProgrammeUpdate
 
 logger = logging.getLogger(__name__)
 

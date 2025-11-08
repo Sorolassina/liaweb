@@ -4,19 +4,19 @@ from typing import List, Optional, Dict, Any
 from datetime import datetime, timezone, date
 import secrets
 import string
-from app_lia_web.core.database import get_session
-from app_lia_web.core.program_schema_integration import table_exists_anywhere
-from app_lia_web.app.models.seminaire import (
+from ..core.database import get_session
+from ..core.program_schema_integration import table_exists_anywhere
+from ..models.seminaire import (
     Seminaire, SessionSeminaire, InvitationSeminaire, 
     PresenceSeminaire, LivrableSeminaire, RenduLivrable
 )
-from app_lia_web.app.models.base import Inscription, Programme, User, Promotion, Candidat
-from app_lia_web.app.models.enums import StatutSeminaire, TypeInvitation, StatutPresence
-from app_lia_web.app.schemas.seminaire_schemas import (
+from ..models.base import Inscription, Programme, User, Promotion, Candidat
+from ..models.enums import StatutSeminaire, TypeInvitation, StatutPresence
+from ..schemas.seminaire_schemas import (
     SeminaireCreate, SeminaireUpdate, SessionSeminaireCreate,
     InvitationSeminaireCreate, PresenceSeminaireCreate, LivrableSeminaireCreate
 )
-from app_lia_web.app.services.email_service import EmailService
+from .email_service import EmailService
 
 class SeminaireService:
     def __init__(self):
@@ -273,7 +273,7 @@ class SeminaireService:
             
             # Supprimer manuellement les données liées dans l'ordre correct
             # 1. Supprimer les livrables du séminaire
-            from app_lia_web.app.models.seminaire import LivrableSeminaire
+            from ..models.seminaire import LivrableSeminaire
             livrables_query = select(LivrableSeminaire).where(LivrableSeminaire.seminaire_id == seminaire_id)
             livrables = db.exec(livrables_query).all()
             for livrable in livrables:
@@ -691,7 +691,7 @@ class SeminaireService:
         subject = f"Invitation au séminaire : {seminaire.titre}"
         
         # Générer les URLs dynamiquement
-        from app_lia_web.core.config import settings
+        from ..core.config import settings
         base_url = settings.get_base_url_for_email()
         
         template_data = {

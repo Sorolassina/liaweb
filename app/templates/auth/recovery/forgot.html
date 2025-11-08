@@ -1,0 +1,371 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Mot de passe oublié - {{ app_name }}</title>
+    
+    <!-- Favicon -->
+    <link rel="icon" type="image/x-icon" href="{{ static_versioned_url(static_url('favicon.ico')) }}">
+    
+    <!-- CSS de base -->
+    <link rel="stylesheet" href="{{ static_versioned_url(static_url('css/base.css')) }}">
+    <link rel="stylesheet" href="{{ static_versioned_url(static_url('css/theme.css')) }}">
+    <link rel="stylesheet" href="{{ static_versioned_url(static_url('css/buttons.css')) }}">
+    
+    
+    <style>
+        /* ========================================
+           STYLES SPÉCIFIQUES À LA PAGE DE RÉCUPÉRATION
+           ======================================== */
+        
+        .recovery-container {
+            height: 100vh;
+            width: 100vw;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            /* Image de fond (changée dynamiquement par JavaScript) */
+            background-size: cover;
+            background-position: center;
+            background-repeat: no-repeat;
+            transition: background-image 1s ease-in-out;
+            padding: 20px;
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            overflow: hidden;
+        }
+        
+        .recovery-card {
+            background: rgba(255, 255, 255, 0.15);  /* Blanc semi-transparent */
+            backdrop-filter: blur(10px);  /* Effet de flou (verre dépoli) */
+            -webkit-backdrop-filter: blur(10px);  /* Safari */
+            border-radius: 20px;
+            box-shadow: 0 8px 32px rgba(0, 0, 0, 0.2);
+            border: 1px solid rgba(255, 255, 255, 0.3);
+            padding: 40px;
+            width: 100%;
+            max-width: 450px;
+            text-align: center;
+        }
+        
+        .recovery-header {
+            margin-bottom: 30px;
+        }
+        
+        /* Horloge style Windows Lock Screen */
+        .clock-widget {
+            position: absolute;
+            top: 50px;
+            left: 50px;
+            color: white;
+            text-shadow: 0 2px 10px rgba(0, 0, 0, 0.5);
+            z-index: 10;
+            font-family: 'Segoe UI', sans-serif;
+            user-select: none;
+        }
+        
+        /* Copyright */
+        .copyright {
+            position: absolute;
+            bottom: 20px;
+            right: 30px;
+            color: white;
+            font-size: 12px;
+            text-shadow: 0 1px 3px rgba(0, 0, 0, 0.5);
+            opacity: 0.8;
+            font-family: 'Segoe UI', sans-serif;
+            z-index: 10;
+        }
+        
+        .clock-time {
+            font-size: 6rem;
+            font-weight: 200;
+            line-height: 1;
+            letter-spacing: -2px;
+            margin-bottom: 0.25rem;
+        }
+        
+        .clock-date {
+            font-size: 1.5rem;
+            font-weight: 300;
+            opacity: 0.95;
+            letter-spacing: 0.5px;
+        }
+        
+        .recovery-logo {
+            color: var(--white-color);
+            font-size: 28px;
+            font-weight: bold;
+            margin-bottom: 10px;
+        }
+        
+        .recovery-title {
+            color: var(--white-color);
+            font-size: 24px;
+            margin-bottom: 10px;
+        }
+        
+        .recovery-subtitle {
+            color: var(--white-color);
+            font-size: 14px;
+            margin-bottom: 30px;
+        }
+        
+        .form-group {
+            margin-bottom: 20px;
+            text-align: left;
+        }
+        
+        .form-label {
+            display: block;
+            margin-bottom: 8px;
+            color: var(--accent-color);
+            font-weight: 500;
+        }
+        
+        .form-control {
+            width: 100%;
+            padding: 12px 15px;
+            border: 2px solid #e0e0e0;
+            border-radius: 8px;
+            font-size: 16px;
+            transition: border-color 0.3s ease;
+            box-sizing: border-box;
+        }
+        
+        .form-control:focus {
+            outline: none;
+            border-color: var(--primary-color);
+            box-shadow: 0 0 0 3px rgba(255, 211, 0, 0.1);
+        }
+        
+        .btn-recovery {
+            width: 100%;
+            padding: 15px;
+            background: var(--accent-color);
+            color: var(--white-color);
+            border: none;
+            border-radius: 8px;
+            font-size: 16px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            margin-top: 10px;
+        }
+        
+        .btn-recovery:hover {
+            background: var(--secondary-color);
+            transform: translateY(-2px);
+            box-shadow: 0 5px 15px rgba(0,0,0,0.2);
+        }
+        
+        .btn-recovery:disabled {
+            background: #ccc;
+            cursor: not-allowed;
+            transform: none;
+            box-shadow: none;
+        }
+        
+        .alert {
+            padding: 15px;
+            border-radius: 8px;
+            margin-bottom: 20px;
+            font-size: 14px;
+        }
+        
+        .alert-success {
+            background: var(--success-light);
+            color: var(--success-dark);
+            border: 1px solid var(--success-border);
+        }
+
+        .alert-error {
+            background: var(--danger-light);
+            color: var(--danger-dark);
+            border: 1px solid var(--danger-border);
+        }
+
+        .alert-info {
+            background: var(--info-light);
+            color: var(--info-dark);
+            border: 1px solid var(--info-border);
+        }
+        
+        .back-to-login {
+            margin-top: 20px;
+            text-align: center;
+        }
+        
+        .back-to-login a {
+            color: var(--primary-color);
+            text-decoration: none;
+            font-weight: 500;
+        }
+        
+        .back-to-login a:hover {
+            text-decoration: underline;
+        }
+        
+        .help-text {
+            font-size: 12px;
+            color: var(--white-color);
+            margin-top: 10px;
+            text-align: left;
+        }
+        
+        @media (max-width: 480px) {
+            .recovery-card {
+                padding: 30px 20px;
+                margin: 10px;
+            }
+            
+            .recovery-title {
+                font-size: 20px;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="recovery-container">
+        
+        <!-- Horloge style Windows -->
+        <div class="clock-widget">
+            <div class="clock-time" id="clock-time">00:00</div>
+            <div class="clock-date" id="clock-date">Chargement...</div>
+        </div>
+        
+        <!-- Copyright -->
+        <div class="copyright">
+            © Soro Lassina W.
+        </div>
+        
+        <div class="recovery-card">
+            <div class="recovery-header">
+                <img src="{{ static_versioned_url(static_url('images/Logo-accueil.png')) }}" alt="Logo" style="width: 80px; height: 80px; margin: 0 auto 15px auto; display: block; border-radius: 50%; object-fit: cover; box-shadow: 0 4px 12px rgba(0,0,0,0.15);">
+                <div class="recovery-logo">{{ app_name }}</div>
+                <h1 class="recovery-title">Mot de passe oublié</h1>
+                <p class="recovery-subtitle">Saisissez votre email pour recevoir un code de récupération</p>
+            </div>
+            
+            {% if error %}
+            <div class="alert alert-error">
+                <i class="fas fa-exclamation-triangle"></i> {{ error }}
+            </div>
+            {% endif %}
+            
+            {% if message %}
+            <div class="alert alert-{{ message_type or 'info' }}">
+                <i class="fas fa-info-circle"></i> {{ message }}
+            </div>
+            {% endif %}
+            
+            <form method="POST" action="{{ url_for('request_password_recovery_post') }}">
+                <div class="form-group">
+                    <label for="email" class="form-label">
+                        <i class="fas fa-envelope"></i> Adresse email
+                    </label>
+                    <input 
+                        type="email" 
+                        id="email" 
+                        name="email" 
+                        class="form-control" 
+                        placeholder="votre.email@example.com"
+                        required
+                        autocomplete="email"
+                    >
+                    <div class="help-text">
+                        Saisissez l'adresse email associée à votre compte
+                    </div>
+                </div>
+                
+                <button type="submit" class="btn-recovery">
+                    <i class="fas fa-paper-plane"></i> Envoyer le code de récupération
+                </button>
+            </form>
+            
+            <div class="back-to-login">
+                <a href="{{ url_for('login_page') }}">
+                    <i class="fas fa-arrow-left"></i> Retour à la connexion
+                </a>
+            </div>
+        </div>
+    </div>
+    
+    <!-- Font Awesome pour les icônes -->
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
+    
+    <script>
+        // Animation du formulaire
+        document.addEventListener('DOMContentLoaded', function() {
+            const form = document.querySelector('form');
+            const submitBtn = document.querySelector('.btn-recovery');
+            
+            form.addEventListener('submit', function() {
+                submitBtn.disabled = true;
+                submitBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Envoi en cours...';
+            });
+        });
+        
+        // ====================================
+        // HORLOGE TEMPS RÉEL (style Windows)
+        // ====================================
+        function updateClock() {
+            const now = new Date();
+            
+            // Heure (format 24h)
+            const hours = now.getHours().toString().padStart(2, '0');
+            const minutes = now.getMinutes().toString().padStart(2, '0');
+            const timeString = `${hours}:${minutes}`;
+            
+            // Date (format français)
+            const options = { 
+                weekday: 'long', 
+                year: 'numeric', 
+                month: 'long', 
+                day: 'numeric' 
+            };
+            const dateString = now.toLocaleDateString('fr-FR', options);
+            const dateFormatted = dateString.charAt(0).toUpperCase() + dateString.slice(1);
+            
+            // Mettre à jour l'affichage
+            const timeEl = document.getElementById('clock-time');
+            const dateEl = document.getElementById('clock-date');
+            if (timeEl) timeEl.textContent = timeString;
+            if (dateEl) dateEl.textContent = dateFormatted;
+        }
+        
+        // Mettre à jour immédiatement et toutes les secondes
+        updateClock();
+        setInterval(updateClock, 1000);
+        
+        // ====================================
+        // ROTATION DES IMAGES DE FOND
+        // ====================================
+        const backgroundImages = [
+            '{{ static_url("images/backgroundlogin/alexander-slattery-LI748t0BK8w-unsplash.jpg") }}',
+            '{{ static_url("images/backgroundlogin/christian-joudrey-u_nsiSvPEak-unsplash.jpg") }}',
+            '{{ static_url("images/backgroundlogin/jonatan-pie-3l3RwQdHRHg-unsplash.jpg") }}',
+            '{{ static_url("images/BGLogin.jpg") }}'
+        ];
+        
+        let currentImageIndex = 0;
+        const recoveryContainer = document.querySelector('.recovery-container');
+        
+        function changeBackgroundImage() {
+            const imageUrl = backgroundImages[currentImageIndex];
+            recoveryContainer.style.backgroundImage = `url('${imageUrl}')`;
+            currentImageIndex = (currentImageIndex + 1) % backgroundImages.length;
+        }
+        
+        // Changer l'image immédiatement
+        changeBackgroundImage();
+        
+        // Changer l'image toutes les 10 secondes
+        setInterval(changeBackgroundImage, 10000);
+    </script>
+</body>
+</html>

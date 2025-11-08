@@ -4,8 +4,8 @@ Service de nettoyage automatique pour les codes de récupération expirés
 import logging
 from datetime import datetime, timezone
 from sqlmodel import Session, select
-from app_lia_web.core.database import get_session
-from app_lia_web.app.services.password_recovery_service import PasswordRecoveryService
+from ..core.database import get_session
+from .password_recovery_service import PasswordRecoveryService
 
 logger = logging.getLogger(__name__)
 

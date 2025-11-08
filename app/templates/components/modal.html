@@ -1,0 +1,38 @@
+{# Composant Modal Réutilisable #}
+{% macro modal(id, title, size='md') %}
+<div id="{{ id }}" class="modal-{{ size }}">
+    <div class="modal-content modal-{{ size }}">
+        <div class="modal-header">
+            <h3 class="modal-title">{{ title | safe }}</h3>
+            <button class="modal-close" onclick="closeModals()" title="Fermer">&times;</button>
+        </div>
+        <div class="modal-body">
+            {{ caller() }}
+        </div>
+    </div>
+</div>
+{% endmacro %}
+
+{# Modal avec Footer #}
+{% macro modal_with_footer(id, title, size='md', submit_text='Enregistrer', cancel_text='Annuler') %}
+<div id="{{ id }}" class="modal-{{ size }}">
+    <div class="modal-content modal-{{ size }}">
+        <div class="modal-header">
+            <h3 class="modal-title">{{ title | safe }}</h3>
+            <button class="modal-close" onclick="closeModals()" title="Fermer">&times;</button>
+        </div>
+        <div class="modal-body">
+            {{ caller() }}
+        </div>
+        <div class="modal-footer">
+            <button type="button" class="btn btn-secondary" onclick="closeModals()">{{ cancel_text }}</button>
+            {% if submit_text != 'Fermer' %}
+            <button type="submit" form="{{ id }}-form" class="btn btn-primary">{{ submit_text | safe }}</button>
+            {% else %}
+            <button type="button" class="btn btn-secondary" onclick="closeModals()">{{ submit_text }}</button>
+            {% endif %}
+        </div>
+    </div>
+</div>
+{% endmacro %}
+

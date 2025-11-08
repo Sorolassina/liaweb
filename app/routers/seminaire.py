@@ -7,21 +7,21 @@ from datetime import datetime, date, timezone
 import os
 import uuid
 
-from app_lia_web.core.database import get_session
-from app_lia_web.core.middleware import get_shared_session
-from app_lia_web.core.security import get_current_user
-from app_lia_web.core.path_config import path_config
-from app_lia_web.app.services.file_upload_service import FileUploadService
-from app_lia_web.app.models.base import User, Programme
-from app_lia_web.app.models.seminaire import Seminaire, SessionSeminaire, InvitationSeminaire, PresenceSeminaire, LivrableSeminaire, RenduLivrable
-from app_lia_web.app.models.enums import StatutSeminaire, TypeInvitation, StatutPresence, MethodeSignature
-from app_lia_web.app.schemas.seminaire_schemas import (
+from ..core.database import get_session
+from ..core.middleware import get_shared_session
+from ..core.security import get_current_user
+from ..core.path_config import path_config
+from ..services.file_upload_service import FileUploadService
+from ..models.base import User, Programme
+from ..models.seminaire import Seminaire, SessionSeminaire, InvitationSeminaire, PresenceSeminaire, LivrableSeminaire, RenduLivrable
+from ..models.enums import StatutSeminaire, TypeInvitation, StatutPresence, MethodeSignature
+from ..schemas.seminaire_schemas import (
     SeminaireCreate, SeminaireUpdate, SessionSeminaireCreate,
     InvitationSeminaireCreate, PresenceSeminaireCreate, LivrableSeminaireCreate,
     SeminaireFilter, PresenceFilter
 )
-from app_lia_web.app.services.seminaire_service import SeminaireService
-from app_lia_web.app.templates import templates
+from ..services.seminaire_service import SeminaireService
+from ..templates import templates
 
 router = APIRouter()
 seminaire_service = SeminaireService()
@@ -58,7 +58,7 @@ async def liste_seminaires(
         print(f"⚠️ [WARNING] Erreur lors de la récupération des programmes: {e}")
         programmes = []
     
-    return templates.TemplateResponse("seminaires/liste.html", {
+    return templates.TemplateResponse("pages/seminaires/liste.html", {
         "request": request,
         "seminaires": seminaires,
         "stats": stats,
@@ -75,10 +75,10 @@ async def nouveau_seminaire_form(
     current_user: User = Depends(get_current_user)
 ):
     """Formulaire de création d'un nouveau séminaire"""
-    from app_lia_web.app.models.base import Programme
+    from ..models.base import Programme
     
     programmes = db.exec(select(Programme)).all()
-    return templates.TemplateResponse("seminaires/nouveau.html", {
+    return templates.TemplateResponse("pages/seminaires/nouveau.html", {
         "request": request,
         "programmes": programmes,
         "current_user": current_user,
@@ -135,7 +135,7 @@ async def detail_seminaire(
     invitations = seminaire_service.get_invitations_seminaire(seminaire_id, db)
     livrables = seminaire_service.get_livrables_seminaire(seminaire_id, db)
     
-    return templates.TemplateResponse("seminaires/detail.html", {
+    return templates.TemplateResponse("pages/seminaires/detail.html", {
         "request": request,
         "seminaire": seminaire,
         "sessions": sessions,
@@ -157,7 +157,7 @@ async def nouvelle_session_form(
     if not seminaire:
         raise HTTPException(status_code=404, detail="Séminaire non trouvé")
     
-    return templates.TemplateResponse("seminaires/session_nouvelle.html", {
+    return templates.TemplateResponse("pages/seminaires/session_nouvelle.html", {
         "request": request,
         "seminaire": seminaire,
         "current_user": current_user,
@@ -224,8 +224,8 @@ async def invitations_seminaire(
     invitations = seminaire_service.get_invitations_seminaire(seminaire_id, db)
     
     # Récupérer les candidats disponibles pour invitation (exclure ceux déjà invités)
-    from app_lia_web.app.models.inscription import Inscription
-    from app_lia_web.app.models.base import Candidat
+    from ..models.inscription import Inscription
+    from ..models.base import Candidat
     from sqlmodel import select
     
     # Récupérer les IDs des inscriptions déjà invitées
@@ -246,7 +246,7 @@ async def invitations_seminaire(
     
     inscriptions = db.exec(inscriptions_query).all()
     
-    return templates.TemplateResponse("seminaires/invitations.html", {
+    return templates.TemplateResponse("pages/seminaires/invitations.html", {
         "request": request,
         "seminaire": seminaire,
         "invitations": invitations,
@@ -296,7 +296,7 @@ async def generer_liens_emargement(
     for i, inv in enumerate(invitations):
         print(f"  {i+1}. ID: {inv.id}, Candidat: {inv.inscription.candidat.nom if inv.inscription else 'N/A'}")
     
-    return templates.TemplateResponse("seminaires/generer_liens_emargement.html", {
+    return templates.TemplateResponse("pages/seminaires/generer_liens_emargement.html", {
         "request": request,
         "seminaire": seminaire,
         "session": session,
@@ -325,7 +325,7 @@ async def envoyer_liens_emargement(
     for invitation in invitations:
         try:
             # Générer le lien d'émargement
-            from app_lia_web.core.config import settings
+            from ..core.config import settings
             base_url = settings.get_base_url_for_email()
             emargement_url = f"{base_url}/seminaires/{seminaire_id}/sessions/{session_id}/emargement/lien/{invitation.token_invitation}"
             
@@ -380,7 +380,7 @@ async def emargement_lien(
     # Vérifier si déjà présent
     presence = seminaire_service.get_presence_candidat(session_id, invitation.inscription_id, db)
     
-    return templates.TemplateResponse("seminaires/emargement_lien.html", {
+    return templates.TemplateResponse("pages/seminaires/emargement_lien.html", {
         "request": request,
         "seminaire": invitation.seminaire,
         "session": session,
@@ -436,7 +436,7 @@ async def signer_emargement_lien(
     # Récupérer la session pour le template
     session_obj = seminaire_service.get_session(session_id, db)
     
-    return templates.TemplateResponse("seminaires/emargement_confirmation.html", {
+    return templates.TemplateResponse("pages/seminaires/emargement_confirmation.html", {
         "request": request,
         "seminaire": invitation.seminaire,
         "session": session_obj,
@@ -462,7 +462,7 @@ async def emargement_session(
     presences_data = seminaire_service.get_presences_with_invitation_details(seminaire_id, session_id, db)
     stats = seminaire_service.get_presence_stats_with_invitations(seminaire_id, session_id, db)
     
-    return templates.TemplateResponse("seminaires/emargement.html", {
+    return templates.TemplateResponse("pages/seminaires/emargement.html", {
         "request": request,
         "seminaire": seminaire,
         "session": session,
@@ -514,7 +514,7 @@ async def livrables_seminaire(
     
     livrables = seminaire_service.get_livrables_seminaire(seminaire_id, db)
     
-    return templates.TemplateResponse("seminaires/livrables.html", {
+    return templates.TemplateResponse("pages/seminaires/livrables.html", {
         "request": request,
         "seminaire": seminaire,
         "livrables": livrables,
@@ -585,7 +585,7 @@ async def livrables_candidat(
     # Récupérer les rendus du candidat
     rendus = seminaire_service.get_rendus_candidat(inscription.id, db)
     
-    return templates.TemplateResponse("seminaires/livrables_candidat.html", {
+    return templates.TemplateResponse("pages/seminaires/livrables_candidat.html", {
         "request": request,
         "seminaire": seminaire,
         "inscription": inscription,
@@ -677,8 +677,8 @@ async def emargement_direct(
     presences = seminaire_service.get_presences_for_direct_emargement(seminaire_id, session_id, db)
     
     # Récupérer toutes les invitations pour afficher tous les candidats
-    from app_lia_web.app.models.seminaire import InvitationSeminaire
-    from app_lia_web.app.models.inscription import Inscription
+    from ..models.seminaire import InvitationSeminaire
+    from ..models.inscription import Inscription
     from sqlmodel import select
     from sqlalchemy.orm import selectinload
     
@@ -687,7 +687,7 @@ async def emargement_direct(
     ).where(InvitationSeminaire.seminaire_id == seminaire_id)
     invitations = db.exec(invitations_query).all()
     
-    return templates.TemplateResponse("seminaires/emargement_direct.html", {
+    return templates.TemplateResponse("pages/seminaires/emargement_direct.html", {
         "request": request, "seminaire": seminaire, "session": session_obj,
         "presences": presences,
         "invitations": invitations
@@ -766,7 +766,7 @@ async def invitation_page(
     if not seminaire:
         raise HTTPException(status_code=404, detail="Séminaire non trouvé")
     
-    return templates.TemplateResponse("seminaires/invitation_public.html", {
+    return templates.TemplateResponse("pages/seminaires/invitation_public.html", {
         "request": request,
         "invitation": invitation,
         "seminaire": seminaire
@@ -784,7 +784,7 @@ async def accepter_invitation(
         raise HTTPException(status_code=404, detail="Invitation non trouvée")
     
     # Retourner une page HTML de confirmation
-    return templates.TemplateResponse("seminaires/invitation_confirmation.html", {
+    return templates.TemplateResponse("pages/seminaires/invitation_confirmation.html", {
         "request": request,
         "success": True,
         "message": "Invitation acceptée avec succès !",
@@ -804,7 +804,7 @@ async def refuser_invitation(
         raise HTTPException(status_code=404, detail="Invitation non trouvée")
     
     # Retourner une page HTML de confirmation
-    return templates.TemplateResponse("seminaires/invitation_confirmation.html", {
+    return templates.TemplateResponse("pages/seminaires/invitation_confirmation.html", {
         "request": request,
         "success": False,
         "message": "Invitation refusée",

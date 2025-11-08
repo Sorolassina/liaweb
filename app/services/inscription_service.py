@@ -6,12 +6,12 @@ from sqlmodel import Session, select
 from datetime import datetime, timezone
 import logging
 
-from app_lia_web.app.models.inscription import Inscription
-from app_lia_web.app.models.preinscription import Preinscription
-from app_lia_web.app.models.base import Programme, EtapePipeline, AvancementEtape
-from app_lia_web.app.models.enums import StatutDossier, StatutEtape
-from app_lia_web.app.schemas import InscriptionCreate
-from app_lia_web.core.program_schema_integration import table_exists_anywhere
+from ..models.inscription import Inscription
+from ..models.preinscription import Preinscription
+from ..models.base import Programme, EtapePipeline, AvancementEtape
+from ..models.enums import StatutDossier, StatutEtape
+from ..schemas import InscriptionCreate
+from ..core.program_schema_integration import table_exists_anywhere
 
 logger = logging.getLogger(__name__)
 
@@ -119,7 +119,7 @@ class InscriptionService:
             raise ValueError("Inscription introuvable")
         
         # Récupérer le candidat
-        from app_lia_web.app.models.base import Candidat
+        from ..models.base import Candidat
         candidat = session.get(Candidat, inscription.candidat_id)
         if not candidat:
             raise ValueError("Candidat introuvable")
@@ -133,7 +133,7 @@ class InscriptionService:
         
         # Mettre à jour les données entreprise si fournies
         if enterprise_data:
-            from app_lia_web.app.models.base import Entreprise
+            from ..models.base import Entreprise
             entreprise = session.get(Entreprise, candidat.entreprise_id) if candidat.entreprise_id else None
             
             if entreprise:
@@ -154,8 +154,8 @@ class InscriptionService:
         """
         Récupère les données de contexte pour les inscriptions
         """
-        from app_lia_web.app.models.base import User, Promotion, Partenaire, Groupe
-        from app_lia_web.app.models.enums import UserRole
+        from ..models.base import User, Promotion, Partenaire, Groupe
+        from ..models.enums import UserRole
         
         # Récupérer le programme
         programme = session.exec(select(Programme).where(Programme.code == programme_code)).first()

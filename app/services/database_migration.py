@@ -7,8 +7,8 @@ from sqlalchemy import create_engine, MetaData, Table, Column, Enum as SQLEnum
 from sqlalchemy.dialects.postgresql import ENUM
 from sqlalchemy.exc import ProgrammingError
 
-from app_lia_web.core.config import settings
-from app_lia_web.app.models.enums import TypeDocument, UserRole, StatutPresence, TypeUtilisateur, StatutDossier, DecisionJury
+from ..core.config import settings
+from ..models.enums import TypeDocument, UserRole, StatutPresence, TypeUtilisateur, StatutDossier, DecisionJury
 
 logger = logging.getLogger(__name__)
 
@@ -22,17 +22,14 @@ class DatabaseMigrationService:
     def migrate_database(self) -> Dict[str, Any]:
         """Effectue toutes les migrations nécessaires"""
         migration_results = {
-            "enums_updated": [],
             "tables_created": [],
             "columns_added": [],
             "errors": []
         }
         
         try:
-            # 1. Migrer les enums
-            self._migrate_enums(migration_results)
             
-            # 2. Migrer les tables
+            # 1. Migrer les tables
             self._migrate_tables(migration_results)
             
             # 3. Migrer les colonnes
@@ -46,96 +43,7 @@ class DatabaseMigrationService:
             
         return migration_results
     
-    def _migrate_enums(self, results: Dict[str, Any]):
-        """Migre les enums PostgreSQL"""
-        logger.info("🔄 Vérification des enums...")
-        
-        # Mapping des enums Python vers PostgreSQL
-        enum_mappings = {
-            'typedocument': {
-                'values': [e.value for e in TypeDocument],
-                'description': 'Types de documents'
-            },
-            'userrole': {
-                'values': [e.value for e in UserRole],
-                'description': 'Rôles utilisateurs'
-            },
-            'statutpresence': {
-                'values': [e.value for e in StatutPresence],
-                'description': 'Statuts de présence'
-            },
-            'typeutilisateur': {
-                'values': [e.value for e in TypeUtilisateur],
-                'description': 'Types d\'utilisateurs'
-            },
-            'statutdossier': {
-                'values': [e.value for e in StatutDossier],
-                'description': 'Statuts de dossier'
-            },
-            'decisionjury': {
-                'values': [e.value for e in DecisionJury],
-                'description': 'Décisions de jury'
-            }
-        }
-        
-        for enum_name, config in enum_mappings.items():
-            try:
-                self._update_enum(enum_name, config['values'], results)
-            except Exception as e:
-                logger.error(f"Erreur lors de la migration de l'enum {enum_name}: {e}")
-                results["errors"].append(f"Enum {enum_name}: {str(e)}")
-    
-    def _update_enum(self, enum_name: str, expected_values: List[str], results: Dict[str, Any]):
-        """Met à jour un enum spécifique"""
-        try:
-            # Vérifier si l'enum existe
-            enum_exists_query = text("""
-                SELECT EXISTS (
-                    SELECT 1 FROM pg_type 
-                    WHERE typname = :enum_name
-                )
-            """)
-            
-            enum_exists = self.session.exec(enum_exists_query, {"enum_name": enum_name}).first()
-            
-            if not enum_exists:
-                logger.info(f"📝 Création de l'enum {enum_name}")
-                # Créer l'enum
-                create_enum_query = text(f"""
-                    CREATE TYPE {enum_name} AS ENUM ({', '.join([f"'{v}'" for v in expected_values])})
-                """)
-                self.session.exec(create_enum_query)
-                results["enums_updated"].append(f"Créé: {enum_name}")
-            else:
-                # Vérifier les valeurs existantes
-                existing_values_query = text("""
-                    SELECT enumlabel FROM pg_enum 
-                    WHERE enumtypid = (SELECT oid FROM pg_type WHERE typname = :enum_name)
-                    ORDER BY enumlabel
-                """)
-                
-                existing_values = [row[0] for row in self.session.exec(existing_values_query, {"enum_name": enum_name}).all()]
-                
-                # Ajouter les valeurs manquantes
-                missing_values = set(expected_values) - set(existing_values)
-                
-                if missing_values:
-                    logger.info(f"📝 Ajout de valeurs à l'enum {enum_name}: {missing_values}")
-                    
-                    for value in missing_values:
-                        add_value_query = text(f"ALTER TYPE {enum_name} ADD VALUE :value")
-                        self.session.exec(add_value_query, {"value": value})
-                    
-                    results["enums_updated"].append(f"Mis à jour: {enum_name} (+{len(missing_values)} valeurs)")
-                else:
-                    logger.info(f"✅ Enum {enum_name} à jour")
-            
-            self.session.commit()
-            
-        except Exception as e:
-            self.session.rollback()
-            raise e
-    
+   
     def _migrate_tables(self, results: Dict[str, Any]):
         """Migre les tables (création si nécessaire)"""
         logger.info("🔄 Vérification des tables...")
@@ -156,67 +64,122 @@ class DatabaseMigrationService:
                 logger.error(f"Erreur lors de la vérification de la table {table_name}: {e}")
     
     def _migrate_columns(self, results: Dict[str, Any]):
-        """Migre les colonnes (ajout si nécessaire)"""
+        """Migre les colonnes (ajout si nécessaire) en comparant les modèles SQLModel avec les tables existantes"""
         logger.info("🔄 Vérification des colonnes...")
-        
-        # Mapping des colonnes critiques à vérifier
-        critical_columns = {
-            'user': ['role', 'type_utilisateur', 'actif'],
-            'programme': ['statut'],
-            'document': ['type_document'],
-            'preinscription': ['statut'],
-            'jury': ['decision']
-        }
         
         inspector = inspect(self.engine)
         
-        for table_name, expected_columns in critical_columns.items():
+        # Importer les modèles publics
+        from ..models.base import (
+            User, Programme, Partenaire, Groupe, PasswordRecoveryCode,
+            ProgrammeUtilisateur, Promotion, ActivityLog, Conversation, Message
+        )
+        
+        # Mapping des tables publiques à leurs modèles SQLModel
+        public_models = {
+            'user': User,
+            'programme': Programme,
+            'partenaire': Partenaire,
+            'groupe': Groupe,
+            'password_recovery_code': PasswordRecoveryCode,
+            'programme_utilisateur': ProgrammeUtilisateur,
+            'promotion': Promotion,
+            'activity_log': ActivityLog,
+            'conversation': Conversation,
+            'message': Message,
+        }
+        
+        for table_name, model_class in public_models.items():
             try:
                 if inspector.has_table(table_name):
-                    existing_columns = [col['name'] for col in inspector.get_columns(table_name)]
-                    missing_columns = set(expected_columns) - set(existing_columns)
+                    # Récupérer les colonnes existantes dans la base
+                    existing_columns = {col['name']: str(col['type']) for col in inspector.get_columns(table_name)}
                     
+                    # Récupérer les colonnes attendues depuis le modèle SQLModel
+                    model_columns = {}
+                    if hasattr(model_class, '__table__'):
+                        for col_name, col in model_class.__table__.columns.items():
+                            # Convertir le type SQLAlchemy en string SQL
+                            sql_type = str(col.type)
+                            # Convertir les ENUM en VARCHAR pour compatibilité
+                            if 'ENUM' in sql_type.upper() or hasattr(col.type, 'enums'):
+                                sql_type = "VARCHAR(50)"
+                            elif 'TEXT' in sql_type.upper():
+                                sql_type = "TEXT"
+                            elif 'INTEGER' in sql_type.upper() or 'INT' in sql_type.upper():
+                                sql_type = "INTEGER"
+                            elif 'BOOLEAN' in sql_type.upper() or 'BOOL' in sql_type.upper():
+                                sql_type = "BOOLEAN"
+                            elif 'DATE' in sql_type.upper():
+                                sql_type = "DATE"
+                            elif 'TIMESTAMP' in sql_type.upper():
+                                sql_type = "TIMESTAMP WITH TIME ZONE"
+                            elif 'FLOAT' in sql_type.upper() or 'REAL' in sql_type.upper():
+                                sql_type = "REAL"
+                            elif 'NUMERIC' in sql_type.upper() or 'DECIMAL' in sql_type.upper():
+                                sql_type = "NUMERIC"
+                            else:
+                                # Garder le type original si c'est déjà une string SQL (ex: VARCHAR(255))
+                                sql_type = sql_type
+                            
+                            model_columns[col_name] = sql_type
+                    
+                    # Trouver les colonnes manquantes
+                    missing_columns = {col: sql_type for col, sql_type in model_columns.items() if col not in existing_columns}
+                    
+                    # Ajouter les colonnes manquantes
                     if missing_columns:
-                        logger.warning(f"⚠️ Colonnes manquantes dans {table_name}: {missing_columns}")
-                        results["errors"].append(f"Colonnes manquantes dans {table_name}: {missing_columns}")
+                        logger.info(f"🔧 Ajout de {len(missing_columns)} colonne(s) manquante(s) dans {table_name}: {list(missing_columns.keys())}")
+                        for col_name, sql_type in missing_columns.items():
+                            try:
+                                col_def = model_class.__table__.columns[col_name]
+                                
+                                # Construire la clause DEFAULT si nécessaire
+                                default_clause = ""
+                                if col_def.default is not None:
+                                    if hasattr(col_def.default, 'arg'):
+                                        default_value = col_def.default.arg
+                                        if isinstance(default_value, bool):
+                                            default_clause = f" DEFAULT {str(default_value).upper()}"
+                                        elif isinstance(default_value, (int, float)):
+                                            default_clause = f" DEFAULT {default_value}"
+                                        elif isinstance(default_value, str):
+                                            default_clause = f" DEFAULT '{default_value}'"
+                                
+                                # Construire la clause NULL/NOT NULL
+                                nullable_clause = "" if col_def.nullable else " NOT NULL"
+                                
+                                # Construire et exécuter l'ALTER TABLE
+                                alter_sql = f"ALTER TABLE {table_name} ADD COLUMN {col_name} {sql_type}{nullable_clause}{default_clause}"
+                                logger.info(f"   → {alter_sql}")
+                                
+                                self.session.execute(text(alter_sql))
+                                self.session.commit()
+                                
+                                results["columns_added"].append(f"{table_name}.{col_name}")
+                                logger.info(f"   ✅ Colonne {col_name} ajoutée à {table_name}")
+                                
+                            except Exception as e:
+                                logger.error(f"   ❌ Erreur lors de l'ajout de la colonne {col_name} à {table_name}: {e}")
+                                self.session.rollback()
+                                results["errors"].append(f"Erreur lors de l'ajout de {table_name}.{col_name}: {e}")
                     else:
                         logger.info(f"✅ Table {table_name} à jour")
                 else:
-                    logger.warning(f"⚠️ Table {table_name} n'existe pas")
-                    results["errors"].append(f"Table {table_name} n'existe pas")
+                    logger.warning(f"⚠️ Table {table_name} n'existe pas - sera créée par create_db_and_tables()")
                     
             except Exception as e:
                 logger.error(f"Erreur lors de la vérification des colonnes de {table_name}: {e}")
+                results["errors"].append(f"Erreur lors de la vérification de {table_name}: {e}")
     
     def get_database_status(self) -> Dict[str, Any]:
         """Retourne le statut de la base de données"""
         status = {
-            "enums": {},
             "tables": [],
             "connection": False
         }
         
-        try:
-            # Test de connexion
-            self.session.exec(text("SELECT 1"))
-            status["connection"] = True
-            
-            # Vérifier les enums
-            enums_query = text("""
-                SELECT t.typname, e.enumlabel 
-                FROM pg_type t 
-                JOIN pg_enum e ON t.oid = e.enumtypid 
-                WHERE t.typtype = 'e'
-                ORDER BY t.typname, e.enumsortorder
-            """)
-            
-            enum_data = self.session.exec(enums_query).all()
-            
-            for enum_name, enum_value in enum_data:
-                if enum_name not in status["enums"]:
-                    status["enums"][enum_name] = []
-                status["enums"][enum_name].append(enum_value)
-            
+        try:            
             # Vérifier les tables
             tables_query = text("""
                 SELECT tablename 

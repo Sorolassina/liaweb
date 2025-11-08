@@ -3,8 +3,8 @@ import csv
 import os
 import requests
 
-from app_lia_web.core.config import settings
-from app_lia_web.app.services.file_upload_service import FileUploadService
+from ..core.config import settings
+from .file_upload_service import FileUploadService
 
 FileUploadService = FileUploadService()
       

@@ -7,26 +7,26 @@ from fastapi.responses import HTMLResponse, RedirectResponse
 from sqlmodel import Session, select, and_, or_, func
 from datetime import datetime, timezone, date, timedelta
 
-from app_lia_web.core.database import get_session
-from app_lia_web.core.middleware import get_shared_session
-from app_lia_web.core.security import get_current_user
-from app_lia_web.core.program_schema_integration import safe_count_query, table_exists_anywhere
+from ..core.database import get_session
+from ..core.middleware import get_shared_session
+from ..core.security import get_current_user
+from ..core.program_schema_integration import safe_count_query, table_exists_anywhere
 import logging
-from app_lia_web.app.models.base import User, Programme, Promotion, Groupe
-from app_lia_web.app.models.codev import (
+from ..models.base import User, Programme, Promotion, Groupe
+from ..models.codev import (
     CycleCodev, GroupeCodev, SeanceCodev, PresentationCodev, 
     ContributionCodev, MembreGroupeCodev, ParticipationSeance
 )
-from app_lia_web.app.models.enums import UserRole, StatutCycleCodev, StatutGroupeCodev
-from app_lia_web.app.services.codev_service import CodevService
-from app_lia_web.app.schemas.codev import (
+from ..models.enums import UserRole, StatutCycleCodev, StatutGroupeCodev
+from ..services.codev_service import CodevService
+from ..schemas.codev import (
     CycleCodevCreate, CycleCodevUpdate, GroupeCodevCreate, SeanceCodevCreate,
     PresentationCodevCreate, ContributionCodevCreate, MembreGroupeCodevCreate,
     CycleCodevResponse, GroupeCodevResponse, SeanceCodevResponse,
     StatistiquesCycleCodev, PlanificationSeance, EngagementCandidat, RetourExperience
 )
-from app_lia_web.app.templates import templates
-from app_lia_web.core.config import settings
+from ..templates import templates
+from ..core.config import settings
 
 router = APIRouter()
 
@@ -89,7 +89,7 @@ async def codev_dashboard(
         engagements_en_cours = []
     
     return templates.TemplateResponse(
-        "codev/dashboard.html",
+        "pages/codev/dashboard.html",
         {
             "request": request,
             "utilisateur": current_user,
@@ -123,7 +123,7 @@ async def codev_cycles(
     cycles = session.exec(stmt.order_by(CycleCodev.date_debut.desc())).all()
     
     return templates.TemplateResponse(
-        "codev/cycles.html",
+        "pages/codev/cycles.html",
         {
             "request": request,
             "utilisateur": current_user,
@@ -159,7 +159,7 @@ async def codev_cycles_creer(
     ).all()
     
     return templates.TemplateResponse(
-        "codev/cycle_form.html",
+        "pages/codev/cycle_form.html",
         {
             "request": request,
             "utilisateur": current_user,
@@ -240,7 +240,7 @@ async def codev_cycle_detail(
     stats = CodevService.get_statistiques_cycle(session, cycle_id)
     
     return templates.TemplateResponse(
-        "codev/cycle_detail.html",
+        "pages/codev/cycle_detail.html",
         {
             "request": request,
             "utilisateur": current_user,
@@ -271,7 +271,7 @@ async def codev_groupes(
     cycles = session.exec(select(CycleCodev)).all()
     
     return templates.TemplateResponse(
-        "codev/groupes.html",
+        "pages/codev/groupes.html",
         {
             "request": request,
             "utilisateur": current_user,
@@ -310,7 +310,7 @@ async def codev_groupes_creer(
     ).all()
     
     return templates.TemplateResponse(
-        "codev/groupe_form.html",
+        "pages/codev/groupe_form.html",
         {
             "request": request,
             "utilisateur": current_user,
@@ -436,7 +436,7 @@ async def codev_statistiques(
     ).all()
     
     return templates.TemplateResponse(
-        "codev/statistiques.html",
+        "pages/codev/statistiques.html",
         {
             "request": request,
             "utilisateur": current_user,
@@ -478,7 +478,7 @@ async def codev_seances(
     groupes = session.exec(select(GroupeCodev)).all()
     
     return templates.TemplateResponse(
-        "codev/seances.html",
+        "pages/codev/seances.html",
         {
             "request": request,
             "utilisateur": current_user,
@@ -513,7 +513,7 @@ async def codev_seance_creer_form(
     ).all()
     
     return templates.TemplateResponse(
-        "codev/seance_form.html",
+        "pages/codev/seance_form.html",
         {
             "request": request,
             "utilisateur": current_user,
@@ -590,7 +590,7 @@ async def codev_presentation_detail(
     candidat = session.get(Inscription, presentation.candidat_id)
     
     return templates.TemplateResponse(
-        "codev/presentation_detail.html",
+        "pages/codev/presentation_detail.html",
         {
             "request": request,
             "utilisateur": current_user,

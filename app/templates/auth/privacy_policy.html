@@ -1,0 +1,523 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Charte de Confidentialité - {{ app_name }}</title>
+    
+    <!-- Favicon -->
+    <link rel="icon" type="image/x-icon" href="{{ static_versioned_url(static_url('favicon.ico')) }}">
+    
+    <!-- CSS de base -->
+    <link rel="stylesheet" href="{{ static_versioned_url(static_url('css/base.css')) }}">
+    <link rel="stylesheet" href="{{ static_versioned_url(static_url('css/theme.css')) }}">
+    
+    <style>
+        .privacy-container {
+            height: 100vh;
+            width: 100vw;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            background-size: cover;
+            background-position: center;
+            background-repeat: no-repeat;
+            transition: background-image 1s ease-in-out;
+            padding: 20px;
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            overflow: hidden;
+        }
+        
+        .privacy-card {
+            background: rgba(255, 255, 255, 0.15);
+            -webkit-backdrop-filter: blur(10px);
+            backdrop-filter: blur(10px);
+            border-radius: 20px;
+            box-shadow: 0 8px 32px rgba(0, 0, 0, 0.2);
+            border: 1px solid rgba(255, 255, 255, 0.3);
+            padding: 40px;
+            width: 100%;
+            max-width: 800px;
+            max-height: 90vh;
+            display: flex;
+            flex-direction: column;
+        }
+        
+        /* Horloge */
+        .clock-widget {
+            position: absolute;
+            top: 50px;
+            left: 50px;
+            color: white;
+            text-shadow: 0 2px 10px rgba(0, 0, 0, 0.5);
+            z-index: 10;
+            font-family: 'Segoe UI', sans-serif;
+            -webkit-user-select: none;
+            user-select: none;
+        }
+        
+        .clock-time {
+            font-size: 6rem;
+            font-weight: 200;
+            line-height: 1;
+            letter-spacing: -2px;
+            margin-bottom: 0.25rem;
+        }
+        
+        .clock-date {
+            font-size: 1.5rem;
+            font-weight: 300;
+            opacity: 0.95;
+            letter-spacing: 0.5px;
+        }
+        
+        /* Copyright */
+        .copyright {
+            position: absolute;
+            bottom: 20px;
+            right: 30px;
+            color: white;
+            font-size: 12px;
+            text-shadow: 0 1px 3px rgba(0, 0, 0, 0.5);
+            opacity: 0.8;
+            font-family: 'Segoe UI', sans-serif;
+            z-index: 10;
+        }
+        
+        .privacy-header {
+            text-align: center;
+            margin-bottom: 30px;
+        }
+        
+        .privacy-logo {
+            width: 80px;
+            height: 80px;
+            margin: 0 auto 15px auto;
+            display: block;
+            border-radius: 50%;
+            object-fit: cover;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+        }
+        
+        .privacy-title {
+            color: var(--white-color);
+            font-size: 28px;
+            font-weight: bold;
+            margin-bottom: 10px;
+        }
+        
+        .privacy-subtitle {
+            color: var(--white-color);
+            font-size: 14px;
+            opacity: 0.9;
+        }
+        
+        .privacy-content {
+            flex: 1;
+            overflow-y: auto;
+            padding: 20px;
+            background: rgba(255, 255, 255, 0.95);
+            border-radius: 12px;
+            margin-bottom: 20px;
+            max-height: 400px;
+        }
+        
+        .privacy-content::-webkit-scrollbar {
+            width: 8px;
+        }
+        
+        .privacy-content::-webkit-scrollbar-track {
+            background: #f1f1f1;
+            border-radius: 10px;
+        }
+        
+        .privacy-content::-webkit-scrollbar-thumb {
+            background: #888;
+            border-radius: 10px;
+        }
+        
+        .privacy-content::-webkit-scrollbar-thumb:hover {
+            background: #555;
+        }
+        
+        .privacy-content h2 {
+            color: var(--secondary-color);
+            font-size: 18px;
+            margin-top: 20px;
+            margin-bottom: 10px;
+        }
+        
+        .privacy-content h2:first-child {
+            margin-top: 0;
+        }
+        
+        .privacy-content p {
+            color: #333;
+            line-height: 1.8;
+            margin-bottom: 15px;
+        }
+        
+        .privacy-content ul {
+            color: #333;
+            line-height: 1.8;
+            padding-left: 25px;
+            margin-bottom: 15px;
+            list-style: disc;  /* Ajouter les puces */
+        }
+        
+        .privacy-content li {
+            margin-bottom: 8px;
+            display: list-item;  /* Forcer l'affichage des puces */
+        }
+        
+        .privacy-content strong {
+            color: var(--secondary-color);
+        }
+        
+        .privacy-actions {
+            display: flex;
+            gap: 15px;
+            align-items: center;
+        }
+        
+        .checkbox-container {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            flex: 1;
+            padding: 15px;
+            background: rgba(255, 255, 255, 0.2);
+            border-radius: 10px;
+            cursor: pointer;
+        }
+        
+        .checkbox-container input[type="checkbox"] {
+            width: 20px;
+            height: 20px;
+            cursor: pointer;
+        }
+        
+        .checkbox-label {
+            color: var(--white-color);
+            font-size: 14px;
+            cursor: pointer;
+            -webkit-user-select: none;
+            user-select: none;
+        }
+        
+        .btn-accept {
+            padding: 15px 40px;
+            background: var(--accent-color);
+            color: var(--white-color);
+            border: none;
+            border-radius: 10px;
+            font-size: 16px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s ease;
+        }
+        
+        .btn-accept:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+        }
+        
+        .btn-accept:not(:disabled):hover {
+            background: var(--secondary-color);
+            transform: translateY(-2px);
+            box-shadow: 0 5px 15px rgba(0,0,0,0.2);
+        }
+        
+        .alert {
+            padding: 12px 20px;
+            border-radius: 8px;
+            margin-bottom: 20px;
+            text-align: center;
+        }
+        
+        .alert-error {
+            background: rgba(220, 53, 69, 0.9);
+            color: white;
+        }
+        
+        .version-badge {
+            display: inline-block;
+            padding: 4px 12px;
+            background: rgba(255, 255, 255, 0.2);
+            border-radius: 12px;
+            font-size: 12px;
+            color: var(--white-color);
+            margin-left: 10px;
+        }
+        
+        /* Responsive */
+        @media (max-width: 768px) {
+            .clock-widget {
+                top: 20px;
+                left: 20px;
+            }
+            
+            .clock-time {
+                font-size: 3rem;
+            }
+            
+            .clock-date {
+                font-size: 1rem;
+            }
+            
+            .privacy-card {
+                padding: 20px;
+                max-height: 95vh;
+            }
+            
+            .privacy-title {
+                font-size: 20px;
+            }
+            
+            .privacy-actions {
+                flex-direction: column;
+            }
+            
+            .checkbox-container {
+                width: 100%;
+            }
+            
+            .btn-accept {
+                width: 100%;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="privacy-container">
+        
+        <!-- Horloge style Windows -->
+        <div class="clock-widget">
+            <div class="clock-time" id="clock-time">00:00</div>
+            <div class="clock-date" id="clock-date">Chargement...</div>
+        </div>
+        
+        <!-- Copyright -->
+        <div class="copyright">
+            © Soro Lassina W.
+        </div>
+        
+        <div class="privacy-card">
+            <div class="privacy-header">
+                <img src="{{ static_versioned_url(static_url('images/Logo-accueil.png')) }}" alt="Logo" class="privacy-logo">
+                <h1 class="privacy-title">
+                    Charte de Confidentialité
+                    <span class="version-badge">v{{ privacy_version }}</span>
+                </h1>
+                <p class="privacy-subtitle">
+                    {{ company_description }} - Partenaire BPI France
+                </p>
+            </div>
+            
+            {% if error %}
+            <div class="alert alert-error">
+                {{ error }}
+            </div>
+            {% endif %}
+            
+            <div class="privacy-content">
+                <h2>📋 Objet de la Charte</h2>
+                <p>
+                    La présente charte a pour objet de définir les règles de confidentialité et de protection 
+                    des données personnelles dans le cadre de l'utilisation du système d'information 
+                    <strong>{{ app_name }}</strong> de <strong>{{ company_name }}</strong>, entreprise de coaching en entrepreneuriat, partenaire de BPI France 
+                    dans la mise en œuvre des programmes d'accompagnement entrepreneurial.
+                </p>
+                
+                <h2>🔒 Collecte et Traitement des Données</h2>
+                <p>Dans le cadre de vos fonctions au sein de <strong>{{ company_name }}</strong>, vous aurez accès à des données sensibles concernant :</p>
+                <ul>
+                    <li>Les informations personnelles des employés de l'entreprise et des coachs</li>
+                    <li>Les données relatives aux entrepreneurs accompagnés dans le cadre des programmes BPI</li>
+                    <li>Les informations sur les entreprises en création ou en développement (projets, business plans, données financières)</li>
+                    <li>Les données de suivi et d'évaluation des programmes de coaching</li>
+                    <li>Les informations relatives aux partenaires BPI France et autres partenaires institutionnels</li>
+                    <li>Les documents contractuels et commerciaux confidentiels</li>
+                    <li>Les données de performance et de résultats des entrepreneurs accompagnés</li>
+                    <li>Les informations relatives aux financements et subventions (conformément aux exigences BPI)</li>
+                </ul>
+                
+                <h2>⚖️ Vos Engagements</h2>
+                <p>En acceptant cette charte, vous vous engagez à :</p>
+                <ul>
+                    <li><strong>Confidentialité :</strong> Ne pas divulguer, copier ou transmettre les informations 
+                        auxquelles vous avez accès à des personnes non autorisées, notamment les données relatives aux entrepreneurs 
+                        accompagnés, leurs projets, leurs données financières et leurs informations personnelles</li>
+                    <li><strong>Usage professionnel :</strong> Utiliser le système uniquement dans le cadre 
+                        de vos fonctions au sein de <strong>{{ company_name }}</strong> et pour les activités de coaching en entrepreneuriat 
+                        et de mise en œuvre des programmes BPI</li>
+                    <li><strong>Non-concurrence :</strong> Ne pas utiliser les informations du système à des fins 
+                        personnelles ou pour le compte d'un concurrent ou d'une autre structure de coaching</li>
+                    <li><strong>Sécurité :</strong> Protéger vos identifiants de connexion et ne jamais 
+                        les communiquer à un tiers</li>
+                    <li><strong>Responsabilité :</strong> Signaler immédiatement toute anomalie ou incident 
+                        de sécurité constaté</li>
+                    <li><strong>Traçabilité :</strong> Accepter que vos actions sur le système soient 
+                        enregistrées à des fins d'audit, de sécurité et de conformité réglementaire, notamment 
+                        vis-à-vis de BPI France</li>
+                    <li><strong>Protection des données entrepreneurs :</strong> Respecter la confidentialité des données 
+                        relatives aux entrepreneurs accompagnés, leurs projets d'entreprise, leurs informations financières 
+                        et leurs données personnelles conformément aux exigences du RGPD et aux obligations contractuelles avec BPI</li>
+                    <li><strong>Respect des exigences BPI :</strong> Respecter les règles de confidentialité et de traitement 
+                        des données imposées par BPI France dans le cadre du partenariat</li>
+                </ul>
+                
+                <h2>🛡️ Protection des Données</h2>
+                <p>
+                    Conformément au Règlement Général sur la Protection des Données (RGPD) et aux lois 
+                    nationales en vigueur, ainsi qu'aux exigences de BPI France, <strong>{{ company_name }}</strong> s'engage à :
+                </p>
+                <ul>
+                    <li>Traiter les données de manière licite, loyale et transparente</li>
+                    <li>Collecter uniquement les données nécessaires aux activités de coaching en entrepreneuriat 
+                        et à la mise en œuvre des programmes BPI</li>
+                    <li>Conserver les données pendant la durée nécessaire aux obligations légales et contractuelles, 
+                        notamment celles liées au partenariat avec BPI France</li>
+                    <li>Garantir la sécurité et la confidentialité des données relatives aux entrepreneurs accompagnés 
+                        et aux projets d'entreprise</li>
+                    <li>Mettre en place des mesures techniques et organisationnelles appropriées conformément aux exigences BPI</li>
+                    <li>Respecter vos droits d'accès, de rectification et de suppression</li>
+                    <li>Protéger les données des entrepreneurs accompagnés conformément aux réglementations applicables 
+                        et aux obligations contractuelles avec BPI France</li>
+                </ul>
+                
+                <h2>⚠️ Sanctions</h2>
+                <p>
+                    Tout manquement à cette charte peut entraîner :
+                </p>
+                <ul>
+                    <li>Des sanctions disciplinaires conformément au règlement intérieur de l'entreprise</li>
+                    <li>La résiliation du contrat de travail en cas de faute grave</li>
+                    <li>Des poursuites judiciaires en cas de violation des dispositions légales relatives à la protection des données</li>
+                    <li>Des poursuites civiles et pénales en cas de divulgation de secrets commerciaux ou de concurrence déloyale</li>
+                    <li>La réparation des préjudices causés à l'entreprise et/ou à ses clients</li>
+                </ul>
+                
+                <h2>📞 Contact</h2>
+                <p>
+                    Pour toute question concernant cette charte ou vos droits relatifs à vos données 
+                    personnelles, veuillez contacter le Délégué à la Protection des Données de <strong>{{ company_name }}</strong> 
+                    ou le service support client.
+                </p>
+                
+                <p style="margin-top: 30px; padding-top: 20px; border-top: 2px solid #ddd; font-size: 12px; color: #666;">
+                    <strong>Date d'entrée en vigueur :</strong> {{ current_date }}<br>
+                    <strong>Version :</strong> {{ privacy_version }}
+                </p>
+            </div>
+            
+            {% if not view_only %}
+            <!-- Formulaire d'acceptation (seulement en mode acceptation obligatoire) -->
+            <form method="POST" action="{{ url_for('accept_privacy_policy') }}" id="privacy-form">
+                <div class="privacy-actions">
+                    <label class="checkbox-container">
+                        <input type="checkbox" id="accept-checkbox" name="accept" required>
+                        <span class="checkbox-label">
+                            J'ai lu et j'accepte la charte de confidentialité
+                        </span>
+                    </label>
+                    
+                    <button type="submit" class="btn-accept" id="submit-btn" disabled>
+                        Accepter et Continuer
+                    </button>
+                </div>
+            </form>
+            {% else %}
+            <!-- Mode consultation : bouton de retour simple -->
+            <div style="text-align: center; margin-top: 30px;">
+                <a href="{{ url_for('accueil') }}" class="btn-accept" style="display: inline-block; text-decoration: none;">
+                    ← Retour à l'accueil
+                </a>
+            </div>
+            {% endif %}
+        </div>
+    </div>
+    
+    <script>
+        // Horloge temps réel
+        function updateClock() {
+            const now = new Date();
+            const hours = now.getHours().toString().padStart(2, '0');
+            const minutes = now.getMinutes().toString().padStart(2, '0');
+            const timeString = `${hours}:${minutes}`;
+            
+            const options = { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' };
+            const dateString = now.toLocaleDateString('fr-FR', options);
+            const dateFormatted = dateString.charAt(0).toUpperCase() + dateString.slice(1);
+            
+            const timeEl = document.getElementById('clock-time');
+            const dateEl = document.getElementById('clock-date');
+            if (timeEl) timeEl.textContent = timeString;
+            if (dateEl) dateEl.textContent = dateFormatted;
+        }
+        
+        updateClock();
+        setInterval(updateClock, 1000);
+        
+        // Rotation des images de fond
+        const backgroundImages = [
+            '{{ static_url("images/backgroundlogin/alexander-slattery-LI748t0BK8w-unsplash.jpg") }}',
+            '{{ static_url("images/backgroundlogin/christian-joudrey-u_nsiSvPEak-unsplash.jpg") }}',
+            '{{ static_url("images/backgroundlogin/jonatan-pie-3l3RwQdHRHg-unsplash.jpg") }}',
+            '{{ static_url("images/BGLogin.jpg") }}'
+        ];
+        
+        let currentImageIndex = 0;
+        const privacyContainer = document.querySelector('.privacy-container');
+        
+        function changeBackgroundImage() {
+            const imageUrl = backgroundImages[currentImageIndex];
+            privacyContainer.style.backgroundImage = `url('${imageUrl}')`;
+            currentImageIndex = (currentImageIndex + 1) % backgroundImages.length;
+        }
+        
+        changeBackgroundImage();
+        setInterval(changeBackgroundImage, 10000);
+        
+        // Activer/désactiver le bouton selon la checkbox (seulement en mode acceptation)
+        {% if not view_only %}
+        const checkbox = document.getElementById('accept-checkbox');
+        const submitBtn = document.getElementById('submit-btn');
+        
+        if (checkbox && submitBtn) {
+            checkbox.addEventListener('change', function() {
+                submitBtn.disabled = !this.checked;
+            });
+        }
+        
+        // Animation de scroll vers le bas pour forcer la lecture
+        const content = document.querySelector('.privacy-content');
+        let hasScrolledToBottom = false;
+        
+        content.addEventListener('scroll', function() {
+            const isAtBottom = content.scrollHeight - content.scrollTop <= content.clientHeight + 50;
+            if (isAtBottom && !hasScrolledToBottom) {
+                hasScrolledToBottom = true;
+                console.log('✅ Utilisateur a lu jusqu\'à la fin');
+            }
+        });
+        
+        // Empêcher la soumission si pas scrollé jusqu'en bas (optionnel)
+        const privacyForm = document.getElementById('privacy-form');
+        if (privacyForm) {
+            privacyForm.addEventListener('submit', function(e) {
+                if (!checkbox.checked) {
+                    e.preventDefault();
+                    alert('Vous devez accepter la charte pour continuer.');
+                }
+            });
+        }
+        {% endif %}
+    </script>
+</body>
+</html>
+

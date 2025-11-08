@@ -5,10 +5,10 @@ from typing import Dict, Any, List
 from sqlmodel import Session, select
 import logging
 
-from app_lia_web.app.models.base import Candidat, User
-from app_lia_web.app.models.activity import ActivityLog
-from app_lia_web.app.services.audit import log_activity
-from app_lia_web.core.program_schema_integration import table_exists_anywhere
+from ..models.base import Candidat, User
+from ..models.activity import ActivityLog
+from .audit import log_activity
+from ..core.program_schema_integration import table_exists_anywhere
 
 logger = logging.getLogger(__name__)
 

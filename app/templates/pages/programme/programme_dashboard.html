@@ -1,0 +1,534 @@
+{% extends "layouts/base.html" %}
+{% from "components/page_header.html" import page_header %}
+{% block head_extra %}
+
+{% block title %}
+Dashboard {{ programme.code }}
+{% endblock %}
+
+<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" crossorigin=""/>
+<style>
+  /* Container adaptatif qui tient compte de la sidebar */
+  .container-wide{ 
+    width: 100%; 
+    max-width: calc(100vw - var(--sidebar-width) - 2rem); 
+    margin: 0 auto; 
+    padding: 0 1rem;
+  }
+  
+  /* Responsive pour sidebar réduite */
+  .sidebar.collapsed ~ #content .container-wide {
+    max-width: calc(100vw - var(--sidebar-width-collapsed) - 2rem);
+  }
+  
+  /* Responsive mobile */
+  @media (max-width: 768px) {
+    .container-wide {
+      max-width: calc(100vw - 2rem);
+      padding: 0 0.5rem;
+    }
+  }
+
+  /* Styles pour les cartes - maintenant centralisés dans cards.css */
+  
+  /* Carte adaptative */
+  #map{ 
+    width: 100%; 
+    height: 380px; 
+    border-radius: 18px; 
+    box-shadow: var(--shadow); 
+    border: 1px solid color-mix(in srgb, var(--secondary-color) 10%, transparent); 
+  }
+  
+  /* Grilles adaptatives */
+  .grid-2{ 
+    display: grid; 
+    grid-template-columns: 1.2fr 0.8fr; 
+    gap: 16px; 
+  } 
+  @media (max-width: 1200px){ 
+    .grid-2{ grid-template-columns: 1fr 1fr; } 
+  }
+  @media (max-width: 992px){ 
+    .grid-2{ grid-template-columns: 1fr; } 
+  }
+  
+  .grid-2h{ 
+    display: grid; 
+    grid-template-columns: 1fr 1fr; 
+    gap: 16px; 
+  } 
+  @media (max-width: 992px){ 
+    .grid-2h{ grid-template-columns: 1fr; } 
+  }
+  
+  /* Listes adaptatives */
+  .list-group-soft{ 
+    display: flex; 
+    flex-direction: column; 
+    gap: 10px; 
+    padding: 4px 0; 
+  }
+  .list-item{ 
+    display: flex; 
+    align-items: center; 
+    justify-content: space-between; 
+    gap: 10px; 
+    padding: 10px 12px; 
+    border-radius: 12px;
+    background: var(--white-color); 
+    box-shadow: var(--shadow-sm);
+    border: 1px solid color-mix(in srgb, var(--secondary-color) 8%, transparent); 
+  }
+  .list-item .meta{ 
+    color: var(--gray-dark); 
+    font-size: .9rem; 
+  }
+  
+  /* Barres de progression */
+  .progress-soft{ 
+    width: 100%; 
+    height: 10px; 
+    border-radius: 999px; 
+    background: var(--gray-light);
+    box-shadow: inset 2px 2px 5px rgba(0,0,0,.06), inset -2px -2px 5px rgba(255,255,255,.8); 
+    overflow: hidden; 
+  }
+  .progress-soft > span{ 
+    display: block; 
+    height: 100%; 
+    background: var(--primary-color); 
+    transition: width .4s ease; 
+  }
+  
+  .badge-chip{ 
+    border-radius: 999px; 
+    padding: .25rem .55rem; 
+    font-weight: 800; 
+    font-size: .75rem;
+    background: color-mix(in srgb, var(--primary-color) 16%, transparent);
+    border: 1px solid color-mix(in srgb, var(--primary-color) 35%, transparent); 
+    color: var(--secondary-color); 
+  }
+  
+  /* Espacement adaptatif */
+  .mb-2 {
+    margin-bottom: 0.5rem;
+  }
+  
+  .mb-3 {
+    margin-bottom: 1rem;
+  }
+  
+  .p-3 {
+    padding: 1rem;
+  }
+  
+  .mt-2 {
+    margin-top: 0.5rem;
+  }
+  
+  /* Responsive pour les petits écrans */
+  @media (max-width: 576px) {
+    .kpi .val {
+      font-size: 1.5rem;
+    }
+    
+    .kpi .lab {
+      font-size: .75rem;
+    }
+    
+    #map {
+      height: 300px;
+    }
+    
+    .list-item {
+      padding: 8px 10px;
+    }
+    
+    .title-wrap {
+      flex-direction: column;
+      align-items: flex-start;
+      gap: 8px;
+    }
+  }
+</style>
+{% endblock %}
+
+{% block content %}
+<!-- Entête -->
+{{ page_header(
+    title="<i class='fa fa-users-cog me-2'></i>Tableau de bord programme (" ~ programme.code ~ ")",
+    breadcrumbs=[{"name": "Visualisation des données générales du programme"}]
+) }}
+
+<div class="container-wide" style="overflow-y: auto;">
+
+  <!-- KPIs -->
+  <div class="card mb-3">
+    <div class="card-header">
+      <h3>Vue d'ensemble</h3>
+    </div>
+    <div class="card-body">
+      <div class="kpis">
+      <!-- <div class="kpi"><div class="val">{{ kpi.preinscriptions }}</div><div class="lab">Préinscriptions</div></div> -->
+      <!-- <div class="kpi"><div class="val">{{ kpi.inscriptions }}</div><div class="lab">Inscriptions</div></div> -->
+      <!-- <div class="kpi"><div class="val">{{ kpi.candidats_valides }}</div><div class="lab">Candidats validés</div></div> -->
+      <div class="kpi"><div class="val">{{ kpi.qpv }}</div><div class="lab">QPV</div></div>
+      <div class="kpi"><div class="val">{{ kpi.qpv_limite }}</div><div class="lab">QPV Limite</div></div>
+      <!-- <div class="kpi"><div class="val">{{ kpi.qpv_total }}</div><div class="lab">Total QPV</div></div> -->
+      <div class="kpi"><div class="val">{{ kpi.femmes }}</div><div class="lab">Femmes</div></div>
+      <div class="kpi"><div class="val">{{ kpi.hommes }}</div><div class="lab">Hommes</div></div>
+    </div>
+  </div>
+
+  <!-- Entonnoir + Carte -->
+  <div class="grid-2 mb-3">
+    <div class="card">
+      <div class="card-header">
+        <h3>Entonnoir ACD</h3>
+      </div>
+      <div class="card-body">
+        <canvas id="chartFunnel" height="220"></canvas>
+      </div>
+    </div>
+    <div class="card">
+      <div class="card-header">
+        <h3>Couverture géographique (candidats validés)</h3>
+      </div>
+      <div class="card-body">
+      <div id="map"></div>
+      <div class="mt-2" style="display:flex; gap:8px; flex-wrap:wrap;">
+        <!-- <span class="badge-chip">📍 Candidats validés</span> -->
+        <span class="badge-chip">🟡 QPV</span>
+        <span class="badge-chip">🟠 QPV Limite</span>
+        <!-- <span class="badge-chip">🔵 Femmes</span> -->
+        <!-- <span class="badge-chip">⚫ Hommes</span> -->
+      </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Sessions & RDV -->
+  <div class="grid-2 mb-3">
+    <div class="card">
+      <div class="card-header">
+        <h3>Séances à venir</h3>
+      </div>
+      <div class="card-body">
+      <div class="list-group-soft">
+        <div class="list-item" style="background:transparent; border:none; box-shadow:none;">
+          <span class="badge-chip">Séminaire — Présence moyenne: {{ presence_avg.seminaire if presence_avg.seminaire is not none else "—" }}%</span>
+          <span class="badge-chip">CoDev — {{ presence_avg.codev if presence_avg.codev is not none else "—" }}%</span>
+          <span class="badge-chip">Webinaire — {{ presence_avg.webinaire if presence_avg.webinaire is not none else "—" }}%</span>
+        </div>
+        {% for s in sessions.seminaires %}
+        <div class="list-item"><div><div style="font-weight:800">{{ s.titre }}</div>
+          <div class="meta">{{ s.debut.astimezone().strftime("%d/%m/%Y %H:%M") }}{% if s.lieu %} • {{ s.lieu }}{% endif %}</div></div>
+          <span class="badge-chip">Séminaire</span></div>
+        {% endfor %}
+        {% for s in sessions.codevs %}
+        <div class="list-item"><div><div style="font-weight:800">{{ s.titre }}</div>
+          <div class="meta">{{ s.debut.astimezone().strftime("%d/%m/%Y %H:%M") }}{% if s.lieu %} • {{ s.lieu }}{% endif %}</div></div>
+          <span class="badge-chip">CoDev</span></div>
+        {% endfor %}
+        {% for s in sessions.webinaires %}
+        <div class="list-item"><div><div style="font-weight:800">{{ s.titre }}</div>
+          <div class="meta">{{ s.debut.astimezone().strftime("%d/%m/%Y %H:%M") }}{% if s.lieu %} • {{ s.lieu }}{% endif %}</div></div>
+          <span class="badge-chip">Webinaire</span></div>
+        {% endfor %}
+        {% if not sessions.seminaires and not sessions.codevs and not sessions.webinaires %}
+        <div class="list-item"><div class="meta">Aucune séance planifiée</div></div>
+        {% endif %}
+      </div>
+      </div>
+    </div>
+
+    <div class="card">
+      <div class="card-header">
+        <h3>Rendez-vous à venir</h3>
+      </div>
+      <div class="card-body">
+      <div class="list-group-soft">
+        {% if rdvs %}
+          {% for r in rdvs %}
+          <div class="list-item">
+            <div>
+              <div style="font-weight:800">{{ r.when.strftime("%d/%m/%Y %H:%M") }}{% if r.fin %} → {{ r.fin.strftime("%H:%M") }}{% endif %}</div>
+              <div class="meta">{{ r.type|capitalize }} • {{ r.candidat }}</div>
+            </div>
+            <span class="badge-chip">RDV</span>
+          </div>
+          {% endfor %}
+        {% else %}
+          <div class="list-item"><div class="meta">Aucun rendez-vous planifié</div></div>
+        {% endif %}
+      </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Pyramide & Suivi mensuel -->
+  <div class="grid-2h mb-3">
+    <div class="card">
+      <div class="card-header">
+        <h3>Pyramide des âges (inscrits ACD)</h3>
+      </div>
+      <div class="card-body">
+        <canvas id="chartPyramid" height="220"></canvas>
+      </div>
+    </div>
+    <div class="card">
+      <div class="card-header">
+        <h3>Suivi mensuel (derniers)</h3>
+      </div>
+      <div class="card-body">
+      <div class="list-group-soft">
+        {% if suivis %}
+          {% for s in suivis %}
+          <div class="list-item">
+            <div>
+              <div style="font-weight:800">{{ s.candidat }}</div>
+              <div class="meta">{{ s.mois.strftime("%m/%Y") }} — Score: {{ s.score if s.score is not none else "—" }}</div>
+              {% if s.commentaire %}<div class="meta">"{{ s.commentaire }}"</div>{% endif %}
+            </div>
+            <span class="badge-chip">Suivi</span>
+          </div>
+          {% endfor %}
+        {% else %}
+          <div class="list-item"><div class="meta">Aucun suivi enregistré</div></div>
+        {% endif %}
+      </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Objectifs -->
+  <div class="card mb-3">
+    <div class="card-header">
+      <h3>Atteinte des objectifs</h3>
+    </div>
+    <div class="card-body">
+    <div class="list-group-soft">
+      <div class="list-item" style="flex-direction:column; align-items:stretch;">
+        {% if objectifs.objectif_total %}
+          <div class="meta">Total (objectif {{ objectifs.objectif_total }}) — {{ objectifs.total_pct or 0 }}%</div>
+          <div class="progress-soft"><span style="width: {{ (objectifs.total_pct or 0) | round(1) }}%; background-color: var(--primary-color);"></span></div>
+        {% else %}
+          <div class="meta">Objectif total non défini</div>
+        {% endif %}
+
+        {% if objectifs.cible_qpv_pct is not none %}
+          <div class="meta mt-2">QPV (cible {{ objectifs.cible_qpv_pct | round(0) }}%) — {{ objectifs.qpv_pct }}%</div>
+          <div class="progress-soft"><span style="width: {{ [objectifs.qpv_objectif_atteint, 100] | min | round(1) }}%; background-color: var(--secondary-color);"></span></div>
+          {% endif %}
+
+          {% if objectifs.cible_femmes_pct is not none %}
+          <div class="meta mt-2">Femmes (cible {{ objectifs.cible_femmes_pct | round(0) }}%) — {{ objectifs.f_pct }}%</div>
+          <div class="progress-soft"><span style="width: {{ [objectifs.f_objectif_atteint, 100] | min | round(1) }}%; background-color: var(--primary-color);"></span></div>
+        {% endif %}
+      </div>
+      </div>
+    </div>
+  </div>
+
+</div>
+
+<!-- Leaflet + Charts -->
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js" crossorigin=""></script>
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.js"></script>
+<script>
+  const PINS = {{ pins | tojson }};
+  const FUNNEL_LABELS = {{ funnel_labels | tojson }};
+  const FUNNEL_VALUES = {{ funnel_values | tojson }};
+  const PYR_LABELS = {{ pyramid_labels | tojson }};
+  const PYR_MALE = {{ pyramid_male | tojson }};
+  const PYR_FEMALE = {{ pyramid_female | tojson }};
+
+  // Carte
+  (function(){
+    const map = L.map('map', { scrollWheelZoom: false });
+    L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png',
+      { maxZoom: 18, attribution: '&copy; OpenStreetMap' }).addTo(map);
+    const markers = [];
+    PINS.forEach(p => {
+      // Vérifier que les coordonnées sont valides
+      if (!p.lat || !p.lng || p.lat === 0.0 || p.lng === 0.0) {
+        console.warn(`📍 [CARTE] Pin ignoré: coordonnées invalides`, p);
+        return;
+      }
+      
+      // Déterminer le statut QPV (vérification explicite des booléens)
+      const is_qpv = p.qpv === true || p.qpv === 'true' || p.qpv === 1;
+      const is_qpv_limite = p.qpv_limite === true || p.qpv_limite === 'true' || p.qpv_limite === 1;
+      
+      // Déterminer la couleur du pin et le statut selon la légende
+      let iconUrl = 'https://raw.githubusercontent.com/pointhi/leaflet-color-markers/master/img/marker-icon-2x-blue.png';
+      let qpv_status = "⚪ Non QPV";
+      
+      if (is_qpv) {
+        // QPV complet = Jaune (gold)
+        iconUrl = 'https://raw.githubusercontent.com/pointhi/leaflet-color-markers/master/img/marker-icon-2x-gold.png';
+        qpv_status = "🟡 QPV";
+      } else if (is_qpv_limite) {
+        // QPV limite = Orange
+        iconUrl = 'https://raw.githubusercontent.com/pointhi/leaflet-color-markers/master/img/marker-icon-2x-orange.png';
+        qpv_status = "🟠 QPV Limite";
+      }
+      
+      // Créer une icône Leaflet colorée
+      const coloredIcon = L.icon({
+        iconUrl: iconUrl,
+        shadowUrl: 'https://cdnjs.cloudflare.com/ajax/libs/leaflet/0.7.7/images/marker-shadow.png',
+        iconSize: [25, 41],
+        iconAnchor: [12, 41],
+        popupAnchor: [1, -34],
+        shadowSize: [41, 41]
+      });
+      
+      const m = L.marker([p.lat, p.lng], { icon: coloredIcon }).addTo(map);
+      
+      const sx = p.civilite && (p.civilite.toLowerCase().includes("f") || p.civilite.toLowerCase().includes("mme")) ? "🔵 Femme" : 
+                 (p.civilite && (p.civilite.toLowerCase().includes("m") || p.civilite.toLowerCase().includes("mr"))) ? "⚫ Homme" : "•";
+      m.bindPopup(`<div style="font-weight:800">${(p.nom||"")}</div>
+                   <div style="font-size:.9rem; opacity:.8">${p.adresse||""}</div>
+                   <div style="font-size:.9rem;">${qpv_status} • ${sx}</div>`);
+      markers.push(m);
+    });
+    if (markers.length > 0) {
+      const g = L.featureGroup(markers);
+      map.fitBounds(g.getBounds().pad(0.2));
+      console.log(`📍 [CARTE] ${markers.length} marqueurs ajoutés sur la carte`);
+    } else {
+      console.warn('📍 [CARTE] Aucun marqueur valide à afficher');
+      map.setView([46.7, 2.5], 5);
+    }
+  })();
+
+  // Entonnoir
+  (function(){
+    const ctx = document.getElementById('chartFunnel').getContext('2d');
+    new Chart(ctx, {
+      type: 'bar',
+      data: { 
+        labels: FUNNEL_LABELS, 
+        datasets: [{ 
+          label: 'Volume', 
+          data: FUNNEL_VALUES, 
+          borderWidth: 1,
+          backgroundColor: ['#e3f2fd', '#bbdefb', '#90caf9', '#ffecb3', '#ffcdd2'],
+          borderColor: ['#1976d2', '#1565c0', '#0d47a1', '#ff8f00', '#d32f2f']
+        }] 
+      },
+      options: {
+        responsive: true,
+        plugins: { 
+          legend: { display: false }, 
+          tooltip: { mode: 'index', intersect: false },
+          datalabels: {
+            display: true,
+            color: '#333',
+            font: { weight: 'bold', size: 12 },
+            formatter: (value) => value
+          }
+        },
+        scales: { 
+          x: { ticks: { autoSkip: true, maxRotation: 0 } }, 
+          y: { 
+            beginAtZero: true, 
+            ticks: { precision: 0 },
+            suggestedMax: Math.max(...FUNNEL_VALUES) + 2
+          } 
+        }
+      },
+      plugins: [{
+        id: 'datalabels',
+        afterDatasetsDraw: (chart) => {
+          const ctx = chart.ctx;
+          chart.data.datasets.forEach((dataset, i) => {
+            const meta = chart.getDatasetMeta(i);
+            meta.data.forEach((bar, index) => {
+              const data = dataset.data[index];
+              ctx.fillStyle = '#333';
+              ctx.font = 'bold 12px Arial';
+              ctx.textAlign = 'center';
+              ctx.textBaseline = 'bottom';
+              ctx.fillText(data, bar.x, bar.y - 5);
+            });
+          });
+        }
+      }]
+    });
+  })();
+
+  // Pyramide des âges
+  (function(){
+    const ctx = document.getElementById('chartPyramid').getContext('2d');
+    new Chart(ctx, {
+      type: 'bar',
+      data: { 
+        labels: PYR_LABELS, 
+        datasets: [
+          { 
+            label:'Hommes', 
+            data: PYR_MALE, // Valeurs négatives pour les hommes (gauche)
+            borderWidth: 1,
+            backgroundColor: '#90caf9',
+            borderColor: '#1976d2'
+          },
+          { 
+            label:'Femmes', 
+            data: PYR_FEMALE, // Valeurs positives pour les femmes (droite)
+            borderWidth: 1,
+            backgroundColor: '#f8bbd9',
+            borderColor: '#e91e63'
+          }
+        ]
+      },
+      options:{
+        indexAxis:'y', 
+        responsive:true,
+        plugins:{ 
+          legend:{ position:'bottom' },
+          tooltip:{ callbacks:{ label:(ctx)=>`${ctx.dataset.label}: ${Math.abs(ctx.parsed.x)}` } }
+        },
+        scales:{ 
+          x:{ 
+            stacked:false, // Pas de stacking pour une vraie pyramide
+            ticks:{ 
+              callback:(v)=>Math.abs(v), 
+              precision:0 
+            },
+            suggestedMax: Math.max(...PYR_MALE.map(Math.abs), ...PYR_FEMALE.map(Math.abs)) + 1,
+            suggestedMin: -(Math.max(...PYR_MALE.map(Math.abs), ...PYR_FEMALE.map(Math.abs)) + 1)
+          }, 
+          y:{ stacked:false }
+        }
+      },
+      plugins: [{
+        id: 'datalabels',
+        afterDatasetsDraw: (chart) => {
+          const ctx = chart.ctx;
+          chart.data.datasets.forEach((dataset, i) => {
+            const meta = chart.getDatasetMeta(i);
+            meta.data.forEach((bar, index) => {
+              const data = Math.abs(dataset.data[index]);
+              if (data > 0) { // Afficher seulement si > 0
+                ctx.fillStyle = '#333';
+                ctx.font = 'bold 10px Arial';
+                ctx.textAlign = 'center';
+                ctx.textBaseline = 'middle';
+                
+                // Positionner l'étiquette au centre de la barre
+                const x = bar.x;
+                const y = bar.y;
+                ctx.fillText(data, x, y);
+              }
+            });
+          });
+        }
+      }]
+    });
+  })();
+</script>
+{% endblock %}

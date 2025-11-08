@@ -1,0 +1,146 @@
+<!DOCTYPE html>
+<html>
+<head>
+    
+    <meta http-equiv="content-type" content="text/html; charset=UTF-8" />
+    <script src="https://cdn.jsdelivr.net/npm/leaflet@1.9.3/dist/leaflet.js"></script>
+    <script src="https://code.jquery.com/jquery-3.7.1.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.2.2/dist/js/bootstrap.bundle.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/Leaflet.awesome-markers/2.0.2/leaflet.awesome-markers.js"></script>
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/leaflet@1.9.3/dist/leaflet.css"/>
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@5.2.2/dist/css/bootstrap.min.css"/>
+    <link rel="stylesheet" href="https://netdna.bootstrapcdn.com/bootstrap/3.0.0/css/bootstrap-glyphicons.css"/>
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@fortawesome/fontawesome-free@6.2.0/css/all.min.css"/>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/Leaflet.awesome-markers/2.0.2/leaflet.awesome-markers.css"/>
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/python-visualization/folium/folium/templates/leaflet.awesome.rotate.min.css"/>
+    
+            <meta name="viewport" content="width=device-width,
+                initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
+            <style>
+                #map_7b58123b2f0b6e2d7f18b5605685c161 {
+                    position: relative;
+                    width: 100.0%;
+                    height: 100.0%;
+                    left: 0.0%;
+                    top: 0.0%;
+                }
+                .leaflet-container { font-size: 1rem; }
+            </style>
+
+            <style>html, body {
+                width: 100%;
+                height: 100%;
+                margin: 0;
+                padding: 0;
+            }
+            </style>
+
+            <style>#map {
+                position:absolute;
+                top:0;
+                bottom:0;
+                right:0;
+                left:0;
+                }
+            </style>
+
+            <script>
+                L_NO_TOUCH = false;
+                L_DISABLE_3D = false;
+            </script>
+
+        
+</head>
+<body>
+    
+    
+            <div class="folium-map" id="map_7b58123b2f0b6e2d7f18b5605685c161" ></div>
+        
+</body>
+<script>
+    
+    
+            var map_7b58123b2f0b6e2d7f18b5605685c161 = L.map(
+                "map_7b58123b2f0b6e2d7f18b5605685c161",
+                {
+                    center: [45.755581, 4.843733],
+                    crs: L.CRS.EPSG3857,
+                    ...{
+  "zoom": 14,
+  "zoomControl": true,
+  "preferCanvas": false,
+}
+
+                }
+            );
+
+            
+
+        
+    
+            var tile_layer_00c569607ca940a20f43f794ab9b75a6 = L.tileLayer(
+                "https://tile.openstreetmap.org/{z}/{x}/{y}.png",
+                {
+  "minZoom": 0,
+  "maxZoom": 19,
+  "maxNativeZoom": 19,
+  "noWrap": false,
+  "attribution": "\u0026copy; \u003ca href=\"https://www.openstreetmap.org/copyright\"\u003eOpenStreetMap\u003c/a\u003e contributors",
+  "subdomains": "abc",
+  "detectRetina": false,
+  "tms": false,
+  "opacity": 1,
+}
+
+            );
+        
+    
+            tile_layer_00c569607ca940a20f43f794ab9b75a6.addTo(map_7b58123b2f0b6e2d7f18b5605685c161);
+        
+    
+            var poly_line_e9540b983675c23d4fc7a78082acc180 = L.polyline(
+                [[45.75537815789727, 4.843286412521635], [45.75528614771183, 4.843019559881379], [45.755320079821765, 4.842926757018973], [45.75535803351906, 4.842863672851297], [45.75551314722442, 4.842962772376119], [45.756336096823354, 4.8428718370087], [45.75640931154386, 4.842860512697541], [45.75642946781111, 4.843250557072937], [45.756465298383354, 4.843262499219766], [45.75647402980824, 4.84324080220472], [45.75667115092282, 4.843326389744056], [45.75666986583288, 4.8432453035477], [45.75678486344954, 4.843300689843085], [45.7568009732176, 4.843252787908095], [45.75724309502395, 4.843591803927696], [45.75741439613763, 4.843158773121061], [45.75754828418412, 4.843254382008412], [45.75741296944057, 4.843679882029447], [45.75736233910892, 4.843869095325388], [45.75737325279169, 4.843934413867744], [45.75740422354664, 4.843932876260478], [45.75742387265695, 4.844148801155137], [45.75739865105129, 4.844159332118258], [45.75699239541007, 4.844215261125994], [45.75694565528485, 4.844319211864069], [45.7566875969257, 4.844897359308185], [45.75648382351168, 4.84546059915547], [45.75619719934318, 4.846133023233336], [45.756298142268285, 4.846514687979179], [45.75655348107646, 4.846465701059058], [45.75656790838998, 4.846608450815899], [45.7565788641566, 4.846717970932004], [45.75653909152592, 4.846744142671271], [45.75654950346343, 4.846785873075308], [45.75656515254856, 4.846777748948986], [45.75657290239099, 4.846800196972501], [45.75660300538555, 4.846791258803723], [45.756665626813636, 4.846988582959512], [45.75668891053866, 4.847238621673656], [45.75684546103914, 4.847385721549275], [45.756886798764924, 4.847802428532732], [45.756643797222914, 4.847793708970612], [45.756377921097034, 4.846813793212616], [45.75620318879654, 4.846915918314345], [45.756147276693206, 4.84669533417431], [45.75613748554465, 4.846276668916488], [45.75584003181194, 4.846000690500834], [45.7556753574912, 4.845422244949379], [45.755781915356465, 4.845356565767371], [45.75573729119212, 4.845199005939656], [45.75560033197256, 4.845282624038649], [45.75556031800168, 4.845134954222805], [45.75540786798177, 4.845219344306659], [45.75534384583428, 4.84499249563574], [45.7551584000819, 4.844522933284623], [45.75512258514775, 4.8444181764114], [45.75519528198071, 4.84434930457572], [45.755119858293355, 4.844263368501796], [45.75523912989454, 4.844140641217348], [45.75515334741519, 4.843964370638754], [45.755385414344886, 4.843731869138966], [45.75535712588719, 4.843705532869507], [45.755387585940674, 4.843634733524326], [45.75520025664526, 4.843258583766763], [45.75537815789727, 4.843286412521635]],
+                {"bubblingMouseEvents": true, "color": "blue", "dashArray": null, "dashOffset": null, "fill": true, "fillColor": "lightblue", "fillOpacity": 0.6, "fillRule": "evenodd", "lineCap": "round", "lineJoin": "round", "noClip": false, "opacity": 1.0, "smoothFactor": 1.0, "stroke": true, "weight": 2.5}
+            ).addTo(map_7b58123b2f0b6e2d7f18b5605685c161);
+        
+    
+            var marker_1404786d932631182776f50e04d26a7f = L.marker(
+                [45.755581, 4.843733],
+                {
+}
+            ).addTo(map_7b58123b2f0b6e2d7f18b5605685c161);
+        
+    
+            var icon_474bccd73dea27eccf4a990d8427611f = L.AwesomeMarkers.icon(
+                {
+  "markerColor": "red",
+  "iconColor": "white",
+  "icon": "info-sign",
+  "prefix": "glyphicon",
+  "extraClasses": "fa-rotate-0",
+}
+            );
+        
+    
+                marker_1404786d932631182776f50e04d26a7f.setIcon(icon_474bccd73dea27eccf4a990d8427611f);
+            
+    
+            var marker_28f0e6af3cabdc747311cecef8ea0889 = L.marker(
+                [45.755581, 4.843733],
+                {
+}
+            ).addTo(map_7b58123b2f0b6e2d7f18b5605685c161);
+        
+    
+            var div_icon_1a23f1db4fb14438b9fedfea9c4a095f = L.divIcon({
+  "html": "\n            \u003cdiv style=\"\n                background-color: rgba(255, 255, 255, 0.8);\n                padding: 10px;\n                border-radius: 5px;\n                font-size: 12px;\n                font-weight: bold;\n                text-align: left;\n                width: 400px;\"\u003e\n                \ud83d\udcc5 Aujourd\u0027hui : 06/11/2025\u003cbr\u003e\n                \ud83d\udccd \u003cb\u003e5, Rue Paul Bert, 69003, Lyon\u003c/b\u003e\u003cbr\u003e\n                \u2705 QPV : Moncey\u003cbr\u003e\n                \ud83d\udccf Distance : 0 m\u00e8tres \u003cbr\u003e\n                \ud83d\udd17 \u003ca href=\"https://public.opendatasoft.com/api/explore/v2.1/console\" target=\"_blank\" style=\"color:blue; text-decoration:none;\"\u003e\n                    Source OpenDataSoft\n                    \u003c/a\u003e\n            \u003c/div\u003e\n        ",
+  "iconSize": [350, 50],
+  "iconAnchor": [0, 0],
+  "className": "empty",
+});
+        
+    
+                marker_28f0e6af3cabdc747311cecef8ea0889.setIcon(div_icon_1a23f1db4fb14438b9fedfea9c4a095f);
+            
+</script>
+</html>

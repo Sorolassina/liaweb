@@ -5,10 +5,10 @@ from typing import List
 from sqlmodel import Session, select
 from datetime import datetime,timezone
 import logging
-from app_lia_web.app.models.base import Programme, Candidat, Entreprise
-from app_lia_web.app.models.preinscription import Preinscription, Eligibilite
-# from app_lia_web.app.schemas import PreinscriptionCreate  # Non utilisé
-from app_lia_web.core.utils import EligibilityUtils
+from ..models.base import Programme, Candidat, Entreprise
+from ..models.preinscription import Preinscription, Eligibilite
+# from ..schemas import PreinscriptionCreate  # Non utilisé
+from ..core.utils import EligibilityUtils
 
 logger = logging.getLogger(__name__)
 

@@ -5,6 +5,7 @@ from fastapi.templating import Jinja2Templates
 from pathlib import Path
 import sys
 import os
+import time
 from datetime import datetime
 import logging
 
@@ -17,19 +18,17 @@ sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspa
 try:
     from core.config import settings
     from core.path_config import path_config
-    from app.services.file_upload_service import FileUploadService
 except ImportError:
     # Fallback si l'import échoue
     settings = None
     path_config = None
-    FileUploadService = None
 
 # Configuration des templates
+BASE_DIR = Path(__file__).resolve().parent.parent.parent
 if settings:
     TEMPLATES_DIR = settings.TEMPLATE_DIR
 else:
     # Fallback si settings n'est pas disponible
-    BASE_DIR = Path(__file__).resolve().parent.parent.parent
     TEMPLATES_DIR = BASE_DIR / "app" / "templates"
 
 templates = Jinja2Templates(directory=str(TEMPLATES_DIR))
@@ -148,10 +147,6 @@ def format_candidat_name(nom, prenom=None, max_length=15):
     # Si même les initiales sont trop longues, tronquer
     return f"{nom}..."
 
-def format_candidat_name_filter(nom, prenom, max_length=15):
-    """Version filtre de format_candidat_name pour Jinja2"""
-    return format_candidat_name(nom, prenom, max_length)
-
 def format_email(email, max_length=25):
     """Formate l'email si trop long"""
     if not email:
@@ -249,8 +244,8 @@ templates.env.filters["format_number_french"] = format_number_french
 def get_active_programmes():
     """Récupère tous les programmes actifs pour le menu (lazy loading)"""
     try:
-        from app_lia_web.core.database import get_session
-        from app_lia_web.app.models.base import Programme
+        from ..core.database import get_session
+        from ..models.base import Programme
         from sqlmodel import Session, select
         
         # Créer une session temporaire
@@ -276,55 +271,83 @@ def get_current_year():
     """Fonction pour obtenir l'année actuelle dans les templates"""
     return datetime.now().year
 
-def get_company_logo_url():
-    """Obtenir l'URL du logo de l'entreprise via path_config"""
-    if path_config and settings:
+def company_logo(return_type='url'):
+    """
+    Fonction unique pour gérer le logo de l'entreprise.
+    
+    Args:
+        return_type: Type de retour souhaité
+            - 'url': URL du logo avec versionnement (par défaut)
+            - 'path': Chemin physique du logo
+            - 'exists': Booléen indiquant si le logo existe
+            - 'filename': Nom du fichier logo
+    
+    Returns:
+        Selon return_type: URL (str), chemin (Path), booléen, ou nom de fichier (str)
+    """
+    # Extraire le nom du fichier logo
+    logo_filename = "logo.png"
+    if settings:
         try:
-            # Utiliser le chemin configuré dans settings
             logo_path = settings.COMPANY_LOGO_PATH
-            # Extraire le nom du fichier depuis le chemin
             logo_filename = logo_path.split('/')[-1]  # "logo.png"
-            
-            # Utiliser path_config pour gérer les sous-dossiers
-            return path_config.get_company_logo_url(logo_filename)
         except Exception:
             pass
     
-    # Fallback vers le chemin configuré dans settings
-    if settings:
-        return settings.COMPANY_LOGO_PATH
-    return "/static/images/logo.png"
-
-def get_company_logo_path():
-    """Obtenir le chemin physique du logo de l'entreprise"""
+    # Si on veut juste le nom du fichier
+    if return_type == 'filename':
+        return logo_filename
+    
+    # Vérifier si le logo existe dans media/compagnie/
+    logo_exists = False
+    logo_url = None
+    logo_path = None
+    
     if path_config and settings:
         try:
-            # Utiliser le chemin configuré dans settings
-            logo_path = settings.COMPANY_LOGO_PATH
-            # Extraire le nom du fichier depuis le chemin
-            logo_filename = logo_path.split('/')[-1]  # "logo.png"
-            
-            # Utiliser path_config optimisé avec sous-dossier compagnie
-            return path_config.get_company_logo_path(logo_filename)
+            if path_config.company_file_exists(logo_filename, "compagnie"):
+                logo_exists = True
+                logo_url = path_config.get_company_logo_url(logo_filename)
+                logo_path = path_config.get_company_logo_path(logo_filename)
         except Exception:
             pass
-    # Fallback
-    return None
-
-def company_logo_exists():
-    """Vérifier si le logo de l'entreprise existe"""
-    if path_config and settings:
-        try:
-            # Utiliser le chemin configuré dans settings
-            logo_path = settings.COMPANY_LOGO_PATH
-            # Extraire le nom du fichier depuis le chemin
-            logo_filename = logo_path.split('/')[-1]  # "logo.png"
-            
-            # Utiliser path_config optimisé
-            return path_config.company_file_exists(logo_filename, "compagnie")
-        except Exception:
-            pass
-    return False
+    
+    # Fallback vers le logo par défaut
+    if not logo_exists:
+        if path_config:
+            try:
+                # Utiliser path_config pour obtenir le chemin et l'URL du logo par défaut
+                default_logo_path = path_config.get_physical_path("images", "logo.png")
+                if default_logo_path.exists():
+                    logo_exists = True
+                    logo_url = path_config.get_file_url("images", "logo.png")
+                    logo_path = default_logo_path
+            except Exception:
+                pass
+        elif settings:
+            try:
+                default_logo_path = settings.STATIC_DIR / "images" / "logo.png"
+                if default_logo_path.exists():
+                    logo_exists = True
+                    logo_url = settings.COMPANY_LOGO_PATH
+                    logo_path = default_logo_path
+            except Exception:
+                pass
+        else:
+            # Si pas de path_config ni settings, utiliser le logo par défaut
+            logo_url = "/static/images/logo.png"
+            logo_exists = True
+    
+    # Retourner selon le type demandé
+    if return_type == 'exists':
+        return logo_exists
+    elif return_type == 'path':
+        return logo_path
+    elif return_type == 'url':
+        # Ajouter le versionnement automatiquement
+        return static_versioning(logo_url) if logo_url else None
+    else:
+        return logo_url
 
 def get_company_file_url(filename: str, subfolder: str = "compagnie") -> str:
     """Obtenir l'URL d'un fichier de l'entreprise depuis le dossier media/compagnie/"""
@@ -333,7 +356,14 @@ def get_company_file_url(filename: str, subfolder: str = "compagnie") -> str:
             return path_config.get_company_file_url(filename, subfolder)
         except Exception:
             pass
-    return f"/media/{subfolder}/{filename}"
+    # Fallback : utiliser path_config pour obtenir le chemin de montage "media"
+    if path_config:
+        try:
+            media_path = path_config.get_mount_path("media")
+            return f"{media_path}/{subfolder}/{filename}"
+        except Exception:
+            pass
+    return f"/uploads/{subfolder}/{filename}"
 
 def get_company_file_path(filename: str, subfolder: str = "compagnie") -> str:
     """Obtenir le chemin physique d'un fichier de l'entreprise"""
@@ -364,14 +394,208 @@ def list_company_files(subfolder: str = "compagnie") -> list:
     return []
 
 def get_user_photo_url(utilisateur=None):
-    """Obtenir l'URL de la photo de profil de l'utilisateur ou l'image par défaut"""
+    """
+    Obtenir l'URL de la photo de profil de l'utilisateur ou l'image par défaut.
+    Utilise path_config pour générer les URLs de manière centralisée.
+    Vérifie que le fichier existe avant de retourner son URL.
+    
+    Args:
+        utilisateur: Objet utilisateur avec attribut photo_profil (optionnel)
+    
+    Returns:
+        str: URL de la photo de profil ou de l'image par défaut (utilisateur.png)
+    """
+    # Fonction helper pour obtenir l'image par défaut
+    def get_default_photo_url():
+        """Retourne l'URL de l'image par défaut (bonhomme de login)"""
+        try:
+            if path_config:
+                # Utiliser path_config pour générer l'URL de l'image par défaut
+                # La monture "images" pointe vers /static/images
+                default_url = path_config.get_file_url("images", "utilisateur.png")
+                # Ajouter le versionnement pour éviter les problèmes de cache
+                return static_versioning(default_url)
+            else:
+                # Fallback si path_config n'est pas disponible : utiliser STATIC_BASE_PATH
+                if settings:
+                    base_path = settings.STATIC_BASE_PATH
+                else:
+                    base_path = '/static'
+                default_url = f"{base_path}/images/utilisateur.png"
+                return static_versioning(default_url)
+        except Exception as e:
+            # Log l'erreur pour debugging (en mode développement)
+            if settings and settings.DEBUG:
+                logger.warning(f"Erreur lors de la génération de l'URL de photo par défaut: {e}")
+            # Fallback si erreur
+            return "/static/images/utilisateur.png"
+    
+    # Vérifier si l'utilisateur a une photo de profil
     if utilisateur and hasattr(utilisateur, 'photo_profil') and utilisateur.photo_profil:
-        # Si le chemin commence déjà par /uploads/ ou /media/, on le retourne tel quel
-        if utilisateur.photo_profil.startswith('/uploads/') or utilisateur.photo_profil.startswith('/media/'):
-            return utilisateur.photo_profil
-        # Sinon, on ajoute le préfixe /uploads/
-        return f"/uploads/{utilisateur.photo_profil}"
-    return "/static/images/utilisateur.png"
+        photo_path = str(utilisateur.photo_profil).strip()
+        
+        # Ignorer les chaînes vides après strip
+        if not photo_path:
+            # Passer à l'image par défaut si photo_path est vide
+            return get_default_photo_url()
+        
+        # Si le chemin commence déjà par /uploads/ ou /media/, vérifier l'existence
+        if photo_path.startswith('/uploads/') or photo_path.startswith('/media/'):
+            # Extraire le chemin relatif pour vérifier l'existence
+            if path_config:
+                try:
+                    # Extraire le chemin relatif depuis l'URL complète
+                    normalized_path = photo_path.lstrip('/uploads/').lstrip('/media/')
+                    # Vérifier si le fichier existe physiquement
+                    physical_path = path_config.get_physical_path("media", normalized_path)
+                    if physical_path.exists():
+                        return photo_path
+                    else:
+                        # Le fichier n'existe pas, utiliser l'image par défaut
+                        if settings and settings.DEBUG:
+                            logger.debug(f"Photo utilisateur non trouvée: {physical_path}, utilisation de l'image par défaut")
+                        return get_default_photo_url()
+                except Exception as e:
+                    if settings and settings.DEBUG:
+                        logger.warning(f"Erreur lors de la vérification de la photo: {e}")
+                    # En cas d'erreur, utiliser l'image par défaut
+                    return get_default_photo_url()
+            else:
+                # Si path_config n'est pas disponible, retourner tel quel (pas de vérification)
+                return photo_path
+        
+        # Utiliser path_config pour générer l'URL de la photo uploadée
+        if path_config:
+            try:
+                # Normaliser le chemin (supprimer les slashes en début si présents)
+                normalized_path = photo_path.lstrip('/')
+                # Vérifier si le fichier existe physiquement
+                physical_path = path_config.get_physical_path("media", normalized_path)
+                if physical_path.exists():
+                    # Le fichier existe, retourner l'URL
+                    return path_config.get_file_url("media", normalized_path)
+                else:
+                    # Le fichier n'existe pas, utiliser l'image par défaut
+                    if settings and settings.DEBUG:
+                        logger.debug(f"Photo utilisateur non trouvée: {physical_path}, utilisation de l'image par défaut")
+                    return get_default_photo_url()
+            except Exception as e:
+                if settings and settings.DEBUG:
+                    logger.warning(f"Erreur lors de la génération de l'URL de photo: {e}")
+                # En cas d'erreur, utiliser l'image par défaut
+                return get_default_photo_url()
+        else:
+            # Fallback si path_config n'est pas disponible (pas de vérification d'existence)
+            normalized_path = photo_path.lstrip('/')
+            return f"/uploads/{normalized_path}"
+    
+    # Pas de photo de profil : utiliser l'image par défaut
+    return get_default_photo_url()
+
+def static_versioning(static_path):
+    """
+    Ajoute un paramètre de version à une URL de fichier statique pour éviter les problèmes de cache.
+    
+    Args:
+        static_path: Chemin du fichier statique (ex: "/static/images/logo.png")
+    
+    Returns:
+        URL avec paramètre de version (ex: "/static/images/logo.png?v=1.0.0")
+    """
+    if not static_path:
+        return static_path
+    
+    # Récupérer la version depuis settings si disponible
+    version = None
+    if settings:
+        version = getattr(settings, 'VERSION', None)
+    
+    # Si pas de version dans settings, utiliser un timestamp
+    if not version:
+        try:
+            # Utiliser un timestamp basé sur la date de modification du fichier si possible
+            # Détecter le type de chemin (static, images, media, etc.)
+            file_path = None
+            static_file = None
+            
+            if path_config:
+                # Essayer de trouver le fichier via path_config
+                for mount_name in ["static", "images", "media"]:
+                    try:
+                        mount_path = path_config.get_mount_path(mount_name)
+                        if static_path.startswith(mount_path + '/'):
+                            file_path = static_path.replace(mount_path + '/', '')
+                            static_file = path_config.get_physical_path(mount_name, file_path)
+                            break
+                    except Exception:
+                        continue
+            
+            # Fallback : détection manuelle si path_config n'a pas fonctionné
+            if not static_file:
+                if static_path.startswith('/static/'):
+                    file_path = static_path.replace('/static/', '')
+                    if settings:
+                        static_file = settings.STATIC_DIR / file_path.lstrip('/')
+                    else:
+                        static_file = BASE_DIR / "app" / "static" / file_path.lstrip('/')
+            
+            if static_file and static_file.exists():
+                mtime = os.path.getmtime(static_file)
+                version = str(int(mtime))
+        except Exception:
+            pass
+        
+        # Fallback: utiliser un timestamp simple
+        if not version:
+            version = str(int(time.time()))
+    
+    # Ajouter le paramètre de version
+    separator = '&' if '?' in static_path else '?'
+    return f"{static_path}{separator}v={version}"
+
+def static_url(path):
+    """
+    Génère une URL pour un fichier statique.
+    Utilise path_config pour obtenir le chemin de montage "static".
+    
+    Args:
+        path: Chemin relatif du fichier statique (ex: "css/base.css" ou "images/logo.png")
+    
+    Returns:
+        URL complète du fichier statique (ex: "/static/css/base.css")
+    """
+    # Normaliser le chemin (supprimer les slashes en début si présents)
+    normalized_path = path.lstrip('/')
+    
+    # Utiliser path_config pour obtenir le chemin de montage "static"
+    if path_config:
+        try:
+            static_base_path = path_config.get_mount_path("static")
+            return f"{static_base_path}/{normalized_path}"
+        except Exception:
+            pass
+    
+    # Fallback : utiliser STATIC_BASE_PATH depuis settings
+    if settings:
+        static_base_path = settings.STATIC_BASE_PATH
+    else:
+        static_base_path = '/static'
+    
+    # Construire l'URL statique
+    return f"{static_base_path}/{normalized_path}"
+
+def static_versioned_url(path):
+    """
+    Génère une URL versionnée pour un fichier statique.
+    Alias de static_versioning(static_url(path)).
+    
+    Args:
+        path: Chemin relatif du fichier statique (ex: "css/base.css")
+    
+    Returns:
+        URL versionnée du fichier statique (ex: "/static/css/base.css?v=1.0.0")
+    """
+    return static_versioning(static_url(path))
 
 # Configuration globale des templates
 # Injection des fonctions utilitaires (toujours disponibles)
@@ -387,6 +611,13 @@ templates.env.globals.update(
     get_current_programme_from_session=get_current_programme_from_session,
     get_programmes=get_active_programmes,  # ← Fonction pour éviter les conflits
     get_user_photo_url=get_user_photo_url,
+    static_versioning=static_versioning,  # Fonction de versionnement des fichiers statiques
+    static_versioned_url=static_versioned_url,  # Alias avec static_url intégré
+    static_url=static_url,  # Fonction pour générer les URLs statiques
+    company_logo=company_logo,  # Fonction unique pour gérer le logo de l'entreprise
+    # Alias pour compatibilité avec l'ancien code
+    get_company_logo_url=lambda: company_logo('url'),
+    company_logo_exists=lambda: company_logo('exists'),
 )
 
 # Configuration spécifique si settings est disponible
@@ -402,9 +633,10 @@ if settings:
         company_address=settings.COMPANY_ADDRESS,
         company_phone=settings.COMPANY_PHONE,
         company_website=settings.COMPANY_WEBSITE,
-        company_logo=get_company_logo_url,
-        company_logo_exists=company_logo_exists,
         company_email=settings.ADMIN_EMAIL,
+        # Variables globales pour les templates (version et root_path)
+        version=settings.VERSION,  # Version de l'application
+        root_path="",  # Chemin racine (vide par défaut, peut être surchargé par les routes)
         
         # === THÈME ET DESIGN ===
         is_debug=settings.DEBUG,
@@ -413,8 +645,6 @@ if settings:
         theme_white=settings.THEME_WHITE,
         
         # === FONCTIONS ENTREPRISE ===
-        get_company_logo_url=get_company_logo_url,
-        get_company_logo_path=get_company_logo_path,
         get_company_file_url=get_company_file_url,
         get_company_file_path=get_company_file_path,
         company_file_exists=company_file_exists,

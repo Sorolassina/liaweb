@@ -6,15 +6,15 @@ from typing import List, Optional
 import secrets
 import string
 
-from app_lia_web.core.database import get_session
-from app_lia_web.core.middleware import get_shared_session
-from app_lia_web.app.models.base import User, Programme
-from app_lia_web.app.models.inscription import Inscription
-from app_lia_web.app.models.event import Event, InvitationEvent, PresenceEvent
-from app_lia_web.app.schemas.event_schemas import EventCreate, EventUpdate, InvitationEventCreate, PresenceEventCreate
-from app_lia_web.app.services.event_service import EventService
-from app_lia_web.core.security import get_current_user
-from app_lia_web.app.templates import templates
+from ..core.database import get_session
+from ..core.middleware import get_shared_session
+from ..models.base import User, Programme
+from ..models.inscription import Inscription
+from ..models.event import Event, InvitationEvent, PresenceEvent
+from ..schemas.event_schemas import EventCreate, EventUpdate, InvitationEventCreate, PresenceEventCreate
+from ..services.event_service import EventService
+from ..core.security import get_current_user
+from ..templates import templates
 
 router = APIRouter()
 event_service = EventService()
@@ -47,7 +47,7 @@ async def liste_events(
         print(f"⚠️ [WARNING] Erreur lors de la récupération des programmes: {e}")
         programmes = []
     
-    return templates.TemplateResponse("events/liste.html", {
+    return templates.TemplateResponse("pages/events/liste.html", {
         "request": request,
         "events": events,
         "stats": stats,
@@ -65,7 +65,7 @@ async def form_event(
     """Formulaire de création d'événement"""
     programmes = db.exec(select(Programme)).all()
     
-    return templates.TemplateResponse("events/form.html", {
+    return templates.TemplateResponse("pages/events/form.html", {
         "request": request,
         "programmes": programmes,
         "utilisateur": current_user
@@ -119,7 +119,7 @@ async def creer_event(
     presences_data = event_service.get_presences_with_combined_status(event.id, db)
     stats = event_service.get_presence_stats_with_invitations(event.id, db)
     
-    return templates.TemplateResponse("events/detail.html", {
+    return templates.TemplateResponse("pages/events/detail.html", {
         "request": request,
         "event": event,
         "presences_data": presences_data,
@@ -142,7 +142,7 @@ async def detail_event(
     presences_data = event_service.get_presences_with_combined_status(event_id, db)
     stats = event_service.get_presence_stats_with_invitations(event_id, db)
     
-    return templates.TemplateResponse("events/detail.html", {
+    return templates.TemplateResponse("pages/events/detail.html", {
         "request": request,
         "event": event,
         "presences_data": presences_data,
@@ -164,7 +164,7 @@ async def edit_event(
     
     programmes = db.exec(select(Programme)).all()
     
-    return templates.TemplateResponse("events/edit.html", {
+    return templates.TemplateResponse("pages/events/edit.html", {
         "request": request,
         "event": event,
         "programmes": programmes,
@@ -244,7 +244,7 @@ async def emargement_event(
     presences = event_service.get_presences_with_invitations(event_id, db)
     stats = event_service.get_presence_stats_with_invitations(event_id, db)
     
-    return templates.TemplateResponse("events/emargement.html", {
+    return templates.TemplateResponse("pages/events/emargement.html", {
         "request": request,
         "event": event,
         "presences": presences,
@@ -266,7 +266,7 @@ async def emargement_direct_event(
     
     presences = event_service.get_presences_with_invitations(event_id, db)
     
-    return templates.TemplateResponse("events/emargement_direct.html", {
+    return templates.TemplateResponse("pages/events/emargement_direct.html", {
         "request": request,
         "event": event,
         "presences": presences,
@@ -288,8 +288,8 @@ async def invitations_event(
     invitations = event_service.get_invitations_by_event(event_id, db)
     
     # Récupérer les candidats disponibles pour invitation
-    from app_lia_web.app.models.inscription import Inscription
-    from app_lia_web.app.models.base import Candidat
+    from ..models.inscription import Inscription
+    from ..models.base import Candidat
     
     inscriptions = db.exec(
         select(Inscription)
@@ -297,7 +297,7 @@ async def invitations_event(
         .where(Inscription.programme_id == event.programme_id)
     ).all()
     
-    return templates.TemplateResponse("events/invitations.html", {
+    return templates.TemplateResponse("pages/events/invitations.html", {
         "request": request,
         "event": event,
         "invitations": invitations,
@@ -315,7 +315,7 @@ async def envoyer_invitations_event(
     current_user: User = Depends(get_current_user)
 ):
     """Envoyer des invitations"""
-    from app_lia_web.app.models.enums import TypeInvitation
+    from ..models.enums import TypeInvitation
     
     type_inv = TypeInvitation(type_invitation)
     invitations = event_service.send_invitations_bulk(event_id, type_inv, candidats_ids, db)
@@ -376,7 +376,7 @@ async def generer_liens_emargement_event(
     # Récupérer les invitations de l'événement
     invitations = event_service.get_invitations_by_event(event_id, db)
     
-    return templates.TemplateResponse("events/generer_liens_emargement.html", {
+    return templates.TemplateResponse("pages/events/generer_liens_emargement.html", {
         "request": request,
         "event": event,
         "invitations": invitations,
@@ -409,7 +409,7 @@ async def envoyer_liens_emargement_event(
     for invitation in invitations:
         try:
             # Générer le lien d'émargement
-            from app_lia_web.core.config import settings
+            from ..core.config import settings
             base_url = settings.get_base_url_for_email()
             emargement_url = f"{base_url}/events/{event_id}/emargement/lien/{invitation.token_invitation}"
             
@@ -463,7 +463,7 @@ async def emargement_lien_event(
     # Vérifier si déjà présent
     presence = event_service.get_presence_candidat(event_id, invitation.inscription_id, db)
     
-    return templates.TemplateResponse("events/emargement_lien.html", {
+    return templates.TemplateResponse("pages/events/emargement_lien.html", {
         "request": request,
         "event": event,
         "invitation": invitation,
@@ -518,7 +518,7 @@ async def signer_emargement_lien_event(
     
     presence_obj = event_service.mark_presence(presence_data, db)
     
-    return templates.TemplateResponse("events/emargement_confirmation.html", {
+    return templates.TemplateResponse("pages/events/emargement_confirmation.html", {
         "request": request,
         "event": event,
         "presence": presence_obj
@@ -542,7 +542,7 @@ async def invitation_event_page(
     if not event:
         raise HTTPException(status_code=404, detail="Événement non trouvé")
     
-    return templates.TemplateResponse("events/invitation_public.html", {
+    return templates.TemplateResponse("pages/events/invitation_public.html", {
         "request": request,
         "invitation": invitation,
         "event": event
@@ -562,7 +562,7 @@ async def accepter_invitation_event(
     
     event_service.update_invitation_status(invitation.id, "acceptee", db)
     
-    return templates.TemplateResponse("events/invitation_confirmation.html", {
+    return templates.TemplateResponse("pages/events/invitation_confirmation.html", {
         "request": request,
         "invitation": invitation,
         "action": "acceptée"
@@ -582,7 +582,7 @@ async def refuser_invitation_event(
     
     event_service.update_invitation_status(invitation.id, "refusee", db)
     
-    return templates.TemplateResponse("events/invitation_confirmation.html", {
+    return templates.TemplateResponse("pages/events/invitation_confirmation.html", {
         "request": request,
         "invitation": invitation,
         "action": "refusée"

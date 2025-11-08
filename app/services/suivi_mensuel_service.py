@@ -1,9 +1,9 @@
 from sqlmodel import Session, select, func
 from typing import List, Optional, Dict, Any
 from datetime import date, datetime, timezone
-from app_lia_web.app.models.base import SuiviMensuel, Inscription, Candidat, Programme
-from app_lia_web.core.program_schema_integration import table_exists_anywhere
-from app_lia_web.app.schemas.suivi_mensuel_schemas import (
+from ..models.base import SuiviMensuel, Inscription, Candidat, Programme
+from ..core.program_schema_integration import table_exists_anywhere
+from ..schemas.suivi_mensuel_schemas import (
     SuiviMensuelCreate, SuiviMensuelUpdate, SuiviMensuelFilter, SuiviMensuelStats, SuiviMensuelWithCandidat
 )
 

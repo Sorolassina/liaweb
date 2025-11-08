@@ -7,27 +7,27 @@ from typing import Dict, List, Any, Optional
 from fastapi import APIRouter, Depends, Request, HTTPException, status, Query
 from fastapi.responses import HTMLResponse
 from sqlmodel import Session, select
-from sqlalchemy import func, case
+from sqlalchemy import func, case, text
 from zoneinfo import ZoneInfo, ZoneInfoNotFoundError
 
-from app_lia_web.core.database import get_session
-from app_lia_web.core.middleware import get_shared_session
-from app_lia_web.core.config import settings
-from app_lia_web.core.security import get_current_user
-from app_lia_web.core.program_schema_integration import safe_count_query, table_exists_anywhere
+from ..core.database import get_session
+from ..core.middleware import get_shared_session
+from ..core.config import settings
+from ..core.security import get_current_user
+from ..core.program_schema_integration import safe_count_query, table_exists_anywhere
 import logging
-from app_lia_web.app.models.base import (
+from ..models.base import (
     User, Programme, Candidat, Entreprise,
     RendezVous, SessionProgramme, SessionParticipant,
     SuiviMensuel, DecisionJuryCandidat
 )
-from app_lia_web.app.models.preinscription import Preinscription, Eligibilite
-from app_lia_web.app.models.inscription import Inscription
-from app_lia_web.app.models.jury import Jury
-from app_lia_web.app.models.enums import UserRole, TypeSession, StatutPresence
-from app_lia_web.app.schemas import ProgrammeCreate, ProgrammeUpdate, ProgrammeResponse
-from app_lia_web.app.services import ProgrammeService
-from app_lia_web.app.templates import templates
+from ..models.preinscription import Preinscription, Eligibilite
+from ..models.inscription import Inscription
+from ..models.jury import Jury
+from ..models.enums import UserRole, TypeSession, StatutPresence
+from ..schemas import ProgrammeCreate, ProgrammeUpdate, ProgrammeResponse
+from ..services import ProgrammeService
+from ..templates import templates
 
 router = APIRouter()
 
@@ -196,325 +196,529 @@ def programme_dashboard(request: Request,
     except ZoneInfoNotFoundError:
         tz = timezone.utc
     now = datetime.now(tz)
-
-    # --- Récupération programme dynamique ---
-    if programme:
-        programme_obj: Optional[Programme] = session.exec(select(Programme).where(Programme.code == programme)).first()
-        print(f"🔍 [DEBUG] Programme trouvé par code {programme}: {programme_obj}")
-    else:
-        # Récupérer le premier programme actif par défaut
-        programme_obj = session.exec(select(Programme).where(Programme.actif == True)).first()
-        print(f"🔍 [DEBUG] Programme par défaut: {programme_obj}")
     
-    programme = programme_obj
+    try:
+        # --- Récupération programme dynamique ---
+        if programme:
+            programme_obj: Optional[Programme] = session.exec(select(Programme).where(Programme.code == programme)).first()
+            print(f"🔍 [DEBUG] Programme trouvé par code {programme}: {programme_obj}")
+        else:
+            # Récupérer le premier programme actif par défaut
+            programme_obj = session.exec(select(Programme).where(Programme.actif == True)).first()
+            print(f"🔍 [DEBUG] Programme par défaut: {programme_obj}")
+        
+        programme = programme_obj
 
-    if not programme:
-        return templates.TemplateResponse("error.html", {
-            "request": request,
-            "utilisateur": current_user,
-            "error_message": "Aucun programme trouvé"
-        })
+        if not programme:
+            return templates.TemplateResponse("500.html", {
+                "request": request,
+                "utilisateur": current_user,
+                "error_message": "Aucun programme trouvé"
+            })
 
-    # --- Statistiques générales ---
-    # Préinscriptions
-    preinscriptions_count = 0
-    if table_exists_anywhere("preinscription", session):
+        # Extraire le schéma du programme
+        schema = programme.code.lower()
+        
+        # Configurer le search_path pour utiliser le schéma du programme
         try:
-            preinscriptions_count = safe_count_query(session, Preinscription, Preinscription.programme_id == programme.id)
+            session.execute(text(f"SET search_path TO {schema}, public"))
+        except Exception as e:
+            logging.warning(f"Erreur lors de la configuration du search_path: {e}")
+            session.rollback()
+
+        # --- Statistiques générales ---
+        # Préinscriptions
+        preinscriptions_count = 0
+        try:
+            preinscriptions_query = text(f"""
+                SELECT COUNT(*) 
+                FROM {schema}.preinscription 
+                WHERE programme_id = :programme_id
+            """)
+            result = session.execute(preinscriptions_query.bindparams(programme_id=programme.id))
+            preinscriptions_count = result.fetchone()[0] or 0
         except Exception as e:
             logging.warning(f"Erreur lors du comptage des préinscriptions: {e}")
+            session.rollback()
             preinscriptions_count = 0
-    
-    # Inscriptions
-    inscriptions_count = 0
-    if table_exists_anywhere("inscription", session):
+        
+        # Inscriptions
+        inscriptions_count = 0
         try:
-            inscriptions_count = safe_count_query(session, Inscription, Inscription.programme_id == programme.id)
+            inscriptions_query = text(f"""
+                SELECT COUNT(*) 
+                FROM {schema}.inscription 
+                WHERE programme_id = :programme_id
+            """)
+            result = session.execute(inscriptions_query.bindparams(programme_id=programme.id))
+            inscriptions_count = result.fetchone()[0] or 0
         except Exception as e:
             logging.warning(f"Erreur lors du comptage des inscriptions: {e}")
+            session.rollback()
             inscriptions_count = 0
-    
-    # Candidats validés (avec décision jury VALIDE)
-    candidats_valides_count = 0
-    if (table_exists_anywhere("candidat", session) and 
-        table_exists_anywhere("inscription", session) and 
-        table_exists_anywhere("decision_jury_candidat", session)):
+        
+        # Candidats validés (avec décision jury VALIDE)
+        candidats_valides_count = 0
         try:
-            candidats_valides_count = session.exec(
-                select(Candidat)
-                .join(Inscription, Inscription.candidat_id == Candidat.id)
-                .join(DecisionJuryCandidat, DecisionJuryCandidat.candidat_id == Candidat.id)
-                .where(Inscription.programme_id == programme.id, DecisionJuryCandidat.decision == "VALIDE")
-            ).count()
+            candidats_valides_query = text(f"""
+                SELECT COUNT(DISTINCT c.id)
+                FROM {schema}.candidat c
+                INNER JOIN {schema}.inscription i ON i.candidat_id = c.id
+                INNER JOIN {schema}.decision_jury_candidat djc ON djc.candidat_id = c.id
+                WHERE i.programme_id = :programme_id
+                AND djc.decision = 'VALIDE'
+            """)
+            result = session.execute(candidats_valides_query.bindparams(programme_id=programme.id))
+            candidats_valides_count = result.fetchone()[0] or 0
         except Exception as e:
             logging.warning(f"Erreur lors du comptage des candidats validés: {e}")
+            session.rollback()
             candidats_valides_count = 0
 
-    # --- Pyramide des âges (candidats validés) ---
-    civ_dob = []
-    if (programme.id and 
-        table_exists_anywhere("candidat", session) and 
-        table_exists_anywhere("inscription", session) and 
-        table_exists_anywhere("decision_jury_candidat", session)):
+        # --- Pyramide des âges (candidats validés) ---
+        civ_dob = []
         try:
-            civ_dob = session.exec(
-                select(Candidat.civilite, Candidat.date_naissance)
-                .join(Inscription, Inscription.candidat_id == Candidat.id)
-                .join(DecisionJuryCandidat, DecisionJuryCandidat.candidat_id == Candidat.id)
-                .where(Inscription.programme_id == programme.id, DecisionJuryCandidat.decision == "VALIDE")
-            ).all()
+            civ_dob_query = text(f"""
+                SELECT c.civilite, c.date_naissance
+                FROM {schema}.candidat c
+                INNER JOIN {schema}.inscription i ON i.candidat_id = c.id
+                INNER JOIN {schema}.decision_jury_candidat djc ON djc.candidat_id = c.id
+                WHERE i.programme_id = :programme_id
+                AND djc.decision = 'VALIDE'
+            """)
+            result = session.execute(civ_dob_query.bindparams(programme_id=programme.id))
+            civ_dob = result.fetchall()
         except Exception as e:
             logging.warning(f"Erreur lors de la récupération des données de pyramide des âges: {e}")
+            session.rollback()
             civ_dob = []
-    
-    bins = ["<15"] + [f"{s}-{s+4}" for s in range(15,65,5)] + ["65+","Inconnu"]
-    male = {b:0 for b in bins}; female = {b:0 for b in bins}
-    for civ, dob in civ_dob:
-        a = _age(dob); b = _bucket(a)
-        if _is_f(civ): female[b]+=1
-        elif _is_h(civ): male[b]+=1
-    pyramid_labels = bins
-    pyramid_male = [-male[b] for b in bins]
-    pyramid_female = [female[b] for b in bins]
+        
+        bins = ["<15"] + [f"{s}-{s+4}" for s in range(15,65,5)] + ["65+","Inconnu"]
+        male = {b:0 for b in bins}; female = {b:0 for b in bins}
+        for civ, dob in civ_dob:
+            a = _age(dob); b = _bucket(a)
+            if _is_f(civ): female[b]+=1
+            elif _is_h(civ): male[b]+=1
+        pyramid_labels = bins
+        pyramid_male = [-male[b] for b in bins]
+        pyramid_female = [female[b] for b in bins]
 
-    # --- Carte (candidats validés avec lat/lng) ---
-    rows_geo = []
-    if (programme.id and 
-        table_exists_anywhere("candidat", session) and 
-        table_exists_anywhere("inscription", session) and 
-        table_exists_anywhere("decision_jury_candidat", session) and
-        table_exists_anywhere("entreprise", session) and
-        table_exists_anywhere("eligibilite", session)):
+        # --- Carte (candidats validés avec lat/lng) ---
+        rows_geo = []
         try:
-            # Priorité : adresse QPV/QPV limite, sinon adresse personnelle
-            rows_geo = session.exec(
-                select(Candidat.prenom, Candidat.nom, Candidat.civilite,
-                       # Coordonnées : priorité entreprise, sinon candidat
-                       func.coalesce(Entreprise.lat, Candidat.lat).label('lat'),
-                       func.coalesce(Entreprise.lng, Candidat.lng).label('lng'),
-                       # QPV depuis Entreprise
-                       func.coalesce(Entreprise.qpv, False).label('qpv'),
-                       # QPV limite depuis Eligibilite.details_json
-                       Eligibilite.details_json.label('eligibilite_json'),
-                       # Adresse : priorité entreprise, sinon candidat
-                       func.coalesce(Entreprise.adresse, Entreprise.territoire, Candidat.adresse_personnelle).label('adresse'))
-                .join(Inscription, Inscription.candidat_id == Candidat.id)
-                .join(DecisionJuryCandidat, DecisionJuryCandidat.candidat_id == Candidat.id)
-                .join(Entreprise, Entreprise.candidat_id == Candidat.id, isouter=True)
-                .join(Preinscription, Preinscription.candidat_id == Candidat.id)
-                .join(Eligibilite, Eligibilite.preinscription_id == Preinscription.id, isouter=True)
-                .where(Inscription.programme_id == programme.id, DecisionJuryCandidat.decision == "VALIDE")
-                .where(func.coalesce(Entreprise.lat, Candidat.lat).is_not(None), 
-                       func.coalesce(Entreprise.lng, Candidat.lng).is_not(None))
-            ).all()
+            geo_query = text(f"""
+                SELECT DISTINCT
+                    c.prenom, c.nom, c.civilite,
+                    COALESCE(e.lat, c.lat) as lat,
+                    COALESCE(e.lng, c.lng) as lng,
+                    COALESCE(e.qpv, false) as qpv,
+                    COALESCE(e.adresse, e.territoire, c.adresse_personnelle, '') as adresse,
+                    el.qpv_ok
+                FROM {schema}.candidat c
+                INNER JOIN {schema}.inscription i ON i.candidat_id = c.id
+                INNER JOIN {schema}.decision_jury_candidat djc ON djc.candidat_id = c.id
+                LEFT JOIN {schema}.entreprise e ON e.candidat_id = c.id
+                LEFT JOIN {schema}.preinscription p ON p.candidat_id = c.id
+                LEFT JOIN {schema}.eligibilite el ON el.preinscription_id = p.id
+                WHERE i.programme_id = :programme_id
+                AND djc.decision = 'VALIDE'
+                AND (COALESCE(e.lat, c.lat) IS NOT NULL 
+                    AND COALESCE(e.lng, c.lng) IS NOT NULL
+                    AND COALESCE(e.lat, c.lat) != 0 
+                    AND COALESCE(e.lng, c.lng) != 0)
+            """)
+            result = session.execute(geo_query.bindparams(programme_id=programme.id))
+            rows_geo = result.fetchall()
         except Exception as e:
             logging.warning(f"Erreur lors de la récupération des données géographiques: {e}")
+            session.rollback()
             rows_geo = []
     
-    pins = []
-    for p,n,c,lat,lng,qpv,elig_json,adr in rows_geo:
-        # Analyser le JSON d'éligibilité pour déterminer QPV limite
-        qpv_limite = False
-        if elig_json:
+        pins = []
+        for row in rows_geo:
             try:
-                import json
-                elig_data = json.loads(elig_json)
+                p, n, c, lat, lng, qpv, adr, qpv_ok = row
                 
-                # Nouvelle structure : adresses_analysees avec tableau
-                if 'adresses_analysees' in elig_data and elig_data['adresses_analysees']:
-                    for adresse_info in elig_data['adresses_analysees']:
-                        if adresse_info.get('qpv_limite', False):
-                            qpv_limite = True
-                            break
-                
-                # Ancienne structure : qpv_limite direct
-                elif elig_data.get('qpv_limite', False):
-                    qpv_limite = True
+                # Convertir les coordonnées
+                try:
+                    lat_float = float(lat)
+                    lng_float = float(lng)
                     
-            except (json.JSONDecodeError, KeyError, TypeError):
-                pass
-        
-        # Déterminer la couleur du pin
-        if qpv or qpv_limite:
-            color = "red"  # QPV
-        else:
-            color = "blue"  # Non-QPV
-        
-        pins.append({
-            "lat": float(lat),
-            "lng": float(lng),
-            "nom": f"{p} {n}",
-            "prenom": p,
-            "civilite": c,
-            "adresse": adr or "Adresse non renseignée",
-            "qpv": qpv,
-            "qpv_limite": qpv_limite,
-            "color": color
-        })
+                    if lat_float == 0.0 and lng_float == 0.0:
+                        continue
+                    if not (-90 <= lat_float <= 90) or not (-180 <= lng_float <= 180):
+                        continue
+                except (ValueError, TypeError):
+                    continue
+                
+                # Déterminer le statut QPV depuis qpv_ok (prioritaire sur entreprise.qpv)
+                qpv_status = False
+                qpv_limite = False
+                
+                # Convertir qpv_ok en string si c'est un booléen (pour compatibilité)
+                qpv_ok_str = None
+                if qpv_ok is not None:
+                    if isinstance(qpv_ok, bool):
+                        qpv_ok_str = "QPV" if qpv_ok else "Aucun QPV"
+                    elif isinstance(qpv_ok, str):
+                        qpv_ok_str = qpv_ok
+                    else:
+                        qpv_ok_str = str(qpv_ok)
+                
+                # Déterminer le statut QPV depuis qpv_ok
+                if qpv_ok_str:
+                    if qpv_ok_str.startswith("QPV limit:"):
+                        qpv_limite = True
+                        qpv_status = False
+                    elif qpv_ok_str.startswith("QPV:"):
+                        qpv_status = True
+                        qpv_limite = False
+                    elif qpv_ok_str == "Aucun QPV":
+                        qpv_status = False
+                        qpv_limite = False
+                else:
+                    # Fallback sur entreprise.qpv si qpv_ok n'est pas disponible
+                    qpv_status = bool(qpv) if qpv is not None else False
+                
+                # Déterminer la couleur du pin
+                if qpv_status:
+                    color = "gold"  # Jaune pour QPV
+                elif qpv_limite:
+                    color = "orange"  # Orange pour QPV limite
+                else:
+                    color = "blue"  # Bleu pour Non-QPV
+                
+                pins.append({
+                    "lat": lat_float,
+                    "lng": lng_float,
+                    "nom": f"{p or ''} {n or ''}".strip(),
+                    "prenom": p or "",
+                    "civilite": c or "",
+                    "adresse": adr or "Adresse non renseignée",
+                    "qpv": qpv_status,
+                    "qpv_limite": qpv_limite,
+                    "color": color
+                })
+            except Exception as e:
+                logging.warning(f"Erreur lors du traitement d'une ligne géographique: {e}")
+                continue
 
-    # --- Sessions et présences ---
-    sessions_data = []
-    if (programme.id and 
-        table_exists_anywhere("session_programme", session) and 
-        table_exists_anywhere("session_participant", session)):
+        # --- Sessions et présences ---
+        sessions_data = []
         try:
-            sessions_data = session.exec(
-                select(SessionProgramme.nom, SessionProgramme.date_debut, SessionProgramme.date_fin,
-                       func.count(SessionParticipant.id).label('participants_count'),
-                       func.sum(case((SessionParticipant.statut_presence == StatutPresence.PRESENT, 1), else_=0)).label('presents_count'))
-                .join(SessionParticipant, SessionParticipant.session_id == SessionProgramme.id, isouter=True)
-                .where(SessionProgramme.programme_id == programme.id)
-                .group_by(SessionProgramme.id, SessionProgramme.nom, SessionProgramme.date_debut, SessionProgramme.date_fin)
-                .order_by(SessionProgramme.date_debut.desc())
-                .limit(10)
-            ).all()
+            sessions_query = text(f"""
+                SELECT 
+                    sp.titre, sp.debut, sp.fin,
+                    COUNT(DISTINCT spart.id) as participants_count,
+                    SUM(CASE WHEN spart.presence = 'present' THEN 1 ELSE 0 END) as presents_count
+                FROM public.session_programme sp
+                LEFT JOIN public.session_participant spart ON spart.session_id = sp.id
+                WHERE sp.programme_id = :programme_id
+                GROUP BY sp.id, sp.titre, sp.debut, sp.fin
+                ORDER BY sp.debut DESC
+                LIMIT 10
+            """)
+            result = session.execute(sessions_query.bindparams(programme_id=programme.id))
+            rows = result.fetchall()
+            # Convertir les tuples en dictionnaires
+            sessions_data = [
+                {
+                    "titre": row[0],
+                    "debut": row[1],
+                    "fin": row[2],
+                    "participants_count": row[3] or 0,
+                    "presents_count": row[4] or 0
+                }
+                for row in rows
+            ]
         except Exception as e:
             logging.warning(f"Erreur lors de la récupération des sessions: {e}")
+            session.rollback()
             sessions_data = []
 
-    # --- Suivi mensuel ---
-    suivi_data = []
-    if (programme.id and table_exists_anywhere("suivi_mensuel", session)):
+        # --- Suivi mensuel ---
+        suivi_data = []
         try:
-            suivi_data = session.exec(
-                select(SuiviMensuel.mois, SuiviMensuel.annee, SuiviMensuel.statut,
-                       func.count(SuiviMensuel.id).label('count'))
-                .where(SuiviMensuel.programme_id == programme.id)
-                .group_by(SuiviMensuel.mois, SuiviMensuel.annee, SuiviMensuel.statut)
-                .order_by(SuiviMensuel.annee.desc(), SuiviMensuel.mois.desc())
-                .limit(12)
-            ).all()
+            suivi_query = text(f"""
+                SELECT mois, EXTRACT(YEAR FROM mois) as annee, situation_socioprofessionnelle as statut, COUNT(*) as count
+                FROM {schema}.suivi_mensuel
+                WHERE inscription_id IN (
+                    SELECT id FROM {schema}.inscription WHERE programme_id = :programme_id
+                )
+                GROUP BY mois, situation_socioprofessionnelle
+                ORDER BY mois DESC
+                LIMIT 12
+            """)
+            result = session.execute(suivi_query.bindparams(programme_id=programme.id))
+            rows = result.fetchall()
+            # Convertir les tuples en dictionnaires
+            suivi_data = [
+                {
+                    "mois": row[0],
+                    "annee": int(row[1]) if row[1] else None,
+                    "statut": row[2],
+                    "count": row[3] or 0
+                }
+                for row in rows
+            ]
         except Exception as e:
             logging.warning(f"Erreur lors de la récupération du suivi mensuel: {e}")
+            session.rollback()
             suivi_data = []
 
-    # --- Rendez-vous récents ---
-    rdv_data = []
-    if (programme.id and 
-        table_exists_anywhere("rendez_vous", session) and 
-        table_exists_anywhere("inscription", session)):
+        # --- Rendez-vous récents ---
+        rdv_data = []
         try:
-            rdv_data = session.exec(
-                select(RendezVous.type_rdv, RendezVous.statut, RendezVous.debut,
-                       func.count(RendezVous.id).label('count'))
-                .join(Inscription, Inscription.id == RendezVous.inscription_id)
-                .where(Inscription.programme_id == programme.id)
-                .group_by(RendezVous.type_rdv, RendezVous.statut, RendezVous.debut)
-                .order_by(RendezVous.debut.desc())
-                .limit(10)
-            ).all()
+            rdv_query = text(f"""
+                SELECT 
+                    rv.type_rdv, rv.statut, rv.debut,
+                    COUNT(*) as count
+                FROM {schema}.rendez_vous rv
+                INNER JOIN {schema}.inscription i ON i.id = rv.inscription_id
+                WHERE i.programme_id = :programme_id
+                GROUP BY rv.type_rdv, rv.statut, rv.debut
+                ORDER BY rv.debut DESC
+                LIMIT 10
+            """)
+            result = session.execute(rdv_query.bindparams(programme_id=programme.id))
+            rows = result.fetchall()
+            # Convertir les tuples en dictionnaires
+            rdv_data = [
+                {
+                    "type_rdv": row[0],
+                    "statut": row[1],
+                    "debut": row[2],
+                    "count": row[3] or 0
+                }
+                for row in rows
+            ]
         except Exception as e:
             logging.warning(f"Erreur lors de la récupération des rendez-vous: {e}")
+            session.rollback()
             rdv_data = []
 
-    # --- Calcul des KPIs pour le template ---
-    # Calculer les statistiques QPV et genre
-    qpv_count = 0
-    qpv_limite_count = 0
-    femmes_count = 0
-    hommes_count = 0
-    
-    for pin in pins:
-        if pin.get("qpv"):
-            qpv_count += 1
-        if pin.get("qpv_limite"):
-            qpv_limite_count += 1
-        if pin.get("civilite") and _is_f(pin["civilite"]):
-            femmes_count += 1
-        elif pin.get("civilite") and _is_h(pin["civilite"]):
-            hommes_count += 1
-    
-    # Données pour l'entonnoir
-    funnel_labels = ["Préinscriptions", "Inscriptions", "Candidats validés", "QPV", "Femmes"]
-    funnel_values = [preinscriptions_count, inscriptions_count, candidats_valides_count, qpv_count, femmes_count]
-    
-    # Données pour les objectifs (simulées pour l'instant)
-    objectifs = {
-        "objectif_total": programme.objectif_total,
-        "total_pct": (candidats_valides_count / programme.objectif_total * 100) if programme.objectif_total else 0,
-        "cible_qpv_pct": programme.cible_qpv_pct,
-        "qpv_pct": (qpv_count / candidats_valides_count * 100) if candidats_valides_count > 0 else 0,
-        "qpv_objectif_atteint": (qpv_count / candidats_valides_count * 100) if candidats_valides_count > 0 else 0,
-        "cible_femmes_pct": programme.cible_femmes_pct,
-        "f_pct": (femmes_count / candidats_valides_count * 100) if candidats_valides_count > 0 else 0,
-        "f_objectif_atteint": (femmes_count / candidats_valides_count * 100) if candidats_valides_count > 0 else 0
-    }
-    
-    # Données pour les sessions (simulées pour l'instant)
-    sessions = {
-        "seminaires": [],
-        "codevs": [],
-        "webinaires": []
-    }
-    
-    presence_avg = {
-        "seminaire": 85.5,
-        "codev": 78.2,
-        "webinaire": 92.1
-    }
-    
-    # Données pour les RDVs (simulées pour l'instant)
-    rdvs = []
-    
-    # Données pour le suivi (simulées pour l'instant)
-    suivis = []
-    
-    # --- Contexte pour le template ---
-    print(f"🔍 [DEBUG] Construction du contexte pour le template")
-    print(f"🔍 [DEBUG] Programme: {programme}")
-    print(f"🔍 [DEBUG] Preinscriptions: {preinscriptions_count}")
-    print(f"🔍 [DEBUG] Inscriptions: {inscriptions_count}")
-    
-    context = {
-        "request": request,
-        "utilisateur": current_user,  # Variable utilisée par base.html
-        "programme": programme,
-        "now": now,
-        "preinscriptions_count": preinscriptions_count,
-        "inscriptions_count": inscriptions_count,
-        "candidats_valides_count": candidats_valides_count,
-        "pyramid_labels": pyramid_labels,
-        "pyramid_male": pyramid_male,
-        "pyramid_female": pyramid_female,
-        "pins": pins,
-        "sessions_data": sessions_data,
-        "suivi_data": suivi_data,
-        "rdv_data": rdv_data,
-        "settings": settings,
-        # Nouvelles variables pour le template
-        "kpi": {
+        # --- Calcul des KPIs pour le template ---
+        # Calculer les statistiques QPV et genre directement depuis la base de données
+        # (pas seulement depuis les pins qui ne contiennent que ceux avec coordonnées)
+        
+        # QPV validés
+        qpv_count = 0
+        try:
+            qpv_query = text(f"""
+                SELECT COUNT(DISTINCT c.id)
+                FROM {schema}.candidat c
+                INNER JOIN {schema}.inscription i ON i.candidat_id = c.id
+                INNER JOIN {schema}.decision_jury_candidat djc ON djc.candidat_id = c.id
+                LEFT JOIN {schema}.preinscription p ON p.candidat_id = c.id
+                LEFT JOIN {schema}.eligibilite e ON e.preinscription_id = p.id
+                WHERE i.programme_id = :programme_id
+                AND djc.decision = 'VALIDE'
+                AND e.qpv_ok IS NOT NULL
+                AND CAST(e.qpv_ok AS TEXT) LIKE 'QPV:%'
+                AND CAST(e.qpv_ok AS TEXT) NOT LIKE 'QPV limit:%'
+            """)
+            result = session.execute(qpv_query.bindparams(programme_id=programme.id))
+            qpv_count = result.fetchone()[0] or 0
+        except Exception as e:
+            logging.warning(f"Erreur lors du comptage des QPV validés: {e}")
+            session.rollback()
+            qpv_count = 0
+        
+        # QPV limite validés
+        qpv_limite_count = 0
+        try:
+            qpv_limite_query = text(f"""
+                SELECT COUNT(DISTINCT c.id)
+                FROM {schema}.candidat c
+                INNER JOIN {schema}.inscription i ON i.candidat_id = c.id
+                INNER JOIN {schema}.decision_jury_candidat djc ON djc.candidat_id = c.id
+                LEFT JOIN {schema}.preinscription p ON p.candidat_id = c.id
+                LEFT JOIN {schema}.eligibilite e ON e.preinscription_id = p.id
+                WHERE i.programme_id = :programme_id
+                AND djc.decision = 'VALIDE'
+                AND e.qpv_ok IS NOT NULL
+                AND CAST(e.qpv_ok AS TEXT) LIKE 'QPV limit:%'
+            """)
+            result = session.execute(qpv_limite_query.bindparams(programme_id=programme.id))
+            qpv_limite_count = result.fetchone()[0] or 0
+        except Exception as e:
+            logging.warning(f"Erreur lors du comptage des QPV limite validés: {e}")
+            session.rollback()
+            qpv_limite_count = 0
+        
+        # Femmes validées
+        femmes_count = 0
+        try:
+            femmes_query = text(f"""
+                SELECT COUNT(DISTINCT c.id)
+                FROM {schema}.candidat c
+                INNER JOIN {schema}.inscription i ON i.candidat_id = c.id
+                INNER JOIN {schema}.decision_jury_candidat djc ON djc.candidat_id = c.id
+                WHERE i.programme_id = :programme_id
+                AND djc.decision = 'VALIDE'
+                AND LOWER(COALESCE(c.civilite, '')) IN ('f','mme','madame','mlle','mademoiselle','madam')
+            """)
+            result = session.execute(femmes_query.bindparams(programme_id=programme.id))
+            femmes_count = result.fetchone()[0] or 0
+        except Exception as e:
+            logging.warning(f"Erreur lors du comptage des femmes validées: {e}")
+            session.rollback()
+            femmes_count = 0
+        
+        # Hommes validés
+        hommes_count = 0
+        try:
+            hommes_query = text(f"""
+                SELECT COUNT(DISTINCT c.id)
+                FROM {schema}.candidat c
+                INNER JOIN {schema}.inscription i ON i.candidat_id = c.id
+                INNER JOIN {schema}.decision_jury_candidat djc ON djc.candidat_id = c.id
+                WHERE i.programme_id = :programme_id
+                AND djc.decision = 'VALIDE'
+                AND LOWER(COALESCE(c.civilite, '')) IN ('m','mr','monsieur','monsier')
+            """)
+            result = session.execute(hommes_query.bindparams(programme_id=programme.id))
+            hommes_count = result.fetchone()[0] or 0
+        except Exception as e:
+            logging.warning(f"Erreur lors du comptage des hommes validés: {e}")
+            session.rollback()
+            hommes_count = 0
+        
+        # Données pour l'entonnoir
+        funnel_labels = ["Préinscriptions", "Inscriptions", "Candidats validés", "QPV", "Femmes"]
+        funnel_values = [preinscriptions_count, inscriptions_count, candidats_valides_count, qpv_count, femmes_count]
+        
+        # Données pour les objectifs (simulées pour l'instant)
+        objectif_total = getattr(programme, 'objectif_total', None) or 0
+        cible_qpv_pct = getattr(programme, 'cible_qpv_pct', None)
+        cible_femmes_pct = getattr(programme, 'cible_femmes_pct', None)
+        
+        objectifs = {
+            "objectif_total": objectif_total,
+            "total_pct": (candidats_valides_count / objectif_total * 100) if objectif_total > 0 else 0,
+            "cible_qpv_pct": cible_qpv_pct,
+            "qpv_pct": (qpv_count / candidats_valides_count * 100) if candidats_valides_count > 0 else 0,
+            "qpv_objectif_atteint": (qpv_count / candidats_valides_count * 100) if candidats_valides_count > 0 else 0,
+            "cible_femmes_pct": cible_femmes_pct,
+            "f_pct": (femmes_count / candidats_valides_count * 100) if candidats_valides_count > 0 else 0,
+            "f_objectif_atteint": (femmes_count / candidats_valides_count * 100) if candidats_valides_count > 0 else 0
+        }
+        
+        # Données pour les sessions (simulées pour l'instant)
+        sessions = {
+            "seminaires": [],
+            "codevs": [],
+            "webinaires": []
+        }
+        
+        presence_avg = {
+            "seminaire": 85.5,
+            "codev": 78.2,
+            "webinaire": 92.1
+        }
+        
+        # Données pour les RDVs (simulées pour l'instant)
+        rdvs = []
+        
+        # Données pour le suivi (simulées pour l'instant)
+        suivis = []
+        
+        # Créer le dictionnaire kpi avant les logs
+        kpi = {
             "qpv": qpv_count,
             "qpv_limite": qpv_limite_count,
             "femmes": femmes_count,
             "hommes": hommes_count
-        },
-        "funnel_labels": funnel_labels,
-        "funnel_values": funnel_values,
-        "objectifs": objectifs,
-        "sessions": sessions,
-        "presence_avg": presence_avg,
-        "rdvs": rdvs,
-        "suivis": suivis
-    }
+        }
+        
+        # --- Contexte pour le template ---
+        logging.info(f"🔍 [DASHBOARD] Construction du contexte pour le template")
+        logging.info(f"🔍 [DASHBOARD] Programme: {programme.code} - {programme.nom}")
+        logging.info(f"🔍 [DASHBOARD] Schéma utilisé: {schema}")
+        logging.info(f"🔍 [DASHBOARD] Préinscriptions: {preinscriptions_count}")
+        logging.info(f"🔍 [DASHBOARD] Inscriptions: {inscriptions_count}")
+        logging.info(f"🔍 [DASHBOARD] Candidats validés: {candidats_valides_count}")
+        logging.info(f"🔍 [DASHBOARD] QPV: {qpv_count}, QPV limite: {qpv_limite_count}")
+        logging.info(f"🔍 [DASHBOARD] Femmes: {femmes_count}, Hommes: {hommes_count}")
+        logging.info(f"🔍 [DASHBOARD] Pins géographiques: {len(pins)}")
+        if len(pins) > 0:
+            logging.info(f"🔍 [DASHBOARD] Exemple de pin: {pins[0]}")
+        logging.info(f"🔍 [DASHBOARD] Sessions: {len(sessions_data)}")
+        logging.info(f"🔍 [DASHBOARD] Suivi mensuel: {len(suivi_data)}")
+        logging.info(f"🔍 [DASHBOARD] Rendez-vous: {len(rdv_data)}")
+        logging.info(f"🔍 [DASHBOARD] Pyramide des âges - Labels: {pyramid_labels}")
+        logging.info(f"🔍 [DASHBOARD] Pyramide des âges - Hommes: {pyramid_male}")
+        logging.info(f"🔍 [DASHBOARD] Pyramide des âges - Femmes: {pyramid_female}")
+        logging.info(f"🔍 [DASHBOARD] Funnel labels: {funnel_labels}")
+        logging.info(f"🔍 [DASHBOARD] Funnel values: {funnel_values}")
+        logging.info(f"🔍 [DASHBOARD] Objectifs: {objectifs}")
+        
+        context = {
+            "request": request,
+            "utilisateur": current_user,  # Variable utilisée par base.html
+            "programme": programme,
+            "now": now,
+            "preinscriptions_count": preinscriptions_count,
+            "inscriptions_count": inscriptions_count,
+            "candidats_valides_count": candidats_valides_count,
+            "pyramid_labels": pyramid_labels,
+            "pyramid_male": pyramid_male,
+            "pyramid_female": pyramid_female,
+            "pins": pins,
+            "sessions_data": sessions_data,
+            "suivi_data": suivi_data,
+            "rdv_data": rdv_data,
+            "settings": settings,
+            # Nouvelles variables pour le template
+            "kpi": kpi,
+            "funnel_labels": funnel_labels,
+            "funnel_values": funnel_values,
+            "objectifs": objectifs,
+            "sessions": sessions,
+            "presence_avg": presence_avg,
+            "rdvs": rdvs,
+            "suivis": suivis
+        }
 
-    print(f"🔍 [DEBUG] Rendu du template programme_dashboard.html avec programme: {programme}")
-    print(f"🔍 [DEBUG] Contexte: {list(context.keys())}")
-    
-    # Test temporaire avec un template simple
-    simple_context = {
-        "request": request,
-        "current_user": current_user,
-        "programme": programme,
-        "settings": settings
-    }
-    
-    try:
-        return templates.TemplateResponse("programme/programme_dashboard.html", context)
+        logging.info(f"🔍 [DASHBOARD] Rendu du template programme_dashboard.html")
+        logging.info(f"🔍 [DASHBOARD] Clés du contexte: {list(context.keys())}")
+        
+        # Log détaillé des données envoyées au frontend
+        import json
+        logging.info(f"🔍 [DASHBOARD] === DONNÉES ENVOYÉES AU FRONTEND ===")
+        logging.info(f"🔍 [DASHBOARD] Pins (premiers 3): {json.dumps([p for p in pins[:3]], default=str, ensure_ascii=False)}")
+        logging.info(f"🔍 [DASHBOARD] Funnel labels: {funnel_labels}")
+        logging.info(f"🔍 [DASHBOARD] Funnel values: {funnel_values}")
+        logging.info(f"🔍 [DASHBOARD] Pyramid labels: {pyramid_labels}")
+        logging.info(f"🔍 [DASHBOARD] Pyramid male (premiers 5): {pyramid_male[:5]}")
+        logging.info(f"🔍 [DASHBOARD] Pyramid female (premiers 5): {pyramid_female[:5]}")
+        logging.info(f"🔍 [DASHBOARD] KPI: {json.dumps(kpi, default=str, ensure_ascii=False)}")
+        logging.info(f"🔍 [DASHBOARD] Objectifs: {json.dumps(objectifs, default=str, ensure_ascii=False)}")
+        logging.info(f"🔍 [DASHBOARD] Sessions data (premiers 2): {json.dumps([s for s in sessions_data[:2]], default=str, ensure_ascii=False)}")
+        logging.info(f"🔍 [DASHBOARD] Suivi data (premiers 2): {json.dumps([s for s in suivi_data[:2]], default=str, ensure_ascii=False)}")
+        logging.info(f"🔍 [DASHBOARD] RDV data (premiers 2): {json.dumps([r for r in rdv_data[:2]], default=str, ensure_ascii=False)}")
+        
+        try:
+            return templates.TemplateResponse("pages/programme/programme_dashboard.html", context)
+        except Exception as e:
+            import traceback
+            error_trace = traceback.format_exc()
+            print(f"❌ [ERROR] Erreur lors du rendu du template: {e}")
+            print(f"❌ [ERROR] Traceback complet:\n{error_trace}")
+            # Fallback vers un template simple
+            return templates.TemplateResponse("500.html", {
+                "request": request,
+                "utilisateur": current_user,
+                "error_message": f"Erreur lors du rendu du dashboard: {str(e)}"
+            }, status_code=500)
+            
     except Exception as e:
-        print(f"❌ [ERROR] Erreur lors du rendu du template: {e}")
-        # Fallback vers un template simple
-        return templates.TemplateResponse("error.html", {
+        import traceback
+        error_trace = traceback.format_exc()
+        print(f"❌ [ERROR] Erreur globale dans programme_dashboard: {e}")
+        print(f"❌ [ERROR] Traceback complet:\n{error_trace}")
+        return templates.TemplateResponse("500.html", {
             "request": request,
             "utilisateur": current_user,
-            "error_message": f"Erreur lors du rendu du dashboard: {str(e)}"
-        })
+            "error_message": f"Erreur lors du chargement du dashboard: {str(e)}"
+        }, status_code=500)

@@ -173,7 +173,7 @@ a:hover {
 
 /* Cartes */
 .card {
-    background-color: var(--white-color);
+    background-color: #2a2a2a;
     border: var(--border-width) solid rgba(0, 0, 0, 0.125);
     border-radius: var(--border-radius-lg);
     box-shadow: var(--shadow-sm);

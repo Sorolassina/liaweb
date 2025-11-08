@@ -1,0 +1,334 @@
+{% extends "layouts/base.html" %}
+
+{% block title %}Conditions Générales d'Utilisation - {{ app_name }}{% endblock %}
+
+{% block content %}
+<div class="page-container">
+    <div class="page-header">
+        <h1>📜 Conditions Générales d'Utilisation</h1>
+        <p class="page-subtitle">{{ app_name }} - Version 1.0</p>
+    </div>
+
+    <div class="card" style="max-width: 1000px; margin: 0 auto;">
+        <div class="legal-content">
+            
+            <section class="legal-section">
+                <h2>📋 Article 1 - Objet</h2>
+                <p>
+                    Les présentes Conditions Générales d'Utilisation (ci-après « CGU ») ont pour objet de définir 
+                    les modalités et conditions d'utilisation du système d'information <strong>{{ app_name }}</strong> 
+                    (ci-après « le Système ») mis à disposition par <strong>{{ company_name }}</strong> 
+                    (ci-après « l'Entreprise »), entreprise de coaching en entrepreneuriat, partenaire de BPI France dans la mise en œuvre des programmes 
+                    d'accompagnement entrepreneurial.
+                </p>
+            </section>
+
+            <section class="legal-section">
+                <h2>💻 Article 2 - Exigences Techniques et Compatibilité</h2>
+                <h3>2.1 - Navigateurs recommandés</h3>
+                <p>Pour une expérience optimale, il est <strong>fortement recommandé</strong> d'utiliser :</p>
+                <ul>
+                    <li><strong>🥇 Google Chrome</strong> (version 90 ou supérieure) - <em>Recommandé</em></li>
+                    <li>Microsoft Edge (version 90 ou supérieure)</li>
+                    <li>Mozilla Firefox (version 88 ou supérieure)</li>
+                    <li>Safari (version 14 ou supérieure)</li>
+                </ul>
+                <p style="background: #fff3cd; padding: 12px; border-left: 4px solid #ffc107; border-radius: 4px; margin-top: 10px;">
+                    <strong>⚠️ Important :</strong> Pour garantir la compatibilité complète de toutes les fonctionnalités 
+                    (glassmorphism, animations, transitions), l'utilisation de <strong>Google Chrome</strong> est vivement conseillée.
+                    Certaines fonctionnalités avancées peuvent ne pas fonctionner correctement sur d'autres navigateurs.
+                </p>
+
+                <h3>2.2 - Configuration minimale requise</h3>
+                <ul>
+                    <li>Connexion Internet stable</li>
+                    <li>Résolution d'écran minimale : 1280x720</li>
+                    <li>JavaScript activé</li>
+                    <li>Cookies activés</li>
+                    <li>Bloqueurs de publicité désactivés pour le domaine de l'application</li>
+                </ul>
+            </section>
+
+            <section class="legal-section">
+                <h2>🔐 Article 3 - Accès au Système</h2>
+                <h3>3.1 - Conditions d'accès</h3>
+                <p>L'accès au Système est réservé aux employés, collaborateurs et coachs autorisés de <strong>{{ company_name }}</strong>, ainsi qu'aux entrepreneurs accompagnés dans le cadre des programmes BPI (selon les accès accordés).</p>
+                <ul>
+                    <li>Chaque utilisateur dispose d'identifiants personnels (email et mot de passe)</li>
+                    <li>Les identifiants sont strictement personnels et confidentiels</li>
+                    <li>Toute utilisation du Système est tracée et associée à l'utilisateur connecté</li>
+                    <li>L'utilisateur est seul responsable de la sécurité de ses identifiants</li>
+                </ul>
+
+                <h3>3.2 - Activation du compte</h3>
+                <p>
+                    L'activation d'un compte utilisateur est effectuée par l'administrateur système. 
+                    Toute demande de création de compte doit être validée par la direction de l'entreprise.
+                </p>
+            </section>
+
+            <section class="legal-section">
+                <h2>✅ Article 4 - Obligations de l'Utilisateur</h2>
+                <h3>4.1 - Usage professionnel</h3>
+                <p>Le Système est mis à disposition exclusivement pour un usage professionnel dans le cadre des activités de coaching en entrepreneuriat et de mise en œuvre des programmes BPI France.</p>
+                <p><strong>Il est strictement interdit de :</strong></p>
+                <ul>
+                    <li>Utiliser le Système à des fins personnelles ou lucratives</li>
+                    <li>Divulguer, copier ou transmettre des informations à des tiers non autorisés</li>
+                    <li>Communiquer ses identifiants à un tiers</li>
+                    <li>Tenter d'accéder à des données ou fonctionnalités non autorisées</li>
+                    <li>Porter atteinte à la sécurité ou au bon fonctionnement du Système</li>
+                    <li>Introduire des virus, malwares ou tout code malveillant</li>
+                </ul>
+
+                <h3>4.2 - Confidentialité des données</h3>
+                <p>L'utilisateur s'engage à :</p>
+                <ul>
+                    <li>Respecter la confidentialité des informations auxquelles il a accès</li>
+                    <li>Ne pas diffuser, publier ou partager des données sensibles</li>
+                    <li>Signaler immédiatement toute fuite ou compromission de données</li>
+                    <li>Respecter la charte de confidentialité acceptée lors de la première connexion</li>
+                </ul>
+
+                <h3>4.3 - Sécurité</h3>
+                <p>L'utilisateur doit :</p>
+                <ul>
+                    <li>Choisir un mot de passe robuste et le modifier régulièrement</li>
+                    <li>Se déconnecter après chaque session de travail</li>
+                    <li>Ne pas laisser son poste de travail accessible en son absence</li>
+                    <li>Signaler toute anomalie ou incident de sécurité</li>
+                </ul>
+            </section>
+
+            <section class="legal-section">
+                <h2>🛡️ Article 5 - Protection des Données Personnelles</h2>
+                <p>
+                    Conformément au <strong>Règlement Général sur la Protection des Données (RGPD)</strong> et aux 
+                    lois nationales en vigueur, ainsi qu'aux exigences de BPI France, <strong>{{ company_name }}</strong> s'engage à protéger 
+                    les données personnelles des utilisateurs, des entrepreneurs accompagnés et de ses partenaires.
+                </p>
+                <h3>5.1 - Données collectées</h3>
+                <ul>
+                    <li>Données d'identification (nom, prénom, email, fonction, rôle)</li>
+                    <li>Données de connexion (adresse IP, date et heure de connexion)</li>
+                    <li>Données d'activité (actions effectuées dans le Système)</li>
+                    <li>Données relatives aux entrepreneurs accompagnés (projets, business plans, données financières)</li>
+                    <li>Données de suivi et d'évaluation des programmes de coaching</li>
+                    <li>Données relatives aux partenaires BPI France et autres partenaires institutionnels</li>
+                    <li>Informations relatives aux financements et subventions</li>
+                </ul>
+                
+                <h3>5.2 - Finalités du traitement</h3>
+                <ul>
+                    <li>Gestion des accès et authentification</li>
+                    <li>Traçabilité et audit de sécurité</li>
+                    <li>Accompagnement des entrepreneurs dans le cadre des programmes BPI</li>
+                    <li>Suivi et évaluation des programmes de coaching</li>
+                    <li>Gestion des partenariats avec BPI France</li>
+                    <li>Amélioration du Système</li>
+                    <li>Respect des obligations légales et contractuelles, notamment vis-à-vis de BPI France</li>
+                </ul>
+
+                <h3>5.3 - Droits des utilisateurs</h3>
+                <p>Conformément au RGPD, chaque utilisateur dispose des droits suivants :</p>
+                <ul>
+                    <li>Droit d'accès à ses données personnelles</li>
+                    <li>Droit de rectification des données inexactes</li>
+                    <li>Droit à l'effacement (« droit à l'oubli »)</li>
+                    <li>Droit à la limitation du traitement</li>
+                    <li>Droit d'opposition au traitement</li>
+                </ul>
+                <p>
+                    Pour exercer ces droits, contactez le <strong>Délégué à la Protection des Données (DPO)</strong> 
+                    de <strong>{{ company_name }}</strong> ou le service support client.
+                </p>
+            </section>
+
+            <section class="legal-section">
+                <h2>📊 Article 6 - Traçabilité et Audit</h2>
+                <p>
+                    Toutes les actions effectuées dans le Système sont enregistrées et tracées dans un journal d'activité.
+                </p>
+                <ul>
+                    <li>Date et heure de connexion/déconnexion</li>
+                    <li>Actions effectuées (création, modification, suppression de données)</li>
+                    <li>Consultation de documents ou dossiers</li>
+                    <li>Téléchargements de fichiers</li>
+                </ul>
+                <p>
+                    Ces journaux peuvent être consultés par les administrateurs et en cas d'audit ou d'enquête.
+                </p>
+            </section>
+
+            <section class="legal-section">
+                <h2>⚖️ Article 7 - Responsabilités</h2>
+                <h3>7.1 - Responsabilité de l'Entreprise</h3>
+                <p><strong>{{ company_name }}</strong> s'engage à :</p>
+                <ul>
+                    <li>Assurer la disponibilité du Système dans la mesure du possible</li>
+                    <li>Mettre en œuvre les mesures de sécurité appropriées conformément aux exigences BPI</li>
+                    <li>Informer les utilisateurs en cas de maintenance programmée</li>
+                    <li>Protéger les données des entrepreneurs accompagnés et les informations confidentielles</li>
+                </ul>
+                <p><strong>{{ company_name }} ne saurait être tenue responsable :</strong></p>
+                <ul>
+                    <li>Des interruptions de service dues à des cas de force majeure</li>
+                    <li>Des dommages résultant d'une utilisation non conforme aux CGU</li>
+                    <li>De la perte de données due à une négligence de l'utilisateur</li>
+                </ul>
+
+                <h3>7.2 - Responsabilité de l'Utilisateur</h3>
+                <p>
+                    L'utilisateur est seul responsable de l'utilisation qu'il fait du Système. 
+                    Il est responsable des actions effectuées depuis son compte, même en cas d'utilisation 
+                    frauduleuse par un tiers ayant obtenu ses identifiants.
+                </p>
+            </section>
+
+            <section class="legal-section">
+                <h2>⚠️ Article 8 - Sanctions</h2>
+                <p>
+                    Tout manquement aux présentes CGU peut entraîner :
+                </p>
+                <ul>
+                    <li>Suspension immédiate de l'accès au Système</li>
+                    <li>Sanctions disciplinaires conformément au règlement intérieur de l'entreprise</li>
+                    <li>Résiliation du contrat de travail en cas de faute grave</li>
+                    <li>Poursuites judiciaires en cas de violation grave (détournement de données, fraude, concurrence déloyale, etc.)</li>
+                    <li>Réparation des préjudices causés à l'entreprise et/ou à ses clients</li>
+                </ul>
+            </section>
+
+            <section class="legal-section">
+                <h2>🔄 Article 9 - Modification des CGU</h2>
+                <p>
+                    <strong>{{ company_name }}</strong> se réserve le droit de modifier les présentes CGU à tout moment. 
+                    Les utilisateurs seront informés de toute modification substantielle et devront 
+                    accepter les nouvelles conditions pour continuer à utiliser le Système.
+                </p>
+            </section>
+
+            <section class="legal-section">
+                <h2>📞 Article 10 - Contact</h2>
+                <p>
+                    Pour toute question concernant les présentes CGU ou l'utilisation du Système, 
+                    vous pouvez contacter :
+                </p>
+                <ul>
+                    <li><strong>Service informatique de {{ company_name }}</strong></li>
+                    <li><strong>Délégué à la Protection des Données (DPO)</strong></li>
+                    <li><strong>Direction Générale</strong></li>
+                    <li><strong>Service coaching et accompagnement</strong></li>
+                    <li><strong>Support client</strong></li>
+                </ul>
+            </section>
+
+            <section class="legal-section">
+                <h2>©️ Article 11 - Propriété Intellectuelle</h2>
+                <p>
+                    Le système <strong>{{ app_name }}</strong> est la propriété intellectuelle de 
+                    <strong>Soro Lassina W.</strong> et est protégé par les lois sur la propriété intellectuelle 
+                    et les droits d'auteur.
+                </p>
+                <ul>
+                    <li>Le code source, l'architecture et le design du Système sont protégés</li>
+                    <li>Toute reproduction, modification ou distribution non autorisée est interdite</li>
+                    <li>L'utilisation du Système est concédée sous licence au Ministère</li>
+                    <li>Aucune cession de propriété intellectuelle n'est effectuée par cette licence d'utilisation</li>
+                </ul>
+                <p>
+                    <strong>© {{ current_year() }} Soro Lassina W. - Tous droits réservés.</strong>
+                </p>
+            </section>
+
+            <section class="legal-section">
+                <h2>📅 Article 12 - Entrée en Vigueur</h2>
+                <p>
+                    Les présentes CGU entrent en vigueur à compter de leur publication sur le Système.
+                </p>
+                <p>
+                    <strong>Date d'entrée en vigueur :</strong> {{ current_date }}<br>
+                    <strong>Version :</strong> 1.0
+                </p>
+            </section>
+
+            <div class="legal-footer" style="margin-top: 40px; padding-top: 20px; border-top: 2px solid #ddd; text-align: center;">
+                <p style="color: #666; font-size: 13px;">
+                    En utilisant le système {{ app_name }}, vous reconnaissez avoir lu et accepté 
+                    les présentes Conditions Générales d'Utilisation.
+                </p>
+                <p style="margin-top: 20px;">
+                    <a href="{{ url_for('accueil') }}" class="btn btn-primary">
+                        ← Retour à l'accueil
+                    </a>
+                </p>
+            </div>
+
+        </div>
+    </div>
+</div>
+
+<style>
+    .legal-content {
+        padding: 30px;
+        line-height: 1.8;
+        color: #333;
+    }
+
+    .legal-section {
+        margin-bottom: 40px;
+    }
+
+    .legal-section h2 {
+        color: var(--secondary-color);
+        font-size: 22px;
+        margin-bottom: 15px;
+        padding-bottom: 10px;
+        border-bottom: 2px solid var(--accent-color);
+    }
+
+    .legal-section h3 {
+        color: var(--secondary-color);
+        font-size: 18px;
+        margin-top: 20px;
+        margin-bottom: 10px;
+    }
+
+    .legal-section p {
+        margin-bottom: 15px;
+        text-align: justify;
+    }
+
+    .legal-section ul {
+        margin-left: 25px;
+        margin-bottom: 15px;
+        list-style: disc;  /* Ajouter les puces */
+        padding-left: 20px;
+    }
+
+    .legal-section li {
+        margin-bottom: 8px;
+        display: list-item;  /* Forcer l'affichage des puces */
+    }
+
+    .legal-section strong {
+        color: var(--secondary-color);
+        font-weight: 600;
+    }
+
+    @media (max-width: 768px) {
+        .legal-content {
+            padding: 20px;
+        }
+
+        .legal-section h2 {
+            font-size: 18px;
+        }
+
+        .legal-section h3 {
+            font-size: 16px;
+        }
+    }
+</style>
+{% endblock %}
+

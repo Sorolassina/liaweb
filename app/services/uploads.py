@@ -1,6 +1,6 @@
 # app/services/uploads.py
 from fastapi import UploadFile, HTTPException
-from app_lia_web.core.config import settings
+from ..core.config import settings
 
 def _file_size(file: UploadFile) -> int:
     """Retourne la taille du fichier UploadFile en octets (en lisant le buffer spooled)."""

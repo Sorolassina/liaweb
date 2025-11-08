@@ -8,19 +8,19 @@ from fastapi import APIRouter, Depends, Request, Query, Form, HTTPException
 from fastapi.responses import HTMLResponse, RedirectResponse, JSONResponse
 from sqlmodel import Session, select
 
-from app_lia_web.core.database import get_session
-from app_lia_web.core.middleware import get_shared_session
-from app_lia_web.core.security import get_current_user, get_current_user_optional
-from app_lia_web.core.program_schema_integration import table_exists_anywhere
-from app_lia_web.core.config import settings
-from app_lia_web.core.utils import EmailUtils
-from app_lia_web.app.models.base import User, Programme, Candidat, Entreprise
-from app_lia_web.app.models.inscription import Inscription
-from app_lia_web.app.models.rendez_vous import RendezVous, EmargementRDV
-from app_lia_web.app.models.enums import TypeRDV, StatutRDV, UserRole
-from app_lia_web.app.schemas.rendez_vous_schemas import RendezVousCreate, RendezVousUpdate, RendezVousFilter
-from app_lia_web.app.services.rendez_vous_service import RendezVousService
-from app_lia_web.app.templates import templates
+from ..core.database import get_session
+from ..core.middleware import get_shared_session
+from ..core.security import get_current_user, get_current_user_optional
+from ..core.program_schema_integration import table_exists_anywhere
+from ..core.config import settings
+from ..core.utils import EmailUtils
+from ..models.base import User, Programme, Candidat, Entreprise
+from ..models.inscription import Inscription
+from ..models.rendez_vous import RendezVous, EmargementRDV
+from ..models.enums import TypeRDV, StatutRDV, UserRole
+from ..schemas.rendez_vous_schemas import RendezVousCreate, RendezVousUpdate, RendezVousFilter
+from ..services.rendez_vous_service import RendezVousService
+from ..templates import templates
 
 # Configuration vidéo
 APP_NAME = os.getenv("APP_NAME", "LIA Coaching • Visioconférence")
@@ -89,7 +89,7 @@ def rendez_vous_list(
         print(f"⚠️ [WARNING] Erreur lors de la récupération des statistiques rendez-vous: {e}")
         stats = {"total": 0, "a_venir": 0, "termines": 0, "annules": 0}
     
-    return templates.TemplateResponse("rendez_vous/liste.html", {
+    return templates.TemplateResponse("pages/rendez_vous/liste.html", {
         "request": request,
         "current_user": current_user,
         "utilisateur": current_user,
@@ -165,7 +165,7 @@ def rendez_vous_create_form(
         print(f"🔍 DEBUG - Table inscription n'existe pas")
     
     # Vérifier les statuts possibles
-    from app_lia_web.app.models.enums import StatutDossier
+    from ..models.enums import StatutDossier
     print(f"🔍 DEBUG - Statuts possibles: {[s.value for s in StatutDossier]}")
     
     # Mettre à jour quelques inscriptions en VALIDE pour test
@@ -204,7 +204,7 @@ def rendez_vous_create_form(
         if inscription:
             candidat = session.get(Candidat, inscription.candidat_id)
     
-    return templates.TemplateResponse("rendez_vous/creer.html", {
+    return templates.TemplateResponse("pages/rendez_vous/creer.html", {
         "request": request,
         "current_user": current_user,
         "utilisateur": current_user,
@@ -274,7 +274,7 @@ def rendez_vous_detail(
         select(User).where(User.role.in_([UserRole.CONSEILLER, UserRole.COORDINATEUR]))
     ).all()
     
-    return templates.TemplateResponse("rendez_vous/detail.html", {
+    return templates.TemplateResponse("pages/rendez_vous/detail.html", {
         "request": request,
         "current_user": current_user,
         "utilisateur": current_user,
@@ -437,7 +437,7 @@ async def page_emargement_conseiller(
         
         logger.info(f"✅ Page émargement chargée pour RDV {rdv_id}")
         
-        return templates.TemplateResponse("emargement/conseiller.html", {
+        return templates.TemplateResponse("pages/emargement/conseiller.html", {
             "request": request,
             "rdv": rdv,
             "candidat": candidat,
@@ -511,7 +511,7 @@ async def page_emargement_candidat(
             'role': 'candidat'
         })()
         
-        return templates.TemplateResponse("emargement/candidat.html", {
+        return templates.TemplateResponse("pages/emargement/candidat.html", {
             "request": request,
             "rdv": rdv,
             "candidat": candidat,
@@ -789,7 +789,7 @@ def commencer_rdv_video(
         
         logger.info(f"✅ Page RDV vidéo chargée pour RDV {rdv_id}")
         
-        return templates.TemplateResponse("video/rdv_start.html", {
+        return templates.TemplateResponse("pages/rendez_vous/seance_jitsi.html", {
             "request": request,
             "rdv": rdv,
             "candidat": candidat,
@@ -838,7 +838,7 @@ def rejoindre_rdv_video(
         
         logger.info(f"✅ Page rejoindre RDV vidéo chargée pour RDV {rdv_id}")
         
-        return templates.TemplateResponse("video/rdv_join.html", {
+        return templates.TemplateResponse("pages/rendez_vous/seance_jitsi.html", {
             "request": request,
             "rdv": rdv,
             "candidat": candidat,

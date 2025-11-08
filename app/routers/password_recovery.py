@@ -3,16 +3,16 @@ Routeur pour la récupération de mot de passe
 """
 from fastapi import APIRouter, Depends, HTTPException, status, Request, Form
 from fastapi.responses import HTMLResponse, RedirectResponse
-from app_lia_web.app.templates import templates
+from ..templates import templates
 from sqlmodel import Session
 from typing import Optional
 import logging
 
-from app_lia_web.core.database import get_session
-from app_lia_web.core.middleware import get_shared_session
-from app_lia_web.core.config import settings
-from app_lia_web.app.services.password_recovery_service import PasswordRecoveryService
-from app_lia_web.app.schemas.password_recovery_schemas import (
+from ..core.database import get_session
+from ..core.middleware import get_shared_session
+from ..core.config import settings
+from ..services.password_recovery_service import PasswordRecoveryService
+from ..schemas.password_recovery_schemas import (
     PasswordRecoveryRequest,
     PasswordRecoveryVerify,
     PasswordReset,
@@ -29,7 +29,7 @@ recovery_service = PasswordRecoveryService()
 async def forgot_password_page(request: Request):
     """Page de demande de récupération de mot de passe"""
     return templates.TemplateResponse(
-        "password_recovery/forgot_password.html",
+        "auth/password_recovery/forgot_password.html",
         {
             "request": request,
             "app_name": settings.APP_NAME,
@@ -63,7 +63,7 @@ async def request_password_recovery(
         else:
             # Afficher un message d'erreur (sans révéler si l'email existe)
             return templates.TemplateResponse(
-                "password_recovery/forgot_password.html",
+                "auth/password_recovery/forgot_password.html",
                 {
                     "request": request,
                     "app_name": settings.APP_NAME,
@@ -78,7 +78,7 @@ async def request_password_recovery(
     except Exception as e:
         logger.error(f"Erreur lors de la demande de récupération: {e}")
         return templates.TemplateResponse(
-            "password_recovery/forgot_password.html",
+            "auth/password_recovery/forgot_password.html",
             {
                 "request": request,
                 "app_name": settings.APP_NAME,
@@ -94,7 +94,7 @@ async def request_password_recovery(
 async def verify_code_page(request: Request, email: Optional[str] = None, success: Optional[str] = None):
     """Page de vérification du code de récupération"""
     return templates.TemplateResponse(
-        "password_recovery/verify_code.html",
+        "auth/password_recovery/verify_code.html",
         {
             "request": request,
             "email": email,
@@ -128,7 +128,7 @@ async def verify_recovery_code(
         else:
             # Afficher un message d'erreur
             return templates.TemplateResponse(
-                "password_recovery/verify_code.html",
+                "auth/password_recovery/verify_code.html",
                 {
                     "request": request,
                     "email": email,
@@ -143,7 +143,7 @@ async def verify_recovery_code(
     except Exception as e:
         logger.error(f"Erreur lors de la vérification du code: {e}")
         return templates.TemplateResponse(
-            "password_recovery/verify_code.html",
+            "auth/password_recovery/verify_code.html",
             {
                 "request": request,
                 "email": email,
@@ -163,7 +163,7 @@ async def reset_password_page(request: Request, email: Optional[str] = None, cod
         return RedirectResponse(url=request.url_for("request_password_recovery_get"), status_code=302)
     
     return templates.TemplateResponse(
-        "password_recovery/reset_password.html",
+        "auth/password_recovery/reset_password.html",
         {
             "request": request,
             "email": email,
@@ -190,7 +190,7 @@ async def reset_password(
         # Vérifier que les mots de passe correspondent
         if new_password != confirm_password:
             return templates.TemplateResponse(
-                "password_recovery/reset_password.html",
+                "auth/password_recovery/reset_password.html",
                 {
                     "request": request,
                     "email": email,
@@ -206,7 +206,7 @@ async def reset_password(
         # Vérifier la force du mot de passe
         if len(new_password) < 8:
             return templates.TemplateResponse(
-                "password_recovery/reset_password.html",
+                "auth/password_recovery/reset_password.html",
                 {
                     "request": request,
                     "email": email,
@@ -231,7 +231,7 @@ async def reset_password(
         else:
             # Afficher un message d'erreur
             return templates.TemplateResponse(
-                "password_recovery/reset_password.html",
+                "auth/password_recovery/reset_password.html",
                 {
                     "request": request,
                     "email": email,
@@ -247,7 +247,7 @@ async def reset_password(
     except Exception as e:
         logger.error(f"Erreur lors de la réinitialisation du mot de passe: {e}")
         return templates.TemplateResponse(
-            "password_recovery/reset_password.html",
+            "auth/password_recovery/reset_password.html",
             {
                 "request": request,
                 "email": email,

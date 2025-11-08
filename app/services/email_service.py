@@ -4,8 +4,8 @@ import logging
 from email.mime.text import MIMEText
 from email.mime.multipart import MIMEMultipart
 from typing import Optional, Dict, Any
-from app_lia_web.core.config import settings
-from app_lia_web.core.utils import EmailUtils
+from ..core.config import settings
+from ..core.utils import EmailUtils
 from jinja2 import Environment, FileSystemLoader
 import os
 

@@ -1,0 +1,69 @@
+{% macro detail_modal(modal_id, title, icon, sections) %}
+<!-- Modal pour voir les détails -->
+<div class="modal-xl" id="{{ modal_id }}">
+  <div class="modal-content modal-xl">
+    <div class="modal-header">
+      <h3 class="modal-title">{{ icon }} {{ title }}</h3>
+      <button class="modal-close" onclick="closeModals()" title="Fermer">&times;</button>
+    </div>
+    
+    <div class="modal-body">
+      <!-- Header avec infos principales -->
+      <div class="profile-header" style="background: white; border-radius: 15px; padding: 1.5rem; margin-bottom: 1.5rem; box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);">
+        <div style="display: flex; gap: 1.5rem; align-items: center;">
+          <div class="profile-photo" style="width: 80px; height: 80px; border-radius: 50%; overflow: hidden; background: linear-gradient(135deg, var(--secondary-color) 0%, var(--accent-color) 100%); display: flex; align-items: center; justify-content: center; color: var(--white-color); font-size: 2rem; font-weight: bold; flex-shrink: 0;">
+            {{ icon }}
+          </div>
+          
+          <div class="profile-info" style="flex: 1; padding-left: 1rem;">
+            <h1 class="profile-name" style="font-size: 1.5rem; font-weight: 700; color: var(--primary-color); margin-bottom: 0.25rem;" id="{{ modal_id }}_main_title">-</h1>
+            <div class="profile-matricule" style="font-size: 1rem; color: var(--gray-600); margin-bottom: 0.75rem;" id="{{ modal_id }}_main_subtitle">-</div>
+            <div class="profile-details" style="display: flex; flex-direction: column; gap: 0.25rem; font-size: 0.9rem;" id="{{ modal_id }}_main_details">
+              <!-- Détails principaux dynamiques -->
+            </div>
+          </div>
+        </div>
+        
+        <div style="display: flex; gap: 1rem; margin-top: 1rem;" id="{{ modal_id }}_main_badges">
+          <!-- Badges principaux dynamiques -->
+        </div>
+      </div>
+
+      <!-- Sections d'informations -->
+      {% for section in sections %}
+      <div class="info-section" style="background: white; border-radius: 15px; padding: 1.5rem; margin-bottom: 1.5rem; box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);">
+        <h2 class="section-title" style="font-size: 1.3rem; font-weight: 700; color: var(--primary-color); margin-bottom: 1rem; display: flex; align-items: center; gap: 0.5rem;">
+          {{ section.icon }} {{ section.title }}
+        </h2>
+        
+        {% if section.subtitle %}
+        <h3 style="margin-bottom: 0.75rem; font-size: 1rem; font-weight: 600; color: var(--primary-color);">{{ section.subtitle }}</h3>
+        {% endif %}
+        
+        <div class="info-grid" style="display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 1rem;">
+          {% for field in section.fields %}
+          <div class="info-item" style="padding: 0.75rem; background: var(--gray-50); border-left: 4px solid var(--primary-color); border-radius: 8px;">
+            <div class="info-label" style="font-weight: 600; color: #6c757d; margin-bottom: 0.25rem; font-size: 0.8rem; text-transform: uppercase; letter-spacing: 0.5px;">{{ field.label }}</div>
+            <div class="info-value" style="font-size: 0.9rem; color: #000000; font-weight: 500; line-height: 1.4;" id="{{ modal_id }}_{{ field.id }}">-</div>
+          </div>
+          {% endfor %}
+        </div>
+        
+        {% if not loop.last %}
+        <hr style="margin: 1.5rem 0; border: none; border-top: 2px solid #e0e0e0;">
+        {% endif %}
+      </div>
+      {% endfor %}
+    </div>
+    
+    <div class="modal-footer">
+      <button type="button" class="btn btn-secondary" onclick="closeModals()">
+        <i class="fas fa-times"></i> Fermer
+      </button>
+      <button type="button" class="btn btn-primary" onclick="{{ modal_id }}_openEdit()">
+        <i class="fas fa-edit"></i> Modifier
+      </button>
+    </div>
+  </div>
+</div>
+{% endmacro %}

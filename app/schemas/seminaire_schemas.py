@@ -2,7 +2,7 @@
 from pydantic import BaseModel, Field, validator
 from typing import Optional, List
 from datetime import datetime, date
-from app_lia_web.app.models.enums import StatutSeminaire, TypeInvitation, StatutPresence, MethodeSignature
+from ..models.enums import StatutSeminaire, TypeInvitation, StatutPresence, MethodeSignature
 
 # Schémas pour les séminaires
 class SeminaireBase(BaseModel):

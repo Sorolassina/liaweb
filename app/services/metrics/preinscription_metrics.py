@@ -4,9 +4,9 @@ Parcourt tous les schémas de programmes et récupère les données de préinscr
 """
 from typing import Dict, List, Any, Optional
 from sqlmodel import Session, text
-from app_lia_web.app.models.base import Programme
+from ...models.base import Programme
 from . import SchemaDiscovery, get_program_schemas, get_session_for_metrics
-from app_lia_web.core.database import get_session
+from ...core.database import get_session
 import logging
 
 logger = logging.getLogger(__name__)
