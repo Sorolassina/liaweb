@@ -720,20 +720,30 @@ async function updateUnreadBadge() {
         const response = await window.fetch('/api/v1/messages/unread-count', {
             credentials: 'same-origin'
         });
-        if (!response.ok) return;
+        if (!response.ok) {
+            // Ne pas logger les erreurs HTTP normales (404, 500, etc.)
+            return;
+        }
         
         const data = await response.json();
         const badge = document.querySelector('.messagerie-badge');
         const badgeText = document.querySelector('.messagerie-badge-text');
         
-        if (data.unread_count > 0) {
-            badge.classList.remove('hidden');
-            badgeText.textContent = data.unread_count;
-        } else {
-            badge.classList.add('hidden');
+        if (badge && badgeText) {
+            if (data.unread_count > 0) {
+                badge.classList.remove('hidden');
+                badgeText.textContent = data.unread_count;
+            } else {
+                badge.classList.add('hidden');
+            }
         }
     } catch (error) {
-        console.error('Erreur badge:', error);
+        // Ignorer silencieusement les erreurs de connexion (ERR_CONNECTION_REFUSED, etc.)
+        // Ces erreurs peuvent survenir si l'API n'est pas disponible temporairement
+        if (error.name !== 'TypeError' || !error.message.includes('Failed to fetch')) {
+            // Logger uniquement les autres types d'erreurs
+            console.error('Erreur badge:', error);
+        }
     }
 }
 

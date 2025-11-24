@@ -1,4 +1,5 @@
-{% extends "base_public.html" %}
+{% extends "layouts/base_public.html" %}
+{% set programme_param = request.query_params.get('programme') or (schema_name.upper() if schema_name and schema_name != 'public' else '') %}
 
 {% block title %}Émargement - {{ event.titre }}{% endblock %}
 
@@ -33,12 +34,42 @@
                     <div class="alert alert-info mb-4">
                         <h5 class="alert-heading">
                             <i class="fas fa-user me-2"></i>
-                            {{ invitation.inscription.candidat.prenom }} {{ invitation.inscription.candidat.nom }}
+                            {{ invitation.candidat.prenom }} {{ invitation.candidat.nom }}
                         </h5>
-                        <p class="mb-0">{{ invitation.inscription.candidat.email }}</p>
+                        <p class="mb-0">{{ invitation.candidat.email }}</p>
                     </div>
                     
-                    {% if presence %}
+                    {% if accepted or (invitation.statut and invitation.statut.lower() == 'acceptee') %}
+                    <!-- Invitation acceptée -->
+                    <div class="alert alert-success text-center">
+                        <i class="fas fa-check-circle me-2" style="font-size: 2rem;"></i>
+                        <h4 class="alert-heading">Invitation acceptée</h4>
+                        <p class="mb-2">
+                            Merci d'avoir accepté cette invitation. Nous avons bien pris note de votre participation.
+                        </p>
+                        <p class="mb-0">
+                            <small class="text-muted">
+                                Vous recevrez prochainement les informations pratiques pour l'événement. 
+                                À bientôt !
+                            </small>
+                        </p>
+                    </div>
+                    {% elif refused or (invitation.statut and invitation.statut.lower() == 'refusee') %}
+                    <!-- Invitation refusée -->
+                    <div class="alert alert-info text-center">
+                        <i class="fas fa-info-circle me-2" style="font-size: 2rem;"></i>
+                        <h4 class="alert-heading">Invitation déclinée</h4>
+                        <p class="mb-2">
+                            Nous avons bien pris note que vous ne pourrez pas participer à cet événement.
+                        </p>
+                        <p class="mb-0">
+                            <small class="text-muted">
+                                Si votre situation change et que vous souhaitez finalement participer, n'hésitez pas à nous contacter. 
+                                Nous serons ravis de vous accueillir.
+                            </small>
+                        </p>
+                    </div>
+                    {% elif presence %}
                     <!-- Déjà présent -->
                     <div class="alert alert-success text-center">
                         <i class="fas fa-check-circle me-2" style="font-size: 2rem;"></i>

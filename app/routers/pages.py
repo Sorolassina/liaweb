@@ -6,7 +6,6 @@ from ..core.database import get_session
 from ..core.middleware import get_shared_session
 from ..core.security import get_current_user, require_permission
 from ..models.base import Programme, User, Candidat, Document
-from ..models.inscription import Inscription
 from ..models.jury import Jury
 from ..models.enums import UserRole
 from ..templates import templates
@@ -52,9 +51,11 @@ def page_directeur(request: Request, session=Depends(get_shared_session), u=Depe
         select(User).where(User.role == UserRole.RESPONSABLE_PROGRAMME.value)
     ).all()
 
+    # NOTE: Le modèle Inscription a été supprimé. Utiliser les candidats en attente.
+    from ..models.enums import DecisionJury
     dossiers_en_attente = session.exec(
-        select(Inscription.id, Inscription.programme_id, Inscription.candidat_id, Inscription.cree_le)
-        .where(Inscription.statut == "en_attente")
+        select(Candidat.id, Candidat.id.label("programme_id"), Candidat.id.label("candidat_id"), Candidat.id.label("cree_le"))
+        .where(Candidat.statut == DecisionJury.EN_ATTENTE)
         .limit(10)
     ).all()
     # Adapter pour enrichir le nom programme/candidat côté template/contexte

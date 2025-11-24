@@ -1,15 +1,18 @@
 # app/services/rendez_vous_service.py
 from datetime import datetime, date
 from typing import List, Optional, Dict, Any
-from sqlmodel import Session, select, and_, or_
+import logging
+from sqlmodel import Session, select, and_, or_, text
 from sqlalchemy import func
 
 from ..models.base import Candidat, Entreprise, Programme, User
-from ..models.rendez_vous import RendezVous
-from ..models.inscription import Inscription
+from ..models.rendez_vous import RendezVous, EmargementRDV
 from ..models.enums import TypeRDV, StatutRDV
 from ..schemas.rendez_vous_schemas import RendezVousCreate, RendezVousUpdate, RendezVousFilter
 from ..core.program_schema_integration import table_exists_anywhere
+from ..core.config import settings
+
+logger = logging.getLogger(__name__)
 
 class RendezVousService:
     """Service pour la gestion des rendez-vous"""
@@ -43,14 +46,68 @@ class RendezVousService:
         self.session.refresh(rdv)
         return rdv
     
-    def delete_rendez_vous(self, rdv_id: int) -> bool:
+    def delete_rendez_vous(self, rdv_id: int, schema_name: Optional[str] = None) -> bool:
         """Supprimer un rendez-vous"""
+        if settings.DEBUG:
+            logger.info(f"🗑️ [delete_rendez_vous] Début suppression RDV ID: {rdv_id}, Schéma: {schema_name}")
+        
         rdv = self.get_rendez_vous_by_id(rdv_id)
         if not rdv:
+            if settings.DEBUG:
+                logger.warning(f"⚠️ [delete_rendez_vous] RDV {rdv_id} non trouvé")
             return False
         
-        self.session.delete(rdv)
-        self.session.commit()
+        # Supprimer les é margements associés si la table existe dans le schéma spécifié
+        # Utiliser le schéma directement pour éviter de chercher dans tous les schémas
+        if settings.DEBUG:
+            logger.info(f"🔍 [delete_rendez_vous] Vérification existence table emargement_rdv dans schéma: {schema_name}")
+        
+        if table_exists_anywhere("emargement_rdv", self.session, schema=schema_name):
+            if settings.DEBUG:
+                logger.info(f"✅ [delete_rendez_vous] Table emargement_rdv trouvée dans schéma {schema_name}, suppression des é margements")
+            try:
+                emargements_query = select(EmargementRDV).where(EmargementRDV.rdv_id == rdv_id)
+                emargements = self.session.exec(emargements_query).all()
+                if settings.DEBUG:
+                    logger.info(f"📋 [delete_rendez_vous] {len(emargements)} é margement(s) trouvé(s) pour RDV {rdv_id}")
+                for emargement in emargements:
+                    self.session.delete(emargement)
+                self.session.flush()  # Flush pour supprimer les é margements avant de supprimer le RDV
+                if settings.DEBUG:
+                    logger.info(f"✅ [delete_rendez_vous] É margements supprimés avec succès")
+            except Exception as e:
+                # Si la table n'existe pas dans le schéma actuel, ignorer l'erreur
+                if settings.DEBUG:
+                    logger.warning(f"⚠️ [delete_rendez_vous] Impossible de supprimer les é margements pour RDV {rdv_id}: {e}")
+        else:
+            if settings.DEBUG:
+                logger.info(f"ℹ️ [delete_rendez_vous] Table emargement_rdv n'existe pas dans schéma {schema_name}, pas d'é margements à supprimer")
+        
+        # Retirer l'objet de la session pour éviter le chargement automatique de la relation
+        # puis le supprimer directement via une requête SQL pour éviter le chargement de la relation
+        if settings.DEBUG:
+            logger.info(f"🗑️ [delete_rendez_vous] Suppression du RDV {rdv_id} via SQL direct")
+        try:
+            # Supprimer directement via SQL pour éviter le chargement de la relation
+            stmt = text("DELETE FROM rendez_vous WHERE id = :rdv_id").bindparams(rdv_id=rdv_id)
+            self.session.exec(stmt)
+            self.session.commit()
+            if settings.DEBUG:
+                logger.info(f"✅ [delete_rendez_vous] RDV {rdv_id} supprimé avec succès via SQL direct")
+        except Exception as e:
+            # Si la suppression SQL échoue, essayer la méthode normale
+            if settings.DEBUG:
+                logger.warning(f"⚠️ [delete_rendez_vous] Erreur lors de la suppression SQL directe, tentative avec session.delete: {e}")
+            # Retirer l'objet de la session pour éviter le chargement de la relation
+            self.session.expunge(rdv)
+            # Récupérer à nouveau l'objet sans charger les relations
+            rdv = self.get_rendez_vous_by_id(rdv_id)
+            if rdv:
+                self.session.delete(rdv)
+                self.session.commit()
+                if settings.DEBUG:
+                    logger.info(f"✅ [delete_rendez_vous] RDV {rdv_id} supprimé avec succès via session.delete")
+        
         return True
     
     def get_rendez_vous_with_details(self, rdv_id: int) -> Optional[Dict[str, Any]]:
@@ -63,13 +120,10 @@ class RendezVousService:
                 Candidat.email.label("candidat_email"),
                 Candidat.telephone.label("candidat_telephone"),
                 User.nom_complet.label("conseiller_nom"),
-                Programme.nom.label("programme_nom"),
                 Entreprise.raison_sociale.label("entreprise_nom")
             )
-            .join(Inscription, RendezVous.inscription_id == Inscription.id)
-            .join(Candidat, Inscription.candidat_id == Candidat.id)
-            .join(Programme, Inscription.programme_id == Programme.id)
-            .join(Entreprise, Candidat.id == Entreprise.candidat_id)
+            .join(Candidat, RendezVous.candidat_id == Candidat.id)
+            .outerjoin(Entreprise, Candidat.id == Entreprise.candidat_id)
             .outerjoin(User, RendezVous.conseiller_id == User.id)
             .where(RendezVous.id == rdv_id)
         )
@@ -81,7 +135,7 @@ class RendezVousService:
         rdv, *details = result
         return {
             "id": rdv.id,
-            "inscription_id": rdv.inscription_id,
+            "candidat_id": rdv.candidat_id,
             "conseiller_id": rdv.conseiller_id,
             "type_rdv": rdv.type_rdv,
             "statut": rdv.statut,
@@ -94,14 +148,13 @@ class RendezVousService:
             "candidat_email": details[2],
             "candidat_telephone": details[3],
             "conseiller_nom": details[4],
-            "programme_nom": details[5],
-            "entreprise_nom": details[6]
+            "entreprise_nom": details[5]
         }
     
     def search_rendez_vous(self, filters: RendezVousFilter, limit: int = 100, offset: int = 0) -> List[Dict[str, Any]]:
         """Rechercher des rendez-vous avec filtres"""
         # Vérifier l'existence des tables essentielles
-        required_tables = ["rendez_vous", "inscription", "candidat", "programme"]
+        required_tables = ["rendez_vous", "candidat"]
         missing_tables = []
         
         for table in required_tables:
@@ -121,14 +174,10 @@ class RendezVousService:
                     Candidat.email.label("candidat_email"),
                     Candidat.telephone.label("candidat_telephone"),
                     User.nom_complet.label("conseiller_nom"),
-                    Programme.nom.label("programme_nom"),
-                    Programme.id.label("programme_id"),
                     Entreprise.raison_sociale.label("entreprise_nom")
                 )
-                .join(Inscription, RendezVous.inscription_id == Inscription.id)
-                .join(Candidat, Inscription.candidat_id == Candidat.id)
-                .join(Programme, Inscription.programme_id == Programme.id)
-                .join(Entreprise, Candidat.id == Entreprise.candidat_id)
+                .join(Candidat, RendezVous.candidat_id == Candidat.id)
+                .outerjoin(Entreprise, Candidat.id == Entreprise.candidat_id)
                 .outerjoin(User, RendezVous.conseiller_id == User.id)
             )
         except Exception as e:
@@ -138,8 +187,8 @@ class RendezVousService:
         # Application des filtres
         conditions = []
         
-        if filters.programme_id:
-            conditions.append(Programme.id == filters.programme_id)
+        # Note: programme_id n'est plus disponible directement via inscription
+        # Il faudrait peut-être l'ajouter comme champ dans RendezVous si nécessaire
         
         if filters.conseiller_id:
             conditions.append(RendezVous.conseiller_id == filters.conseiller_id)
@@ -185,7 +234,7 @@ class RendezVousService:
         return [
             {
                 "id": rdv.id,
-                "inscription_id": rdv.inscription_id,
+                "candidat_id": rdv.candidat_id,
                 "conseiller_id": rdv.conseiller_id,
                 "type_rdv": rdv.type_rdv,
                 "statut": rdv.statut,
@@ -198,9 +247,7 @@ class RendezVousService:
                 "candidat_email": details[2],
                 "candidat_telephone": details[3],
                 "conseiller_nom": details[4],
-                "programme_nom": details[5],
-                "programme_id": details[6],
-                "entreprise_nom": details[7]
+                "entreprise_nom": details[5]
             }
             for rdv, *details in results
         ]
@@ -227,8 +274,6 @@ class RendezVousService:
         """Récupérer les statistiques des rendez-vous"""
         # Vérifier l'existence des tables essentielles
         required_tables = ["rendez_vous"]
-        if programme_id:
-            required_tables.append("inscription")
         
         missing_tables = []
         for table in required_tables:
@@ -242,8 +287,8 @@ class RendezVousService:
         try:
             query = select(RendezVous)
             
-            if programme_id:
-                query = query.join(Inscription, RendezVous.inscription_id == Inscription.id).where(Inscription.programme_id == programme_id)
+            # Note: programme_id n'est plus disponible directement via inscription
+            # Il faudrait peut-être l'ajouter comme champ dans RendezVous si nécessaire
             
             if date_debut:
                 query = query.where(RendezVous.debut >= datetime.combine(date_debut, datetime.min.time()))

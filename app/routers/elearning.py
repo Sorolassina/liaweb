@@ -1,8 +1,8 @@
 # app/routers/elearning.py
-from fastapi import APIRouter, Depends, HTTPException, status, Request
+from fastapi import APIRouter, Depends, HTTPException, status, Request, Query
 from fastapi.responses import HTMLResponse, RedirectResponse, FileResponse
 from fastapi import UploadFile, File, Form
-from sqlmodel import Session, select
+from sqlmodel import Session, select, text
 from typing import List, Optional
 from datetime import datetime
 from pathlib import Path
@@ -10,9 +10,15 @@ from pathlib import Path
 from ..core.database import get_session
 from ..core.middleware import get_shared_session
 from ..core.security import get_current_user
-from ..core.program_schema_integration import table_exists_anywhere
+from ..core.program_schema_integration import (
+    table_exists_anywhere, 
+    get_schema_from_request, 
+    get_schema_routing_service,
+    SchemaRoutingService
+)
 import logging
-from ..models.base import User, Programme, Inscription
+from ..models.base import User, Programme, Candidat
+from ..core.config import settings
 from ..models.elearning import (
     RessourceElearning, ModuleElearning, ProgressionElearning,
     ObjectifElearning, QuizElearning, ReponseQuiz, CertificatElearning,
@@ -42,146 +48,173 @@ async def elearning_dashboard(
     request: Request,
     session: Session = Depends(get_shared_session),
     current_user: User = Depends(get_current_user),
-    programme_id: Optional[int] = None
+    programme_id: Optional[int] = None,
+    schema_routing_service: SchemaRoutingService = Depends(get_schema_routing_service)
 ):
     """Dashboard e-learning"""
-    # Récupérer les statistiques générales
-    try:
-        programmes = session.exec(
-            select(Programme).where(Programme.actif == True)
-        ).all()
-    except Exception as e:
-        print(f"⚠️ [WARNING] Erreur lors de la récupération des programmes e-learning: {e}")
-        programmes = []
+    # Récupérer et configurer le schéma
+    schema_name = get_schema_from_request(request) or 'acd'
+    schema_routing_service.set_schema(schema_name)
     
-    print(f"🔍 DEBUG DASHBOARD: {len(programmes)} programmes actifs trouvés")
-    for p in programmes:
-        print(f"  - Programme {p.id}: {p.nom}")
+    # Configurer explicitement le search_path
+    session.exec(text(f"SET search_path TO {schema_name}, public"))
+    session.commit()
     
-    # Si un programme_id est spécifié, ne calculer les stats que pour ce programme
-    if programme_id:
-        programmes_to_process = [p for p in programmes if p.id == programme_id]
-        print(f"🔍 DEBUG: Filtrage par programme_id {programme_id}")
-    else:
-        programmes_to_process = programmes
-        print(f"🔍 DEBUG: Affichage de tous les programmes")
+    # Forcer l'expiration de tous les objets de la session pour éviter le cache
+    session.expire_all()
     
-    stats_programmes = []
-    for programme in programmes_to_process:
+    # Récupérer le paramètre programme de l'URL
+    programme_param = request.query_params.get('programme', '').upper()
+    
+    # Récupérer le programme en cours - SQL direct
+    programme_courant = None
+    if programme_param:
         try:
-            print(f"🔍 DEBUG: Calcul des stats pour programme {programme.id} ({programme.nom})")
-            stats = ElearningService.get_statistiques_programme(session, programme.id)
-            print(f"✅ DEBUG: Stats calculées - inscrits: {stats.candidats_inscrits}, actifs: {stats.candidats_actifs}, completion: {stats.taux_completion}%")
-            stats_programmes.append(stats)
+            programme_query = text("SELECT * FROM public.programme WHERE code = :code AND actif = true")
+            programme_result = session.exec(programme_query.bindparams(code=programme_param)).first()
+            if programme_result:
+                if hasattr(programme_result, '_mapping'):
+                    programme_courant = type('Programme', (), dict(programme_result._mapping))()
+                else:
+                    programme_courant = type('Programme', (), dict(programme_result))()
         except Exception as e:
-            print(f"❌ DEBUG: Erreur pour programme {programme.id}: {e}")
-            import traceback
-            traceback.print_exc()
-            continue
+            logging.warning(f"Erreur lors de la récupération du programme {programme_param}: {e}")
     
-    print(f"🔍 DEBUG: {len(stats_programmes)} programmes avec stats valides")
+    # Si programme_id est spécifié, utiliser celui-ci
+    if programme_id and not programme_courant:
+        try:
+            programme_query = text("SELECT * FROM public.programme WHERE id = :id AND actif = true")
+            programme_result = session.exec(programme_query.bindparams(id=programme_id)).first()
+            if programme_result:
+                if hasattr(programme_result, '_mapping'):
+                    programme_courant = type('Programme', (), dict(programme_result._mapping))()
+                else:
+                    programme_courant = type('Programme', (), dict(programme_result))()
+        except Exception as e:
+            logging.warning(f"Erreur lors de la récupération du programme {programme_id}: {e}")
+    
+    # Calculer les stats uniquement pour le programme en cours
+    stats_programme = None
+    if programme_courant:
+        try:
+            stats_programme = ElearningService.get_statistiques_programme(session, programme_courant.id, schema_name)
+        except Exception as e:
+            logging.warning(f"Erreur calcul stats pour programme {programme_courant.id}: {e}")
     
     return templates.TemplateResponse(
         "pages/elearning/dashboard.html",
         {
             "request": request,
             "utilisateur": current_user,
-            "stats_programmes": stats_programmes,
-            "programmes": programmes,
-            "programme_id": programme_id
+            "stats_programme": stats_programme,
+            "programme_courant": programme_courant,
+            "programme_param": programme_param,
+            "schema_name": schema_name
         }
     )
 
 @router.get("/modules", response_class=HTMLResponse, name="elearning_modules")
 async def elearning_modules(
     request: Request,
-    programme_id: Optional[int] = None,
-    statut: Optional[str] = None,
-    difficulte: Optional[str] = None,
+    programme_id: Optional[int] = Query(None),
+    statut: Optional[str] = Query(None),
+    difficulte: Optional[str] = Query(None),
     current_user: User = Depends(get_current_user),
-    session: Session = Depends(get_shared_session)
+    session: Session = Depends(get_shared_session),
+    schema_routing_service: SchemaRoutingService = Depends(get_schema_routing_service)
 ):
     """Liste des modules e-learning"""
+    # Récupérer et configurer le schéma
+    schema_name = get_schema_from_request(request) or 'acd'
+    schema_routing_service.set_schema(schema_name)
+    
+    # Configurer explicitement le search_path
+    session.exec(text(f"SET search_path TO {schema_name}, public"))
+    session.commit()
+    
+    # Forcer l'expiration de tous les objets de la session pour éviter le cache
+    session.expire_all()
+    
+    # Si statut est "tous", on ne filtre pas par statut
+    if statut == "tous":
+        statut = None
+        actif_only = False
+    else:
+        actif_only = True
+    
+    # Si difficulte est "tous", on ne filtre pas par difficulté
+    if difficulte == "tous":
+        difficulte = None
+    
+    # Récupérer les modules - SQL direct
+    modules = []
     try:
-        print(f"🔍 DEBUG MODULES: Début de la fonction")
-        print(f"🔍 DEBUG MODULES: programme_id={programme_id}, statut={statut}, difficulte={difficulte}")
-        print(f"🔍 DEBUG MODULES: session_id={id(session)}")
-        print(f"🔍 DEBUG MODULES: current_user={current_user}")
-        
-        # Pas de rollback automatique - la session partagée gère les transactions
-        
-        # Si statut est "tous", on ne filtre pas par statut
-        if statut == "tous":
-            statut = None
-            actif_only = False  # Voir tous les modules (actifs ET inactifs)
-            print("🔍 DEBUG: Mode 'tous' activé - actif_only=False")
-        else:
-            actif_only = True   # Par défaut, voir seulement les modules actifs
-            print(f"🔍 DEBUG: Mode normal - actif_only=True, statut={statut}")
-        
-        # Si difficulte est "tous", on ne filtre pas par difficulté
-        if difficulte == "tous":
-            difficulte = None
-            print("🔍 DEBUG: Mode 'tous' difficultés activé")
-        
-        # Debug: Vérifier tous les modules dans la base - Version sécurisée
-        all_modules = []
-        if table_exists_anywhere("module_elearning", session):
-            try:
-                all_modules = session.exec(select(ModuleElearning)).all()
-                print(f"🔍 DEBUG: Total modules en base: {len(all_modules)}")
-                for m in all_modules:
-                    print(f"  - Module {m.id}: {m.titre} (statut: {m.statut}, actif: {m.actif}, difficulte: {m.difficulte})")
-            except Exception as e:
-                logging.warning(f"Erreur lors de la récupération des modules elearning: {e}")
-                all_modules = []
-                print(f"🔍 DEBUG: Aucun module trouvé (table inexistante)")
-        else:
-            print(f"🔍 DEBUG: Table module_elearning n'existe pas")
-        
-        try:
-            modules = ElearningService.get_modules(session, programme_id, statut, actif_only, difficulte)
-        except Exception as e:
-            print(f"⚠️ [WARNING] Erreur lors de la récupération des modules e-learning: {e}")
-            modules = []
-        
-        try:
-            programmes = session.exec(select(Programme).where(Programme.actif == True)).all()
-        except Exception as e:
-            print(f"⚠️ [WARNING] Erreur lors de la récupération des programmes e-learning: {e}")
-            programmes = []
-        
-        print(f"🔍 DEBUG MODULES: {len(modules)} modules trouvés après filtrage")
-        for m in modules:
-            print(f"  - Module {m.id}: {m.titre} (statut: {m.statut}, actif: {m.actif}, difficulte: {m.difficulte})")
-        
-        return templates.TemplateResponse(
-            "pages/elearning/modules.html",
-            {
-                "request": request,
-                "utilisateur": current_user,
-                "modules": modules,
-                "programmes": programmes,
-                "programme_id": programme_id,
-                "statut_selected": statut,
-                "difficulte_selected": difficulte
-            }
-        )
+        modules = ElearningService.get_modules(session, programme_id, statut, actif_only, difficulte, schema_name)
     except Exception as e:
-        print(f"❌ ERREUR dans elearning_modules: {e}")
-        print(f"❌ Type d'erreur: {type(e)}")
-        import traceback
-        print(f"❌ Traceback: {traceback.format_exc()}")
-        raise
+        logging.warning(f"Erreur lors de la récupération des modules e-learning: {e}")
+        modules = []
+    
+    # Récupérer les programmes - SQL direct
+    programmes = []
+    try:
+        programmes_query = text("SELECT * FROM public.programme WHERE actif = true ORDER BY nom")
+        programmes_results = session.exec(programmes_query).all()
+        for row in programmes_results:
+            if hasattr(row, '_mapping'):
+                programme = type('Programme', (), dict(row._mapping))()
+            else:
+                programme = type('Programme', (), dict(row))()
+            programmes.append(programme)
+    except Exception as e:
+        logging.warning(f"Erreur lors de la récupération des programmes e-learning: {e}")
+        programmes = []
+    
+    programme_param = request.query_params.get('programme', '').upper()
+    
+    return templates.TemplateResponse(
+        "pages/elearning/modules.html",
+        {
+            "request": request,
+            "utilisateur": current_user,
+            "modules": modules,
+            "programmes": programmes,
+            "programme_id": programme_id,
+            "statut_selected": statut,
+            "difficulte_selected": difficulte,
+            "programme_param": programme_param,
+            "schema_name": schema_name
+        }
+    )
 
 @router.get("/modules/creer", response_class=HTMLResponse, name="elearning_module_create_form")
 async def elearning_module_creer_form(
     request: Request,
     current_user: User = Depends(get_current_user),
-    session: Session = Depends(get_shared_session)
+    session: Session = Depends(get_shared_session),
+    schema_routing_service: SchemaRoutingService = Depends(get_schema_routing_service)
 ):
     """Formulaire de création d'un module e-learning"""
-    programmes = session.exec(select(Programme).where(Programme.actif == True)).all()
+    schema_name = get_schema_from_request(request) or 'acd'
+    schema_routing_service.set_schema(schema_name)
+    session.exec(text(f"SET search_path TO {schema_name}, public"))
+    session.commit()
+    
+    # Récupérer les programmes - SQL direct
+    programmes = []
+    try:
+        programmes_query = text("SELECT * FROM public.programme WHERE actif = true ORDER BY nom")
+        programmes_results = session.exec(programmes_query).all()
+        for row in programmes_results:
+            if hasattr(row, '_mapping'):
+                programme = type('Programme', (), dict(row._mapping))()
+            else:
+                programme = type('Programme', (), dict(row))()
+            programmes.append(programme)
+    except Exception as e:
+        logging.warning(f"Erreur lors de la récupération des programmes: {e}")
+        programmes = []
+    
+    programme_param = request.query_params.get('programme', '').upper()
     
     return templates.TemplateResponse(
         "pages/elearning/module_form.html",
@@ -189,7 +222,9 @@ async def elearning_module_creer_form(
             "request": request,
             "utilisateur": current_user,
             "programmes": programmes,
-            "module": None  # Pas de module existant
+            "module": None,
+            "programme_param": programme_param,
+            "schema_name": schema_name
         }
     )
 
@@ -198,14 +233,40 @@ async def elearning_module_edit_form(
     module_id: int,
     request: Request,
     current_user: User = Depends(get_current_user),
-    session: Session = Depends(get_shared_session)
+    session: Session = Depends(get_shared_session),
+    schema_routing_service: SchemaRoutingService = Depends(get_schema_routing_service)
 ):
     """Formulaire d'édition d'un module e-learning"""
-    module = session.get(ModuleElearning, module_id)
-    if not module:
+    schema_name = get_schema_from_request(request) or 'acd'
+    schema_routing_service.set_schema(schema_name)
+    session.exec(text(f"SET search_path TO {schema_name}, public"))
+    session.commit()
+    
+    # Récupérer le module - SQL direct
+    module_query = text(f"SELECT * FROM {schema_name}.module_elearning WHERE id = :module_id")
+    module_result = session.exec(module_query.bindparams(module_id=module_id)).first()
+    
+    if not module_result:
         raise HTTPException(status_code=404, detail="Module non trouvé")
     
-    programmes = session.exec(select(Programme).where(Programme.actif == True)).all()
+    module = type('ModuleElearning', (), dict(module_result._mapping))()
+    
+    # Récupérer les programmes - SQL direct
+    programmes = []
+    try:
+        programmes_query = text("SELECT * FROM public.programme WHERE actif = true ORDER BY nom")
+        programmes_results = session.exec(programmes_query).all()
+        for row in programmes_results:
+            if hasattr(row, '_mapping'):
+                programme = type('Programme', (), dict(row._mapping))()
+            else:
+                programme = type('Programme', (), dict(row))()
+            programmes.append(programme)
+    except Exception as e:
+        logging.warning(f"Erreur lors de la récupération des programmes: {e}")
+        programmes = []
+    
+    programme_param = request.query_params.get('programme', '').upper()
     
     return templates.TemplateResponse(
         "pages/elearning/module_form.html",
@@ -213,50 +274,96 @@ async def elearning_module_edit_form(
             "request": request,
             "utilisateur": current_user,
             "programmes": programmes,
-            "module": module  # Module existant à modifier
+            "module": module,
+            "programme_param": programme_param,
+            "schema_name": schema_name
         }
-        )
+    )
 
 @router.post("/modules/{module_id}/edit", response_class=HTMLResponse, name="elearning_module_edit")
 async def elearning_module_edit(
     module_id: int,
     request: Request,
     current_user: User = Depends(get_current_user),
-    session: Session = Depends(get_shared_session)
+    session: Session = Depends(get_shared_session),
+    schema_routing_service: SchemaRoutingService = Depends(get_schema_routing_service)
 ):
     """Traiter la modification d'un module e-learning"""
     if current_user.role not in ["administrateur", "responsable_programme", "formateur"]:
         raise HTTPException(status_code=403, detail="Accès refusé")
     
-    # Vérifier que le module existe
-    module = session.get(ModuleElearning, module_id)
-    if not module:
+    schema_name = get_schema_from_request(request) or 'acd'
+    schema_routing_service.set_schema(schema_name)
+    session.exec(text(f"SET search_path TO {schema_name}, public"))
+    session.commit()
+    
+    # Vérifier que le module existe - SQL direct
+    module_query = text(f"SELECT * FROM {schema_name}.module_elearning WHERE id = :module_id")
+    module_result = session.exec(module_query.bindparams(module_id=module_id)).first()
+    
+    if not module_result:
         raise HTTPException(status_code=404, detail="Module non trouvé")
+    
+    module = type('ModuleElearning', (), dict(module_result._mapping))()
     
     # Récupérer les données du formulaire
     form_data = await request.form()
     
-    # Mettre à jour le module
-    module_data = ModuleElearningUpdate(
-        titre=form_data.get("titre"),
-        description=form_data.get("description"),
-        programme_id=int(form_data.get("programme_id")),
-        objectifs=form_data.get("objectifs"),
-        prerequis=form_data.get("prerequis"),
-        duree_totale_minutes=int(form_data.get("duree_totale_minutes")) if form_data.get("duree_totale_minutes") else None,
-        difficulte=form_data.get("difficulte", "facile"),
-        statut=form_data.get("statut", "brouillon"),
-        ordre=int(form_data.get("ordre", 0)),
-        actif=form_data.get("actif") == "true"
-    )
-    
+    # Mettre à jour le module - SQL direct
     try:
-        updated_module = ElearningService.update_module(session, module_id, module_data)
-        # Rediriger vers la liste des modules
-        return RedirectResponse(url=request.url_for("elearning_modules"), status_code=303)
+        update_query = text(f"""
+            UPDATE {schema_name}.module_elearning
+            SET titre = :titre,
+                description = :description,
+                programme_id = :programme_id,
+                objectifs = :objectifs,
+                prerequis = :prerequis,
+                duree_totale_minutes = :duree_totale_minutes,
+                difficulte = :difficulte,
+                statut = :statut,
+                ordre = :ordre,
+                actif = :actif
+            WHERE id = :module_id
+        """)
+        
+        session.exec(update_query.bindparams(
+            module_id=module_id,
+            titre=form_data.get("titre"),
+            description=form_data.get("description") or None,
+            programme_id=int(form_data.get("programme_id")),
+            objectifs=form_data.get("objectifs") or None,
+            prerequis=form_data.get("prerequis") or None,
+            duree_totale_minutes=int(form_data.get("duree_totale_minutes")) if form_data.get("duree_totale_minutes") else None,
+            difficulte=form_data.get("difficulte", "facile"),
+            statut=form_data.get("statut", "brouillon"),
+            ordre=int(form_data.get("ordre", 0)),
+            actif=form_data.get("actif") == "true"
+        ))
+        session.commit()
+        
+        programme_param = request.query_params.get('programme', '').upper()
+        redirect_url = request.url_for("elearning_modules")
+        if programme_param:
+            redirect_url = str(redirect_url) + f"?programme={programme_param}"
+        return RedirectResponse(url=redirect_url, status_code=303)
     except Exception as e:
+        session.rollback()
         # En cas d'erreur, retourner au formulaire avec un message d'erreur
-        programmes = session.exec(select(Programme).where(Programme.actif == True)).all()
+        programmes = []
+        try:
+            programmes_query = text("SELECT * FROM public.programme WHERE actif = true ORDER BY nom")
+            programmes_results = session.exec(programmes_query).all()
+            for row in programmes_results:
+                if hasattr(row, '_mapping'):
+                    programme = type('Programme', (), dict(row._mapping))()
+                else:
+                    programme = type('Programme', (), dict(row))()
+                programmes.append(programme)
+        except:
+            programmes = []
+        
+        programme_param = request.query_params.get('programme', '').upper()
+        
         return templates.TemplateResponse(
             "pages/elearning/module_form.html",
             {
@@ -264,7 +371,9 @@ async def elearning_module_edit(
                 "utilisateur": current_user,
                 "programmes": programmes,
                 "module": module,
-                "error": f"Erreur lors de la modification du module: {str(e)}"
+                "error": f"Erreur lors de la modification du module: {str(e)}",
+                "programme_param": programme_param,
+                "schema_name": schema_name
             }
         )
 
@@ -272,36 +381,71 @@ async def elearning_module_edit(
 async def elearning_module_creer(
     request: Request,
     current_user: User = Depends(get_current_user),
-    session: Session = Depends(get_shared_session)
+    session: Session = Depends(get_shared_session),
+    schema_routing_service: SchemaRoutingService = Depends(get_schema_routing_service)
 ):
     """Traiter la création d'un module e-learning"""
     if current_user.role not in ["administrateur", "responsable_programme", "formateur"]:
         raise HTTPException(status_code=403, detail="Accès refusé")
     
+    schema_name = get_schema_from_request(request) or 'acd'
+    schema_routing_service.set_schema(schema_name)
+    session.exec(text(f"SET search_path TO {schema_name}, public"))
+    session.commit()
+    
     # Récupérer les données du formulaire
     form_data = await request.form()
     
-    # Créer le module
-    module_data = ModuleElearningCreate(
-        titre=form_data.get("titre"),
-        description=form_data.get("description"),
-        programme_id=int(form_data.get("programme_id")),
-        objectifs=form_data.get("objectifs"),
-        prerequis=form_data.get("prerequis"),
-        duree_totale_minutes=int(form_data.get("duree_totale_minutes")) if form_data.get("duree_totale_minutes") else None,
-        difficulte=form_data.get("difficulte", "facile"),
-        statut=form_data.get("statut", "brouillon"),
-        ordre=int(form_data.get("ordre", 0)),
-        actif=form_data.get("actif") == "true"
-    )
-    
+    # Créer le module - SQL direct
     try:
-        module = ElearningService.create_module(session, module_data, current_user.id)
-        # Rediriger vers la liste des modules
-        return RedirectResponse(url=request.url_for("elearning_modules"), status_code=303)
+        insert_query = text(f"""
+            INSERT INTO {schema_name}.module_elearning
+            (titre, description, programme_id, objectifs, prerequis, duree_totale_minutes,
+             difficulte, statut, ordre, actif, cree_par_id, cree_le)
+            VALUES (:titre, :description, :programme_id, :objectifs, :prerequis, :duree_totale_minutes,
+                    :difficulte, :statut, :ordre, :actif, :cree_par_id, CURRENT_TIMESTAMP)
+            RETURNING *
+        """)
+        
+        module_result = session.exec(insert_query.bindparams(
+            titre=form_data.get("titre"),
+            description=form_data.get("description") or None,
+            programme_id=int(form_data.get("programme_id")),
+            objectifs=form_data.get("objectifs") or None,
+            prerequis=form_data.get("prerequis") or None,
+            duree_totale_minutes=int(form_data.get("duree_totale_minutes")) if form_data.get("duree_totale_minutes") else None,
+            difficulte=form_data.get("difficulte", "facile"),
+            statut=form_data.get("statut", "brouillon"),
+            ordre=int(form_data.get("ordre", 0)),
+            actif=form_data.get("actif") == "true",
+            cree_par_id=current_user.id
+        )).first()
+        
+        session.commit()
+        
+        programme_param = request.query_params.get('programme', '').upper()
+        redirect_url = request.url_for("elearning_modules")
+        if programme_param:
+            redirect_url = str(redirect_url) + f"?programme={programme_param}"
+        return RedirectResponse(url=redirect_url, status_code=303)
     except Exception as e:
+        session.rollback()
         # En cas d'erreur, retourner au formulaire avec un message d'erreur
-        programmes = session.exec(select(Programme).where(Programme.actif == True)).all()
+        programmes = []
+        try:
+            programmes_query = text("SELECT * FROM public.programme WHERE actif = true ORDER BY nom")
+            programmes_results = session.exec(programmes_query).all()
+            for row in programmes_results:
+                if hasattr(row, '_mapping'):
+                    programme = type('Programme', (), dict(row._mapping))()
+                else:
+                    programme = type('Programme', (), dict(row))()
+                programmes.append(programme)
+        except:
+            programmes = []
+        
+        programme_param = request.query_params.get('programme', '').upper()
+        
         return templates.TemplateResponse(
             "pages/elearning/module_form.html",
             {
@@ -309,7 +453,9 @@ async def elearning_module_creer(
                 "utilisateur": current_user,
                 "programmes": programmes,
                 "module": None,
-                "error": f"Erreur lors de la création du module: {str(e)}"
+                "error": f"Erreur lors de la création du module: {str(e)}",
+                "programme_param": programme_param,
+                "schema_name": schema_name
             }
         )
 
@@ -318,58 +464,92 @@ async def elearning_module_detail(
     module_id: int,
     request: Request,
     current_user: User = Depends(get_current_user),
-    session: Session = Depends(get_shared_session)
+    session: Session = Depends(get_shared_session),
+    schema_routing_service: SchemaRoutingService = Depends(get_schema_routing_service)
 ):
     """Détail d'un module e-learning"""
-    module = session.get(ModuleElearning, module_id)
-    if not module:
+    schema_name = get_schema_from_request(request) or 'acd'
+    logging.info(f"🔍 [elearning_module_detail] schema_name = {schema_name}, module_id = {module_id}, URL = {request.url}")
+    schema_routing_service.set_schema(schema_name)
+    session.exec(text(f"SET search_path TO {schema_name}, public"))
+    session.commit()
+    
+    # Forcer l'expiration de tous les objets de la session pour éviter le cache
+    session.expire_all()
+    
+    # Récupérer le module - SQL direct avec préfixe explicite du schéma
+    # Utiliser une variable pour s'assurer que schema_name est bien utilisé
+    query_str = f"SELECT * FROM {schema_name}.module_elearning WHERE id = :module_id"
+    logging.info(f"🔍 [elearning_module_detail] query_str = {query_str}")
+    module_query = text(query_str)
+    module_result = session.exec(module_query.bindparams(module_id=module_id)).first()
+    
+    if not module_result:
         raise HTTPException(status_code=404, detail="Module non trouvé")
     
-    # Récupérer les ressources du module avec leurs informations de liaison
-    ressources_query = session.exec(
-        select(RessourceElearning, ModuleRessource)
-        .join(ModuleRessource, RessourceElearning.id == ModuleRessource.ressource_id)
-        .where(ModuleRessource.module_id == module_id)
-        .order_by(ModuleRessource.ordre)
-    ).all()
+    module = type('ModuleElearning', (), dict(module_result._mapping))()
+    
+    # Vérifier d'abord si des associations existent dans module_ressource
+    check_associations_query = text(f"SELECT COUNT(*) as count FROM {schema_name}.module_ressource WHERE module_id = :module_id")
+    associations_count = session.exec(check_associations_query.bindparams(module_id=module_id)).first()
+    if associations_count:
+        count = dict(associations_count._mapping).get('count', 0) if hasattr(associations_count, '_mapping') else associations_count.count if hasattr(associations_count, 'count') else 0
+        logging.info(f"🔍 [elearning_module_detail] Nombre d'associations trouvées dans module_ressource: {count}")
+    
+    # Récupérer les ressources du module avec leurs informations de liaison - SQL direct avec préfixe explicite du schéma
+    ressources_table = f"{schema_name}.ressource_elearning"
+    module_ressource_table = f"{schema_name}.module_ressource"
+    ressources_query = text(f"""
+        SELECT r.*, mr.ordre as module_ordre, mr.obligatoire
+        FROM {ressources_table} r
+        INNER JOIN {module_ressource_table} mr ON r.id = mr.ressource_id
+        WHERE mr.module_id = :module_id
+        ORDER BY mr.ordre
+    """)
+    
+    logging.info(f"🔍 [elearning_module_detail] Requête ressources: {ressources_query}")
+    logging.info(f"🔍 [elearning_module_detail] module_id: {module_id}, schema_name: {schema_name}")
+    
+    try:
+        ressources_results = session.exec(ressources_query.bindparams(module_id=module_id)).all()
+        logging.info(f"🔍 [elearning_module_detail] Nombre de ressources trouvées: {len(ressources_results)}")
+    except Exception as e:
+        logging.error(f"❌ [elearning_module_detail] Erreur lors de la récupération des ressources: {e}", exc_info=True)
+        ressources_results = []
     
     # Transformer les résultats pour inclure les informations de liaison
     ressources = []
-    for ressource, module_ressource in ressources_query:
-        # Créer un dictionnaire avec les propriétés de la ressource et de la liaison
-        ressource_data = {
-            'id': ressource.id,
-            'titre': ressource.titre,
-            'description': ressource.description,
-            'type_ressource': ressource.type_ressource,
-            # Nouveaux champs spécifiques
-            'url_contenu_video': ressource.url_contenu_video,
-            'url_contenu_document': ressource.url_contenu_document,
-            'url_contenu_audio': ressource.url_contenu_audio,
-            'url_contenu_lien': ressource.url_contenu_lien,
-            'fichier_video_path': ressource.fichier_video_path,
-            'fichier_video_nom_original': ressource.fichier_video_nom_original,
-            'fichier_document_path': ressource.fichier_document_path,
-            'fichier_document_nom_original': ressource.fichier_document_nom_original,
-            'fichier_audio_path': ressource.fichier_audio_path,
-            'fichier_audio_nom_original': ressource.fichier_audio_nom_original,
-            # Anciens champs (compatibilité)
-            'url_contenu': ressource.url_contenu,
-            'fichier_path': ressource.fichier_path,
-            'nom_fichier_original': ressource.nom_fichier_original,
-            'duree_minutes': ressource.duree_minutes,
-            'difficulte': ressource.difficulte,
-            'tags': ressource.tags,
-            'actif': ressource.actif,
-            'ordre': ressource.ordre,
-            'cree_le': ressource.cree_le,
-            'cree_par_id': ressource.cree_par_id,
-            # Propriétés de liaison
-            'module_ordre': module_ressource.ordre,
-            'obligatoire': module_ressource.obligatoire
-        }
+    for row in ressources_results:
+        if hasattr(row, '_mapping'):
+            ressource_dict = dict(row._mapping)
+        else:
+            ressource_dict = dict(row)
+        
+        ressource_data = type('RessourceElearning', (), ressource_dict)()
+        # Ajouter les propriétés de liaison
+        ressource_data.module_ordre = ressource_dict.get('module_ordre', 0)
+        ressource_data.obligatoire = ressource_dict.get('obligatoire', False)
         ressources.append(ressource_data)
-        print(f"🔍 DEBUG: Ressource {ressources}")
+        logging.info(f"🔍 [elearning_module_detail] Ressource ajoutée: ID={ressource_data.id}, titre={ressource_data.titre}")
+    
+    logging.info(f"🔍 [elearning_module_detail] Total ressources dans la liste: {len(ressources)}")
+    
+    programme_param = request.query_params.get('programme', '').upper()
+    
+    # Récupérer les programmes pour afficher le nom du programme
+    programmes = []
+    try:
+        programmes_query = text("SELECT * FROM public.programme WHERE actif = true ORDER BY nom")
+        programmes_results = session.exec(programmes_query).all()
+        for row in programmes_results:
+            if hasattr(row, '_mapping'):
+                programme = type('Programme', (), dict(row._mapping))()
+            else:
+                programme = type('Programme', (), dict(row))()
+            programmes.append(programme)
+    except Exception as e:
+        logging.warning(f"Erreur lors de la récupération des programmes: {e}")
+        programmes = []
     
     return templates.TemplateResponse(
         "pages/elearning/module_detail.html",
@@ -377,7 +557,10 @@ async def elearning_module_detail(
             "request": request,
             "utilisateur": current_user,
             "module": module,
-            "ressources": ressources
+            "ressources": ressources,
+            "programmes": programmes,
+            "programme_param": programme_param,
+            "schema_name": schema_name
         }
     )
 
@@ -395,9 +578,13 @@ async def start_ressource(
     
     # Récupérer l'inscription de l'utilisateur (si c'est un candidat)
     inscription = None
+    # NOTE: Le modèle Inscription a été supprimé. Utiliser directement le candidat.
     if current_user.type_utilisateur == "candidat":
-        inscription = session.exec(
-            select(Inscription).where(Inscription.candidat_id == current_user.id)
+        # inscription = session.exec(
+        #     select(Inscription).where(Inscription.candidat_id == current_user.id)
+        # ).first()
+        candidat = session.exec(
+            select(Candidat).where(Candidat.email == current_user.email)
         ).first()
     
     return templates.TemplateResponse(
@@ -424,6 +611,7 @@ async def elearning_ressource_creer_form(
     # Récupérer le module_id depuis les paramètres de requête
     module_id = request.query_params.get("module_id")
     return_url = request.query_params.get("return_url")
+    programme_param = request.query_params.get('programme', '').upper()
     
     return templates.TemplateResponse(
         "pages/elearning/ressource_form.html",
@@ -432,7 +620,8 @@ async def elearning_ressource_creer_form(
             "utilisateur": current_user,
             "ressource": None,  # Pas de ressource existante
             "module_id": module_id,
-            "return_url": return_url
+            "return_url": return_url,
+            "programme_param": programme_param
         }
     )
 
@@ -441,6 +630,7 @@ async def elearning_ressource_creer(
     request: Request,
     current_user: User = Depends(get_current_user),
     session: Session = Depends(get_shared_session),
+    schema_routing_service: SchemaRoutingService = Depends(get_schema_routing_service)
 ):
     print("🔥 ROUTE APPELÉE: elearning_ressource_creer")
     """
@@ -456,6 +646,12 @@ async def elearning_ressource_creer(
         print("❌ Accès refusé - rôle insuffisant")
         raise HTTPException(status_code=403, detail="Accès refusé")
     
+    # Récupérer et configurer le schéma
+    schema_name = get_schema_from_request(request) or 'acd'
+    schema_routing_service.set_schema(schema_name)
+    session.exec(text(f"SET search_path TO {schema_name}, public"))
+    session.commit()
+    
     print("✅ Autorisation OK")
 
     # --- Form data
@@ -466,10 +662,31 @@ async def elearning_ressource_creer(
         dbg = settings.DEBUG
     except Exception:
         dbg = False
-    if dbg:
-        print(f"🔍 Form keys: {list(form_data.keys())}")
     
+    # Logging détaillé de tous les champs du formulaire
     print(f"🔍 Clés du formulaire: {list(form_data.keys())}")
+    print(f"🔍 Nombre total de champs: {len(form_data)}")
+    
+    # Afficher tous les champs et leurs valeurs (sauf les fichiers)
+    for key, value in form_data.items():
+        if hasattr(value, 'filename'):
+            print(f"  📁 {key}: fichier = {value.filename if value.filename else 'vide'}")
+        else:
+            print(f"  📝 {key}: {str(value)[:100] if value else 'vide'}")
+    
+    # Récupérer le programme depuis le formulaire si présent, sinon depuis la requête
+    programme_from_form = form_data.get("programme")
+    programme_param = None
+    if programme_from_form:
+        programme_param = str(programme_from_form).upper()
+        schema_name = programme_from_form.lower()
+        schema_routing_service.set_schema(schema_name)
+        session.exec(text(f"SET search_path TO {schema_name}, public"))
+        session.commit()
+        print(f"✅ Schéma mis à jour depuis le formulaire: {schema_name}")
+    else:
+        # Récupérer depuis la requête si pas dans le formulaire
+        programme_param = request.query_params.get('programme', '').upper() or None
 
     # Helpers
     def to_int(val, default=None):
@@ -537,6 +754,7 @@ async def elearning_ressource_creer(
 
     if not presence:
         print("❌ Aucun contenu détecté - rien à créer")
+        programme_param = request.query_params.get('programme', '').upper()
         # Rien à créer
         return templates.TemplateResponse(
             "pages/elearning/ressource_form.html",
@@ -546,6 +764,7 @@ async def elearning_ressource_creer(
                 "ressource": None,
                 "module_id": module_id,
                 "return_url": return_url,
+                "programme_param": programme_param,
                 "error": "Aucun contenu détecté (ni fichier ni URL) dans le formulaire.",
             },
         )
@@ -585,7 +804,8 @@ async def elearning_ressource_creer(
                     uploaded_file,
                     t,  # type logique (video, document, audio)
                     "elearning",  # dossier principal
-                    module_id,  # ID du module
+                    programme_param.lower() if programme_param else None,  # Code du programme
+                    module_id,  # ID du module (subfolder_id)
                 )
                 fichiers_info[t] = {
                     "path": file_info["relative_path"],
@@ -602,6 +822,7 @@ async def elearning_ressource_creer(
     # Si aucun fichier n'a pu être uploadé, on arrête
     if not fichiers_info and not urls_candidates:
         print("❌ Aucun contenu valide - retour au formulaire")
+        programme_param = request.query_params.get('programme', '').upper()
         return templates.TemplateResponse(
             "pages/elearning/ressource_form.html",
             {
@@ -610,6 +831,7 @@ async def elearning_ressource_creer(
                 "ressource": None,
                 "module_id": module_id,
                 "return_url": return_url,
+                "programme_param": programme_param,
                 "error": "Aucun contenu valide détecté.",
             },
         )
@@ -660,6 +882,7 @@ async def elearning_ressource_creer(
             except Exception:
                 pass
         errors.append(f"Préparation ressource: {str(e)}")
+        programme_param = request.query_params.get('programme', '').upper()
         return templates.TemplateResponse(
             "pages/elearning/ressource_form.html",
             {
@@ -668,13 +891,14 @@ async def elearning_ressource_creer(
                 "ressource": None,
                 "module_id": module_id,
                 "return_url": return_url,
+                "programme_param": programme_param,
                 "error": f"Erreur de validation: {str(e)}",
             },
         )
 
     try:
         print(f"💾 Sauvegarde en base de données...")
-        res = ElearningService.create_ressource(session, ressource_data, current_user.id)
+        res = ElearningService.create_ressource(session, ressource_data, current_user.id, schema_name)
         created_id = res.id
         print(f"✅ Ressource créée avec l'ID: {created_id}")
 
@@ -688,6 +912,7 @@ async def elearning_ressource_creer(
                     res.id,
                     ordre=ordre,
                     obligatoire=obligatoire,
+                    schema_name=schema_name
                 )
                 print(f"✅ Ressource {res.id} associée au module {module_id}")
             except Exception as e:
@@ -704,6 +929,7 @@ async def elearning_ressource_creer(
             except Exception:
                 pass
         errors.append(f"Création ressource: {str(e)}")
+        programme_param = request.query_params.get('programme', '').upper()
         return templates.TemplateResponse(
             "pages/elearning/ressource_form.html",
             {
@@ -712,6 +938,7 @@ async def elearning_ressource_creer(
                 "ressource": None,
                 "module_id": module_id,
                 "return_url": return_url,
+                "programme_param": programme_param,
                 "error": f"Erreur de création: {str(e)}",
             },
         )
@@ -726,6 +953,7 @@ async def elearning_ressource_creer(
     
     if not created_id:
         print("❌ Aucune ressource créée - retour au formulaire")
+        programme_param = request.query_params.get('programme', '').upper()
         # Rien n'a pu être créé : on retourne au formulaire avec erreurs
         return templates.TemplateResponse(
             "pages/elearning/ressource_form.html",
@@ -735,6 +963,7 @@ async def elearning_ressource_creer(
                 "ressource": None,
                 "module_id": module_id,
                 "return_url": return_url,
+                "programme_param": programme_param,
                 "error": "Aucune ressource n'a été créée. " + (" | ".join(errors) if errors else ""),
             },
         )
@@ -744,24 +973,49 @@ async def elearning_ressource_creer(
     created_count = 1 if created_id else 0
     error_count = len(errors)
     print(f"🔄 Redirection avec {created_count} créations et {error_count} erreurs")
-    suffix = f"?created={created_count}&errors={error_count}" if (created_count or error_count) else ""
-    target = (return_url or "/elearning/modules") + suffix
+    
+    # Construire l'URL de redirection avec le paramètre programme si disponible
+    programme_param = request.query_params.get('programme', '').upper()
+    base_url = return_url or "/elearning/modules"
+    
+    # Ajouter le paramètre programme si présent
+    if programme_param:
+        separator = "&" if "?" in base_url else "?"
+        base_url = f"{base_url}{separator}programme={programme_param}"
+    
+    # Ajouter les paramètres de résultat
+    separator = "&" if "?" in base_url else "?"
+    suffix = f"{separator}created={created_count}&errors={error_count}" if (created_count or error_count) else ""
+    target = base_url + suffix
+    
+    print(f"🔄 Redirection vers: {target}")
     return RedirectResponse(url=target, status_code=303)
 
 @router.get("/modules/{module_id}/ressources/{ressource_id}/remove", name="elearning_remove_ressource_from_module")
 async def remove_ressource_from_module(
     module_id: int,
     ressource_id: int,
+    request: Request,
     current_user: User = Depends(get_current_user),
-    session: Session = Depends(get_shared_session)
+    session: Session = Depends(get_shared_session),
+    schema_routing_service: SchemaRoutingService = Depends(get_schema_routing_service)
 ):
     """Supprimer une ressource d'un module"""
     if current_user.role not in ["administrateur", "responsable_programme", "formateur"]:
         raise HTTPException(status_code=403, detail="Accès refusé")
     
+    schema_name = get_schema_from_request(request) or 'acd'
+    schema_routing_service.set_schema(schema_name)
+    session.exec(text(f"SET search_path TO {schema_name}, public"))
+    session.commit()
+    
     try:
-        ElearningService.remove_ressource_from_module(session, module_id, ressource_id)
-        return RedirectResponse(url=request.url_for("elearning_module_detail", module_id=module_id), status_code=303)
+        ElearningService.remove_ressource_from_module(session, module_id, ressource_id, schema_name)
+        programme_param = request.query_params.get('programme', '').upper()
+        redirect_url = request.url_for("elearning_module_detail", module_id=module_id)
+        if programme_param:
+            redirect_url = str(redirect_url) + f"?programme={programme_param}"
+        return RedirectResponse(url=redirect_url, status_code=303)
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Erreur lors de la suppression: {str(e)}")
 
@@ -770,22 +1024,53 @@ async def elearning_ressource_edit_form(
     ressource_id: int,
     request: Request,
     current_user: User = Depends(get_current_user),
-    session: Session = Depends(get_shared_session)
+    session: Session = Depends(get_shared_session),
+    schema_routing_service: SchemaRoutingService = Depends(get_schema_routing_service)
 ):
     """Formulaire d'édition d'une ressource e-learning"""
     if current_user.role not in ["administrateur", "responsable_programme", "formateur"]:
         raise HTTPException(status_code=403, detail="Accès refusé")
     
-    ressource = session.get(RessourceElearning, ressource_id)
-    if not ressource:
+    schema_name = get_schema_from_request(request) or 'acd'
+    schema_routing_service.set_schema(schema_name)
+    session.exec(text(f"SET search_path TO {schema_name}, public"))
+    session.commit()
+    
+    # Récupérer la ressource - SQL direct
+    ressource_query = text(f"SELECT * FROM {schema_name}.ressource_elearning WHERE id = :ressource_id")
+    ressource_result = session.exec(ressource_query.bindparams(ressource_id=ressource_id)).first()
+    
+    if not ressource_result:
         raise HTTPException(status_code=404, detail="Ressource non trouvée")
+    
+    ressource = type('RessourceElearning', (), dict(ressource_result._mapping))()
+    
+    # Récupérer le module_id depuis les paramètres de requête ou depuis la table de liaison
+    module_id = request.query_params.get("module_id")
+    return_url = request.query_params.get("return_url")
+    
+    # Si module_id n'est pas dans les paramètres, le récupérer depuis la table de liaison
+    if not module_id:
+        module_ressource_query = text(f"SELECT module_id FROM {schema_name}.module_ressource WHERE ressource_id = :ressource_id LIMIT 1")
+        module_ressource_result = session.exec(module_ressource_query.bindparams(ressource_id=ressource_id)).first()
+        if module_ressource_result:
+            if hasattr(module_ressource_result, '_mapping'):
+                module_id = dict(module_ressource_result._mapping).get('module_id')
+            else:
+                module_id = dict(module_ressource_result).get('module_id')
+    
+    programme_param = request.query_params.get('programme', '').upper()
     
     return templates.TemplateResponse(
         "pages/elearning/ressource_form.html",
         {
             "request": request,
             "utilisateur": current_user,
-            "ressource": ressource
+            "ressource": ressource,
+            "module_id": module_id,
+            "return_url": return_url,
+            "programme_param": programme_param,
+            "schema_name": schema_name
         }
     )
 
@@ -794,15 +1079,26 @@ async def elearning_ressource_edit(
     ressource_id: int,
     request: Request,
     current_user: User = Depends(get_current_user),
-    session: Session = Depends(get_shared_session)
+    session: Session = Depends(get_shared_session),
+    schema_routing_service: SchemaRoutingService = Depends(get_schema_routing_service)
 ):
     """Traiter la modification d'une ressource e-learning"""
     if current_user.role not in ["administrateur", "responsable_programme", "formateur"]:
         raise HTTPException(status_code=403, detail="Accès refusé")
     
-    ressource = session.get(RessourceElearning, ressource_id)
-    if not ressource:
+    schema_name = get_schema_from_request(request) or 'acd'
+    schema_routing_service.set_schema(schema_name)
+    session.exec(text(f"SET search_path TO {schema_name}, public"))
+    session.commit()
+    
+    # Récupérer la ressource - SQL direct
+    ressource_query = text(f"SELECT * FROM {schema_name}.ressource_elearning WHERE id = :ressource_id")
+    ressource_result = session.exec(ressource_query.bindparams(ressource_id=ressource_id)).first()
+    
+    if not ressource_result:
         raise HTTPException(status_code=404, detail="Ressource non trouvée")
+    
+    ressource = type('RessourceElearning', (), dict(ressource_result._mapping))()
     
     # Récupérer les données du formulaire
     form_data = await request.form()
@@ -846,12 +1142,31 @@ async def elearning_ressource_edit(
             if getattr(candidate, "filename", None):
                 try:
                     module_id = form_data.get("module_id")
+                    programme_param = request.query_params.get('programme', '').upper()
                     print(f"🔍 DEBUG: Fichier {file_type} trouvé: {candidate.filename}")
+                    
+                    # Supprimer l'ancien fichier s'il existe
+                    ancien_fichier_path = None
+                    if file_type == "video" and ressource.fichier_video_path:
+                        ancien_fichier_path = ressource.fichier_video_path
+                    elif file_type == "document" and ressource.fichier_document_path:
+                        ancien_fichier_path = ressource.fichier_document_path
+                    elif file_type == "audio" and ressource.fichier_audio_path:
+                        ancien_fichier_path = ressource.fichier_audio_path
+                    
+                    if ancien_fichier_path:
+                        try:
+                            FileUploadService.delete_file(ancien_fichier_path)
+                            print(f"🗑️ DEBUG: Ancien fichier {file_type} supprimé: {ancien_fichier_path}")
+                        except Exception as e:
+                            print(f"⚠️ DEBUG: Erreur lors de la suppression de l'ancien fichier {file_type}: {e}")
                     
                     file_info = await FileUploadService.save_file(
                         candidate,
                         file_type,
-                        int(module_id) if module_id else None
+                        "elearning",  # dossier principal
+                        programme_param.lower() if programme_param else None,  # Code du programme
+                        int(module_id) if module_id else None  # ID du module (subfolder_id)
                     )
                     
                     fichiers_info.append({
@@ -907,17 +1222,24 @@ async def elearning_ressource_edit(
             fichier_audio_path = file_info["path"]
             fichier_audio_nom_original = file_info["filename"]
     
+    # Fonction helper pour convertir les chaînes vides en None
+    def get_value_or_none(value):
+        """Convertit les chaînes vides en None, garde les autres valeurs"""
+        if value is None or value == "":
+            return None
+        return value
+    
     # Mettre à jour la ressource
     ressource_data = RessourceElearningUpdate(
-        titre=form_data.get("titre"),
-        description=form_data.get("description"),
+        titre=form_data.get("titre") or None,
+        description=get_value_or_none(form_data.get("description")),
         type_ressource=type_ressource,
         
         # URLs pour chaque type
-        url_contenu_video=form_data.get("url_contenu_video"),
-        url_contenu_document=form_data.get("url_contenu_document"),
-        url_contenu_audio=form_data.get("url_contenu_audio"),
-        url_contenu_lien=form_data.get("url_contenu_lien"),
+        url_contenu_video=get_value_or_none(form_data.get("url_contenu_video")),
+        url_contenu_document=get_value_or_none(form_data.get("url_contenu_document")),
+        url_contenu_audio=get_value_or_none(form_data.get("url_contenu_audio")),
+        url_contenu_lien=get_value_or_none(form_data.get("url_contenu_lien")),
         
         # Fichiers pour chaque type
         fichier_video_path=fichier_video_path,
@@ -928,23 +1250,50 @@ async def elearning_ressource_edit(
         fichier_audio_nom_original=fichier_audio_nom_original,
         
         # Champs généraux
-        url_contenu=url_contenu_selected,
+        url_contenu=get_value_or_none(url_contenu_selected),
         fichier_path=None,
         
         duree_minutes=int(form_data.get("duree_minutes")) if form_data.get("duree_minutes") else None,
         difficulte=form_data.get("difficulte", "facile"),
-        tags=form_data.get("tags"),
+        tags=get_value_or_none(form_data.get("tags")),
         ordre=int(form_data.get("ordre", 0)),
         actif=form_data.get("actif") == "on"
     )
     
     try:
-        updated_ressource = ElearningService.update_ressource(session, ressource_id, ressource_data)
-        # Rediriger vers la liste des modules
-        return RedirectResponse(url=request.url_for("elearning_modules"), status_code=303)
+        updated_ressource = ElearningService.update_ressource(session, ressource_id, ressource_data, schema_name)
+        
+        # Récupérer le module_id depuis le formulaire ou depuis la table de liaison
+        module_id = form_data.get("module_id")
+        if not module_id:
+            # Si module_id n'est pas dans le formulaire, le récupérer depuis la table de liaison
+            module_ressource_query = text(f"SELECT module_id FROM {schema_name}.module_ressource WHERE ressource_id = :ressource_id LIMIT 1")
+            module_ressource_result = session.exec(module_ressource_query.bindparams(ressource_id=ressource_id)).first()
+            if module_ressource_result:
+                if hasattr(module_ressource_result, '_mapping'):
+                    module_id = dict(module_ressource_result._mapping).get('module_id')
+                else:
+                    module_id = dict(module_ressource_result).get('module_id')
+        
+        programme_param = request.query_params.get('programme', '').upper()
+        
+        # Rediriger vers la page de détail du module avec l'ancre #ressources si module_id existe
+        if module_id:
+            redirect_url = request.url_for("elearning_module_detail", module_id=int(module_id))
+            if programme_param:
+                redirect_url = str(redirect_url) + f"?programme={programme_param}"
+            redirect_url = str(redirect_url) + "#ressources"
+        else:
+            # Sinon, rediriger vers la liste des modules
+            redirect_url = request.url_for("elearning_modules")
+            if programme_param:
+                redirect_url = str(redirect_url) + f"?programme={programme_param}"
+        
+        return RedirectResponse(url=redirect_url, status_code=303)
     except Exception as e:
         # En cas d'erreur, faire un rollback de la session
         session.rollback()
+        programme_param = request.query_params.get('programme', '').upper()
         # Retourner au formulaire avec un message d'erreur
         return templates.TemplateResponse(
             "pages/elearning/ressource_form.html",
@@ -952,7 +1301,9 @@ async def elearning_ressource_edit(
                 "request": request,
                 "utilisateur": current_user,
                 "ressource": ressource,
-                "error": f"Erreur lors de la modification de la ressource: {str(e)}"
+                "error": f"Erreur lors de la modification de la ressource: {str(e)}",
+                "programme_param": programme_param,
+                "schema_name": schema_name
             }
         )
 
@@ -1006,35 +1357,50 @@ async def elearning_statistiques(
         }
     )
 
-@router.get("/candidat/{inscription_id}", response_class=HTMLResponse, name="elearning_candidat_progression")
+@router.get("/candidat/{candidat_id}", response_class=HTMLResponse, name="elearning_candidat_progression")
 async def elearning_candidat_progression(
-    inscription_id: int,
+    candidat_id: int,
     request: Request,
     current_user: User = Depends(get_current_user),
-    session: Session = Depends(get_shared_session)
+    session: Session = Depends(get_shared_session),
+    schema_routing_service: SchemaRoutingService = Depends(get_schema_routing_service)
 ):
     """Progression e-learning d'un candidat"""
-    inscription = session.get(Inscription, inscription_id)
-    if not inscription:
-        raise HTTPException(status_code=404, detail="Inscription non trouvée")
+    schema_name = get_schema_from_request(request) or 'acd'
+    schema_routing_service.set_schema(schema_name)
+    session.exec(text(f"SET search_path TO {schema_name}, public"))
+    session.commit()
+    
+    # Récupérer le candidat - SQL direct
+    candidat_query = text(f"SELECT * FROM {schema_name}.candidat WHERE id = :candidat_id")
+    candidat_result = session.exec(candidat_query.bindparams(candidat_id=candidat_id)).first()
+    
+    if not candidat_result:
+        raise HTTPException(status_code=404, detail="Candidat non trouvé")
+    
+    candidat = type('Candidat', (), dict(candidat_result._mapping))()
     
     # Récupérer les statistiques du candidat
     try:
-        stats = ElearningService.get_statistiques_candidat(session, inscription_id)
+        stats = ElearningService.get_statistiques_candidat(session, candidat_id, schema_name)
     except ValueError as e:
         raise HTTPException(status_code=404, detail=str(e))
     
     # Récupérer la progression détaillée
-    progressions = ElearningService.get_progression_candidat(session, inscription_id)
+    progressions = ElearningService.get_progression_candidat(session, candidat_id, schema_name)
+    
+    programme_param = request.query_params.get('programme', '').upper()
     
     return templates.TemplateResponse(
         "pages/elearning/candidat_progression.html",
         {
             "request": request,
             "utilisateur": current_user,
-            "inscription": inscription,
+            "candidat": candidat,
             "stats": stats,
-            "progressions": progressions
+            "progressions": progressions,
+            "programme_param": programme_param,
+            "schema_name": schema_name
         }
     )
 

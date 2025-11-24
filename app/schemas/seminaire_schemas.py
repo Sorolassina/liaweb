@@ -13,7 +13,7 @@ class SeminaireBase(BaseModel):
     date_fin: date
     lieu: Optional[str] = None
     adresse_complete: Optional[str] = None
-    organisateur_id: int
+    organisateur: str = Field(..., min_length=1, max_length=255)
     capacite_max: Optional[int] = Field(None, gt=0)
     invitation_auto: bool = False
     invitation_promos: bool = False
@@ -30,10 +30,12 @@ class SeminaireCreate(SeminaireBase):
 class SeminaireUpdate(BaseModel):
     titre: Optional[str] = Field(None, min_length=1, max_length=200)
     description: Optional[str] = None
+    programme_id: Optional[int] = None
     date_debut: Optional[date] = None
     date_fin: Optional[date] = None
     lieu: Optional[str] = None
     adresse_complete: Optional[str] = None
+    organisateur: Optional[str] = Field(None, min_length=1, max_length=255)
     capacite_max: Optional[int] = Field(None, gt=0)
     statut: Optional[StatutSeminaire] = None
     invitation_auto: Optional[bool] = None
@@ -117,7 +119,7 @@ class InvitationSeminaireResponse(InvitationSeminaireBase):
 
 # Schémas pour la présence
 class PresenceSeminaireBase(BaseModel):
-    presence: str = "absent"  # "absent", "present", "excuse"
+    presence: str = "en_attente"  # "en_attente", "absent", "present", "excuse"
     methode_signature: Optional[MethodeSignature] = None
     signature_manuelle: Optional[str] = None
     signature_digitale: Optional[str] = None
@@ -128,7 +130,7 @@ class PresenceSeminaireBase(BaseModel):
 
 class PresenceSeminaireCreate(PresenceSeminaireBase):
     session_id: int
-    inscription_id: int
+    candidat_id: int
 
 class PresenceSeminaireUpdate(BaseModel):
     presence: Optional[StatutPresence] = None
@@ -143,7 +145,7 @@ class PresenceSeminaireUpdate(BaseModel):
 class PresenceSeminaireResponse(PresenceSeminaireBase):
     id: int
     session_id: int
-    inscription_id: int
+    candidat_id: int
     ip_signature: Optional[str] = None
     user_agent: Optional[str] = None
     cree_le: datetime
@@ -190,7 +192,7 @@ class RenduLivrableBase(BaseModel):
 
 class RenduLivrableCreate(RenduLivrableBase):
     livrable_id: int
-    inscription_id: int
+    candidat_id: int
     nom_fichier: str
     chemin_fichier: str
     taille_fichier: int
@@ -204,7 +206,7 @@ class RenduLivrableUpdate(BaseModel):
 class RenduLivrableResponse(RenduLivrableBase):
     id: int
     livrable_id: int
-    inscription_id: int
+    candidat_id: int
     nom_fichier: str
     chemin_fichier: str
     taille_fichier: int
@@ -247,6 +249,6 @@ class SeminaireFilter(BaseModel):
 
 class PresenceFilter(BaseModel):
     session_id: Optional[int] = None
-    inscription_id: Optional[int] = None
+    candidat_id: Optional[int] = None
     presence: Optional[StatutPresence] = None
     methode_signature: Optional[MethodeSignature] = None

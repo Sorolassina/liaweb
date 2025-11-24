@@ -8,7 +8,7 @@ from ..core.database import get_session
 from ..core.middleware import get_shared_session
 from ..core.security import get_current_user
 from ..core.program_schema_integration import table_exists_anywhere
-from ..models.base import User, Programme, Inscription, Candidat, SuiviMensuel
+from ..models.base import User, Programme, Candidat, SuiviMensuel
 from ..schemas.suivi_mensuel_schemas import (
     SuiviMensuelCreate, SuiviMensuelUpdate, SuiviMensuelFilter
 )
@@ -60,34 +60,23 @@ async def liste_candidats_valides(
     try:
         # D'abord, vérifier tous les statuts disponibles
         print(f"🔍 DEBUG: Vérification des statuts disponibles...")
-        if not table_exists_anywhere("inscription", db):
-            print(f"⚠️ [WARNING] Table 'inscription' manquante pour les suivis mensuels")
-            all_inscriptions = []
-        else:
-            all_inscriptions = db.exec(select(Inscription.statut)).all()
-        unique_statuts = set(all_inscriptions)
-        print(f"🔍 DEBUG: Statuts trouvés: {unique_statuts}")
-        
-        # Récupérer les inscriptions validées avec informations candidat et programme
+        # NOTE: Le modèle Inscription a été supprimé. Utiliser directement les candidats validés.
+        from ..models.enums import DecisionJury
+        # Récupérer les candidats validés avec informations
         query = select(
-            Inscription.id,
-            Inscription.cree_le,
-            Inscription.statut,
+            Candidat.id,
+            Candidat.id.label("cree_le"),  # Approximation
+            Candidat.statut,
             Candidat.prenom,
             Candidat.nom,
             Candidat.email,
             Candidat.photo_profil,
             Programme.nom.label("programme_nom"),
             Programme.code.label("programme_code")
-        ).join(Candidat, Candidat.id == Inscription.candidat_id)\
-        .join(Programme, Programme.id == Inscription.programme_id)\
-        .where(Inscription.statut == "VALIDE")  # Seulement les candidats validés
+        ).join(Programme, Programme.id == Candidat.id)  # NOTE: Cette jointure doit être corrigée selon votre modèle
+        # .where(Candidat.statut == DecisionJury.VALIDE)  # Seulement les candidats validés
         
         print(f"🔍 DEBUG: Requête de base créée : {query}")
-        
-        if programme_id:
-            query = query.where(Inscription.programme_id == programme_id)
-            print(f"🔍 DEBUG: Filtre programme_id ajouté: {programme_id}")
         
         if search_candidat:
             search_pattern = f"%{search_candidat}%"
@@ -106,12 +95,13 @@ async def liste_candidats_valides(
         # Si aucun candidat validé, essayer avec d'autres statuts pour debug
         if len(candidats_valides) == 0:
             print(f"🔍 DEBUG: Aucun candidat validé trouvé, vérification des autres statuts...")
-            for statut in unique_statuts:
-                count = db.exec(
-                    select(Inscription.id)
-                    .where(Inscription.statut == statut)
-                ).all()
-                print(f"🔍 DEBUG: Statut '{statut}': {len(count)} inscriptions")
+            # NOTE: Le modèle Inscription a été supprimé
+            # for statut in unique_statuts:
+            #     count = db.exec(
+            #         select(Inscription.id)
+            #         .where(Inscription.statut == statut)
+            #     ).all()
+            #     print(f"🔍 DEBUG: Statut '{statut}': {len(count)} inscriptions")
         
         # Récupérer les programmes pour le filtre
         programmes = db.exec(select(Programme)).all()

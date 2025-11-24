@@ -1,184 +1,279 @@
-{% extends "base.html" %}
+{% extends "layouts/base.html" %}
 
-{% block title %}Nouveau Cycle - {{ super() }}{% endblock %}
+{% block title %}{% if is_edit_mode %}Modifier le Cycle{% else %}Nouveau Cycle{% endif %} - {{ super() }}{% endblock %}
 
 {% block head_extra %}
 <style>
-  .form-container {
+/* Limiter la hauteur de la page pour éviter le scroll */
+.page-content-wrapper {
+    height: calc(100vh - 120px);
+    max-height: calc(100vh - 120px);
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+}
+
+.page-content-wrapper .row:first-child {
+    flex-shrink: 0;
+}
+
+.page-content-wrapper .row:last-child {
+    flex: 1;
+    min-height: 0;
+    overflow: hidden;
+    display: flex;
+    height: 100%;
+}
+
+.page-content-wrapper .row:last-child .col-lg-12 {
+    display: flex;
+    flex-direction: column;
+    min-height: 0;
+    max-height: 100%;
+    height: 95%;
+    margin: 1rem 0;
+    padding: 0 1rem;
+    overflow: hidden;
+}
+
+/* Style modal pour la card */
+.modal-style-card {
+    box-shadow: 0 10px 40px rgba(0, 0, 0, 0.2);
+    border-radius: 5px;
+    border: none;
+    display: flex;
+    flex-direction: column;
+    max-width: 1000px;
     margin: 0 auto;
-    padding: 20px;
     width: 100%;
-  }
-  
-  .form-card {
-    background: white;
-    border-radius: 15px;
-    box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
-    padding: 30px;
-  }
-  
-  .form-group {
-    margin-bottom: 20px;
-  }
-  
-  .form-group label {
-    display: block;
-    margin-bottom: 8px;
-    font-weight: 600;
-    color: var(--primary-color);
-  }
-  
-  .form-group input,
-  .form-group select,
-  .form-group textarea {
-    width: 100%;
-    padding: 12px;
-    border: 2px solid #e1e5e9;
-    border-radius: 8px;
-    font-size: 14px;
-    transition: border-color 0.3s ease;
-  }
-  
-  .form-group input:focus,
-  .form-group select:focus,
-  .form-group textarea:focus {
-    outline: none;
-    border-color: var(--primary-color);
-  }
-  
-  .form-group textarea {
-    resize: vertical;
-    min-height: 100px;
-  }
-  
-  .form-card h2 {
-    font-size: 1.4rem;
-    font-weight: 600;
-    color: var(--primary-color);
-    margin-bottom: 1rem;
-    position: sticky;
-    top: 0;
-    background: white;
-    padding: 10px 0;
+    height: 100%;
+    min-height: 0;
+}
+
+.modal-style-card > .card-header {
+    flex: 0 0 auto;
+}
+
+.modal-style-card > .card-body {
+    flex: 1 1 auto;
+    min-height: 0;
+}
+
+.modal-style-card > .card-footer {
+    flex: 0 0 auto;
+}
+
+.modal-style-header {
+    padding: 1.5rem;
+    border: 2px solid var(--primary-color);
+    background: var(--secondary-color);
+    flex-shrink: 0;
     z-index: 10;
-    border-bottom: 2px solid #f0f0f0;
-  }
-  
-  
-        .form-row {
-          display: grid;
-          grid-template-columns: 1fr 1fr;
-          gap: 20px;
-        }
-        
-        /* Styles pour les onglets */
-        .tabs-container {
-          background: white;
-          border-radius: 8px;
-          box-shadow: 0 2px 10px rgba(0,0,0,0.1);
-          overflow: hidden;
-        }
-        
-        .tabs-nav {
-          display: flex;
-          background: #f8f9fa;
-          border-bottom: 1px solid #e9ecef;
-        }
-        
-        .tab-btn {
-          flex: 1;
-          background: none;
-          border: none;
-          padding: 15px 20px;
-          cursor: pointer;
-          font-size: 0.9rem;
-          font-weight: 500;
-          color: #6c757d;
-          transition: all 0.3s ease;
-          border-bottom: 3px solid transparent;
-        }
-        
-        .tab-btn:hover {
-          background: #e9ecef;
-          color: var(--primary-color);
-        }
-        
-        .tab-btn.active {
-          background: white;
-          color: var(--primary-color);
-          border-bottom-color: var(--primary-color);
-        }
-        
-        .tab-btn i {
-          margin-right: 8px;
-        }
-        
-        .tab-content {
-          display: none;
-          padding: 30px;
-          min-height: 300px;
-        }
-        
-        .tab-content.active {
-          display: block;
-        }
-  
-  .btn-submit {
-    background: linear-gradient(135deg, var(--primary-color) 0%, #e6b800 100%);
-    color: white;
+    border-radius: 5px 5px 0 0;
+    border-bottom: 2px solid var(--primary-color);
+}
+
+.modal-style-title {
+    margin: 0;
+    color: var(--white-color);
+    font-size: 1.3rem;
+    font-weight: 700;
+}
+
+.modal-style-body {
+    padding: 1.5rem;
+    margin: 0;
+    flex: 1;
+    overflow-y: auto;
+    overflow-x: hidden;
+    min-height: 0;
+    border-left: 1px solid var(--primary-color);
+    border-right: 1px solid var(--primary-color);
+}
+
+.modal-style-footer {
+    padding: 1rem 1.5rem;
+    border: 2px solid var(--primary-color);
+    background: var(--gray-50);
+    display: flex !important;
+    gap: 1rem;
+    justify-content: flex-end;
+    flex-shrink: 0;
+    flex-grow: 0;
+    z-index: 10;
+    border-radius: 0 0 5px 5px;
+    border-top: 2px solid var(--primary-color);
+    visibility: visible !important;
+    opacity: 1 !important;
+    height: auto !important;
+    min-height: 60px;
+}
+
+.modal-style-body::-webkit-scrollbar {
+    width: 8px;
+}
+
+.modal-style-body::-webkit-scrollbar-track {
+    background: var(--gray-100);
+    border-radius: 4px;
+}
+
+.modal-style-body::-webkit-scrollbar-thumb {
+    background: var(--gray-400);
+    border-radius: 4px;
+}
+
+.modal-style-body::-webkit-scrollbar-thumb:hover {
+    background: var(--gray-500);
+}
+
+/* Styles pour les onglets */
+.tabs-container {
+    background: white;
+    border-radius: 8px;
+    box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+    overflow: hidden;
+}
+
+.tabs-nav {
+    display: flex;
+    background: #f8f9fa;
+    border-bottom: 1px solid #e9ecef;
+}
+
+.tab-btn {
+    flex: 1;
+    background: none;
     border: none;
-    padding: 15px 30px;
-    border-radius: 8px;
-    font-size: 16px;
-    font-weight: 600;
+    padding: 15px 20px;
     cursor: pointer;
-    transition: transform 0.2s ease;
-  }
-  
-  .btn-submit:hover {
-    transform: translateY(-2px);
-  }
-  
-  .btn-cancel {
-    background: #6c757d;
-    color: white;
-    border: none;
-    padding: 15px 30px;
-    border-radius: 8px;
-    font-size: 16px;
+    font-size: 0.9rem;
+    font-weight: 500;
+    color: #6c757d;
+    transition: all 0.3s ease;
+    border-bottom: 3px solid transparent;
+}
+
+.tab-btn:hover {
+    background: #e9ecef;
+    color: var(--primary-color);
+}
+
+.tab-btn.active {
+    background: white;
+    color: var(--primary-color);
+    border-bottom-color: var(--primary-color);
+}
+
+.tab-btn i {
+    margin-right: 8px;
+}
+
+.tab-content {
+    display: none;
+    padding: 30px;
+    min-height: 300px;
+}
+
+.tab-content.active {
+    display: block;
+}
+
+.form-label {
     font-weight: 600;
-    cursor: pointer;
-    text-decoration: none;
-    display: inline-block;
-    margin-right: 10px;
-  }
-  
-  .alert {
-    padding: 15px;
-    border-radius: 8px;
-    margin-bottom: 20px;
-  }
-  
-  .alert-error {
-    background-color: #f8d7da;
-    color: #721c24;
-    border: 1px solid #f5c6cb;
-  }
-  
-  .alert-success {
-    background-color: #d4edda;
-    color: #155724;
-    border: 1px solid #c3e6cb;
-  }
+    color: #495057;
+    font-size: 0.875rem;
+    margin-bottom: 0.4rem;
+}
+
+.form-control-sm, .form-select-sm {
+    height: 32px;
+    padding: 0.375rem 0.5rem;
+    font-size: 0.875rem;
+    line-height: 1.4;
+    border: 1px solid var(--gray-300);
+    border-radius: 4px;
+}
+
+.form-control-sm:focus, .form-select-sm:focus {
+    border-color: var(--primary-color);
+    box-shadow: 0 0 0 0.2rem rgba(var(--primary-color-rgb), 0.25);
+}
+
+textarea.form-control-sm {
+    height: auto;
+    padding: 0.375rem 0.5rem;
+    line-height: 1.4;
+    min-height: 80px;
+}
+
+.breadcrumb {
+    background-color: transparent;
+    padding: 0;
+}
+
+.breadcrumb-item + .breadcrumb-item::before {
+    content: ">";
+}
+
+.mb-3 {
+    margin-bottom: 0.75rem !important;
+}
+
+@media (max-width: 768px) {
+    .page-content-wrapper {
+        height: calc(100vh - 150px);
+        max-height: calc(100vh - 150px);
+    }
+    
+    .modal-style-header {
+        padding: 1rem;
+    }
+    
+    .modal-style-title {
+        font-size: 1.1rem;
+    }
+    
+    .modal-style-body {
+        padding: 1rem;
+    }
+    
+    .modal-style-footer {
+        padding: 1rem;
+        flex-direction: column-reverse;
+    }
+    
+    .modal-style-footer .btn {
+        width: 100%;
+    }
+}
 </style>
 {% endblock %}
 
 {% block content %}
-<div class="form-container">
-  <div class="form-card">
-    <h2 class="text-center mb-4">
-      <i class="fas fa-plus-circle"></i> Nouveau Cycle
-    </h2>
+{% set programme_param = request.query_params.get('programme') or (schema_name.upper() if schema_name and schema_name != 'public' else '') %}
+<div class="container-fluid p-4 page-content-wrapper">
+    <div class="row mb-3">
+        <div class="col-12">
+            <nav aria-label="breadcrumb">
+                <ol class="breadcrumb">
+                    <li class="breadcrumb-item"><a href="{{ url_for('codev_dashboard') }}{% if programme_param %}?programme={{ programme_param }}{% endif %}">Codéveloppement</a></li>
+                    <li class="breadcrumb-item"><a href="{{ url_for('codev_cycles') }}{% if programme_param %}?programme={{ programme_param }}{% endif %}">Cycles</a></li>
+                    <li class="breadcrumb-item active">{% if is_edit_mode %}Modifier le Cycle{% else %}Nouveau Cycle{% endif %}</li>
+                </ol>
+            </nav>
+        </div>
+    </div>
+
+    <div class="row">
+        <div class="col-lg-12">
+            <div class="card modal-style-card">
+                <div class="card-header modal-style-header">
+                    <h5 class="mb-0 modal-style-title">
+                        <i class="fas fa-{% if is_edit_mode %}edit{% else %}plus-circle{% endif %} me-2"></i>{% if is_edit_mode %}Modifier le Cycle{% else %}Informations du Cycle{% endif %}
+                    </h5>
+                </div>
+                <div class="card-body modal-style-body">
     
     {% if error %}
     <div class="alert alert-error">
@@ -192,7 +287,17 @@
     </div>
     {% endif %}
     
-        <form method="post" action="{{ url_for('codev_cycles_creer_post') }}">
+                <form id="cycle-form" method="post" action="{{ url_for('codev_cycles_create') }}{% if programme_param %}?programme={{ programme_param }}{% endif %}">
+                    {% if is_edit_mode and cycle %}
+                    <input type="hidden" name="cycle_id" value="{{ cycle.id }}">
+                    {% endif %}
+          {% if programme_param %}
+          <input type="hidden" name="programme" value="{{ programme_param }}">
+          {% endif %}
+          {% if selected_programme %}
+          {# Champ caché pour le programme_id au niveau du formulaire #}
+          <input type="hidden" name="programme_id" value="{{ selected_programme.id }}">
+          {% endif %}
           
           <!-- Onglets -->
           <div class="tabs-container">
@@ -213,57 +318,72 @@
             
             <!-- Onglet Informations générales -->
             <div class="tab-content active" id="general">
-              <div class="form-group">
-                <label for="nom">Nom du cycle *</label>
-                <input type="text" id="nom" name="nom" required 
+              <div class="mb-3">
+                <label for="nom" class="form-label">Nom du cycle *</label>
+                <input type="text" class="form-control form-control-sm" id="nom" name="nom" required 
                        placeholder="Ex: Cycle Codéveloppement ACD 2024" 
-                       value="{{ request.form.nom if request.form.nom else '' }}">
+                       value="{{ request.form.nom if request.form.nom else (cycle.nom | default('') if cycle else '') }}">
               </div>
               
-              <div class="form-group">
-                <label for="description">Description</label>
-                <textarea id="description" name="description" 
-                          placeholder="Décrivez les objectifs et le contexte de ce cycle...">{{ request.form.description if request.form.description else '' }}</textarea>
+              <div class="mb-3">
+                <label for="description" class="form-label">Description</label>
+                <textarea class="form-control form-control-sm" id="description" name="description" 
+                          placeholder="Décrivez les objectifs et le contexte de ce cycle...">{{ request.form.description if request.form.description else (cycle.description | default('') if cycle else '') }}</textarea>
               </div>
             </div>
             
             <!-- Onglet Configuration -->
             <div class="tab-content" id="config">
-              <div class="form-row">
-                <div class="form-group">
-                  <label for="programme_id">Programme *</label>
-                  <select id="programme_id" name="programme_id" required>
-                    <option value="">Sélectionner un programme</option>
-                    {% for programme in programmes %}
-                    <option value="{{ programme.id }}" 
-                            {% if request.form.programme_id and request.form.programme_id|int == programme.id %}selected{% endif %}>
-                      {{ programme.nom }} ({{ programme.code }})
-                    </option>
-                    {% endfor %}
-                  </select>
+              <div class="row">
+                <div class="col-md-6">
+                  <div class="mb-3">
+                    <label for="programme_id" class="form-label">Programme *</label>
+                    {% if selected_programme %}
+                        {# Le champ caché programme_id est déjà au niveau du formulaire #}
+                        <input type="text" class="form-control form-control-sm" id="programme_id_display" 
+                               value="{{ selected_programme.code }} - {{ selected_programme.nom }}" 
+                               disabled readonly
+                               aria-label="Programme (déterminé automatiquement)"
+                               style="background-color: #e9ecef; cursor: not-allowed;">
+                        <small class="form-text text-muted">Le programme est déterminé automatiquement selon le contexte</small>
+                    {% else %}
+                        {# Fallback si aucun programme n'est trouvé #}
+                        <select class="form-select form-select-sm" id="programme_id" name="programme_id" required>
+                            <option value="">Sélectionner un programme</option>
+                            {% for programme in programmes %}
+                            <option value="{{ programme.id }}" 
+                                    {% if request.form.programme_id and request.form.programme_id|int == programme.id %}selected{% endif %}>
+                                {{ programme.nom }} ({{ programme.code }})
+                            </option>
+                            {% endfor %}
+                        </select>
+                    {% endif %}
+                  </div>
                 </div>
                 
-                <div class="form-group">
-                  <label for="promotion_id">Promotion</label>
-                  <select id="promotion_id" name="promotion_id">
+                <div class="col-md-6">
+                  <div class="mb-3">
+                    <label for="promotion_id" class="form-label">Promotion</label>
+                    <select class="form-select form-select-sm" id="promotion_id" name="promotion_id">
                     <option value="">Sélectionner une promotion (optionnel)</option>
                     {% for promotion in promotions %}
                     <option value="{{ promotion.id }}" 
-                            {% if request.form.promotion_id and request.form.promotion_id|int == promotion.id %}selected{% endif %}>
+                            {% if (request.form.promotion_id and request.form.promotion_id|int == promotion.id) or (cycle and cycle.promotion_id | default(None) == promotion.id) %}selected{% endif %}>
                       {{ promotion.nom }}
                     </option>
                     {% endfor %}
-                  </select>
+                    </select>
+                  </div>
                 </div>
               </div>
               
-              <div class="form-group">
-                <label for="animateur_principal_id">Animateur principal</label>
-                <select id="animateur_principal_id" name="animateur_principal_id">
+              <div class="mb-3">
+                <label for="animateur_principal_id" class="form-label">Animateur principal</label>
+                <select class="form-select form-select-sm" id="animateur_principal_id" name="animateur_principal_id">
                   <option value="">Sélectionner un animateur (optionnel)</option>
                   {% for animateur in animateurs %}
                   <option value="{{ animateur.id }}" 
-                          {% if request.form.animateur_principal_id and request.form.animateur_principal_id|int == animateur.id %}selected{% endif %}>
+                          {% if (request.form.animateur_principal_id and request.form.animateur_principal_id|int == animateur.id) or (cycle and cycle.animateur_principal_id | default(None) == animateur.id) %}selected{% endif %}>
                     {{ animateur.nom_complet }}
                   </option>
                   {% endfor %}
@@ -273,55 +393,68 @@
             
             <!-- Onglet Planning -->
             <div class="tab-content" id="planning">
-              <div class="form-row">
-                <div class="form-group">
-                  <label for="date_debut">Date de début *</label>
-                  <input type="date" id="date_debut" name="date_debut" required 
-                         value="{{ request.form.date_debut if request.form.date_debut else '' }}">
+              <div class="row">
+                <div class="col-md-6">
+                  <div class="mb-3">
+                    <label for="date_debut" class="form-label">Date de début *</label>
+                    <input type="date" class="form-control form-control-sm" id="date_debut" name="date_debut" required 
+                         value="{{ request.form.date_debut if request.form.date_debut else (cycle.date_debut | format_date_input if cycle and cycle.date_debut else '') }}">
+                  </div>
                 </div>
                 
-                <div class="form-group">
-                  <label for="date_fin">Date de fin *</label>
-                  <input type="date" id="date_fin" name="date_fin" required 
-                         value="{{ request.form.date_fin if request.form.date_fin else '' }}">
+                <div class="col-md-6">
+                  <div class="mb-3">
+                    <label for="date_fin" class="form-label">Date de fin *</label>
+                    <input type="date" class="form-control form-control-sm" id="date_fin" name="date_fin" required 
+                         value="{{ request.form.date_fin if request.form.date_fin else (cycle.date_fin | format_date_input if cycle and cycle.date_fin else '') }}">
+                  </div>
                 </div>
               </div>
               
-              <div class="form-row">
-                <div class="form-group">
-                  <label for="nombre_seances_prevues">Nombre de séances prévues</label>
-                  <input type="number" id="nombre_seances_prevues" name="nombre_seances_prevues" 
-                         min="1" max="20" value="{{ request.form.nombre_seances_prevues if request.form.nombre_seances_prevues else '6' }}">
+              <div class="row">
+                <div class="col-md-6">
+                  <div class="mb-3">
+                    <label for="nombre_seances_prevues" class="form-label">Nombre de séances prévues</label>
+                    <input type="number" class="form-control form-control-sm" id="nombre_seances_prevues" name="nombre_seances_prevues" 
+                         min="1" max="20" value="{{ request.form.nombre_seances_prevues if request.form.nombre_seances_prevues else (cycle.nombre_seances_prevues | default(6) if cycle else '6') }}">
+                  </div>
                 </div>
                 
-                <div class="form-group">
-                  <label for="duree_seance_minutes">Durée par séance (minutes)</label>
-                  <input type="number" id="duree_seance_minutes" name="duree_seance_minutes" 
-                         min="60" max="480" value="{{ request.form.duree_seance_minutes if request.form.duree_seance_minutes else '180' }}">
+                <div class="col-md-6">
+                  <div class="mb-3">
+                    <label for="duree_seance_minutes" class="form-label">Durée par séance (minutes)</label>
+                    <input type="number" class="form-control form-control-sm" id="duree_seance_minutes" name="duree_seance_minutes" 
+                         min="60" max="480" value="{{ request.form.duree_seance_minutes if request.form.duree_seance_minutes else (cycle.duree_seance_minutes | default(180) if cycle else '180') }}">
+                  </div>
                 </div>
               </div>
             </div>
             
             <!-- Onglet Objectifs -->
             <div class="tab-content" id="objectifs">
-              <div class="form-group">
-                <label for="objectifs_cycle">Objectifs du cycle</label>
-                <textarea id="objectifs_cycle" name="objectifs_cycle" 
-                          placeholder="Décrivez les objectifs spécifiques de ce cycle...">{{ request.form.objectifs_cycle if request.form.objectifs_cycle else '' }}</textarea>
+              <div class="mb-3">
+                <label for="objectifs_cycle" class="form-label">Objectifs du cycle</label>
+                <textarea class="form-control form-control-sm" id="objectifs_cycle" name="objectifs_cycle" 
+                          placeholder="Décrivez les objectifs spécifiques de ce cycle...">{{ request.form.objectifs_cycle if request.form.objectifs_cycle else (cycle.objectifs_cycle | default('') if cycle else '') }}</textarea>
               </div>
             </div>
           </div>
       
-      <div class="text-center mt-4">
-        <a href="{{ url_for('codev_dashboard') }}" class="btn-cancel">
-          <i class="fas fa-arrow-left"></i> Annuler
-        </a>
-        <button type="submit" class="btn-submit">
-          <i class="fas fa-save"></i> Créer le cycle
-        </button>
-      </div>
-    </form>
-  </div>
+                </form>
+                </div>
+                <div class="card-footer modal-style-footer">
+                    <div class="d-flex justify-content-between w-100">
+                        <a href="{{ url_for('codev_dashboard') }}{% if programme_param %}?programme={{ programme_param }}{% endif %}" class="btn btn-secondary">
+                            <i class="fas fa-arrow-left me-2"></i>Annuler
+                        </a>
+                        <button type="submit" form="cycle-form" class="btn btn-primary">
+                            <i class="fas fa-save me-2"></i>{% if is_edit_mode %}Modifier le cycle{% else %}Créer le cycle{% endif %}
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
 </div>
 
 
@@ -346,23 +479,208 @@ document.addEventListener('DOMContentLoaded', function() {
   });
 });
 
-// Validation côté client
-document.querySelector('form').addEventListener('submit', function(e) {
-  const dateDebut = document.getElementById('date_debut').value;
-  const dateFin = document.getElementById('date_fin').value;
-  
-  if (dateDebut && dateFin && new Date(dateDebut) >= new Date(dateFin)) {
-    e.preventDefault();
-    alert('La date de fin doit être postérieure à la date de début.');
-    return false;
-  }
-  
-  const nombreSeances = parseInt(document.getElementById('nombre_seances_prevues').value);
-  if (nombreSeances < 1 || nombreSeances > 20) {
-    e.preventDefault();
-    alert('Le nombre de séances doit être entre 1 et 20.');
-    return false;
-  }
+// Validation côté client et overlay global
+document.addEventListener('DOMContentLoaded', function() {
+    console.log('🔍 [DEBUG] DOMContentLoaded - Recherche du formulaire cycle-form');
+    const form = document.querySelector('#cycle-form');
+    const submitBtn = document.querySelector('button[type="submit"][form="cycle-form"]');
+    
+    console.log('🔍 [DEBUG] Formulaire trouvé:', form ? 'OUI' : 'NON');
+    console.log('🔍 [DEBUG] Bouton trouvé:', submitBtn ? 'OUI' : 'NON');
+    if (form) {
+        console.log('🔍 [DEBUG] Action du formulaire:', form.action);
+        console.log('🔍 [DEBUG] Méthode du formulaire:', form.method);
+    }
+    if (submitBtn) {
+        console.log('🔍 [DEBUG] Bouton HTML:', submitBtn.outerHTML);
+    }
+    
+    if (form && submitBtn) {
+        console.log('✅ [DEBUG] Ajout de l\'événement submit au formulaire');
+        form.addEventListener('submit', function(e) {
+            console.log('🚀 [DEBUG] Événement submit déclenché!');
+            
+            // S'assurer que tous les onglets sont visibles pour la validation HTML5
+            const tabContents = document.querySelectorAll('.tab-content');
+            tabContents.forEach(function(tab) {
+                // Temporairement rendre visible tous les onglets pour la validation
+                const originalDisplay = tab.style.display;
+                tab.style.display = 'block';
+                tab.style.visibility = 'visible';
+                tab.style.position = 'absolute';
+                tab.style.left = '-9999px';
+            });
+            
+            // Valider manuellement tous les champs requis
+            const requiredFields = form.querySelectorAll('[required]');
+            let firstInvalidField = null;
+            
+            requiredFields.forEach(function(field) {
+                // Vérifier si le champ est valide
+                if (!field.checkValidity()) {
+                    if (!firstInvalidField) {
+                        firstInvalidField = field;
+                    }
+                }
+            });
+            
+            // Si un champ est invalide, activer son onglet et le focuser
+            if (firstInvalidField) {
+                e.preventDefault();
+                
+                // Restaurer l'affichage normal des onglets
+                tabContents.forEach(function(tab) {
+                    tab.style.display = '';
+                    tab.style.visibility = '';
+                    tab.style.position = '';
+                    tab.style.left = '';
+                });
+                
+                // Trouver l'onglet contenant le champ invalide
+                let tabToActivate = null;
+                const tabIds = ['general', 'config', 'planning', 'objectifs'];
+                
+                for (let tabId of tabIds) {
+                    const tabContent = document.getElementById(tabId);
+                    if (tabContent && tabContent.contains(firstInvalidField)) {
+                        tabToActivate = tabId;
+                        break;
+                    }
+                }
+                
+                // Activer l'onglet contenant le champ invalide
+                if (tabToActivate) {
+                    const tabBtn = document.querySelector(`.tab-btn[data-tab="${tabToActivate}"]`);
+                    if (tabBtn) {
+                        tabBtn.click();
+                    }
+                }
+                
+                // Focuser le champ invalide après un court délai pour permettre l'activation de l'onglet
+                setTimeout(function() {
+                    firstInvalidField.focus();
+                    firstInvalidField.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                }, 100);
+                
+                return false;
+            }
+            
+            // Restaurer l'affichage normal des onglets
+            tabContents.forEach(function(tab) {
+                tab.style.display = '';
+                tab.style.visibility = '';
+                tab.style.position = '';
+                tab.style.left = '';
+            });
+            
+            console.log('🔍 [DEBUG] Données du formulaire:');
+            const formData = new FormData(form);
+            for (let [key, value] of formData.entries()) {
+                console.log(`  - ${key}: ${value}`);
+            }
+            
+            const dateDebut = document.getElementById('date_debut').value;
+            const dateFin = document.getElementById('date_fin').value;
+            
+            console.log('🔍 [DEBUG] Date début:', dateDebut);
+            console.log('🔍 [DEBUG] Date fin:', dateFin);
+            
+            if (dateDebut && dateFin && new Date(dateDebut) >= new Date(dateFin)) {
+                console.log('❌ [DEBUG] Validation échouée: date de fin doit être postérieure');
+                e.preventDefault();
+                // Activer l'onglet planning
+                const planningTab = document.querySelector('.tab-btn[data-tab="planning"]');
+                if (planningTab) {
+                    planningTab.click();
+                }
+                alert('La date de fin doit être postérieure à la date de début.');
+                return false;
+            }
+            
+            const nombreSeances = parseInt(document.getElementById('nombre_seances_prevues').value);
+            console.log('🔍 [DEBUG] Nombre de séances:', nombreSeances);
+            if (nombreSeances < 1 || nombreSeances > 20) {
+                console.log('❌ [DEBUG] Validation échouée: nombre de séances invalide');
+                e.preventDefault();
+                // Activer l'onglet planning
+                const planningTab = document.querySelector('.tab-btn[data-tab="planning"]');
+                if (planningTab) {
+                    planningTab.click();
+                }
+                alert('Le nombre de séances doit être entre 1 et 20.');
+                return false;
+            }
+            
+            console.log('✅ [DEBUG] Validation réussie, soumission du formulaire...');
+            
+            // Afficher l'overlay global
+            if (typeof showGlobalLoading === 'function') {
+                const actionText = form.action.includes('modifier') ? 'Modification' : 'Création';
+                console.log('🔍 [DEBUG] Affichage de l\'overlay:', actionText);
+                showGlobalLoading(
+                    `${actionText} du cycle`,
+                    'Traitement en cours, veuillez patienter...'
+                );
+            } else {
+                console.warn('⚠️ [DEBUG] showGlobalLoading n\'est pas disponible');
+            }
+            
+            // Désactiver le bouton et afficher un spinner
+            submitBtn.disabled = true;
+            const originalHtml = submitBtn.innerHTML;
+            submitBtn.innerHTML = '<i class="fas fa-spinner fa-spin me-2"></i>Traitement...';
+            console.log('🔍 [DEBUG] Bouton désactivé et spinner affiché');
+            
+            // Timeout de sécurité pour masquer l'overlay après 10 secondes
+            setTimeout(function() {
+                console.log('⏰ [DEBUG] Timeout de sécurité déclenché (10s)');
+                if (typeof hideGlobalLoading === 'function') {
+                    hideGlobalLoading();
+                }
+                submitBtn.disabled = false;
+                submitBtn.innerHTML = originalHtml;
+            }, 10000);
+        });
+        
+        // Ajouter aussi un listener sur le bouton directement
+        submitBtn.addEventListener('click', function(e) {
+            console.log('🖱️ [DEBUG] Clic sur le bouton submit détecté');
+            console.log('🔍 [DEBUG] Type d\'événement:', e.type);
+            console.log('🔍 [DEBUG] Formulaire associé:', submitBtn.getAttribute('form'));
+        });
+    } else {
+        console.error('❌ [DEBUG] Formulaire ou bouton non trouvé!');
+        if (!form) {
+            console.error('❌ [DEBUG] Formulaire #cycle-form introuvable');
+        }
+        if (!submitBtn) {
+            console.error('❌ [DEBUG] Bouton submit[form="cycle-form"] introuvable');
+            // Essayer de trouver tous les boutons submit
+            const allSubmitBtns = document.querySelectorAll('button[type="submit"]');
+            console.log('🔍 [DEBUG] Tous les boutons submit trouvés:', allSubmitBtns.length);
+            allSubmitBtns.forEach((btn, index) => {
+                console.log(`  Bouton ${index}:`, btn.outerHTML);
+            });
+        }
+    }
+    
+    // Ajouter l'overlay global aux liens de navigation
+    const navLinks = document.querySelectorAll('a[href*="/codev/"]');
+    navLinks.forEach(function(link) {
+        const href = link.getAttribute('href');
+        // Ignorer les liens externes
+        if (href && !href.startsWith('http') && !href.startsWith('#')) {
+            link.addEventListener('click', function(e) {
+                // Ne pas intercepter si Ctrl/Cmd est pressé (nouvel onglet)
+                if (e.ctrlKey || e.metaKey) return;
+                
+                // Afficher l'overlay global
+                if (typeof showGlobalLoading === 'function') {
+                    showGlobalLoading('Chargement', 'Veuillez patienter...');
+                }
+            });
+        }
+    });
 });
 
 // Auto-remplissage de la date de fin basée sur le nombre de séances

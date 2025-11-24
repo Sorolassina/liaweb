@@ -1,17 +1,18 @@
-{% extends "base.html" %}
+{% extends "layouts/base.html" %}
 
 {% block title %}Générer Liens d'Émargement - {{ session.titre }}{% endblock %}
 
 {% block content %}
+{% set programme_param = request.query_params.get('programme') or (schema_name.upper() if schema_name and schema_name != 'public' else '') %}
 <div class="container-fluid">
     <!-- En-tête -->
     <div class="row mb-4">
         <div class="col-12">
             <nav aria-label="breadcrumb">
                 <ol class="breadcrumb">
-                    <li class="breadcrumb-item"><a href="{{ url_for('liste_seminaires') }}">Séminaires</a></li>
-                    <li class="breadcrumb-item"><a href="{{ url_for('detail_seminaire', seminaire_id=seminaire.id) }}">{{ seminaire.titre }}</a></li>
-                    <li class="breadcrumb-item"><a href="{{ url_for('emargement_session', seminaire_id=seminaire.id, session_id=session.id) }}">Émargement</a></li>
+                    <li class="breadcrumb-item"><a href="{{ url_for('liste_seminaires') }}{% if programme_param %}?programme={{ programme_param }}{% endif %}">Séminaires</a></li>
+                    <li class="breadcrumb-item"><a href="{{ url_for('detail_seminaire', seminaire_id=seminaire.id) }}{% if programme_param %}?programme={{ programme_param }}{% endif %}">{{ seminaire.titre }}</a></li>
+                    <li class="breadcrumb-item"><a href="{{ url_for('emargement_session', seminaire_id=seminaire.id, session_id=session.id) }}{% if programme_param %}?programme={{ programme_param }}{% endif %}">Émargement</a></li>
                     <li class="breadcrumb-item active">Liens d'émargement</li>
                 </ol>
             </nav>
@@ -48,7 +49,7 @@
     </div>
 
     <!-- Formulaire de sélection -->
-    <form method="POST" action="{{ url_for('envoyer_liens_emargement', seminaire_id=seminaire.id, session_id=session.id) }}">
+    <form id="liens-emargement-form" method="POST" action="{{ url_for('envoyer_liens_emargement', seminaire_id=seminaire.id, session_id=session.id) }}{% if programme_param %}?programme={{ programme_param }}{% endif %}">
         <div class="row">
             <div class="col-12">
                 <div class="card">
@@ -108,7 +109,7 @@
                             <i class="fas fa-users text-muted" style="font-size: 4rem;"></i>
                             <h4 class="text-muted mt-3">Aucune invitation trouvée</h4>
                             <p class="text-muted">Il n'y a pas encore d'invitations envoyées pour ce séminaire.</p>
-                            <a href="{{ url_for('invitations_seminaire', seminaire_id=seminaire.id) }}" class="btn btn-primary">
+                            <a href="{{ url_for('invitations_seminaire', seminaire_id=seminaire.id) }}{% if programme_param %}?programme={{ programme_param }}{% endif %}" class="btn btn-primary">
                                 <i class="fas fa-envelope me-2"></i>Envoyer des invitations
                             </a>
                         </div>
@@ -128,7 +129,7 @@
                             <span class="badge bg-info fs-6" id="selection-count">0 candidat(s) sélectionné(s)</span>
                         </div>
                         <div class="d-grid gap-2 d-md-flex justify-content-md-center">
-                            <a href="{{ url_for('emargement_session', seminaire_id=seminaire.id, session_id=session.id) }}" class="btn btn-outline-secondary btn-lg">
+                            <a href="{{ url_for('emargement_session', seminaire_id=seminaire.id, session_id=session.id) }}{% if programme_param %}?programme={{ programme_param }}{% endif %}" class="btn btn-outline-secondary btn-lg">
                                 <i class="fas fa-arrow-left me-2"></i>Retour à l'émargement
                             </a>
                             <button type="submit" class="btn btn-primary btn-lg" id="envoyer-btn" disabled>
@@ -241,5 +242,44 @@ function updateSelectionCount() {
         envoyerBtn.innerHTML = `<i class="fas fa-paper-plane me-2"></i>Envoyer les liens d'émargement`;
     }
 }
+
+// Gestion de l'overlay pour l'envoi des liens d'émargement
+document.addEventListener('DOMContentLoaded', function() {
+    const form = document.getElementById('liens-emargement-form');
+    const envoyerBtn = document.getElementById('envoyer-btn');
+    
+    if (form && envoyerBtn) {
+        form.addEventListener('submit', function(e) {
+            const checkedBoxes = document.querySelectorAll('.candidat-checkbox:checked');
+            if (checkedBoxes.length === 0) {
+                e.preventDefault();
+                alert('Veuillez sélectionner au moins un candidat.');
+                return;
+            }
+            
+            // Afficher l'overlay global
+            if (typeof showGlobalLoading === 'function') {
+                showGlobalLoading(
+                    'Génération et envoi des liens',
+                    `Traitement de ${checkedBoxes.length} lien(s), veuillez patienter...`
+                );
+            }
+            
+            // Désactiver le bouton et afficher un spinner
+            envoyerBtn.disabled = true;
+            const originalHtml = envoyerBtn.innerHTML;
+            envoyerBtn.innerHTML = '<i class="fas fa-spinner fa-spin me-2"></i>Envoi en cours...';
+            
+            // Timeout de sécurité
+            setTimeout(function() {
+                if (typeof hideGlobalLoading === 'function') {
+                    hideGlobalLoading();
+                }
+                envoyerBtn.disabled = false;
+                envoyerBtn.innerHTML = originalHtml;
+            }, 30000); // 30 secondes pour l'envoi d'emails
+        });
+    }
+});
 </script>
 {% endblock %}

@@ -1,68 +1,29 @@
 """
 Service de gestion des inscriptions
+NOTE: Ce service est obsolète car le modèle Inscription a été supprimé.
+Les fonctionnalités d'inscription sont maintenant gérées directement via Candidat.
 """
 from typing import List, Optional, Dict, Any
 from sqlmodel import Session, select
 from datetime import datetime, timezone
 import logging
 
-from ..models.inscription import Inscription
 from ..models.preinscription import Preinscription
 from ..models.base import Programme, EtapePipeline, AvancementEtape
 from ..models.enums import StatutDossier, StatutEtape
-from ..schemas import InscriptionCreate
 from ..core.program_schema_integration import table_exists_anywhere
 
 logger = logging.getLogger(__name__)
 
 
 class InscriptionService:
-    """Service de gestion des inscriptions"""
+    """Service de gestion des inscriptions - OBSOLÈTE"""
     
     @staticmethod
-    def create_inscription(session: Session, inscription_data: InscriptionCreate) -> Inscription:
-        """Crée une nouvelle inscription"""
-        inscription = Inscription(**inscription_data.dict())
-        session.add(inscription)
-        session.commit()
-        session.refresh(inscription)
-        return inscription
-    
-    @staticmethod
-    def get_inscriptions_by_programme(session: Session, programme_id: int) -> List[Inscription]:
-        """Récupère les inscriptions d'un programme - Version sécurisée"""
-        if not table_exists_anywhere("inscription", session):
-            return []
-        try:
-            return session.exec(
-                select(Inscription)
-                .where(Inscription.programme_id == programme_id)
-                .order_by(Inscription.cree_le.desc())
-            ).all()
-        except Exception as e:
-            logging.warning(f"Erreur lors de la récupération des inscriptions: {e}")
-            return []
-    
-    @staticmethod
-    def update_inscription_status(session: Session, inscription_id: int, statut: StatutDossier) -> Optional[Inscription]:
-        """Met à jour le statut d'une inscription"""
-        inscription = session.get(Inscription, inscription_id)
-        if not inscription:
-            return None
-        
-        inscription.statut = statut
-        inscription.date_decision = datetime.now(timezone.utc)
-        
-        session.add(inscription)
-        session.commit()
-        session.refresh(inscription)
-        
-        return inscription
-    
-    @staticmethod
-    def create_from_preinscription(session: Session, pre_id: int) -> Inscription:
+    def create_from_preinscription(session: Session, pre_id: int):
         """
         Crée une inscription depuis une préinscription avec initialisation du pipeline
+        NOTE: Cette méthode est obsolète. Le modèle Inscription n'existe plus.
         """
         # Récupérer la préinscription
         pre = session.get(Preinscription, pre_id)
@@ -74,80 +35,10 @@ class InscriptionService:
         if not prog:
             raise ValueError("Programme introuvable")
         
-        # Vérifier qu'il n'y a pas déjà une inscription
-        existing = session.exec(
-            select(Inscription).where(
-                (Inscription.programme_id == pre.programme_id) & 
-                (Inscription.candidat_id == pre.candidat_id)
-            )
-        ).first()
-        
-        if existing:
-            raise ValueError("Une inscription existe déjà pour ce candidat et ce programme")
-        
-        # Créer l'inscription
-        inscription = Inscription(
-            programme_id=pre.programme_id,
-            candidat_id=pre.candidat_id,
-            statut=pre.statut
-        )
-        session.add(inscription)
-        session.flush()
-        
-        # Initialiser le pipeline d'étapes
-        InscriptionService._initialize_pipeline(session, inscription.id, prog.id)
-        
-        session.commit()
-        session.refresh(inscription)
-        
-        logger.info(f"✅ Inscription créée depuis préinscription {pre_id} -> {inscription.id}")
-        
-        return inscription
-    
-    @staticmethod
-    def update_candidate_info(
-        session: Session,
-        inscription_id: int,
-        candidate_data: Dict[str, Any],
-        enterprise_data: Optional[Dict[str, Any]] = None
-    ) -> Inscription:
-        """
-        Met à jour les informations candidat/entreprise d'une inscription
-        """
-        inscription = session.get(Inscription, inscription_id)
-        if not inscription:
-            raise ValueError("Inscription introuvable")
-        
-        # Récupérer le candidat
-        from ..models.base import Candidat
-        candidat = session.get(Candidat, inscription.candidat_id)
-        if not candidat:
-            raise ValueError("Candidat introuvable")
-        
-        # Mettre à jour les données candidat
-        for field, value in candidate_data.items():
-            if hasattr(candidat, field) and value is not None:
-                setattr(candidat, field, value)
-        
-        session.add(candidat)
-        
-        # Mettre à jour les données entreprise si fournies
-        if enterprise_data:
-            from ..models.base import Entreprise
-            entreprise = session.get(Entreprise, candidat.entreprise_id) if candidat.entreprise_id else None
-            
-            if entreprise:
-                for field, value in enterprise_data.items():
-                    if hasattr(entreprise, field) and value is not None:
-                        setattr(entreprise, field, value)
-                session.add(entreprise)
-        
-        session.commit()
-        session.refresh(inscription)
-        
-        logger.info(f"✅ Informations candidat/entreprise mises à jour pour inscription {inscription_id}")
-        
-        return inscription
+        # NOTE: Le modèle Inscription a été supprimé.
+        # Les candidats validés sont maintenant identifiés par leur statut dans la table Candidat.
+        logger.warning(f"⚠️ InscriptionService.create_from_preinscription appelé mais le modèle Inscription n'existe plus")
+        raise NotImplementedError("Le modèle Inscription a été supprimé. Utilisez directement le modèle Candidat avec statut VALIDE.")
     
     @staticmethod
     def get_inscription_context_data(session: Session, programme_code: str) -> Dict[str, Any]:
@@ -195,33 +86,3 @@ class InscriptionService:
             "partenaires": partenaires,
             "groupes": groupes,
         }
-    
-    @staticmethod
-    def _initialize_pipeline(session: Session, inscription_id: int, programme_id: int) -> None:
-        """
-        Initialise le pipeline d'étapes pour une inscription
-        """
-        # Récupérer les étapes actives du programme - Version sécurisée
-        steps = []
-        if table_exists_anywhere("etape_pipeline", session):
-            try:
-                steps = session.exec(
-                    select(EtapePipeline).where(
-                        (EtapePipeline.programme_id == programme_id) & 
-                        (EtapePipeline.active.is_(True))
-                    ).order_by(EtapePipeline.ordre)
-                ).all()
-            except Exception as e:
-                logging.warning(f"Erreur lors de la récupération des étapes du pipeline: {e}")
-                steps = []
-        
-        # Créer les avancements d'étapes
-        for step in steps:
-            avancement = AvancementEtape(
-                inscription_id=inscription_id,
-                etape_id=step.id,
-                statut=StatutEtape.A_FAIRE
-            )
-            session.add(avancement)
-        
-        logger.info(f"✅ Pipeline initialisé pour inscription {inscription_id} avec {len(steps)} étapes")

@@ -1,54 +1,63 @@
-{% extends "base_public.html" %}
+{% extends "layouts/base_public.html" %}
+{% set programme_param = request.query_params.get('programme') or (schema_name.upper() if schema_name and schema_name != 'public' else '') %}
 
-{% block title %}Émargement Direct - {{ event.titre }}{% endblock %}
+{% block title %}Émargement Event - {{ event.titre }}{% endblock %}
+
+{% block head_extra %}
+  <!-- Favicon -->
+  <link rel="icon" type="image/x-icon" href="/static/images/favicon.ico">
+{% endblock %}
 
 {% block content %}
-<div class="container-fluid p-4">
-    <!-- En-tête avec utilisateur connecté -->
-    <div class="row mb-4">
+<div class="container-fluid p-2" style="height: 100vh; display: flex; flex-direction: column; overflow: hidden;">
+    <div class="row mb-2" style="flex-shrink: 0;">
         <div class="col-12">
-            <nav aria-label="breadcrumb" class="mb-2">
-                <ol class="breadcrumb">
-                    <li class="breadcrumb-item"><a href="{{ url_for('liste_events') }}">Événements</a></li>
-                    <li class="breadcrumb-item"><a href="{{ url_for('detail_event', event_id=event.id) }}">{{ event.titre }}</a></li>
-                    <li class="breadcrumb-item"><a href="{{ url_for('emargement_event', event_id=event.id) }}">Émargement</a></li>
-                    <li class="breadcrumb-item active">Mode Tablette</li>
-                </ol>
-            </nav>
-            <div class="text-center">
-                <h1 class="mb-0">{{ event.titre }}</h1>
-                <p class="text-muted mb-0">{{ event.programme.nom }} - {{ event.date_debut.strftime('%d/%m/%Y') }}</p>
-                <p class="text-muted">Mode Tablette - Émargement Direct</p>
-                <small class="text-info">
-                    <i class="fas fa-user me-1"></i>
-                    Connecté en tant que : {{ utilisateur.nom_complet }}
-                </small>
+            <div class="d-flex align-items-center mb-2">
+                <a href="{{ url_for('emargement_event', event_id=event.id) }}{% if programme_param %}?programme={{ programme_param }}{% endif %}" 
+                   class="btn btn-link text-white text-decoration-none p-0 me-3" 
+                   style="font-size: 1.5rem;" 
+                   title="Retour à l'émargement">
+                    <i class="fas fa-arrow-left"></i>
+                </a>
+                <div class="flex-grow-1 text-center">
+                    <h4 class="mb-0" style="color: white;">
+                        <i class="fas fa-signature me-2"></i>Émargement Event - {{ event.titre }}
+                    </h4>
+                    <p class="text-muted mb-0 small">{{ event.titre }} - {{ event.date_debut.strftime('%d/%m/%Y') }}</p>
+                </div>
+                <div style="width: 40px;"></div> <!-- Espace pour équilibrer la flèche -->
             </div>
         </div>
     </div>
 
-    <!-- Interface en deux panneaux -->
-    <div class="row" style="height: calc(100vh - 200px);">
-        <!-- Panneau gauche : Liste des candidats -->
-        <div class="col-md-6">
-            <div class="card h-100">
-                <div class="card-header">
-                    <h5 class="mb-0">Liste des Candidats</h5>
+    <!-- Liste des candidats -->
+    <div id="liste-candidats" class="row flex-grow-1" style="min-height: 0; overflow: hidden;">
+        <div class="col-12" style="display: flex; flex-direction: column; min-height: 0; height: 100%;">
+            <div class="card d-flex flex-column" style="min-height: 0; height: 80%; margin: 0;">
+                <div class="card-header py-2" style="flex-shrink: 0;">
+                    <h5 class="mb-0">
+                        <i class="fas fa-users me-2"></i>
+                        Liste des Participants
+                    </h5>
                 </div>
-                <div class="card-body p-0" style="overflow-y: auto;">
+                <div class="card-body p-0 flex-grow-1" style="overflow-y: auto; min-height: 0; flex: 1 1 auto;">
                     {% if presences %}
                         <div class="list-group list-group-flush">
                             {% for presence in presences %}
                             {% set is_already_signed = presence.presence == 'present' or presence.presence == 'absent' or presence.presence == 'excuse' %}
-                            <div class="list-group-item candidate-item {% if not is_already_signed %}list-group-item-action{% endif %}" 
-                                 data-inscription-id="{{ presence.inscription_id }}"
+                            <div class="list-group-item candidat-item {% if not is_already_signed %}list-group-item-action{% endif %}" 
+                                 data-candidat-id="{{ presence.candidat_id }}"
+                                 data-candidat-nom="{{ presence.candidat_prenom }} {{ presence.candidat_nom }}"
+                                 data-candidat-email="{{ presence.candidat_email }}"
+                                 data-candidat-photo="{% if presence.candidat_photo_profil %}/media/{{ presence.candidat_photo_profil.replace('\\', '/') }}{% else %}/static/images/utilisateur.png{% endif %}"
                                  data-already-signed="{{ is_already_signed|lower }}"
-                                 onclick="{% if not is_already_signed %}selectCandidate({{ presence.inscription_id }}, '{{ presence.inscription.candidat.prenom }} {{ presence.inscription.candidat.nom }}'){% else %}showAlreadySignedMessage('{{ presence.inscription.candidat.prenom }} {{ presence.inscription.candidat.nom }}', '{{ presence.presence }}'){% endif %}">
+                                 data-presence-statut="{{ presence.presence }}"
+                                 {% if not is_already_signed %}onclick="selectCandidatFromElement(this)"{% else %}onclick="showAlreadySignedFromElement(this)"{% endif %}>
                                 <div class="d-flex align-items-center">
-                                    {% if presence.inscription.candidat.photo_profil %}
-                                        <img src="/media/{{ presence.inscription.candidat.photo_profil.replace('\\', '/') }}" 
+                                    {% if presence.candidat_photo_profil %}
+                                        <img src="/media/{{ presence.candidat_photo_profil.replace('\\', '/') }}" 
                                              class="rounded-circle me-3" width="50" height="50" 
-                                             alt="{{ presence.inscription.candidat.nom }}">
+                                             alt="{{ presence.candidat_nom }}">
                                     {% else %}
                                         <div class="bg-secondary rounded-circle me-3 d-flex align-items-center justify-content-center" 
                                              style="width: 50px; height: 50px;">
@@ -56,26 +65,20 @@
                                         </div>
                                     {% endif %}
                                     <div class="flex-grow-1">
-                                        <h6 class="mb-1">{{ presence.inscription.candidat.prenom }} {{ presence.inscription.candidat.nom }}</h6>
-                                        <small class="text-muted">{{ presence.inscription.candidat.email }}</small>
+                                        <h6 class="mb-1">{{ presence.candidat_prenom }} {{ presence.candidat_nom }}</h6>
+                                        <small class="text-muted">{{ presence.candidat_email }}</small>
                                         <div class="mt-1">
                                             {% if presence.presence == 'present' %}
                                                 <span class="badge bg-success">Présent</span>
-                                                {% if is_already_signed %}
-                                                    <i class="fas fa-check-circle text-success ms-2" title="Déjà émargé"></i>
-                                                {% endif %}
+                                                <i class="fas fa-check-circle text-success ms-2" title="Déjà émargé"></i>
                                             {% elif presence.presence == 'absent' %}
                                                 <span class="badge bg-danger">Absent</span>
-                                                {% if is_already_signed %}
-                                                    <i class="fas fa-times-circle text-danger ms-2" title="Déjà émargé"></i>
-                                                {% endif %}
+                                                <i class="fas fa-times-circle text-danger ms-2" title="Déjà émargé"></i>
                                             {% elif presence.presence == 'excuse' %}
                                                 <span class="badge bg-warning">Excusé</span>
-                                                {% if is_already_signed %}
-                                                    <i class="fas fa-user-clock text-warning ms-2" title="Déjà émargé"></i>
-                                                {% endif %}
+                                                <i class="fas fa-user-clock text-warning ms-2" title="Déjà émargé"></i>
                                             {% else %}
-                                                <span class="badge bg-secondary">{{ presence.presence }}</span>
+                                                <span class="badge bg-secondary">En attente</span>
                                             {% endif %}
                                         </div>
                                     </div>
@@ -86,106 +89,111 @@
                     {% else %}
                         <div class="text-center py-5">
                             <i class="fas fa-users fa-3x text-muted mb-3"></i>
-                            <h4 class="text-muted">Aucun candidat</h4>
+                            <h4 class="text-muted">Aucun candidat invité</h4>
                         </div>
                     {% endif %}
                 </div>
             </div>
         </div>
+    </div>
 
-        <!-- Panneau droit : Zone de signature -->
-        <div class="col-md-6">
-            <div class="card h-100">
-                <div class="card-header">
-                    <h5 class="mb-0">Zone de Signature</h5>
+    <!-- Zone d'émargement (affichée au clic sur un candidat) -->
+    <div id="zone-emargement" class="row flex-grow-1" style="min-height: 0; overflow: hidden; display: none;">
+        <div class="col-12" style="display: flex; flex-direction: column; min-height: 0; height: 100%;">
+            <div class="card d-flex flex-column" style="min-height: 0; height: 80%; margin: 0;">
+                <div class="card-header py-2 d-flex justify-content-between align-items-center" style="flex-shrink: 0;">
+                    <h5 class="mb-0">
+                        <i class="fas fa-signature me-2"></i>
+                        Zone d'Émargement
+                    </h5>
+                    <button type="button" class="btn btn-sm btn-outline-secondary" onclick="retourListe()">
+                        <i class="fas fa-arrow-left me-1"></i>Retour
+                    </button>
                 </div>
-                <div class="card-body">
-                    <div id="candidate-info" class="text-center mb-4" style="display: none;">
-                        <h4 id="candidate-name" class="text-primary"></h4>
-                        <p class="text-muted">Sélectionnez un candidat pour commencer l'émargement</p>
-                    </div>
+                <div class="card-body flex-grow-1" style="overflow: hidden; min-height: 0; display: flex; flex-direction: column; padding: 1.25rem;">
+                    <form id="signature-form" method="POST" action="{{ url_for('marquer_presence_event_direct', event_id=event.id) }}{% if programme_param %}?programme={{ programme_param }}{% endif %}" style="width: 100%; flex-grow: 1; display: flex; flex-direction: row; gap: 1.5rem; min-height: 0; overflow: hidden;" class="signature-form-responsive">
+                        <input type="hidden" id="candidat_id" name="candidat_id" value="">
+                        <input type="hidden" id="presence" name="presence" value="present">
+                        <input type="hidden" id="methode_signature" name="methode_signature" value="manuel">
+                        <input type="hidden" id="signature_data" name="signature_data" value="">
 
-                    <!-- Formulaire d'émargement -->
-                    <form id="emargement-form" action="{{ url_for('marquer_presence_event_direct', event_id=event.id) }}" method="post" style="display: none;">
-                        <input type="hidden" id="inscription-id" name="inscription_id">
-                        
-                        <!-- Statut de présence -->
-                        <div class="mb-3">
-                            <label class="form-label">Statut de présence</label>
-                            <div class="btn-group w-100" role="group">
-                                <input type="radio" class="btn-check" name="presence" id="present" value="present" checked>
-                                <label class="btn btn-outline-success" for="present">
-                                    <i class="fas fa-check me-2"></i>Présent
-                                </label>
-                                
-                                <input type="radio" class="btn-check" name="presence" id="absent" value="absent">
-                                <label class="btn btn-outline-danger" for="absent">
-                                    <i class="fas fa-times me-2"></i>Absent
-                                </label>
-                                
-                                <input type="radio" class="btn-check" name="presence" id="excuse" value="excuse">
-                                <label class="btn btn-outline-warning" for="excuse">
-                                    <i class="fas fa-user-clock me-2"></i>Excusé
-                                </label>
+                        <!-- Colonne gauche (1/3) : Informations candidat -->
+                        <div class="d-flex flex-column" style="width: 33.333%; flex-shrink: 0; border-right: 1px solid #dee2e6; padding-right: 1.5rem;">
+                            <!-- Photo et informations candidat -->
+                            <div class="text-center mb-3" style="flex-shrink: 0;">
+                                <div class="avatar mx-auto mb-2" id="candidat-photo" style="width: 70px; height: 70px;"></div>
+                                <h6 id="candidat-nom" class="mb-1"></h6>
+                                <p class="text-muted small mb-0" id="candidat-email"></p>
                             </div>
-                        </div>
 
-                        <!-- Méthode de signature -->
-                        <div class="mb-3">
-                            <label class="form-label">Méthode de signature</label>
-                            <div class="btn-group w-100" role="group">
-                                <input type="radio" class="btn-check" name="methode_signature" id="manuel" value="manuel" checked>
-                                <label class="btn btn-outline-primary" for="manuel">
-                                    <i class="fas fa-pen me-2"></i>Manuel
-                                </label>
-                                
-                                <input type="radio" class="btn-check" name="methode_signature" id="digital" value="digital">
-                                <label class="btn btn-outline-info" for="digital">
-                                    <i class="fas fa-mouse me-2"></i>Digital
-                                </label>
-                            </div>
-                        </div>
-
-                        <!-- Zone de signature manuelle -->
-                        <div id="signature-manuelle" class="mb-3">
-                            <label class="form-label">Signature manuelle</label>
-                            <div class="border rounded p-3 text-center" style="min-height: 150px;">
-                                <canvas id="signature-canvas" width="400" height="150" style="border: 1px dashed #ccc; width: 100%; max-width: 400px;"></canvas>
-                                <div class="mt-2">
-                                    <button type="button" class="btn btn-sm btn-outline-secondary" onclick="clearSignature()">
-                                        <i class="fas fa-eraser me-1"></i>Effacer
-                                    </button>
+                            <!-- Statut de présence (masqué - sera disponible pour certaines personnes plus tard) -->
+                            <div class="mb-3" style="flex-shrink: 0; display: none;">
+                                <label class="form-label fw-bold mb-2 small">Statut de présence</label>
+                                <div class="btn-group-vertical w-100" role="group">
+                                    <input type="radio" class="btn-check" name="presence_status" id="present" value="present" checked>
+                                    <label class="btn btn-outline-success btn-sm mb-2" for="present">
+                                        <i class="fas fa-check me-2"></i>Présent
+                                    </label>
+                                    
+                                    <input type="radio" class="btn-check" name="presence_status" id="absent" value="absent">
+                                    <label class="btn btn-outline-danger btn-sm mb-2" for="absent">
+                                        <i class="fas fa-times me-2"></i>Absent
+                                    </label>
+                                    
+                                    <input type="radio" class="btn-check" name="presence_status" id="excuse" value="excuse">
+                                    <label class="btn btn-outline-warning btn-sm" for="excuse">
+                                        <i class="fas fa-user-clock me-2"></i>Excusé
+                                    </label>
                                 </div>
                             </div>
-                        </div>
 
-                        <!-- Zone de signature digitale -->
-                        <div id="signature-digitale" class="mb-3" style="display: none;">
-                            <label class="form-label">Signature digitale</label>
-                            <div class="border rounded p-3 text-center" style="min-height: 150px;">
-                                <canvas id="digital-canvas" width="400" height="150" style="border: 1px dashed #ccc; width: 100%; max-width: 400px;"></canvas>
-                                <div class="mt-2">
-                                    <button type="button" class="btn btn-sm btn-outline-secondary" onclick="clearDigitalSignature()">
-                                        <i class="fas fa-eraser me-1"></i>Effacer
-                                    </button>
-                                </div>
+                            <!-- Méthode de signature -->
+                            <div class="mb-3" style="flex-shrink: 0;">
+                                <label class="form-label fw-bold mb-2 small">Méthode de signature</label>
+                                <select class="form-select form-select-sm" id="methode-select" onchange="toggleSignatureMethod()">
+                                    <option value="manuel">Signature manuelle</option>
+                                    <option value="digital">Signature digitale</option>
+                                </select>
+                            </div>
+
+                            <!-- Bouton d'action -->
+                            <div class="d-grid mt-3" style="flex-shrink: 0;">
+                                <button type="submit" class="btn btn-success btn-sm py-2">
+                                    <i class="fas fa-check me-2"></i>Valider la Présence
+                                </button>
                             </div>
                         </div>
 
-                        <!-- Commentaire -->
-                        <div class="mb-3">
-                            <label for="note" class="form-label">Commentaire (optionnel)</label>
-                            <textarea class="form-control" id="note" name="note" rows="2" placeholder="Ajoutez un commentaire..."></textarea>
-                        </div>
+                        <!-- Colonne droite (2/3) : Zone de signature et actions -->
+                        <div class="d-flex flex-column" style="width: 66.666%; flex-grow: 1; min-height: 0; overflow: hidden;">
+                            <div style="flex-grow: 1; overflow-y: auto; min-height: 0; display: flex; flex-direction: column; gap: 1.25rem;">
+                                <!-- Zone de signature manuelle -->
+                                <div id="signature-manuelle" style="display: block;">
+                                    <label class="form-label fw-bold mb-2">Nom complet</label>
+                                    <input type="text" class="form-control form-control-lg" id="nom_signature" name="nom_signature" placeholder="Saisissez votre nom complet" required>
+                                </div>
 
-                        <!-- Boutons d'action -->
-                        <div class="d-grid gap-2">
-                            <button type="submit" class="btn btn-success btn-lg">
-                                <i class="fas fa-check me-2"></i>Valider l'Émargement
-                            </button>
-                            <button type="button" class="btn btn-outline-secondary" onclick="resetForm()">
-                                <i class="fas fa-undo me-2"></i>Réinitialiser
-                            </button>
+                                <!-- Zone de signature digitale -->
+                                <div id="signature-digitale" style="display: none; flex-grow: 1; flex-direction: column; min-height: 200px;">
+                                    <label class="form-label fw-bold mb-2">Signature digitale</label>
+                                    <div class="border rounded d-flex flex-row gap-3 signature-container" style="flex-grow: 1; min-height: 0; background-color: #f8f9fa; padding: 1rem;">
+                                        <div class="flex-grow-1 d-flex align-items-center justify-content-center signature-canvas-container" style="min-height: 0; width: 75%;">
+                                            <canvas id="signature_canvas" style="border: 2px solid #ddd; border-radius: 4px; background-color: white; cursor: crosshair; touch-action: none; width: 100%; height: 100%; max-width: 100%; max-height: 100%;"></canvas>
+                                        </div>
+                                        <div class="d-flex align-items-center justify-content-center signature-button-container" style="width: 25%; flex-shrink: 0;">
+                                            <button type="button" class="btn btn-outline-secondary btn-sm" onclick="clearSignature()">
+                                                <i class="fas fa-eraser me-1"></i>Effacer la signature
+                                            </button>
+                                        </div>
+                                    </div>
+                                </div>
+
+                                <!-- Note -->
+                                <div style="flex-shrink: 0;">
+                                    <label class="form-label fw-bold mb-2">Note (optionnel)</label>
+                                    <textarea class="form-control" id="note" name="note" rows="3" placeholder="Commentaire..."></textarea>
+                                </div>
+                            </div>
                         </div>
                     </form>
                 </div>
@@ -194,232 +202,587 @@
     </div>
 </div>
 
-<script>
-let selectedCandidateId = null;
-let signatureCanvas = null;
-let digitalCanvas = null;
-let isDrawing = false;
-
-// Initialisation des canvas
-document.addEventListener('DOMContentLoaded', function() {
-    signatureCanvas = document.getElementById('signature-canvas');
-    digitalCanvas = document.getElementById('digital-canvas');
-    
-    if (signatureCanvas) {
-        setupSignatureCanvas(signatureCanvas);
-    }
-    if (digitalCanvas) {
-        setupSignatureCanvas(digitalCanvas);
-    }
-    
-    // Gestion des changements de méthode de signature
-    document.querySelectorAll('input[name="methode_signature"]').forEach(radio => {
-        radio.addEventListener('change', function() {
-            toggleSignatureMethod();
-        });
-    });
-});
-
-function selectCandidate(inscriptionId, candidateName) {
-    selectedCandidateId = inscriptionId;
-    
-    // Mise à jour de l'affichage
-    document.getElementById('candidate-name').textContent = candidateName;
-    document.getElementById('candidate-info').style.display = 'block';
-    document.getElementById('emargement-form').style.display = 'block';
-    document.getElementById('inscription-id').value = inscriptionId;
-    
-    // Mise à jour visuelle de la sélection
-    document.querySelectorAll('.candidate-item').forEach(item => {
-        item.classList.remove('active');
-    });
-    event.currentTarget.classList.add('active');
-}
-
-function showAlreadySignedMessage(candidateName, status) {
-    // Créer un message personnalisé selon le statut
-    let statusText = '';
-    let iconClass = '';
-    
-    switch(status) {
-        case 'present':
-            statusText = 'Présent';
-            iconClass = 'fas fa-check-circle text-success';
-            break;
-        case 'absent':
-            statusText = 'Absent';
-            iconClass = 'fas fa-times-circle text-danger';
-            break;
-        case 'excuse':
-            statusText = 'Excusé';
-            iconClass = 'fas fa-user-clock text-warning';
-            break;
-        default:
-            statusText = status;
-            iconClass = 'fas fa-info-circle text-info';
-    }
-    
-    // Afficher une alerte avec le message
-    alert(`${candidateName} a déjà été émargé(e) comme "${statusText}".\n\nIl n'est pas possible de modifier l'émargement une fois validé.`);
-}
-
-function toggleSignatureMethod() {
-    const manuelChecked = document.getElementById('manuel').checked;
-    const digitaleChecked = document.getElementById('digital').checked;
-    
-    if (manuelChecked) {
-        document.getElementById('signature-manuelle').style.display = 'block';
-        document.getElementById('signature-digitale').style.display = 'none';
-    } else if (digitaleChecked) {
-        document.getElementById('signature-manuelle').style.display = 'none';
-        document.getElementById('signature-digitale').style.display = 'block';
-    }
-}
-
-function setupSignatureCanvas(canvas) {
-    const ctx = canvas.getContext('2d');
-    ctx.strokeStyle = '#000';
-    ctx.lineWidth = 2;
-    ctx.lineCap = 'round';
-    
-    canvas.addEventListener('mousedown', startDrawing);
-    canvas.addEventListener('mousemove', draw);
-    canvas.addEventListener('mouseup', stopDrawing);
-    canvas.addEventListener('mouseout', stopDrawing);
-    
-    // Support tactile
-    canvas.addEventListener('touchstart', handleTouch);
-    canvas.addEventListener('touchmove', handleTouch);
-    canvas.addEventListener('touchend', stopDrawing);
-}
-
-function startDrawing(e) {
-    isDrawing = true;
-    const canvas = e.target;
-    const ctx = canvas.getContext('2d');
-    const rect = canvas.getBoundingClientRect();
-    const x = e.clientX - rect.left;
-    const y = e.clientY - rect.top;
-    ctx.beginPath();
-    ctx.moveTo(x, y);
-}
-
-function draw(e) {
-    if (!isDrawing) return;
-    const canvas = e.target;
-    const ctx = canvas.getContext('2d');
-    const rect = canvas.getBoundingClientRect();
-    const x = e.clientX - rect.left;
-    const y = e.clientY - rect.top;
-    ctx.lineTo(x, y);
-    ctx.stroke();
-}
-
-function stopDrawing() {
-    isDrawing = false;
-}
-
-function handleTouch(e) {
-    e.preventDefault();
-    const touch = e.touches[0];
-    const mouseEvent = new MouseEvent(e.type === 'touchstart' ? 'mousedown' : 
-                                    e.type === 'touchmove' ? 'mousemove' : 'mouseup', {
-        clientX: touch.clientX,
-        clientY: touch.clientY
-    });
-    e.target.dispatchEvent(mouseEvent);
-}
-
-function clearSignature() {
-    if (signatureCanvas) {
-        const ctx = signatureCanvas.getContext('2d');
-        ctx.clearRect(0, 0, signatureCanvas.width, signatureCanvas.height);
-    }
-}
-
-function clearDigitalSignature() {
-    if (digitalCanvas) {
-        const ctx = digitalCanvas.getContext('2d');
-        ctx.clearRect(0, 0, digitalCanvas.width, digitalCanvas.height);
-    }
-}
-
-function resetForm() {
-    document.getElementById('emargement-form').reset();
-    document.getElementById('candidate-info').style.display = 'none';
-    document.getElementById('emargement-form').style.display = 'none';
-    document.querySelectorAll('.candidate-item').forEach(item => {
-        item.classList.remove('active');
-    });
-    clearSignature();
-    clearDigitalSignature();
-    selectedCandidateId = null;
-}
-
-// Gestion de la soumission du formulaire
-document.getElementById('emargement-form').addEventListener('submit', function(e) {
-    e.preventDefault();
-    
-    if (!selectedCandidateId) {
-        alert('Veuillez sélectionner un candidat');
-        return;
-    }
-    
-    // Récupération des données de signature
-    const methodeSignature = document.querySelector('input[name="methode_signature"]:checked').value;
-    let signatureData = '';
-    
-    if (methodeSignature === 'manuel' && signatureCanvas) {
-        signatureData = signatureCanvas.toDataURL();
-    } else if (methodeSignature === 'digital' && digitalCanvas) {
-        signatureData = digitalCanvas.toDataURL();
-    }
-    
-    // Ajout des données de signature au formulaire
-    const signatureInput = document.createElement('input');
-    signatureInput.type = 'hidden';
-    signatureInput.name = 'signature_data';
-    signatureInput.value = signatureData;
-    this.appendChild(signatureInput);
-    
-    // Soumission du formulaire
-    this.submit();
-});
-</script>
-
 <style>
-.candidate-item.active {
-    background-color: #e3f2fd !important;
-    border-color: #2196f3 !important;
+html, body {
+    height: 100%;
+    overflow: hidden;
 }
 
-.candidate-item:hover {
-    background-color: #f5f5f5;
+body {
+    margin: 0;
+    padding: 0;
 }
 
-/* Style pour les candidats déjà émargés */
-.candidate-item[data-already-signed="true"] {
+/* Désactiver le scroll sur content-viewport pour cette page */
+.content-viewport {
+    overflow: hidden !important;
+}
+
+.card.d-flex.flex-column {
+    height: 80% !important;
+    margin-top: 10px;
+    border-left: 1px solid white;
+}
+
+.card {
+    box-shadow: 0 0.125rem 0.25rem rgba(0, 0, 0, 0.075);
+    border: 1px solid rgba(0, 0, 0, 0.125);
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+}
+
+#signature_canvas {
+    cursor: crosshair;
+    touch-action: none;
+    width: 100% !important;
+    height: 100% !important;
+    max-width: 100%;
+    max-height: 100%;
+    object-fit: contain;
+}
+
+#signature-digitale {
+    min-height: 250px;
+    flex-grow: 1;
+}
+
+#signature-digitale > div {
+    flex-grow: 1;
+    min-height: 250px;
+}
+
+/* Responsive pour mobile */
+@media (max-width: 768px) {
+    /* En-tête */
+    .container-fluid {
+        padding: 0.5rem !important;
+    }
+    
+    h4 {
+        font-size: 1.1rem !important;
+    }
+    
+    .text-muted.small {
+        font-size: 0.75rem !important;
+    }
+    
+    /* Liste des candidats */
+    .card-header h5 {
+        font-size: 1rem !important;
+    }
+    
+    .candidat-item {
+        padding: 0.75rem !important;
+    }
+    
+    .candidat-item h6 {
+        font-size: 0.95rem !important;
+        margin-bottom: 0.25rem !important;
+    }
+    
+    .candidat-item small {
+        font-size: 0.8rem !important;
+    }
+    
+    .candidat-item img,
+    .candidat-item .bg-secondary {
+        width: 40px !important;
+        height: 40px !important;
+    }
+    
+    /* Formulaire de signature - colonnes empilées */
+    #signature-form {
+        flex-direction: column !important;
+        gap: 1rem !important;
+    }
+    
+    #signature-form > div:first-child {
+        width: 100% !important;
+        border-right: none !important;
+        border-bottom: 1px solid #dee2e6;
+        padding-right: 0 !important;
+        padding-bottom: 1rem;
+        margin-bottom: 1rem;
+    }
+    
+    #signature-form > div:last-child {
+        width: 100% !important;
+    }
+    
+    /* Photo candidat */
+    #candidat-photo {
+        width: 60px !important;
+        height: 60px !important;
+    }
+    
+    /* Boutons */
+    .btn-sm {
+        padding: 0.5rem 1rem !important;
+        font-size: 0.9rem !important;
+    }
+    
+    .btn-group-vertical .btn {
+        padding: 0.5rem !important;
+        font-size: 0.85rem !important;
+    }
+    
+    /* Champs de formulaire */
+    .form-select-sm,
+    .form-control {
+        padding: 0.5rem !important;
+        font-size: 0.9rem !important;
+    }
+    
+    /* Zone de signature digitale */
+    #signature-digitale {
+        min-height: 200px !important;
+    }
+    
+    #signature-digitale > div {
+        padding: 0.75rem !important;
+        flex-direction: column !important;
+        gap: 0.75rem !important;
+    }
+    
+    .signature-container {
+        flex-direction: column !important;
+        gap: 0.75rem !important;
+    }
+    
+    .signature-canvas-container {
+        width: 100% !important;
+        min-height: 200px !important;
+    }
+    
+    .signature-button-container {
+        width: 100% !important;
+        justify-content: center !important;
+    }
+    
+    /* Zone de signature manuelle */
+    #signature-manuelle .form-control-lg {
+        padding: 0.5rem !important;
+        font-size: 0.9rem !important;
+    }
+    
+    /* Note */
+    #note {
+        font-size: 0.9rem !important;
+        padding: 0.5rem !important;
+    }
+    
+    /* Card body padding */
+    .card-body {
+        padding: 1rem !important;
+    }
+}
+
+/* Responsive pour très petits écrans */
+@media (max-width: 480px) {
+    h4 {
+        font-size: 1rem !important;
+    }
+    
+    .candidat-item {
+        padding: 0.5rem !important;
+    }
+    
+    .candidat-item h6 {
+        font-size: 0.85rem !important;
+    }
+    
+    .btn-sm {
+        padding: 0.4rem 0.8rem !important;
+        font-size: 0.85rem !important;
+    }
+    
+    .form-select-sm,
+    .form-control {
+        padding: 0.4rem !important;
+        font-size: 0.85rem !important;
+    }
+    
+    #signature-digitale {
+        min-height: 150px !important;
+    }
+    
+    #signature-digitale > div > div:first-child {
+        min-height: 150px !important;
+    }
+}
+
+.avatar {
+    width: 80px;
+    height: 80px;
+    background-size: cover;
+    background-position: center;
+    border-radius: 50%;
+    background-color: #f8f9fa;
+}
+
+.candidat-item {
+    cursor: pointer;
+    transition: all 0.3s ease;
+    padding: 0.75rem !important;
+}
+
+.candidat-item:hover {
+    background-color: #f8f9fa;
+    transform: translateX(5px);
+}
+
+.candidat-item.active {
+    background-color: #e3f2fd;
+    border-left: 4px solid #2196f3;
+}
+
+.candidat-item[data-already-signed="true"] {
     opacity: 0.7;
     background-color: #f8f9fa !important;
     cursor: not-allowed !important;
 }
 
-.candidate-item[data-already-signed="true"]:hover {
+.candidat-item[data-already-signed="true"]:hover {
     background-color: #f8f9fa !important;
 }
 
-.candidate-item[data-already-signed="true"] h6 {
-    color: #6c757d;
+.list-group-item {
+    border-bottom: 1px solid rgba(0,0,0,.125);
 }
 
-.candidate-item[data-already-signed="true"] small {
-    color: #adb5bd;
+.list-group-item:last-child {
+    border-bottom: none;
 }
 
-.btn-check:checked + .btn {
-    background-color: var(--bs-primary);
-    border-color: var(--bs-primary);
-    color: white;
+/* Responsive pour mobile */
+@media (max-width: 768px) {
+    .avatar {
+        width: 100px;
+        height: 100px;
+    }
+    
+    .btn {
+        padding: 14px 28px;
+        font-size: 18px;
+    }
+    
+    .form-control, .form-select {
+        padding: 14px;
+        font-size: 18px;
+    }
+    
+    .candidat-item {
+        padding: 1rem !important;
+    }
+    
+    .candidat-item h6 {
+        font-size: 1.1rem;
+    }
+    
+    #signature_canvas {
+        height: 200px;
+    }
 }
 </style>
+
+<script>
+    // Variables globales
+    let signatureCanvas = null;
+    let isDrawing = false;
+    let selectedCandidat = null;
+
+    // Fonctions pour l'interface
+    function selectCandidatFromElement(element) {
+        const candidatId = parseInt(element.dataset.candidatId);
+        const nom = element.dataset.candidatNom;
+        const email = element.dataset.candidatEmail;
+        const photo = element.dataset.candidatPhoto;
+        
+        selectCandidat(candidatId, nom, email, photo);
+        
+        // Mettre en surbrillance le candidat sélectionné
+        document.querySelectorAll('.candidat-item').forEach(item => {
+            item.classList.remove('active');
+        });
+        element.classList.add('active');
+    }
+    
+    function selectCandidat(candidatId, nom, email, photo) {
+        selectedCandidat = {
+            candidatId: candidatId,
+            nom: nom,
+            email: email,
+            photo: photo
+        };
+        
+        // Masquer la liste et afficher le formulaire
+        document.getElementById('liste-candidats').style.display = 'none';
+        document.getElementById('zone-emargement').style.display = 'flex';
+        
+        // Remplir les informations du candidat
+        document.getElementById('candidat-photo').style.backgroundImage = `url('${photo}')`;
+        document.getElementById('candidat-nom').textContent = nom;
+        document.getElementById('candidat-email').textContent = email;
+        
+        // Remplir le formulaire
+        document.getElementById('candidat_id').value = candidatId;
+        document.getElementById('nom_signature').value = nom;
+        
+        // Initialiser le canvas de signature
+        initSignatureCanvas();
+    }
+    
+    function retourListe() {
+        // Masquer le formulaire et afficher la liste
+        document.getElementById('zone-emargement').style.display = 'none';
+        document.getElementById('liste-candidats').style.display = 'flex';
+        
+        // Réinitialiser le formulaire
+        document.getElementById('signature-form').reset();
+        document.getElementById('candidat_id').value = '';
+        document.getElementById('presence').value = 'present';
+        document.getElementById('methode_signature').value = 'manuel';
+        document.getElementById('present').checked = true;
+        document.getElementById('methode-select').value = 'manuel';
+        
+        // Réafficher la signature manuelle
+        document.getElementById('signature-manuelle').style.display = 'block';
+        document.getElementById('signature-digitale').style.display = 'none';
+        
+        // Effacer la signature
+        if (signatureCanvas) {
+            const ctx = signatureCanvas.getContext('2d');
+            ctx.clearRect(0, 0, signatureCanvas.width, signatureCanvas.height);
+        }
+        
+        // Retirer la surbrillance
+        document.querySelectorAll('.candidat-item').forEach(item => {
+            item.classList.remove('active');
+        });
+        
+        selectedCandidat = null;
+    }
+    
+    function showAlreadySignedFromElement(element) {
+        const nom = element.dataset.candidatNom;
+        const statut = element.dataset.presenceStatut;
+        showAlreadySignedMessage(nom, statut);
+    }
+    
+    function showAlreadySignedMessage(nom, statut) {
+        let statutText = '';
+        switch(statut) {
+            case 'present':
+                statutText = 'Présent';
+                break;
+            case 'absent':
+                statutText = 'Absent';
+                break;
+            case 'excuse':
+                statutText = 'Excusé';
+                break;
+            default:
+                statutText = statut;
+        }
+        alert(`${nom} a déjà été émargé(e) comme "${statutText}".\n\nIl n'est pas possible de modifier l'émargement une fois validé.`);
+    }
+    
+    function toggleSignatureMethod() {
+        const method = document.getElementById('methode-select').value;
+        const manuelleDiv = document.getElementById('signature-manuelle');
+        const digitaleDiv = document.getElementById('signature-digitale');
+        const methodeInput = document.getElementById('methode_signature');
+        
+        if (method === 'manuel') {
+            manuelleDiv.style.display = 'block';
+            digitaleDiv.style.display = 'none';
+            methodeInput.value = 'manuel';
+            document.getElementById('nom_signature').required = true;
+        } else {
+            manuelleDiv.style.display = 'none';
+            digitaleDiv.style.display = 'flex';
+            methodeInput.value = 'digital';
+            document.getElementById('nom_signature').required = false;
+            // Réinitialiser le canvas avec les bonnes dimensions
+            setTimeout(() => {
+                initSignatureCanvas();
+            }, 100);
+        }
+    }
+    
+    function initSignatureCanvas() {
+        signatureCanvas = document.getElementById('signature_canvas');
+        if (!signatureCanvas) return;
+        
+        // Attendre que le conteneur soit visible pour calculer les dimensions
+        setTimeout(() => {
+            const container = signatureCanvas.parentElement;
+            if (!container) return;
+            
+            // Calculer les dimensions optimales du canvas
+            const containerRect = container.getBoundingClientRect();
+            const padding = 32; // padding du conteneur
+            const buttonHeight = 60; // hauteur du bouton effacer
+            
+            const availableWidth = containerRect.width - padding;
+            const availableHeight = containerRect.height - padding - buttonHeight;
+            
+            // Définir les dimensions du canvas (minimum 300x150, maximum selon l'espace disponible)
+            const canvasWidth = Math.max(Math.min(availableWidth, 600), 300);
+            const canvasHeight = Math.max(Math.min(availableHeight, 300), 150);
+            
+            signatureCanvas.width = canvasWidth;
+            signatureCanvas.height = canvasHeight;
+            
+            // Ajuster le style pour l'affichage
+            signatureCanvas.style.width = canvasWidth + 'px';
+            signatureCanvas.style.height = canvasHeight + 'px';
+            
+            const ctx = signatureCanvas.getContext('2d');
+            ctx.strokeStyle = '#000';
+            ctx.lineWidth = 3;
+            ctx.lineCap = 'round';
+            ctx.lineJoin = 'round';
+            
+            // Événements de dessin
+            signatureCanvas.addEventListener('mousedown', startDrawing);
+            signatureCanvas.addEventListener('mousemove', draw);
+            signatureCanvas.addEventListener('mouseup', stopDrawing);
+            signatureCanvas.addEventListener('mouseout', stopDrawing);
+            
+            // Événements tactiles
+            signatureCanvas.addEventListener('touchstart', handleTouch, { passive: false });
+            signatureCanvas.addEventListener('touchmove', handleTouch, { passive: false });
+            signatureCanvas.addEventListener('touchend', stopDrawing);
+        }, 100);
+    }
+    
+    function startDrawing(e) {
+        isDrawing = true;
+        const rect = signatureCanvas.getBoundingClientRect();
+        const scaleX = signatureCanvas.width / rect.width;
+        const scaleY = signatureCanvas.height / rect.height;
+        
+        const x = (e.clientX - rect.left) * scaleX;
+        const y = (e.clientY - rect.top) * scaleY;
+        
+        const ctx = signatureCanvas.getContext('2d');
+        ctx.beginPath();
+        ctx.moveTo(x, y);
+    }
+    
+    function draw(e) {
+        if (!isDrawing) return;
+        const rect = signatureCanvas.getBoundingClientRect();
+        const scaleX = signatureCanvas.width / rect.width;
+        const scaleY = signatureCanvas.height / rect.height;
+        
+        const x = (e.clientX - rect.left) * scaleX;
+        const y = (e.clientY - rect.top) * scaleY;
+        
+        const ctx = signatureCanvas.getContext('2d');
+        ctx.lineTo(x, y);
+        ctx.stroke();
+    }
+    
+    function stopDrawing() {
+        isDrawing = false;
+    }
+    
+    function handleTouch(e) {
+        e.preventDefault();
+        const touch = e.touches[0];
+        const rect = signatureCanvas.getBoundingClientRect();
+        const scaleX = signatureCanvas.width / rect.width;
+        const scaleY = signatureCanvas.height / rect.height;
+        
+        const x = (touch.clientX - rect.left) * scaleX;
+        const y = (touch.clientY - rect.top) * scaleY;
+        
+        if (e.type === 'touchstart') {
+            isDrawing = true;
+            const ctx = signatureCanvas.getContext('2d');
+            ctx.beginPath();
+            ctx.moveTo(x, y);
+        } else if (e.type === 'touchmove' && isDrawing) {
+            const ctx = signatureCanvas.getContext('2d');
+            ctx.lineTo(x, y);
+            ctx.stroke();
+        } else if (e.type === 'touchend') {
+            isDrawing = false;
+        }
+    }
+    
+    function clearSignature() {
+        if (signatureCanvas) {
+            const ctx = signatureCanvas.getContext('2d');
+            ctx.clearRect(0, 0, signatureCanvas.width, signatureCanvas.height);
+        }
+    }
+    
+    // Gestion de la soumission du formulaire
+    document.getElementById('signature-form').addEventListener('submit', function(e) {
+        const method = document.getElementById('methode-select').value;
+        const presenceStatus = document.querySelector('input[name="presence_status"]:checked');
+        const presenceValue = presenceStatus ? presenceStatus.value : 'present';
+        
+        // Mettre à jour le statut de présence
+        document.getElementById('presence').value = presenceValue;
+        
+        if (method === 'digital') {
+            // Capturer la signature digitale
+            if (signatureCanvas) {
+                const signatureData = signatureCanvas.toDataURL();
+                document.getElementById('signature_data').value = signatureData;
+            }
+        } else {
+            // Utiliser le nom pour la signature manuelle
+            const nomSignature = document.getElementById('nom_signature').value.trim();
+            if (!nomSignature) {
+                e.preventDefault();
+                alert('Veuillez saisir le nom complet');
+                return;
+            }
+            document.getElementById('signature_data').value = nomSignature;
+        }
+        
+        // Confirmation
+        if (!confirm(`Confirmer la présence de ${selectedCandidat.nom} ?`)) {
+            e.preventDefault();
+            return;
+        }
+        
+        // Après soumission réussie, on reviendra à la liste via le redirect de la route
+        // Mais on peut aussi gérer le retour manuellement si nécessaire
+    });
+    
+    // Gestion des changements de statut de présence
+    document.querySelectorAll('input[name="presence_status"]').forEach(radio => {
+        radio.addEventListener('change', function() {
+            document.getElementById('presence').value = this.value;
+        });
+    });
+    
+    // Initialisation
+    document.addEventListener('DOMContentLoaded', function() {
+        // Initialiser la méthode de signature par défaut (manuel)
+        toggleSignatureMethod();
+        
+        // Optimiser l'interface pour mobile et tablette
+        if (window.innerWidth <= 1024) {
+            document.querySelectorAll('.btn').forEach(btn => {
+                if (!btn.classList.contains('btn-sm')) {
+                    btn.style.padding = '14px 28px';
+                    btn.style.fontSize = '18px';
+                }
+            });
+            
+            document.querySelectorAll('.form-control, .form-select').forEach(input => {
+                input.style.padding = '14px';
+                input.style.fontSize = '18px';
+            });
+        }
+    });
+</script>
 {% endblock %}

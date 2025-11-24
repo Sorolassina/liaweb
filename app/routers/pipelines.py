@@ -11,7 +11,7 @@ from ..core.middleware import get_shared_session
 from ..core.security import get_current_user, require_permission
 from ..core.program_schema_integration import safe_count_query
 import logging
-from ..models.base import User, EtapePipeline, AvancementEtape, Programme, Inscription
+from ..models.base import User, EtapePipeline, AvancementEtape, Programme
 from ..models.enums import UserRole, StatutDossier
 from ..schemas import EtapePipelineCreate, EtapePipelineUpdate, AvancementEtapeCreate
 from ..services import PipelineService

@@ -6,7 +6,7 @@
     <title>Connexion - {{ app_name }}</title>
     
     <!-- Favicon -->
-    <link rel="icon" type="image/x-icon" href="/static/favicon.ico">
+    <link rel="icon" type="image/x-icon" href="/static/images/favicon.ico">
     
     <!-- CSS de base -->
     <link rel="stylesheet" href="/static/css/base.css">
@@ -389,8 +389,61 @@
             color: rgba(255, 255, 255, 0.9);
         }
 
+        /* Horloge style écran de veille Microsoft */
+        .clock-container {
+            position: fixed;
+            top: 40px;
+            left: 40px;
+            z-index: 100;
+            color: white;
+            font-family: 'Segoe UI Light', 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            text-shadow: 0 0 20px rgba(0, 0, 0, 0.8), 0 2px 10px rgba(0, 0, 0, 0.5);
+            user-select: none;
+            pointer-events: none;
+        }
+
+        .clock-time {
+            font-size: 120px;
+            font-weight: 100;
+            line-height: 1;
+            letter-spacing: -2px;
+            margin: 0;
+            padding: 0;
+        }
+
+        .clock-date {
+            font-size: 28px;
+            font-weight: 300;
+            line-height: 1.2;
+            margin-top: 10px;
+            opacity: 0.9;
+        }
+
         /* Responsive */
+        @media (max-width: 1024px) {
+            .clock-time {
+                font-size: 80px;
+            }
+
+            .clock-date {
+                font-size: 22px;
+            }
+        }
+
         @media (max-width: 640px) {
+            .clock-container {
+                top: 20px;
+                left: 20px;
+            }
+
+            .clock-time {
+                font-size: 60px;
+            }
+
+            .clock-date {
+                font-size: 18px;
+            }
+
             .login-container {
                 padding: 16px;
             }
@@ -405,6 +458,19 @@
         }
 
         @media (max-height: 600px) {
+            .clock-container {
+                top: 15px;
+                left: 15px;
+            }
+
+            .clock-time {
+                font-size: 50px;
+            }
+
+            .clock-date {
+                font-size: 16px;
+            }
+
             .login-wrapper {
                 max-height: 100vh;
                 overflow-y: auto;
@@ -427,6 +493,12 @@
         <div class="bg-image" style="background-image: url('/static/images/backgroundlogin/BGlogin.jpg');" data-index="1"></div>
         <div class="bg-image" style="background-image: url('/static/images/backgroundlogin/christian-joudrey-u_nsiSvPEak-unsplash.jpg');" data-index="2"></div>
         <div class="bg-image" style="background-image: url('/static/images/backgroundlogin/jonatan-pie-3l3RwQdHRHg-unsplash.jpg');" data-index="3"></div>
+    </div>
+
+    <!-- Horloge style écran de veille Microsoft -->
+    <div class="clock-container" id="clockContainer">
+        <div class="clock-time" id="clockTime">00:00</div>
+        <div class="clock-date" id="clockDate">lundi 1 janvier 2024</div>
     </div>
 
     <div class="login-container">
@@ -638,6 +710,41 @@
                 }, 5000);
             }
         });
+
+        // ========================================
+        // HORLOGE STYLE ÉCRAN DE VEILLE MICROSOFT
+        // ========================================
+        (function() {
+            const clockTime = document.getElementById('clockTime');
+            const clockDate = document.getElementById('clockDate');
+
+            // Noms des jours et mois en français
+            const jours = ['dimanche', 'lundi', 'mardi', 'mercredi', 'jeudi', 'vendredi', 'samedi'];
+            const mois = ['janvier', 'février', 'mars', 'avril', 'mai', 'juin', 
+                         'juillet', 'août', 'septembre', 'octobre', 'novembre', 'décembre'];
+
+            function updateClock() {
+                const now = new Date();
+                
+                // Formater l'heure (HH:MM)
+                const hours = String(now.getHours()).padStart(2, '0');
+                const minutes = String(now.getMinutes()).padStart(2, '0');
+                clockTime.textContent = `${hours}:${minutes}`;
+                
+                // Formater la date
+                const jourSemaine = jours[now.getDay()];
+                const jour = now.getDate();
+                const moisNom = mois[now.getMonth()];
+                const annee = now.getFullYear();
+                clockDate.textContent = `${jourSemaine} ${jour} ${moisNom} ${annee}`;
+            }
+
+            // Mettre à jour immédiatement
+            updateClock();
+            
+            // Mettre à jour toutes les minutes (60000 ms)
+            setInterval(updateClock, 60000);
+        })();
 
         // ========================================
         // CARROUSEL D'IMAGES EN ARRIÈRE-PLAN

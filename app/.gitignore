@@ -1,0 +1,37 @@
+# Byte-compiled / optimized / DLL files
+__pycache__/
+*.py[cod]
+*$py.class
+
+# Virtual environments
+.venv/
+env/
+venv/
+
+# IDE / Editor settings
+.idea/
+.vscode/
+*.swp
+
+# Local databases
+database.db
+*.sqlite
+*.db
+
+# Uploaded / generated media
+archives/
+fichiers/
+media/
+uploads/
+app/uploads/
+
+# Logs and temp files
+*.log
+*.tmp
+tmp/
+
+# OS files
+.DS_Store
+Thumbs.db
+
+

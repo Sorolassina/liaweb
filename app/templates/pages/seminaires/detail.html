@@ -1,52 +1,28 @@
-{% extends "base.html" %}
+{% extends "layouts/base.html" %}
+{% from "components/page_header.html" import page_header %}
 
 {% block title %}{{ seminaire.titre }}{% endblock %}
 
 {% block content %}
-<div class="container-fluid p-4">
-    <div class="row mb-4">
-        <div class="col-12">
-            <nav aria-label="breadcrumb">
-                <ol class="breadcrumb">
-                    <li class="breadcrumb-item"><a href="{{ url_for('liste_seminaires') }}">Séminaires</a></li>
-                    <li class="breadcrumb-item active">{{ seminaire.titre }}</li>
-                </ol>
-            </nav>
-            <div class="d-flex justify-content-between align-items-center">
-                <div>
-                    <h1 class="mb-0">{{ seminaire.titre }}</h1>
-                    <p class="text-muted mb-0">
-                        <i class="fas fa-calendar me-1"></i>
-                        {{ seminaire.date_debut.strftime('%d/%m/%Y') }} - {{ seminaire.date_fin.strftime('%d/%m/%Y') }}
-                        {% if seminaire.lieu %}
-                            | <i class="fas fa-map-marker-alt me-1"></i>{{ seminaire.lieu }}
-                        {% endif %}
-                    </p>
-                </div>
-                <div class="btn-group">
-                    <a href="{{ url_for('nouvelle_session_seminaire', seminaire_id=seminaire.id) }}" class="btn btn-primary">
-                        <i class="fas fa-plus me-2"></i>Nouvelle Session
-                    </a>
-                    <a href="{{ url_for('invitations_seminaire', seminaire_id=seminaire.id) }}" class="btn btn-info">
-                        <i class="fas fa-envelope me-2"></i>Invitations
-                    </a>
-                    <a href="{{ url_for('livrables_seminaire', seminaire_id=seminaire.id) }}" class="btn btn-success">
-                        <i class="fas fa-file-alt me-2"></i>Livrables
-                    </a>
-                    <button class="btn btn-danger" onclick="supprimerSeminaire({{ seminaire.id }}, '{{ seminaire.titre }}')">
-                        <i class="fas fa-trash me-2"></i>Supprimer
-                    </button>
-                </div>
-            </div>
-        </div>
-    </div>
+{% set programme_param = request.query_params.get('programme') or (schema_name.upper() if schema_name and schema_name != 'public' else '') %}
+{% set programme_code = programme_param or '' %}
 
-    <!-- Informations générales -->
-    <div class="row mb-4">
-        <div class="col-lg-8">
-            <div class="card">
+{{ page_header(
+    title=seminaire.titre,
+    breadcrumbs=[
+        {"label": "Séminaires", "url": url_for('liste_seminaires') ~ ('?programme=' ~ programme_param if programme_param else '')},
+        {"label": seminaire.titre, "url": ""}
+    ]
+) }}
+
+<div class="container-fluid p-4">
+    <div class="row">
+        <!-- Contenu principal -->
+        <div class="col-lg-9 seminaire-main-content">
+            <!-- Informations générales -->
+            <div class="card mb-4">
                 <div class="card-header">
-                    <h5 class="mb-0">Informations Générales</h5>
+                    <h5 class="mb-0"><i class="fas fa-info-circle me-2"></i>Informations Générales</h5>
                 </div>
                 <div class="card-body">
                     <div class="row">
@@ -55,21 +31,24 @@
                             <p>{{ seminaire.description or 'Aucune description' }}</p>
                             
                             <h6>Programme</h6>
-                            <span class="badge bg-secondary">{{ seminaire.programme.code }}</span>
+                            {% if seminaire.programme_code %}
+                                <span class="badge bg-secondary">{{ seminaire.programme_code }}</span>
+                            {% elif seminaire.programme_nom %}
+                                <span class="badge bg-secondary">{{ seminaire.programme_nom }}</span>
+                            {% else %}
+                                <span class="badge bg-secondary">N/A</span>
+                            {% endif %}
                             
                             <h6>Organisateur</h6>
                             <div class="d-flex align-items-center">
-                                {% if seminaire.organisateur.photo_profil %}
-                                    <img src="{{ seminaire.organisateur.photo_profil }}" 
-                                         class="rounded-circle me-2" width="30" height="30" 
-                                         alt="{{ seminaire.organisateur.nom_complet }}">
+                                <div class="bg-secondary rounded-circle me-2 d-flex align-items-center justify-content-center organisateur-avatar">
+                                    <i class="fas fa-user text-white"></i>
+                                </div>
+                                {% if seminaire.organisateur_nom %}
+                                    <span>{{ seminaire.organisateur_nom }}</span>
                                 {% else %}
-                                    <div class="bg-secondary rounded-circle me-2 d-flex align-items-center justify-content-center" 
-                                         style="width: 30px; height: 30px;">
-                                        <i class="fas fa-user text-white"></i>
-                                    </div>
+                                    <span>N/A</span>
                                 {% endif %}
-                                <span>{{ seminaire.organisateur.nom_complet }}</span>
                             </div>
                         </div>
                         <div class="col-md-6">
@@ -92,63 +71,12 @@
                     </div>
                 </div>
             </div>
-        </div>
-        
-        <div class="col-lg-4">
-            <div class="card">
-                <div class="card-header">
-                    <h5 class="mb-0">Statut</h5>
-                </div>
-                <div class="card-body text-center">
-                    {% if seminaire.statut == 'planifie' %}
-                        <div class="badge bg-warning fs-6 mb-3">Planifié</div>
-                    {% elif seminaire.statut == 'en_cours' %}
-                        <div class="badge bg-info fs-6 mb-3">En Cours</div>
-                    {% elif seminaire.statut == 'termine' %}
-                        <div class="badge bg-success fs-6 mb-3">Terminé</div>
-                    {% elif seminaire.statut == 'annule' %}
-                        <div class="badge bg-danger fs-6 mb-3">Annulé</div>
-                    {% endif %}
-                    
-                    <div class="mt-3">
-                        <small class="text-muted">
-                            Créé le {{ seminaire.cree_le.strftime('%d/%m/%Y à %H:%M') }}
-                        </small>
-                    </div>
-                </div>
-            </div>
-            
-            <div class="card mt-3">
-                <div class="card-header">
-                    <h5 class="mb-0">Actions Rapides</h5>
-                </div>
-                <div class="card-body">
-                    <div class="d-grid gap-2">
-                        <a href="{{ url_for('nouvelle_session_seminaire', seminaire_id=seminaire.id) }}" class="btn btn-outline-primary btn-sm">
-                            <i class="fas fa-plus me-1"></i>Ajouter Session
-                        </a>
-                        <a href="{{ url_for('invitations_seminaire', seminaire_id=seminaire.id) }}" class="btn btn-outline-info btn-sm">
-                            <i class="fas fa-envelope me-1"></i>Gérer Invitations
-                        </a>
-                        <a href="{{ url_for('livrables_seminaire', seminaire_id=seminaire.id) }}" class="btn btn-outline-success btn-sm">
-                            <i class="fas fa-file-alt me-1"></i>Gérer Livrables
-                        </a>
-                    </div>
-                </div>
-            </div>
-        </div>
-    </div>
 
-    <!-- Sessions -->
-    <div class="row mb-4">
-        <div class="col-12">
-            <div class="card">
+            <!-- Sessions -->
+            <div class="card mb-4">
                 <div class="card-header">
                     <div class="d-flex justify-content-between align-items-center">
-                        <h5 class="mb-0">Sessions ({{ sessions|length }})</h5>
-                        <a href="{{ url_for('nouvelle_session_seminaire', seminaire_id=seminaire.id) }}" class="btn btn-sm btn-primary">
-                            <i class="fas fa-plus me-1"></i>Nouvelle Session
-                        </a>
+                        <h5 class="mb-0"><i class="fas fa-calendar-day me-2"></i>Sessions ({{ sessions|length }})</h5>
                     </div>
                 </div>
                 <div class="card-body">
@@ -160,7 +88,6 @@
                                         <th>Titre</th>
                                         <th>Date</th>
                                         <th>Horaires</th>
-                                        <th>Lieu</th>
                                         <th>Obligatoire</th>
                                         <th>Actions</th>
                                     </tr>
@@ -170,22 +97,12 @@
                                     <tr>
                                         <td>
                                             <strong>{{ session.titre }}</strong>
-                                            {% if session.description %}
-                                                <br><small class="text-muted">{{ session.description[:100] }}{% if session.description|length > 100 %}...{% endif %}</small>
-                                            {% endif %}
                                         </td>
                                         <td>{{ session.date_session.strftime('%d/%m/%Y') }}</td>
                                         <td>
                                             {{ session.heure_debut.strftime('%H:%M') }}
                                             {% if session.heure_fin %}
                                                 - {{ session.heure_fin.strftime('%H:%M') }}
-                                            {% endif %}
-                                        </td>
-                                        <td>
-                                            {% if session.lieu %}
-                                                {{ session.lieu }}
-                                            {% else %}
-                                                <span class="text-muted">Non défini</span>
                                             {% endif %}
                                         </td>
                                         <td>
@@ -197,18 +114,21 @@
                                         </td>
                                         <td>
                                             <div class="btn-group" role="group">
-                                                <a href="{{ url_for('emargement_session', seminaire_id=seminaire.id, session_id=session.id) }}" 
+                                                <a href="{{ url_for('emargement_session', seminaire_id=seminaire.id, session_id=session.id) }}{% if programme_param %}?programme={{ programme_param }}{% endif %}" 
                                                    class="btn btn-sm btn-outline-primary" title="Émargement">
                                                     <i class="fas fa-signature"></i>
                                                 </a>
+                                                
                                                 {% if session.visioconf_url %}
                                                     <a href="{{ session.visioconf_url }}" target="_blank" 
                                                        class="btn btn-sm btn-outline-info" title="Visioconférence">
                                                         <i class="fas fa-video"></i>
                                                     </a>
                                                 {% endif %}
-                                                <button class="btn btn-sm btn-outline-danger" 
-                                                        onclick="supprimerSession({{ seminaire.id }}, {{ session.id }}, '{{ session.titre }}')"
+                                                <button class="btn btn-sm btn-outline-danger btn-supprimer-session" 
+                                                        data-seminaire-id="{{ seminaire.id }}"
+                                                        data-session-id="{{ session.id }}"
+                                                        data-session-titre="{{ session.titre }}"
                                                         title="Supprimer la session">
                                                     <i class="fas fa-trash"></i>
                                                 </button>
@@ -224,99 +144,301 @@
                             <i class="fas fa-calendar-day fa-3x text-muted mb-3"></i>
                             <h5 class="text-muted">Aucune session créée</h5>
                             <p class="text-muted">Commencez par créer la première session du séminaire.</p>
-                            <a href="{{ url_for('nouvelle_session_seminaire', seminaire_id=seminaire.id) }}" class="btn btn-primary">
+                            <a href="{{ url_for('nouvelle_session_seminaire', seminaire_id=seminaire.id) }}{% if programme_param %}?programme={{ programme_param }}{% endif %}" class="btn btn-primary">
                                 <i class="fas fa-plus me-2"></i>Créer une Session
                             </a>
                         </div>
                     {% endif %}
                 </div>
             </div>
-        </div>
-    </div>
 
-    <!-- Invitations et Livrables -->
-    <div class="row">
-        <div class="col-md-6">
-            <div class="card">
-                <div class="card-header">
-                    <div class="d-flex justify-content-between align-items-center">
-                        <h5 class="mb-0">Invitations ({{ invitations|length }})</h5>
-                        <a href="{{ url_for('invitations_seminaire', seminaire_id=seminaire.id) }}" class="btn btn-sm btn-info">
-                            <i class="fas fa-envelope me-1"></i>Gérer
-                        </a>
-                    </div>
-                </div>
-                <div class="card-body">
-                    {% if invitations %}
-                        <div class="list-group list-group-flush">
-                            {% for invitation in invitations[:5] %}
-                            <div class="list-group-item d-flex justify-content-between align-items-center">
-                                <div>
-                                    <strong>{{ invitation.type_invitation.title() }}</strong>
-                                    <br><small class="text-muted">{{ invitation.statut }}</small>
+            <!-- Invitations et Livrables -->
+            <div class="row">
+                <div class="col-md-6">
+                    <div class="card mb-4">
+                        <div class="card-header">
+                            <h5 class="mb-0"><i class="fas fa-envelope me-2"></i>Invitations ({{ invitations|length }})</h5>
+                        </div>
+                        <div class="card-body">
+                            {% if invitations %}
+                                <div class="list-group list-group-flush">
+                                    {% for invitation in invitations[:5] %}
+                                    <div class="list-group-item d-flex justify-content-between align-items-center">
+                                        <div>
+                                            {% if invitation.candidat %}
+                                                <strong>{{ invitation.candidat.prenom }} {{ invitation.candidat.nom }}</strong>
+                                                <br><small class="text-muted">{{ invitation.candidat.email }}</small>
+                                            {% else %}
+                                                <strong>{{ invitation.type_invitation.title() }}</strong>
+                                                <br><small class="text-muted">{{ invitation.statut }}</small>
+                                            {% endif %}
+                                        </div>
+                                        <span class="badge bg-info">{{ invitation.statut }}</span>
+                                    </div>
+                                    {% endfor %}
+                                    {% if invitations|length > 5 %}
+                                        <div class="list-group-item text-center">
+                                            <small class="text-muted">... et {{ invitations|length - 5 }} autres</small>
+                                        </div>
+                                    {% endif %}
                                 </div>
-                                <span class="badge bg-info">{{ invitation.statut }}</span>
-                            </div>
-                            {% endfor %}
-                            {% if invitations|length > 5 %}
-                                <div class="list-group-item text-center">
-                                    <small class="text-muted">... et {{ invitations|length - 5 }} autres</small>
+                            {% else %}
+                                <div class="text-center py-3">
+                                    <i class="fas fa-envelope fa-2x text-muted mb-2"></i>
+                                    <p class="text-muted mb-0">Aucune invitation envoyée</p>
                                 </div>
                             {% endif %}
                         </div>
+                    </div>
+                </div>
+                
+                <div class="col-md-6">
+                    <div class="card mb-4">
+                        <div class="card-header">
+                            <h5 class="mb-0"><i class="fas fa-file-alt me-2"></i>Livrables ({{ livrables|length }})</h5>
+                        </div>
+                        <div class="card-body">
+                            {% if livrables %}
+                                <div class="list-group list-group-flush">
+                                    {% for livrable in livrables[:5] %}
+                                    <div class="list-group-item d-flex justify-content-between align-items-center">
+                                        <div>
+                                            <strong>{{ livrable.titre }}</strong>
+                                            <br><small class="text-muted">{{ livrable.type_livrable }}</small>
+                                        </div>
+                                        {% if livrable.obligatoire %}
+                                            <span class="badge bg-warning">Obligatoire</span>
+                                        {% else %}
+                                            <span class="badge bg-secondary">Optionnel</span>
+                                        {% endif %}
+                                    </div>
+                                    {% endfor %}
+                                    {% if livrables|length > 5 %}
+                                        <div class="list-group-item text-center">
+                                            <small class="text-muted">... et {{ livrables|length - 5 }} autres</small>
+                                        </div>
+                                    {% endif %}
+                                </div>
+                            {% else %}
+                                <div class="text-center py-3">
+                                    <i class="fas fa-file-alt fa-2x text-muted mb-2"></i>
+                                    <p class="text-muted mb-0">Aucun livrable défini</p>
+                                </div>
+                            {% endif %}
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Personnes ayant signé -->
+            <div class="card mb-4">
+                <div class="card-header">
+                    <h5 class="mb-0"><i class="fas fa-check-circle me-2"></i>Personnes ayant signé</h5>
+                </div>
+                <div class="card-body">
+                    {% if presences_par_session %}
+                        {% for session_id, session_data in presences_par_session.items() %}
+                        <div class="mb-4 {% if not loop.last %}border-bottom pb-4{% endif %}">
+                            <h6 class="text-primary mb-3">
+                                <i class="fas fa-calendar-day me-2"></i>{{ session_data.session_titre }}
+                                <small class="text-muted">
+                                    - {{ session_data.session_date.strftime('%d/%m/%Y') if session_data.session_date else '' }}
+                                    {% if session_data.session_heure_debut %}
+                                        à {{ session_data.session_heure_debut.strftime('%H:%M') if session_data.session_heure_debut else '' }}
+                                    {% endif %}
+                                </small>
+                            </h6>
+                            <div class="table-responsive">
+                                <table class="table table-sm table-hover">
+                                    <thead>
+                                        <tr>
+                                            <th>Photo</th>
+                                            <th>Nom</th>
+                                            <th>Email</th>
+                                            <th>Heure d'arrivée</th>
+                                            <th>Méthode de signature</th>
+                                            <th>Actions</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        {% for presence in session_data.presences %}
+                                        <tr>
+                                            <td>
+                                                {% if presence.candidat_photo_profil %}
+                                                    <img src="/media/{{ presence.candidat_photo_profil.replace('\\', '/') }}" 
+                                                         alt="{{ presence.candidat_prenom }} {{ presence.candidat_nom }}"
+                                                         class="rounded-circle" 
+                                                         style="width: 40px; height: 40px; object-fit: cover;">
+                                                {% else %}
+                                                    <div class="bg-secondary rounded-circle d-flex align-items-center justify-content-center" 
+                                                         style="width: 40px; height: 40px;">
+                                                        <i class="fas fa-user text-white"></i>
+                                                    </div>
+                                                {% endif %}
+                                            </td>
+                                            <td>
+                                                <strong>{{ presence.candidat_prenom }} {{ presence.candidat_nom }}</strong>
+                                            </td>
+                                            <td>
+                                                <small class="text-muted">{{ presence.candidat_email }}</small>
+                                            </td>
+                                            <td>
+                                                {% if presence.heure_arrivee %}
+                                                    <small>{{ presence.heure_arrivee.strftime('%d/%m/%Y à %H:%M') if presence.heure_arrivee else '' }}</small>
+                                                {% else %}
+                                                    <small class="text-muted">N/A</small>
+                                                {% endif %}
+                                            </td>
+                                            <td>
+                                                {% if presence.methode_signature %}
+                                                    {% if presence.methode_signature == 'digital' or presence.methode_signature == 'DIGITAL' %}
+                                                        <span class="badge bg-info">
+                                                            <i class="fas fa-mouse-pointer me-1"></i>Digitale
+                                                        </span>
+                                                    {% elif presence.methode_signature == 'manuel' or presence.methode_signature == 'MANUEL' %}
+                                                        <span class="badge bg-secondary">
+                                                            <i class="fas fa-pen me-1"></i>Manuelle
+                                                        </span>
+                                                    {% else %}
+                                                        <span class="badge bg-secondary">{{ presence.methode_signature }}</span>
+                                                    {% endif %}
+                                                {% else %}
+                                                    <small class="text-muted">N/A</small>
+                                                {% endif %}
+                                            </td>
+                                            <td>
+                                                <div class="btn-group btn-group-sm" role="group">
+                                                    {% if presence.signature_digitale %}
+                                                        <a href="{{ presence.signature_digitale }}" target="_blank" 
+                                                           class="btn btn-outline-primary" title="Voir la signature">
+                                                            <i class="fas fa-signature"></i>
+                                                        </a>
+                                                    {% endif %}
+                                                    {% if presence.photo_signature %}
+                                                        <a href="{{ presence.photo_signature }}" target="_blank" 
+                                                           class="btn btn-outline-info" title="Voir la photo">
+                                                            <i class="fas fa-camera"></i>
+                                                        </a>
+                                                    {% endif %}
+                                                </div>
+                                            </td>
+                                        </tr>
+                                        {% endfor %}
+                                    </tbody>
+                                </table>
+                            </div>
+                        </div>
+                        {% endfor %}
                     {% else %}
-                        <div class="text-center py-3">
-                            <i class="fas fa-envelope fa-2x text-muted mb-2"></i>
-                            <p class="text-muted mb-0">Aucune invitation envoyée</p>
+                        <div class="text-center py-4">
+                            <i class="fas fa-check-circle fa-3x text-muted mb-3"></i>
+                            <h5 class="text-muted">Aucune signature enregistrée</h5>
+                            <p class="text-muted">Les personnes invitées n'ont pas encore signé leur présence.</p>
                         </div>
                     {% endif %}
                 </div>
             </div>
         </div>
         
-        <div class="col-md-6">
-            <div class="card">
-                <div class="card-header">
-                    <div class="d-flex justify-content-between align-items-center">
-                        <h5 class="mb-0">Livrables ({{ livrables|length }})</h5>
-                        <div>
-                            <a href="{{ url_for('livrables_candidat', seminaire_id=seminaire.id) }}" class="btn btn-sm btn-primary me-2">
-                                <i class="fas fa-upload me-1"></i>Mes livrables
-                            </a>
-                            <a href="{{ url_for('livrables_seminaire', seminaire_id=seminaire.id) }}" class="btn btn-sm btn-success">
-                                <i class="fas fa-file-alt me-1"></i>Gérer
-                            </a>
-                        </div>
-                    </div>
+        <!-- Sidebar -->
+        <div class="col-lg-3 seminaire-sidebar">
+            <!-- Bouton Retour à la liste -->
+            <div class="mb-3">
+                <a href="{{ url_for('liste_seminaires') }}{% if programme_param %}?programme={{ programme_param }}{% endif %}" class="btn btn-outline-secondary w-100">
+                    <i class="fas fa-arrow-left me-2"></i>Retour à la liste
+                </a>
+            </div>
+            
+            <div class="card mb-3">
+                <div class="card-header bg-primary text-white">
+                    <h5 class="mb-0"><i class="fas fa-chart-line me-2"></i>Statut</h5>
                 </div>
-                <div class="card-body">
-                    {% if livrables %}
-                        <div class="list-group list-group-flush">
-                            {% for livrable in livrables[:5] %}
-                            <div class="list-group-item d-flex justify-content-between align-items-center">
-                                <div>
-                                    <strong>{{ livrable.titre }}</strong>
-                                    <br><small class="text-muted">{{ livrable.type_livrable }}</small>
-                                </div>
-                                {% if livrable.obligatoire %}
-                                    <span class="badge bg-warning">Obligatoire</span>
-                                {% else %}
-                                    <span class="badge bg-secondary">Optionnel</span>
-                                {% endif %}
-                            </div>
-                            {% endfor %}
-                            {% if livrables|length > 5 %}
-                                <div class="list-group-item text-center">
-                                    <small class="text-muted">... et {{ livrables|length - 5 }} autres</small>
-                                </div>
-                            {% endif %}
-                        </div>
-                    {% else %}
-                        <div class="text-center py-3">
-                            <i class="fas fa-file-alt fa-2x text-muted mb-2"></i>
-                            <p class="text-muted mb-0">Aucun livrable défini</p>
+                <div class="card-body text-center">
+                    {% if seminaire.statut == 'planifie' %}
+                        <div class="badge bg-warning fs-6 mb-3">Planifié</div>
+                    {% elif seminaire.statut == 'en_cours' %}
+                        <div class="badge bg-info fs-6 mb-3">En Cours</div>
+                    {% elif seminaire.statut == 'termine' %}
+                        <div class="badge bg-success fs-6 mb-3">Terminé</div>
+                    {% elif seminaire.statut == 'annule' %}
+                        <div class="badge bg-danger fs-6 mb-3">Annulé</div>
+                    {% endif %}
+                    
+                    <div class="mt-3">
+                        <small class="text-muted">
+                            <i class="fas fa-calendar me-1"></i>
+                            {{ seminaire.date_debut.strftime('%d/%m/%Y') }} - {{ seminaire.date_fin.strftime('%d/%m/%Y') }}
+                        </small>
+                    </div>
+                    {% if seminaire.lieu %}
+                        <div class="mt-2">
+                            <small class="text-muted">
+                                <i class="fas fa-map-marker-alt me-1"></i>{{ seminaire.lieu }}
+                            </small>
                         </div>
                     {% endif %}
+                    <div class="mt-2">
+                        <small class="text-muted">
+                            Créé le {{ seminaire.cree_le.strftime('%d/%m/%Y à %H:%M') }}
+                        </small>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- Statistiques rapides -->
+            <div class="card mb-3">
+                <div class="card-header">
+                    <h5 class="mb-0"><i class="fas fa-chart-bar me-2"></i>Statistiques</h5>
+                </div>
+                <div class="card-body">
+                    <div class="d-flex justify-content-between align-items-center mb-2">
+                        <span><i class="fas fa-calendar-day me-2 text-primary"></i>Sessions</span>
+                        <strong>{{ sessions|length }}</strong>
+                    </div>
+                    <div class="d-flex justify-content-between align-items-center mb-2">
+                        <span><i class="fas fa-envelope me-2 text-info"></i>Invitations</span>
+                        <strong>{{ invitations|length }}</strong>
+                    </div>
+                    <div class="d-flex justify-content-between align-items-center mb-2">
+                        <span><i class="fas fa-file-alt me-2 text-success"></i>Livrables</span>
+                        <strong>{{ livrables|length }}</strong>
+                    </div>
+                    {% if seminaire.capacite_max %}
+                        <hr>
+                        <div class="d-flex justify-content-between align-items-center">
+                            <span><i class="fas fa-users me-2 text-warning"></i>Capacité max</span>
+                            <strong>{{ seminaire.capacite_max }}</strong>
+                        </div>
+                    {% endif %}
+                </div>
+            </div>
+            
+            <!-- Actions -->
+            <div class="card">
+                <div class="card-header bg-success text-white">
+                    <h5 class="mb-0"><i class="fas fa-bolt me-2"></i>Actions</h5>
+                </div>
+                <div class="card-body">
+                    <div class="d-grid gap-2">
+                        <a href="{{ url_for('nouvelle_session_seminaire', seminaire_id=seminaire.id) }}{% if programme_param %}?programme={{ programme_param }}{% endif %}" class="btn btn-primary btn-sm">
+                            <i class="fas fa-plus me-1"></i>Nouvelle Session
+                        </a>
+                        <a href="{{ url_for('invitations_seminaire', seminaire_id=seminaire.id) }}{% if programme_param %}?programme={{ programme_param }}{% endif %}" class="btn btn-info btn-sm">
+                            <i class="fas fa-envelope me-1"></i>Gérer Invitations
+                        </a>
+                        <a href="{{ url_for('livrables_seminaire', seminaire_id=seminaire.id) }}{% if programme_param %}?programme={{ programme_param }}{% endif %}" class="btn btn-success btn-sm">
+                            <i class="fas fa-file-alt me-1"></i>Gérer Livrables
+                        </a>
+                        <hr>
+                        <a href="{{ url_for('modifier_seminaire_form', seminaire_id=seminaire.id) }}{% if programme_param %}?programme={{ programme_param }}{% endif %}" class="btn btn-warning btn-sm">
+                            <i class="fas fa-edit me-1"></i>Modifier
+                        </a>
+                        <button class="btn btn-danger btn-sm btn-supprimer-seminaire" 
+                                data-seminaire-id="{{ seminaire.id }}"
+                                data-seminaire-titre="{{ seminaire.titre }}">
+                            <i class="fas fa-trash me-1"></i>Supprimer
+                        </button>
+                    </div>
                 </div>
             </div>
         </div>
@@ -324,7 +446,20 @@
 </div>
 
 <style>
-.card {
+.seminaire-main-content {
+    padding-right: 1rem;
+}
+
+.seminaire-sidebar {
+    padding-left: 1rem;
+}
+
+.seminaire-sidebar .card {
+    box-shadow: 0 0.125rem 0.25rem rgba(0, 0, 0, 0.075);
+    border: 1px solid rgba(0, 0, 0, 0.125);
+}
+
+.seminaire-main-content .card {
     box-shadow: 0 0.125rem 0.25rem rgba(0, 0, 0, 0.075);
     border: 1px solid rgba(0, 0, 0, 0.125);
 }
@@ -347,15 +482,6 @@
     font-size: 0.75em;
 }
 
-.breadcrumb {
-    background-color: transparent;
-    padding: 0;
-}
-
-.breadcrumb-item + .breadcrumb-item::before {
-    content: ">";
-}
-
 .list-group-item {
     border-left: none;
     border-right: none;
@@ -368,13 +494,36 @@
 .list-group-item:last-child {
     border-bottom: none;
 }
+
+.seminaire-sidebar .card-header {
+    font-weight: 600;
+}
+
+.seminaire-sidebar .card-body {
+    font-size: 0.9rem;
+}
+
+.organisateur-avatar {
+    width: 30px;
+    height: 30px;
+}
 </style>
 
 <script>
+// Récupérer le paramètre programme depuis l'URL
+const urlParams = new URLSearchParams(window.location.search);
+const programmeCode = urlParams.get('programme') || '';
+
 // Fonction pour supprimer un séminaire
 function supprimerSeminaire(seminaireId, seminaireTitre) {
     if (confirm(`⚠️ Êtes-vous sûr de vouloir supprimer le séminaire "${seminaireTitre}" ?\n\nCette action supprimera définitivement :\n- Le séminaire et toutes ses sessions\n- Toutes les invitations\n- Toutes les présences\n- Tous les livrables\n\nCette action est IRRÉVERSIBLE !`)) {
-        fetch(`/seminaires/${seminaireId}/supprimer`, {
+        // Afficher l'overlay global
+        if (typeof showGlobalLoading === 'function') {
+            showGlobalLoading('Suppression du séminaire', 'Suppression en cours, veuillez patienter...');
+        }
+        
+        const url = `/seminaires/${seminaireId}/supprimer${programmeCode ? `?programme=${programmeCode}` : ''}`;
+        fetch(url, {
             method: 'POST',
             headers: {
                 'Content-Type': 'application/json',
@@ -383,14 +532,23 @@ function supprimerSeminaire(seminaireId, seminaireTitre) {
         })
         .then(response => {
             if (response.ok) {
+                if (typeof hideGlobalLoading === 'function') {
+                    hideGlobalLoading();
+                }
                 alert('✅ Séminaire supprimé avec succès !');
-                window.location.href = '/seminaires';
+                window.location.href = `/seminaires${programmeCode ? `?programme=${programmeCode}` : ''}`;
             } else {
+                if (typeof hideGlobalLoading === 'function') {
+                    hideGlobalLoading();
+                }
                 alert('❌ Erreur lors de la suppression du séminaire');
             }
         })
         .catch(error => {
             console.error('Erreur:', error);
+            if (typeof hideGlobalLoading === 'function') {
+                hideGlobalLoading();
+            }
             alert('❌ Erreur lors de la suppression du séminaire');
         });
     }
@@ -399,7 +557,13 @@ function supprimerSeminaire(seminaireId, seminaireTitre) {
 // Fonction pour supprimer une session
 function supprimerSession(seminaireId, sessionId, sessionTitre) {
     if (confirm(`⚠️ Êtes-vous sûr de vouloir supprimer la session "${sessionTitre}" ?\n\nCette action supprimera définitivement :\n- La session\n- Toutes les présences de cette session\n- Tous les livrables de cette session\n\nCette action est IRRÉVERSIBLE !`)) {
-        fetch(`/seminaires/${seminaireId}/sessions/${sessionId}/supprimer`, {
+        // Afficher l'overlay global
+        if (typeof showGlobalLoading === 'function') {
+            showGlobalLoading('Suppression de la session', 'Suppression en cours, veuillez patienter...');
+        }
+        
+        const url = `/seminaires/${seminaireId}/sessions/${sessionId}/supprimer${programmeCode ? `?programme=${programmeCode}` : ''}`;
+        fetch(url, {
             method: 'POST',
             headers: {
                 'Content-Type': 'application/json',
@@ -408,17 +572,80 @@ function supprimerSession(seminaireId, sessionId, sessionTitre) {
         })
         .then(response => {
             if (response.ok) {
+                if (typeof hideGlobalLoading === 'function') {
+                    hideGlobalLoading();
+                }
                 alert('✅ Session supprimée avec succès !');
                 window.location.reload();
             } else {
+                if (typeof hideGlobalLoading === 'function') {
+                    hideGlobalLoading();
+                }
                 alert('❌ Erreur lors de la suppression de la session');
             }
         })
         .catch(error => {
             console.error('Erreur:', error);
+            if (typeof hideGlobalLoading === 'function') {
+                hideGlobalLoading();
+            }
             alert('❌ Erreur lors de la suppression de la session');
         });
     }
 }
+
+// Gestionnaires d'événements pour les boutons de suppression
+document.addEventListener('DOMContentLoaded', function() {
+    // Bouton supprimer séminaire
+    const btnSupprimerSeminaire = document.querySelector('.btn-supprimer-seminaire');
+    if (btnSupprimerSeminaire) {
+        btnSupprimerSeminaire.addEventListener('click', function() {
+            const seminaireId = this.getAttribute('data-seminaire-id');
+            const seminaireTitre = this.getAttribute('data-seminaire-titre');
+            supprimerSeminaire(seminaireId, seminaireTitre);
+        });
+    }
+    
+    // Boutons supprimer session
+    const btnSupprimerSessions = document.querySelectorAll('.btn-supprimer-session');
+    btnSupprimerSessions.forEach(function(btn) {
+        btn.addEventListener('click', function() {
+            const seminaireId = this.getAttribute('data-seminaire-id');
+            const sessionId = this.getAttribute('data-session-id');
+            const sessionTitre = this.getAttribute('data-session-titre');
+            supprimerSession(seminaireId, sessionId, sessionTitre);
+        });
+    });
+    
+    // Ajouter l'overlay global aux liens de navigation CRUD
+    const navLinks = document.querySelectorAll('a[href*="/seminaires/"]');
+    navLinks.forEach(function(link) {
+        const href = link.getAttribute('href');
+        // Ignorer les liens de suppression (gérés séparément) et les liens externes
+        if (href && !href.includes('/supprimer') && !href.startsWith('http') && !href.startsWith('#')) {
+            link.addEventListener('click', function(e) {
+                // Ne pas intercepter si Ctrl/Cmd est pressé (nouvel onglet)
+                if (e.ctrlKey || e.metaKey) return;
+                
+                // Afficher l'overlay global
+                if (typeof showGlobalLoading === 'function') {
+                    let actionText = 'Chargement';
+                    if (href.includes('/modifier')) {
+                        actionText = 'Chargement du formulaire de modification';
+                    } else if (href.includes('/sessions/nouvelle')) {
+                        actionText = 'Chargement du formulaire de création de session';
+                    } else if (href.includes('/invitations')) {
+                        actionText = 'Chargement des invitations';
+                    } else if (href.includes('/livrables')) {
+                        actionText = 'Chargement des livrables';
+                    } else if (href.includes('/liste')) {
+                        actionText = 'Chargement de la liste';
+                    }
+                    showGlobalLoading(actionText, 'Veuillez patienter...');
+                }
+            });
+        }
+    });
+});
 </script>
 {% endblock %}

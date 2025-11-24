@@ -38,7 +38,6 @@ from fastapi import Depends  # Injection de dépendances
 # === IMPORTS INTERNES - MODÈLES ===
 from .models.base import Programme  # Modèles principaux
 from .models.preinscription import Preinscription
-from .models.inscription import Inscription
 from .models.jury import Jury
 from sqlmodel import func  # Fonctions SQL (COUNT, etc.)
 from .core.security import authenticate_user, create_access_token  # Authentification
@@ -506,7 +505,6 @@ from .core.security import get_current_user
 from .models.base import User, Programme
 from .models.enums import UserRole
 from .models.preinscription import Preinscription
-from .models.inscription import Inscription
 from .models.jury import Jury
 from .core.database import get_session
 from .schemas import UserResponse

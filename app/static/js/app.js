@@ -382,3 +382,117 @@ window.hideLoading = window.hideLoading || function() {
         }, 10);
     });
 })();
+
+// Script pour préserver le paramètre programme dans tous les liens et formulaires -->
+
+    (function() {
+        // Récupérer le paramètre programme de l'URL actuelle
+        const urlParams = new URLSearchParams(window.location.search);
+        const programmeParam = urlParams.get('programme');
+        
+        // Stocker dans une variable globale pour utilisation par d'autres scripts
+        window.currentProgramme = programmeParam;
+        
+        if (programmeParam) {
+            // Fonction pour ajouter le paramètre programme à une URL
+            function addProgrammeToUrl(url) {
+                if (!url) return url;
+                
+                try {
+                    const urlObj = new URL(url, window.location.origin);
+                    // Ne pas ajouter si déjà présent
+                    if (!urlObj.searchParams.has('programme')) {
+                        urlObj.searchParams.set('programme', programmeParam);
+                    }
+                    return urlObj.pathname + urlObj.search + urlObj.hash;
+                } catch (e) {
+                    // Si l'URL est relative, l'ajouter manuellement
+                    if (url.startsWith('/') || url.startsWith('#')) {
+                        const separator = url.includes('?') ? '&' : '?';
+                        if (!url.includes('programme=')) {
+                            return url + separator + 'programme=' + encodeURIComponent(programmeParam);
+                        }
+                    }
+                    return url;
+                }
+            }
+            
+            // Ajouter le paramètre programme à tous les liens
+            function processLinks() {
+                const links = document.querySelectorAll('a[href]');
+                links.forEach(function(link) {
+                    const href = link.getAttribute('href');
+                    // Ignorer les liens externes, les ancres, et les liens qui ont déjà le paramètre
+                    if (href && !href.startsWith('http') && !href.startsWith('#') && !href.startsWith('javascript:') && !href.includes('programme=')) {
+                        const newHref = addProgrammeToUrl(href);
+                        if (newHref !== href) {
+                            link.setAttribute('href', newHref);
+                        }
+                    }
+                });
+            }
+            
+            // Ajouter le paramètre programme à tous les formulaires
+            function processForms() {
+                const forms = document.querySelectorAll('form');
+                forms.forEach(function(form) {
+                    // Vérifier si le formulaire a déjà un champ programme
+                    let hasProgrammeField = false;
+                    const existingFields = form.querySelectorAll('input[name="programme"], input[type="hidden"][name="programme"]');
+                    if (existingFields.length > 0) {
+                        // Mettre à jour la valeur si le champ existe déjà
+                        existingFields.forEach(function(field) {
+                            field.value = programmeParam;
+                            hasProgrammeField = true;
+                        });
+                    }
+                    
+                    // Ajouter un champ caché si nécessaire
+                    if (!hasProgrammeField) {
+                        const hiddenInput = document.createElement('input');
+                        hiddenInput.type = 'hidden';
+                        hiddenInput.name = 'programme';
+                        hiddenInput.value = programmeParam;
+                        form.appendChild(hiddenInput);
+                    }
+                    
+                    // Ajouter le paramètre à l'action du formulaire si c'est une URL
+                    const action = form.getAttribute('action');
+                    if (action && !action.includes('programme=')) {
+                        const newAction = addProgrammeToUrl(action);
+                        if (newAction !== action) {
+                            form.setAttribute('action', newAction);
+                        }
+                    }
+                });
+            }
+            
+            // Exécuter au chargement de la page
+            if (document.readyState === 'loading') {
+                document.addEventListener('DOMContentLoaded', function() {
+                    processLinks();
+                    processForms();
+                });
+            } else {
+                processLinks();
+                processForms();
+            }
+            
+            // Observer les changements du DOM pour les éléments ajoutés dynamiquement
+            const observer = new MutationObserver(function(mutations) {
+                mutations.forEach(function(mutation) {
+                    if (mutation.addedNodes.length > 0) {
+                        processLinks();
+                        processForms();
+                    }
+                });
+            });
+            
+            observer.observe(document.body, {
+                childList: true,
+                subtree: true
+            });
+        }
+    })();
+
+

@@ -597,6 +597,7 @@ def static_versioned_url(path):
     """
     return static_versioning(static_url(path))
 
+
 # Configuration globale des templates
 # Injection des fonctions utilitaires (toujours disponibles)
 templates.env.globals.update(
@@ -618,7 +619,11 @@ templates.env.globals.update(
     # Alias pour compatibilité avec l'ancien code
     get_company_logo_url=lambda: company_logo('url'),
     company_logo_exists=lambda: company_logo('exists'),
+   
 )
+
+# Créer un contexte personnalisé qui injecte url_for basé sur request
+# Cela sera fait via un contexte de processus de rendu personnalisé
 
 # Configuration spécifique si settings est disponible
 if settings:

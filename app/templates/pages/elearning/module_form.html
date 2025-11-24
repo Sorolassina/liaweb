@@ -1,4 +1,4 @@
-{% extends "base.html" %}
+{% extends "layouts/base.html" %}
 
 {% block title %}
   {% if module %}
@@ -10,290 +10,490 @@
 
 {% block head_extra %}
 <style>
-  .form-container {
-    width: 100%;
-    margin: 0 auto;
-    padding: 15px;
-  }
-  
-  .form-card {
-    background: white;
-    border-radius: 8px;
-    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
-    padding: 20px;
-  }
-  
-  .form-header {
-    margin-bottom: 20px;
-    padding-bottom: 15px;
-    border-bottom: 1px solid #e9ecef;
-  }
-  
-  .form-header h1 {
-    font-size: 1.5rem;
-    margin: 0;
-    color: #333;
-  }
-  
-  .form-group {
-    margin-bottom: 15px;
-  }
-  
-  .form-label {
-    font-size: 13px;
-    margin-bottom: 5px;
-    font-weight: 600;
-    color: #555;
-  }
-  
-  .form-control {
-    padding: 8px;
-    border: 1px solid #e0e0e0;
-    border-radius: 6px;
-    font-size: 13px;
-    width: 100%;
-  }
-  
-  .form-control:focus {
-    border-color: var(--primary-color);
-    box-shadow: 0 0 0 0.2rem rgba(102, 126, 234, 0.25);
-  }
-  
-  .form-row {
+/* Limiter la hauteur de la page pour éviter le scroll */
+.page-content-wrapper {
+    height: calc(100vh - 120px);
+    max-height: calc(100vh - 120px);
     display: flex;
-    gap: 15px;
-  }
-  
-  .form-row .form-group {
+    flex-direction: column;
+    overflow: hidden;
+}
+
+.page-content-wrapper .row:first-child {
+    flex-shrink: 0;
+}
+
+.page-content-wrapper .row:last-child {
     flex: 1;
-  }
-  
-  .btn-submit, .btn-cancel {
-    padding: 10px 20px;
-    border-radius: 6px;
-    font-size: 13px;
-    font-weight: 600;
-    cursor: pointer;
-    text-decoration: none;
-    display: inline-block;
-    text-align: center;
-    border: none;
-    transition: all 0.2s ease;
-  }
-  
-  .btn-submit {
-    background: linear-gradient(135deg, #667eea, #764ba2);
-    color: white;
-    width: 20%;
-  }
-  
-  .btn-submit:hover {
-    transform: translateY(-1px);
-    box-shadow: 0 4px 8px rgba(102, 126, 234, 0.3);
-  }
-  
-  .btn-cancel {
-    background: #6c757d;
-    color: white;
-    width: 20%;
-  }
-  
-  .btn-cancel:hover {
-    background: #5a6268;
-    transform: translateY(-1px);
-  }
-  
-  .form-actions {
+    min-height: 0;
+    overflow: hidden;
     display: flex;
-    gap: 10px;
+    height: 100%;
+}
+
+.page-content-wrapper .row:last-child .col-lg-12 {
+    display: flex;
+    flex-direction: column;
+    min-height: 0;
+    max-height: 100%;
+    height: 95%;
+    margin: 1rem 0;
+    padding: 0 1rem;
+    overflow: hidden;
+}
+
+/* Style modal pour la card */
+.modal-style-card {
+    box-shadow: 0 10px 40px rgba(0, 0, 0, 0.2);
+    border-radius: 5px;
+    border: none;
+    display: flex;
+    flex-direction: column;
+    max-width: 1000px;
+    margin: 0 auto;
+    width: 100%;
+    height: 100%;
+    min-height: 0;
+}
+
+.modal-style-card > .card-header {
+    flex: 0 0 auto;
+}
+
+.modal-style-card > .card-body {
+    flex: 1 1 auto;
+    min-height: 0;
+}
+
+.modal-style-card > .card-footer {
+    flex: 0 0 auto;
+}
+
+.modal-style-header {
+    padding: 1.5rem;
+    border: 2px solid var(--primary-color);
+    background: var(--secondary-color);
+    flex-shrink: 0;
+    z-index: 10;
+    border-radius: 5px 5px 0 0;
+    border-bottom: 2px solid var(--primary-color);
+}
+
+.modal-style-title {
+    margin: 0;
+    color: var(--white-color);
+    font-size: 1.3rem;
+    font-weight: 700;
+}
+
+.modal-style-body {
+    padding: 1.5rem;
+    margin: 0;
+    flex: 1;
+    overflow-y: auto;
+    overflow-x: hidden;
+    min-height: 0;
+    border-left: 1px solid var(--primary-color);
+    border-right: 1px solid var(--primary-color);
+}
+
+.modal-style-footer {
+    padding: 1rem 1.5rem;
+    border: 2px solid var(--primary-color);
+    background: var(--gray-50);
+    display: flex !important;
+    gap: 1rem;
     justify-content: flex-end;
-    margin-top: 20px;
-    padding-top: 20px;
-    border-top: 1px solid #e9ecef;
-  }
-  
-  .form-text {
-    font-size: 0.8rem;
+    flex-shrink: 0;
+    flex-grow: 0;
+    z-index: 10;
+    border-radius: 0 0 5px 5px;
+    border-top: 2px solid var(--primary-color);
+    visibility: visible !important;
+    opacity: 1 !important;
+    height: auto !important;
+    min-height: 60px;
+}
+
+.modal-style-body::-webkit-scrollbar {
+    width: 8px;
+}
+
+.modal-style-body::-webkit-scrollbar-track {
+    background: var(--gray-100);
+    border-radius: 4px;
+}
+
+.modal-style-body::-webkit-scrollbar-thumb {
+    background: var(--gray-400);
+    border-radius: 4px;
+}
+
+.modal-style-body::-webkit-scrollbar-thumb:hover {
+    background: var(--gray-500);
+}
+
+/* Styles des formulaires */
+.form-label {
+    font-weight: 600;
+    color: #495057;
+    font-size: 0.875rem;
+    margin-bottom: 0.4rem;
+}
+
+.form-control-sm, .form-select-sm {
+    height: 32px;
+    padding: 0.375rem 0.5rem;
+    font-size: 0.875rem;
+    line-height: 1.4;
+    border: 1px solid var(--gray-300);
+    border-radius: 4px;
+}
+
+.form-control-sm:focus, .form-select-sm:focus {
+    border-color: var(--primary-color);
+    box-shadow: 0 0 0 0.2rem rgba(var(--primary-color-rgb), 0.25);
+}
+
+.form-control-sm:disabled, .form-select-sm:disabled {
+    background-color: #e9ecef;
+    opacity: 0.6;
+    cursor: not-allowed;
+}
+
+.form-control-sm[type="date"] {
+    padding: 0.375rem 0.5rem;
+}
+
+.form-control-sm[type="number"] {
+    padding: 0.375rem 0.5rem;
+}
+
+textarea.form-control-sm {
+    height: auto;
+    padding: 0.375rem 0.5rem;
+    line-height: 1.4;
+    min-height: 80px;
+}
+
+.breadcrumb {
+    background-color: transparent;
+    padding: 0;
+}
+
+.breadcrumb-item + .breadcrumb-item::before {
+    content: ">";
+}
+
+.mb-3 {
+    margin-bottom: 0.75rem !important;
+}
+
+.form-text {
+    font-size: 0.75rem;
     color: #6c757d;
     margin-top: 0.25rem;
-  }
-  
-  .required {
-    color: #dc3545;
-  }
+}
+
+@media (max-width: 768px) {
+    .page-content-wrapper {
+        height: calc(100vh - 150px);
+        max-height: calc(100vh - 150px);
+    }
+    
+    .modal-style-header {
+        padding: 1rem;
+    }
+    
+    .modal-style-title {
+        font-size: 1.1rem;
+    }
+    
+    .modal-style-body {
+        padding: 1rem;
+    }
+    
+    .modal-style-footer {
+        padding: 1rem;
+        flex-direction: column-reverse;
+    }
+    
+    .modal-style-footer .btn {
+        width: 100%;
+    }
+}
 </style>
 {% endblock %}
 
 {% block content %}
-<div class="form-container">
-  <div class="form-card">
-    <div class="form-header">
-      <div class="d-flex justify-content-between align-items-center">
-        <h1>
-          <i class="fas fa-{% if module %}edit{% else %}plus-circle{% endif %} me-2"></i>
-          {% if module %}
-            Modifier le module
-          {% else %}
-            Nouveau module
-          {% endif %}
-        </h1>
-        <a href="{{ url_for('elearning_modules') }}" class="btn btn-outline-secondary btn-sm">
-          <i class="fas fa-arrow-left me-2"></i>
-          Retour
-        </a>
-      </div>
+{% set programme_param = request.query_params.get('programme') or (schema_name.upper() if schema_name and schema_name != 'public' else '') %}
+{% set modules_url = url_for('elearning_modules') ~ ('?programme=' ~ programme_param if programme_param else '') %}
+{% set dashboard_url = url_for('elearning_dashboard') ~ ('?programme=' ~ programme_param if programme_param else '') %}
+
+<div class="container-fluid p-4 page-content-wrapper">
+    <div class="row mb-3">
+        <div class="col-12">
+            <nav aria-label="breadcrumb">
+                <ol class="breadcrumb">
+                    <li class="breadcrumb-item"><a href="{{ dashboard_url }}">E-Learning</a></li>
+                    <li class="breadcrumb-item"><a href="{{ modules_url }}">Modules</a></li>
+                    <li class="breadcrumb-item active">{% if module %}Modifier le Module{% else %}Créer un Module{% endif %}</li>
+                </ol>
+            </nav>
+        </div>
     </div>
-    
-    <form method="post" action="{% if module %}{{ url_for('elearning_module_edit', module_id=module.id) }}{% else %}{{ url_for('elearning_module_creer') }}{% endif %}">
-      <div class="form-row">
-        <div class="form-group">
-          <label for="titre" class="form-label">
-            Titre <span class="required">*</span>
-          </label>
-          <input 
-            type="text" 
-            id="titre" 
-            name="titre" 
-            class="form-control" 
-            value="{{ module.titre if module else '' }}"
-            required
-            placeholder="Ex: Introduction au marketing digital"
-          >
-        </div>
+
+    <div class="row">
+        <div class="col-lg-12">
+            <div class="card modal-style-card">
+                <div class="card-header modal-style-header">
+                    <h5 class="mb-0 modal-style-title">
+                        <i class="fas fa-{% if module %}edit{% else %}plus-circle{% endif %} me-2"></i>
+                        {% if module %}
+                            Modifier le Module
+                        {% else %}
+                            Nouveau Module
+                        {% endif %}
+                    </h5>
+                </div>
+                <div class="card-body modal-style-body">
         
-        <div class="form-group">
-          <label for="programme_id" class="form-label">
-            Programme <span class="required">*</span>
-          </label>
-          <select id="programme_id" name="programme_id" class="form-control" required>
-            <option value="">Sélectionner un programme</option>
-            {% for programme in programmes %}
-            <option value="{{ programme.id }}" 
-              {% if module and module.programme_id == programme.id %}selected{% endif %}>
-              {{ programme.nom }}
-            </option>
-            {% endfor %}
-          </select>
+        {% if request.query_params.get('error') %}
+        <div class="alert alert-danger">
+            <i class="fas fa-exclamation-triangle"></i>
+            {{ request.query_params.get('message', 'Une erreur est survenue') }}
         </div>
-      </div>
-      
-      <div class="form-group">
-        <label for="description" class="form-label">Description</label>
-        <textarea 
-          id="description" 
-          name="description" 
-          class="form-control" 
-          rows="3"
-          placeholder="Description du module..."
-        >{{ module.description if module else '' }}</textarea>
-      </div>
-      
-      <div class="form-row">
-        <div class="form-group">
-          <label for="duree_totale_minutes" class="form-label">Durée estimée (minutes)</label>
-          <input 
-            type="number" 
-            id="duree_totale_minutes" 
-            name="duree_totale_minutes" 
-            class="form-control" 
-            value="{{ module.duree_totale_minutes if module else '' }}"
-            min="1"
-            placeholder="Ex: 120"
-          >
-          <div class="form-text">Durée totale estimée pour compléter le module</div>
-        </div>
+        {% endif %}
         
-        <div class="form-group">
-          <label for="difficulte" class="form-label">Difficulté</label>
-          <select id="difficulte" name="difficulte" class="form-control">
-            <option value="facile" {% if module and module.difficulte == 'facile' %}selected{% endif %}>Facile</option>
-            <option value="moyen" {% if module and module.difficulte == 'moyen' %}selected{% endif %}>Moyen</option>
-            <option value="difficile" {% if module and module.difficulte == 'difficile' %}selected{% endif %}>Difficile</option>
-          </select>
-        </div>
-        
-        <div class="form-group">
-          <label for="statut" class="form-label">Statut</label>
-          <select id="statut" name="statut" class="form-control">
-            <option value="brouillon" {% if module and module.statut == 'brouillon' %}selected{% endif %}>Brouillon</option>
-            <option value="actif" {% if module and module.statut == 'actif' %}selected{% endif %}>Actif</option>
-            <option value="archive" {% if module and module.statut == 'archive' %}selected{% endif %}>Archivé</option>
-          </select>
-        </div>
-      </div>
-      
-      <div class="form-group">
-        <label for="objectifs" class="form-label">Objectifs pédagogiques</label>
-        <textarea 
-          id="objectifs" 
-          name="objectifs" 
-          class="form-control" 
-          rows="3"
-          placeholder="Quels sont les objectifs d'apprentissage de ce module ?"
-        >{{ module.objectifs if module else '' }}</textarea>
-        <div class="form-text">Décrivez ce que les apprenants devront savoir ou savoir-faire à la fin du module</div>
-      </div>
-      
-      <div class="form-group">
-        <label for="prerequis" class="form-label">Prérequis</label>
-        <textarea 
-          id="prerequis" 
-          name="prerequis" 
-          class="form-control" 
-          rows="2"
-          placeholder="Quels sont les prérequis nécessaires pour suivre ce module ?"
-        >{{ module.prerequis if module else '' }}</textarea>
-        <div class="form-text">Décrivez les connaissances ou compétences requises avant de commencer</div>
-      </div>
-      
-      <div class="form-row">
-        <div class="form-group">
-          <label for="ordre" class="form-label">Ordre d'affichage</label>
-          <input 
-            type="number" 
-            id="ordre" 
-            name="ordre" 
-            class="form-control" 
-            value="{{ module.ordre if module else 0 }}"
-            min="0"
-            placeholder="0"
-          >
-          <div class="form-text">Ordre d'affichage dans la liste des modules (0 = premier)</div>
-        </div>
-        
-        <div class="form-group">
-          <label class="form-label">Options</label>
-          <div class="form-check">
-            <input 
-              class="form-check-input" 
-              type="checkbox" 
-              id="actif" 
-              name="actif" 
-              value="true"
-              {% if not module or module.actif %}checked{% endif %}
-            >
-            <label class="form-check-label" for="actif">
-              Module actif
-            </label>
-          </div>
-        </div>
-      </div>
-      
-      <div class="form-actions">
-        <a href="{{ url_for('elearning_modules') }}" class="btn-cancel">
-          <i class="fas fa-times me-1"></i>
-          Annuler
-        </a>
-        <button type="submit" class="btn-submit">
-          <i class="fas fa-save me-1"></i>
-          {% if module %}
-            Mettre à jour
-          {% else %}
-            Créer le module
+        <form id="module-form" method="post" action="{% if module %}{{ url_for('elearning_module_edit', module_id=module.id) ~ ('?programme=' ~ programme_param if programme_param else '') }}{% else %}{{ url_for('elearning_module_create') ~ ('?programme=' ~ programme_param if programme_param else '') }}{% endif %}">
+          {% if programme_param %}
+          <input type="hidden" name="programme" value="{{ programme_param }}">
           {% endif %}
-        </button>
-      </div>
-    </form>
-  </div>
+          <div class="mb-3">
+            <label for="titre" class="form-label">Titre *</label>
+            <input 
+              type="text" 
+              id="titre" 
+              name="titre" 
+              class="form-control form-control-sm" 
+              value="{{ module.titre if module else '' }}"
+              required
+              placeholder="Ex: Introduction au marketing digital"
+            >
+          </div>
+          
+          <div class="mb-3">
+            <label for="programme_id" class="form-label">Programme *</label>
+            <select id="programme_id" name="programme_id" class="form-select form-select-sm" required {% if programme_param %}disabled{% endif %}>
+              <option value="">Sélectionner un programme</option>
+              {% for programme in programmes %}
+              <option value="{{ programme.id }}" 
+                {% if module and module.programme_id == programme.id %}selected{% elif programme_param and programme.code == programme_param %}selected{% endif %}>
+                {{ programme.nom }}
+              </option>
+              {% endfor %}
+            </select>
+            {% if programme_param %}
+            {# Champ hidden pour envoyer la valeur du programme même si le select est disabled #}
+            {% for programme in programmes %}
+              {% if programme.code == programme_param %}
+              <input type="hidden" name="programme_id" value="{{ programme.id }}">
+              {% endif %}
+            {% endfor %}
+            {% endif %}
+          </div>
+      
+          <div class="mb-3">
+            <label for="description" class="form-label">Description</label>
+            <textarea 
+              id="description" 
+              name="description" 
+              class="form-control form-control-sm" 
+              rows="3"
+              placeholder="Description du module..."
+            >{{ module.description if module else '' }}</textarea>
+          </div>
+          
+          <div class="row">
+            <div class="col-md-4">
+              <div class="mb-3">
+                <label for="duree_totale_minutes" class="form-label">Durée estimée (minutes)</label>
+                <input 
+                  type="number" 
+                  id="duree_totale_minutes" 
+                  name="duree_totale_minutes" 
+                  class="form-control form-control-sm" 
+                  value="{{ module.duree_totale_minutes if module else '' }}"
+                  min="1"
+                  placeholder="Ex: 120"
+                >
+                <div class="form-text">Durée totale estimée pour compléter le module</div>
+              </div>
+            </div>
+            
+            <div class="col-md-4">
+              <div class="mb-3">
+                <label for="difficulte" class="form-label">Difficulté</label>
+                <select id="difficulte" name="difficulte" class="form-select form-select-sm">
+                  <option value="facile" {% if module and module.difficulte == 'facile' %}selected{% endif %}>Facile</option>
+                  <option value="moyen" {% if module and module.difficulte == 'moyen' %}selected{% endif %}>Moyen</option>
+                  <option value="difficile" {% if module and module.difficulte == 'difficile' %}selected{% endif %}>Difficile</option>
+                </select>
+              </div>
+            </div>
+            
+            <div class="col-md-4">
+              <div class="mb-3">
+                <label for="statut" class="form-label">Statut</label>
+                <select id="statut" name="statut" class="form-select form-select-sm">
+                  <option value="brouillon" {% if module and module.statut == 'brouillon' %}selected{% endif %}>Brouillon</option>
+                  <option value="actif" {% if module and module.statut == 'actif' %}selected{% endif %}>Actif</option>
+                  <option value="archive" {% if module and module.statut == 'archive' %}selected{% endif %}>Archivé</option>
+                </select>
+              </div>
+            </div>
+          </div>
+      
+          <div class="mb-3">
+            <label for="objectifs" class="form-label">Objectifs pédagogiques</label>
+            <textarea 
+              id="objectifs" 
+              name="objectifs" 
+              class="form-control form-control-sm" 
+              rows="4"
+              placeholder="Quels sont les objectifs d'apprentissage de ce module ?"
+            >{{ module.objectifs if module else '' }}</textarea>
+            <div class="form-text">Décrivez ce que les apprenants devront savoir ou savoir-faire à la fin du module</div>
+          </div>
+          
+          <div class="mb-3">
+            <label for="prerequis" class="form-label">Prérequis</label>
+            <textarea 
+              id="prerequis" 
+              name="prerequis" 
+              class="form-control form-control-sm" 
+              rows="3"
+              placeholder="Quels sont les prérequis nécessaires pour suivre ce module ?"
+            >{{ module.prerequis if module else '' }}</textarea>
+            <div class="form-text">Décrivez les connaissances ou compétences requises avant de commencer</div>
+          </div>
+          
+          <div class="row">
+            <div class="col-md-6">
+              <div class="mb-3">
+                <label for="ordre" class="form-label">Ordre d'affichage</label>
+                <input 
+                  type="number" 
+                  id="ordre" 
+                  name="ordre" 
+                  class="form-control form-control-sm" 
+                  value="{{ module.ordre if module else 0 }}"
+                  min="0"
+                  placeholder="0"
+                >
+                <div class="form-text">Ordre d'affichage dans la liste des modules (0 = premier)</div>
+              </div>
+            </div>
+            
+            <div class="col-md-6">
+              <div class="mb-3">
+                <label class="form-label">Options</label>
+                <div class="form-check mt-2">
+                  <input 
+                    class="form-check-input" 
+                    type="checkbox" 
+                    id="actif" 
+                    name="actif" 
+                    value="true"
+                    {% if not module or module.actif %}checked{% endif %}
+                  >
+                  <label class="form-check-label" for="actif">
+                    Module actif
+                  </label>
+                </div>
+              </div>
+            </div>
+          </div>
+        
+        </form>
+                </div>
+                <div class="card-footer modal-style-footer">
+                    <div class="d-flex justify-content-between w-100">
+                        <a href="{{ modules_url }}" class="btn btn-secondary">
+                            <i class="fas fa-arrow-left me-2"></i>Annuler
+                        </a>
+                        <button type="submit" form="module-form" class="btn btn-primary">
+                            <i class="fas fa-save me-2"></i>
+                            {% if module %}
+                                Mettre à jour
+                            {% else %}
+                                Créer le module
+                            {% endif %}
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
 </div>
+
+<script>
+// Validation côté client et overlay global
+document.addEventListener('DOMContentLoaded', function() {
+    const form = document.querySelector('#module-form');
+    const submitBtn = document.querySelector('button[type="submit"][form="module-form"]');
+    
+    if (form && submitBtn) {
+        form.addEventListener('submit', function(e) {
+            const titre = document.getElementById('titre').value.trim();
+            if (titre.length < 3) {
+                e.preventDefault();
+                alert('Le titre du module doit contenir au moins 3 caractères.');
+                return false;
+            }
+            
+            // Afficher l'overlay global
+            if (typeof showGlobalLoading === 'function') {
+                const actionText = form.action.includes('edit') ? 'Modification' : 'Création';
+                showGlobalLoading(
+                    `${actionText} du module`,
+                    'Traitement en cours, veuillez patienter...'
+                );
+            }
+            
+            // Désactiver le bouton et afficher un spinner
+            submitBtn.disabled = true;
+            const originalHtml = submitBtn.innerHTML;
+            submitBtn.innerHTML = '<i class="fas fa-spinner fa-spin me-2"></i>Traitement...';
+            
+            // Timeout de sécurité pour masquer l'overlay après 10 secondes
+            setTimeout(function() {
+                if (typeof hideGlobalLoading === 'function') {
+                    hideGlobalLoading();
+                }
+                submitBtn.disabled = false;
+                submitBtn.innerHTML = originalHtml;
+            }, 10000);
+        });
+    }
+    
+    // Ajouter l'overlay global aux liens de navigation
+    const navLinks = document.querySelectorAll('a[href*="/elearning/"]');
+    navLinks.forEach(function(link) {
+        const href = link.getAttribute('href');
+        // Ignorer les liens externes
+        if (href && !href.startsWith('http') && !href.startsWith('#')) {
+            link.addEventListener('click', function(e) {
+                // Ne pas intercepter si Ctrl/Cmd est pressé (nouvel onglet)
+                if (e.ctrlKey || e.metaKey) return;
+                
+                // Afficher l'overlay global
+                if (typeof showGlobalLoading === 'function') {
+                    showGlobalLoading('Chargement', 'Veuillez patienter...');
+                }
+            });
+        }
+    });
+});
+</script>
 {% endblock %}

@@ -1,158 +1,351 @@
-{% extends "base.html" %}
+{% extends "layouts/base.html" %}
 {% from "components/page_header.html" import page_header %}
 
 {% block title %}Gestion des Séminaires{% endblock %}
 
 {% block content %}
-<!--<div class="container-fluid p-4">-->
-<!-- Entête -->
-    {{ page_header(
-        title="<i class='fas fa-calendar-alt me-2'></i>Séminaires",
-        breadcrumbs=[{"name": "Gestion des données des séminaires du programme"}],
-        actions=[{"url": url_for('form_seminaire'), "label": "<i class='fas fa-users'></i> + Séminaire", "primary": True}]
-    ) }}
-    <div class="toolbar" style="margin-top: 1rem;">
-        <a href="{{ url_for('form_seminaire') }}" class="submenu-item">
-            <div class="icon"><i class="fas fa-users"></i></div><div>+ Séminaire</div>
-        </a>
-    </div>
+{% set programme_param = request.query_params.get('programme') or (schema_name.upper() if schema_name and schema_name != 'public' else '') %}
+{% set form_seminaire_url = url_for('form_seminaire') %}
+{% if programme_param %}
+    {% set form_seminaire_url = form_seminaire_url ~ '?programme=' ~ programme_param %}
+{% endif %}
 
-    <!-- Statistiques compactes -->
-    <div class="row mb-3">
-        <div class="col-md-3">
-            <div class="card bg-primary text-white stats-compact">
-                <div class="card-body py-2">
-                    <div class="d-flex justify-content-between align-items-center">
-                        <div>
-                            <h5 class="mb-0">{{ stats.total_seminaires }}</h5>
-                            <small>Total</small>
-                        </div>
-                        <i class="fas fa-calendar-alt fa-lg"></i>
-                    </div>
-                </div>
-            </div>
-        </div>
-        <div class="col-md-3">
-            <div class="card bg-warning text-white stats-compact">
-                <div class="card-body py-2">
-                    <div class="d-flex justify-content-between align-items-center">
-                        <div>
-                            <h5 class="mb-0">{{ stats.seminaires_planifies }}</h5>
-                            <small>Planifiés</small>
-                        </div>
-                        <i class="fas fa-clock fa-lg"></i>
-                    </div>
-                </div>
-            </div>
-        </div>
-        <div class="col-md-3">
-            <div class="card bg-info text-white stats-compact">
-                <div class="card-body py-2">
-                    <div class="d-flex justify-content-between align-items-center">
-                        <div>
-                            <h5 class="mb-0">{{ stats.seminaires_en_cours }}</h5>
-                            <small>En Cours</small>
-                        </div>
-                        <i class="fas fa-play fa-lg"></i>
-                    </div>
-                </div>
-            </div>
-        </div>
-        <div class="col-md-3">
-            <div class="card bg-success text-white stats-compact">
-                <div class="card-body py-2">
-                    <div class="d-flex justify-content-between align-items-center">
-                        <div>
-                            <h5 class="mb-0">{{ stats.seminaires_termines }}</h5>
-                            <small>Terminés</small>
-                        </div>
-                        <i class="fas fa-check fa-lg"></i>
-                    </div>
-                </div>
-            </div>
+<style>
+/* Styles pour rendre la page plus compacte */
+.compact-page {
+    font-size: 0.85rem;
+}
+
+.compact-page .card-header {
+    padding: 0.5rem 0.75rem;
+    font-size: 0.9rem;
+}
+
+.compact-page .card-body {
+    padding: 0.75rem;
+}
+
+/* Styles pour les KPIs dans le page_header */
+.page-header-right-content .seminaire-kpis {
+    display: flex;
+    gap: 1rem;
+    align-items: center;
+    flex-wrap: wrap;
+    flex-direction: row;
+}
+
+.page-header-right-content .info-box-sm {
+    display: flex;
+    align-items: center;
+    padding: 0.4rem;
+    background: rgba(255, 255, 255, 0.15);
+    border-radius: 0.375rem;
+    margin-bottom: 0;
+}
+
+.page-header-right-content .info-box-sm .info-box-icon {
+    width: 2.5rem;
+    height: 2.5rem;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border-radius: 50%;
+    margin-right: 0.5rem;
+    font-size: 0.9rem;
+}
+
+.page-header-right-content .info-box-sm .info-box-content {
+    flex: 1;
+    padding-left: 0;
+}
+
+.page-header-right-content .info-box-sm .info-box-text {
+    display: block;
+    font-size: 0.7rem;
+    font-weight: 500;
+    color: rgba(255, 255, 255, 0.9);
+    margin-bottom: 0.25rem;
+}
+
+.page-header-right-content .info-box-sm .info-box-number {
+    display: block;
+    font-size: 0.9rem;
+    font-weight: 600;
+    color: white;
+}
+
+/* Styles pour la sidebar */
+.seminaire-sidebar {
+    background-color: #2a2a2a;
+    border-left: 1px solid #dee2e6;
+    border-radius: 12px;
+    padding: 0.75rem;
+    height: calc(100vh - 300px);
+    max-height: calc(100vh - 300px);
+    position: sticky;
+    top: 0;
+    overflow-y: auto;
+    display: flex;
+    flex-direction: column;
+}
+
+.seminaire-sidebar::-webkit-scrollbar {
+    width: 6px;
+}
+
+.seminaire-sidebar::-webkit-scrollbar-track {
+    background: transparent;
+}
+
+.seminaire-sidebar::-webkit-scrollbar-thumb {
+    background: #dee2e6;
+    border-radius: 3px;
+}
+
+.seminaire-sidebar::-webkit-scrollbar-thumb:hover {
+    background: #adb5bd;
+}
+
+.seminaire-sidebar .sidebar-section {
+    margin-bottom: 1rem;
+}
+
+.seminaire-sidebar .sidebar-section:last-child {
+    margin-bottom: 0;
+}
+
+.seminaire-sidebar .sidebar-section-title {
+    font-size: 0.8rem;
+    font-weight: 600;
+    color: #ffffff;
+    margin-bottom: 0.5rem;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    border-bottom: 2px solid rgba(255, 255, 255, 0.2);
+    padding-bottom: 0.4rem;
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+}
+
+.seminaire-sidebar .btn-new-seminaire {
+    width: 100%;
+    padding: 0.5rem 0.75rem;
+    font-weight: 600;
+    margin-bottom: 0.75rem;
+    font-size: 0.85rem;
+    box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+    transition: all 0.2s ease;
+}
+
+.seminaire-sidebar .btn-new-seminaire:hover {
+    transform: translateY(-1px);
+    box-shadow: 0 4px 6px rgba(0,0,0,0.15);
+}
+
+.seminaire-sidebar .form-label {
+    font-size: 0.75rem;
+    font-weight: 500;
+    margin-bottom: 0.4rem;
+    color: #ffffff;
+}
+
+.seminaire-sidebar .form-select-sm {
+    height: 28px;
+    padding: 0.25rem 0.5rem;
+    font-size: 0.75rem;
+    line-height: 1.2;
+}
+
+.seminaire-sidebar .form-control-sm {
+    height: 28px;
+    padding: 0.25rem 0.5rem;
+    font-size: 0.75rem;
+    line-height: 1.2;
+}
+
+.seminaire-main-content {
+    padding: 1rem;
+    height: calc(100vh - 250px);
+    display: flex;
+    flex-direction: column;
+}
+
+.seminaire-main-content .card {
+    height: 100%;
+    display: flex;
+    flex-direction: column;
+}
+
+.seminaire-main-content .card-body {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    min-height: 0;
+}
+
+.seminaire-main-content .table-responsive {
+    flex: 1;
+    overflow-y: auto;
+    overflow-x: auto;
+    min-height: 0;
+    position: relative;
+}
+
+/* Tableau */
+.data-table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 0.85rem;
+}
+
+.data-table thead {
+    position: sticky;
+    top: 0;
+    background-color: #f8f9fa;
+    z-index: 10;
+}
+
+.data-table th {
+    padding: 0.75rem 0.5rem;
+    text-align: left;
+    font-weight: 600;
+    font-size: 0.8rem;
+    color: #495057;
+    border-bottom: 2px solid #dee2e6;
+    white-space: nowrap;
+}
+
+.data-table td {
+    padding: 0.75rem 0.5rem;
+    border-bottom: 1px solid #dee2e6;
+    vertical-align: middle;
+}
+
+.data-table tbody tr:hover {
+    background-color: #f8f9fa;
+}
+
+.data-table .actions-col {
+    width: 200px;
+    min-width: 200px;
+    text-align: center;
+}
+
+.table-actions {
+    display: flex;
+    gap: 0.25rem;
+    justify-content: center;
+    flex-wrap: wrap;
+}
+
+.table-actions .btn {
+    padding: 0.25rem 0.5rem;
+    font-size: 0.75rem;
+}
+
+/* Responsive */
+@media (max-width: 768px) {
+    .seminaire-sidebar {
+        position: relative;
+        min-height: auto;
+        max-height: none;
+        border-left: none;
+        border-top: 1px solid #dee2e6;
+        margin-top: 1rem;
+    }
+    
+    .seminaire-main-content {
+        padding: 0.5rem;
+    }
+}
+</style>
+
+<!-- Entête avec KPI -->
+{% set kpis_content %}
+<div class="seminaire-kpis">
+    <div class="info-box-sm">
+        <span class="info-box-icon bg-info">
+            <i class="fas fa-calendar-alt"></i>
+        </span>
+        <div class="info-box-content">
+            <span class="info-box-text">Total</span>
+            <span class="info-box-number">{{ stats.total_seminaires }}</span>
         </div>
     </div>
-
-    <!-- Filtres compacts -->
-    <div class="row mb-3">
-        <div class="col-12">
-            <div class="card">
-                <div class="card-body py-2">
-                    <form method="GET" class="row g-2">
-                        <div class="col-md-2">
-                            <label for="programme_id" class="form-label form-label-sm">Programme</label>
-                            <select class="form-select form-select-sm" id="programme_id" name="programme_id">
-                                <option value="">Tous</option>
-                                {% for programme in programmes %}
-                                <option value="{{ programme.id }}" {% if programme_id == programme.id %}selected{% endif %}>
-                                    {{ programme.code }}
-                                </option>
-                                {% endfor %}
-                            </select>
-                        </div>
-                        <div class="col-md-2">
-                            <label for="statut" class="form-label form-label-sm">Statut</label>
-                            <select class="form-select form-select-sm" id="statut" name="statut">
-                                <option value="">Tous</option>
-                                <option value="planifie">Planifié</option>
-                                <option value="en_cours">En Cours</option>
-                                <option value="termine">Terminé</option>
-                                <option value="annule">Annulé</option>
-                            </select>
-                        </div>
-                        <div class="col-md-2">
-                            <label for="date_from" class="form-label form-label-sm">Début</label>
-                            <input type="date" class="form-control form-control-sm" id="date_from" name="date_from">
-                        </div>
-                        <div class="col-md-2">
-                            <label for="date_to" class="form-label form-label-sm">Fin</label>
-                            <input type="date" class="form-control form-control-sm" id="date_to" name="date_to">
-                        </div>
-                        <div class="col-md-2">
-                            <label class="form-label form-label-sm">&nbsp;</label>
-                            <div class="d-grid">
-                                <button type="submit" class="btn btn-outline-primary btn-sm">
-                                    <i class="fas fa-filter me-1"></i>Filtrer
-                                </button>
-                            </div>
-                        </div>
-                    </form>
-                </div>
-            </div>
+    <div class="info-box-sm">
+        <span class="info-box-icon bg-warning">
+            <i class="fas fa-clock"></i>
+        </span>
+        <div class="info-box-content">
+            <span class="info-box-text">Planifiés</span>
+            <span class="info-box-number">{{ stats.seminaires_planifies }}</span>
         </div>
     </div>
+    <div class="info-box-sm">
+        <span class="info-box-icon bg-info">
+            <i class="fas fa-play"></i>
+        </span>
+        <div class="info-box-content">
+            <span class="info-box-text">En Cours</span>
+            <span class="info-box-number">{{ stats.seminaires_en_cours }}</span>
+        </div>
+    </div>
+    <div class="info-box-sm">
+        <span class="info-box-icon bg-success">
+            <i class="fas fa-check-circle"></i>
+        </span>
+        <div class="info-box-content">
+            <span class="info-box-text">Terminés</span>
+            <span class="info-box-number">{{ stats.seminaires_termines }}</span>
+        </div>
+    </div>
+</div>
+{% endset %}
 
-    <!-- Liste des séminaires -->
-    <div class="row" style="height: 100%;">
-        <div class="col-12"style="height: 100%;">
-            <div class="card"style="height: 100%;">
+{% set title_with_help %}
+<i class='fas fa-calendar-alt me-2'></i>Séminaires
+<button type="button" class="btn btn-outline-light btn-sm ms-2" onclick="showModal('seminaireHelpModal')" title="Aide - Comment fonctionnent les Séminaires ?">
+    <i class="fas fa-question-circle me-1"></i>Aide
+</button>
+{% endset %}
+
+{{ page_header(
+    title=title_with_help,
+    breadcrumbs=[{"name": "Gestion des données des séminaires du programme"}],
+    right_content=kpis_content
+) }}
+
+<div class="container-fluid compact-page px-0">
+    <div class="row g-0">
+        <!-- Contenu principal avec table -->
+        <div class="col-md-9 col-lg-10 seminaire-main-content">
+            <div class="card h-100 d-flex flex-column">
                 <div class="card-header py-2">
                     <h6 class="mb-0">Liste des Séminaires</h6>
                 </div>
-                <div class="card-body"style="height: 100%;">
-                    {% if seminaires %}
-                        <div class="table-responsive" style="height: 100%;">
-                            <table class="table table-hover table-sm">
-                                <thead>
-                                    <tr>
-                                        <th>Titre</th>
-                                        <th>Prog.</th>
-                                        <th>Dates</th>
-                                        <th>Lieu</th>
-                                        <th>Statut</th>
-                                        <th>Org.</th>
-                                        <th>Actions</th>
-                                    </tr>
-                                </thead>
-                                <tbody>
+                <!-- Tableau des séminaires -->
+                <div class="card-body flex-grow-1 d-flex flex-column p-0">
+                    <div class="table-responsive">
+                        <table class="data-table table-striped">
+                            <thead>
+                                <tr>
+                                    <th>Titre</th>
+                                    <th>Dates</th>
+                                    <th>Lieu</th>
+                                    <th>Statut</th>
+                                    <th>Org.</th>
+                                    <th class="actions-col">Actions</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% if seminaires %}
                                     {% for seminaire in seminaires %}
                                     <tr>
                                         <td>
                                             <strong>{{ seminaire.titre[:30] }}{% if seminaire.titre|length > 30 %}...{% endif %}</strong>
                                         </td>
-                                        <td>
-                                            <span class="badge bg-secondary">{{ seminaire.programme.code }}</span>
-                                        </td>
+                                        
                                         <td>
                                             <small>{{ seminaire.date_debut.strftime('%d/%m/%Y') }}</small><br>
                                             <small>{{ seminaire.date_fin.strftime('%d/%m/%Y') }}</small>
@@ -178,176 +371,420 @@
                                             {% endif %}
                                         </td>
                                         <td>
-                                            <small>{{ seminaire.organisateur.nom_complet[:15] }}{% if seminaire.organisateur.nom_complet|length > 15 %}...{% endif %}</small>
+                                            <small>{{ seminaire.organisateur[:15] if seminaire.organisateur else '' }}{% if seminaire.organisateur and seminaire.organisateur|length > 15 %}...{% endif %}</small>
                                         </td>
-                                        <td>
-                                            <div class="btn-group btn-group-sm" role="group">
-                                                <a href="{{ url_for('detail_seminaire', seminaire_id=seminaire.id) }}" class="btn btn-outline-primary btn-xs">
+                                        <td class="actions-col">
+                                            <div class="table-actions">
+                                                <a href="{{ url_for('detail_seminaire', seminaire_id=seminaire.id) }}{% if programme_param %}?programme={{ programme_param }}{% endif %}" class="btn btn-sm btn-outline-primary" title="Voir les détails">
                                                     <i class="fas fa-eye"></i>
                                                 </a>
-                                                <a href="{{ url_for('invitations_seminaire', seminaire_id=seminaire.id) }}" class="btn btn-outline-info btn-xs">
+                                                <a href="{{ url_for('invitations_seminaire', seminaire_id=seminaire.id) }}{% if programme_param %}?programme={{ programme_param }}{% endif %}" class="btn btn-sm btn-outline-info" title="Invitations">
                                                     <i class="fas fa-envelope"></i>
                                                 </a>
-                                                <a href="{{ url_for('livrables_seminaire', seminaire_id=seminaire.id) }}" class="btn btn-outline-success btn-xs">
+                                                <a href="{{ url_for('livrables_seminaire', seminaire_id=seminaire.id) }}{% if programme_param %}?programme={{ programme_param }}{% endif %}" class="btn btn-sm btn-outline-success" title="Livrables">
                                                     <i class="fas fa-file-alt"></i>
                                                 </a>
+                                                <button class="btn btn-sm btn-outline-danger btn-supprimer-seminaire-liste" 
+                                                        data-seminaire-id="{{ seminaire.id }}"
+                                                        data-seminaire-titre="{{ seminaire.titre }}"
+                                                        title="Supprimer">
+                                                    <i class="fas fa-trash"></i>
+                                                </button>
                                             </div>
                                         </td>
                                     </tr>
                                     {% endfor %}
-                                </tbody>
-                            </table>
-                        </div>
-                    {% else %}
-                        <div class="text-center py-5" style="height: 100%;">
-                            <i class="fas fa-calendar-alt fa-3x text-muted mb-3"></i>
-                            <h4 class="text-muted">Aucun séminaire trouvé</h4>
-                            <p class="text-muted">Commencez par créer votre premier séminaire.</p>
-                            <a href="{{ url_for('form_seminaire') }}" class="btn btn-primary">
-                                <i class="fas fa-plus me-2"></i>Créer un Séminaire
-                            </a>
-                        </div>
-                    {% endif %}
+                                {% else %}
+                                    <tr>
+                                        <td colspan="7" class="empty-message text-center py-5">
+                                            <i class="fas fa-calendar-alt fa-3x text-muted mb-3"></i>
+                                            <p class="mb-0">Aucun séminaire trouvé</p>
+                                            <p class="text-muted small mt-2">Commencez par créer votre premier séminaire.</p>
+                                        </td>
+                                    </tr>
+                                {% endif %}
+                            </tbody>
+                        </table>
+                    </div>
                 </div>
+
+                <!-- Informations sur les résultats -->
+                {% if seminaires %}
+                    <div class="card-footer flex-shrink-0">
+                        <div class="d-flex justify-content-between align-items-center">
+                            <small class="text-muted">
+                                Affichage de <strong>{{ seminaires|length }}</strong> séminaire{% if seminaires|length > 1 %}s{% endif %}
+                                {% if stats.total_seminaires > seminaires|length %}
+                                    sur <strong>{{ stats.total_seminaires }}</strong> au total
+                                {% endif %}
+                            </small>
+                        </div>
+                    </div>
+                {% endif %}
+            </div>
+        </div>
+
+        <!-- Sidebar avec filtres -->
+        <div class="col-md-3 col-lg-2 seminaire-sidebar">
+            <!-- Bouton Nouveau Séminaire -->
+            <div class="sidebar-section">
+                <a href="{{ form_seminaire_url }}" class="btn btn-primary btn-new-seminaire">
+                    <i class="fas fa-calendar-plus me-2"></i>Nouveau Séminaire
+                </a>
+            </div>
+
+            <!-- Filtres -->
+            <div class="sidebar-section">
+                <div class="sidebar-section-title">
+                    <i class="fas fa-filter me-1"></i>Filtres
+                </div>
+                <form method="get" class="mb-0">
+                    <!-- Préserver le paramètre programme -->
+                    {% if request.query_params.get('programme') %}
+                        <input type="hidden" name="programme" value="{{ request.query_params.get('programme') }}">
+                    {% endif %}
+                    
+                    <div class="mb-2">
+                        <label class="form-label">Programme</label>
+                        <select name="programme_id" class="form-select form-select-sm" aria-label="Filtrer par programme">
+                            <option value="">Tous les programmes</option>
+                            {% for programme in programmes %}
+                            <option value="{{ programme.id }}" {% if programme_id == programme.id %}selected{% endif %}>
+                                {{ programme.code }}
+                            </option>
+                            {% endfor %}
+                        </select>
+                    </div>
+                    
+                    <div class="mb-2">
+                        <label class="form-label">Statut</label>
+                        <select name="statut" class="form-select form-select-sm" aria-label="Filtrer par statut">
+                            <option value="">Tous les statuts</option>
+                            <option value="planifie" {% if request.query_params.get('statut') == 'planifie' %}selected{% endif %}>Planifié</option>
+                            <option value="en_cours" {% if request.query_params.get('statut') == 'en_cours' %}selected{% endif %}>En cours</option>
+                            <option value="termine" {% if request.query_params.get('statut') == 'termine' %}selected{% endif %}>Terminé</option>
+                            <option value="annule" {% if request.query_params.get('statut') == 'annule' %}selected{% endif %}>Annulé</option>
+                        </select>
+                    </div>
+                    
+                    <div class="mb-2">
+                        <label for="date_from" class="form-label">Date début</label>
+                        <input type="date" name="date_from" id="date_from" class="form-control form-control-sm" value="{{ request.query_params.get('date_from') or '' }}" aria-label="Filtrer par date de début">
+                    </div>
+                    
+                    <div class="mb-2">
+                        <label for="date_to" class="form-label">Date fin</label>
+                        <input type="date" name="date_to" id="date_to" class="form-control form-control-sm" value="{{ request.query_params.get('date_to') or '' }}" aria-label="Filtrer par date de fin">
+                    </div>
+                    
+                    <div class="d-grid gap-2">
+                        <button type="submit" class="btn btn-primary btn-sm">
+                            <i class="fas fa-search me-1"></i>Rechercher
+                        </button>
+                        <a href="{{ url_for('liste_seminaires') }}{% if request.query_params.get('programme') %}?programme={{ request.query_params.get('programme') }}{% endif %}" class="btn btn-outline-secondary btn-sm">
+                            <i class="fas fa-times me-1"></i>Réinitialiser
+                        </a>
+                    </div>
+                </form>
             </div>
         </div>
     </div>
-<!--</div>-->
+</div>
 
-<style>
-/* Réduction des espaces entre les éléments */
-.row {
-   padding:0px 0px 0px 0px;
-   
+<script>
+// Récupérer le paramètre programme depuis l'URL
+const urlParams = new URLSearchParams(window.location.search);
+const programmeCode = urlParams.get('programme') || '';
+
+// Fonction pour supprimer un séminaire depuis la liste
+function supprimerSeminaireListe(seminaireId, seminaireTitre) {
+    console.log('🔍 [supprimerSeminaireListe] Début - seminaireId:', seminaireId, 'seminaireTitre:', seminaireTitre);
+    
+    if (confirm(`⚠️ Êtes-vous sûr de vouloir supprimer le séminaire "${seminaireTitre}" ?\n\nCette action supprimera définitivement :\n- Le séminaire et toutes ses sessions\n- Toutes les invitations\n- Toutes les présences\n- Tous les livrables\n\nCette action est IRRÉVERSIBLE !`)) {
+        console.log('🔍 [supprimerSeminaireListe] Confirmation acceptée');
+        
+        // Afficher l'overlay global
+        if (typeof showGlobalLoading === 'function') {
+            console.log('🔍 [supprimerSeminaireListe] Affichage de l\'overlay de chargement');
+            showGlobalLoading('Suppression du séminaire', 'Suppression en cours, veuillez patienter...');
+        } else {
+            console.warn('⚠️ [supprimerSeminaireListe] showGlobalLoading n\'est pas disponible');
+        }
+        
+        const url = `/seminaires/${seminaireId}/supprimer${programmeCode ? `?programme=${programmeCode}` : ''}`;
+        console.log('🔍 [supprimerSeminaireListe] URL de suppression:', url);
+        console.log('🔍 [supprimerSeminaireListe] programmeCode:', programmeCode);
+        
+        fetch(url, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'X-CSRFToken': document.querySelector('meta[name="csrf-token"]')?.getAttribute('content') || ''
+            }
+        })
+        .then(response => {
+            console.log('🔍 [supprimerSeminaireListe] Réponse reçue - status:', response.status, 'statusText:', response.statusText);
+            console.log('🔍 [supprimerSeminaireListe] response.ok:', response.ok);
+            
+            return response.json().then(data => {
+                console.log('🔍 [supprimerSeminaireListe] Données JSON parsées:', data);
+                return { ok: response.ok, status: response.status, data: data };
+            }).catch(err => {
+                console.warn('⚠️ [supprimerSeminaireListe] Erreur lors du parsing JSON:', err);
+                return { ok: response.ok, status: response.status, data: null };
+            });
+        })
+        .then(result => {
+            console.log('🔍 [supprimerSeminaireListe] Résultat final:', result);
+            
+            if (typeof hideGlobalLoading === 'function') {
+                console.log('🔍 [supprimerSeminaireListe] Masquage de l\'overlay de chargement');
+                hideGlobalLoading();
+            }
+            
+            if (result.ok) {
+                console.log('✅ [supprimerSeminaireListe] Suppression réussie !');
+                alert('✅ Séminaire supprimé avec succès !');
+                console.log('🔍 [supprimerSeminaireListe] Rechargement de la page...');
+                window.location.reload();
+            } else {
+                const errorMsg = result.data?.detail || `Erreur ${result.status} lors de la suppression du séminaire`;
+                console.error('❌ [supprimerSeminaireListe] Erreur de suppression:', result);
+                alert(`❌ ${errorMsg}`);
+            }
+        })
+        .catch(error => {
+            console.error('❌ [supprimerSeminaireListe] Erreur dans la chaîne de promesses:', error);
+            if (typeof hideGlobalLoading === 'function') {
+                hideGlobalLoading();
+            }
+            console.error('Erreur:', error);
+            if (typeof hideGlobalLoading === 'function') {
+                hideGlobalLoading();
+            }
+            alert('❌ Erreur lors de la suppression du séminaire');
+        });
+    }
 }
 
-.row.mb-4 {
-    margin-bottom: 0.5rem !important; /* Force la réduction */
-}
+// Gestionnaires d'événements pour les boutons de suppression dans la liste
+document.addEventListener('DOMContentLoaded', function() {
+    console.log('🔍 [DOMContentLoaded] Initialisation des gestionnaires de suppression');
+    const btnSupprimerSeminaires = document.querySelectorAll('.btn-supprimer-seminaire-liste');
+    console.log('🔍 [DOMContentLoaded] Nombre de boutons de suppression trouvés:', btnSupprimerSeminaires.length);
+    
+    btnSupprimerSeminaires.forEach(function(btn, index) {
+        btn.addEventListener('click', function() {
+            const seminaireId = this.getAttribute('data-seminaire-id');
+            const seminaireTitre = this.getAttribute('data-seminaire-titre');
+            console.log(`🔍 [DOMContentLoaded] Bouton ${index} cliqué - seminaireId: ${seminaireId}, seminaireTitre: ${seminaireTitre}`);
+            supprimerSeminaireListe(seminaireId, seminaireTitre);
+        });
+    });
+    
+    // Ajouter l'overlay global aux liens de navigation CRUD
+    const navLinks = document.querySelectorAll('a[href*="/seminaires/"]');
+    navLinks.forEach(function(link) {
+        const href = link.getAttribute('href');
+        // Ignorer les liens de suppression (gérés séparément) et les liens externes
+        if (href && !href.includes('/supprimer') && !href.startsWith('http') && !href.startsWith('#')) {
+            link.addEventListener('click', function(e) {
+                // Ne pas intercepter si Ctrl/Cmd est pressé (nouvel onglet)
+                if (e.ctrlKey || e.metaKey) return;
+                
+                // Afficher l'overlay global
+                if (typeof showGlobalLoading === 'function') {
+                    let actionText = 'Chargement';
+                    if (href.includes('/nouveau') || href.includes('/modifier')) {
+                        actionText = href.includes('/modifier') ? 'Chargement du formulaire de modification' : 'Chargement du formulaire de création';
+                    } else if (href.includes('/detail') || href.match(/\/seminaires\/\d+$/)) {
+                        actionText = 'Chargement des détails';
+                    } else if (href.includes('/invitations')) {
+                        actionText = 'Chargement des invitations';
+                    } else if (href.includes('/livrables')) {
+                        actionText = 'Chargement des livrables';
+                    }
+                    showGlobalLoading(actionText, 'Veuillez patienter...');
+                }
+            });
+        }
+    });
+});
+</script>
 
-.card {
-    box-shadow: 0 0.125rem 0.25rem rgba(0, 0, 0, 0.075);
-    border: 1px solid rgba(0, 0, 0, 0.125);
-    margin-bottom: 0.25rem; /* Espace encore plus réduit entre les cartes */
-}
+<!-- Modal d'aide Séminaires -->
+<div class="modal-lg" id="seminaireHelpModal">
+  <div class="modal-content">
+    <div class="modal-header">
+      <h3 class="modal-title">
+        <i class="fas fa-question-circle me-2"></i>Guide des Séminaires
+      </h3>
+      <button type="button" class="modal-close" onclick="closeModal('seminaireHelpModal')" aria-label="Fermer">
+        <i class="fas fa-times"></i>
+      </button>
+    </div>
+    <div class="modal-body">
+      <div class="mb-4">
+        <h4 class="text-primary mb-3">
+          <i class="fas fa-lightbulb me-2"></i>Qu'est-ce qu'un Séminaire ?
+        </h4>
+        <p class="lead">
+          Un <strong>Séminaire</strong> est une formation organisée sur plusieurs sessions, permettant aux candidats d'acquérir des compétences spécifiques dans le cadre d'un programme d'accompagnement.
+        </p>
+      </div>
 
-/* Réduction de la hauteur uniquement des cartes de statistiques KPI */
-.card.bg-primary, .card.bg-warning, .card.bg-info, .card.bg-success {
-    height: 80px;
-}
+      <div class="mb-4">
+        <h5 class="text-primary mb-3">
+          <i class="fas fa-sitemap me-2"></i>Structure d'un Séminaire
+        </h5>
+        <div class="card border-primary mb-3">
+          <div class="card-body">
+            <h6 class="card-title text-primary">
+              <i class="fas fa-calendar-alt me-2"></i>Sessions
+            </h6>
+            <p class="card-text">
+              Un séminaire est composé de plusieurs <strong>sessions</strong> (séances de formation) qui peuvent être :
+            </p>
+            <ul class="mb-0">
+              <li><strong>En présentiel</strong> : Dans un lieu physique</li>
+              <li><strong>En visioconférence</strong> : À distance via une plateforme</li>
+              <li><strong>Hybride</strong> : Combinaison des deux</li>
+            </ul>
+          </div>
+        </div>
 
-.card.bg-primary .card-body, .card.bg-warning .card-body, 
-.card.bg-info .card-body, .card.bg-success .card-body {
-    padding: 0.75rem;
-    display: flex;
-    align-items: center;
-    height: 100%;
-}
+        <div class="card border-info mb-3">
+          <div class="card-body">
+            <h6 class="card-title text-info">
+              <i class="fas fa-envelope me-2"></i>Invitations
+            </h6>
+            <p class="card-text">
+              Les candidats peuvent être invités de différentes manières :
+            </p>
+            <ul class="mb-0">
+              <li><strong>Individuelle</strong> : Invitation personnalisée par email</li>
+              <li><strong>Par promotion</strong> : Tous les membres d'une promotion</li>
+              <li><strong>Par programme</strong> : Tous les candidats du programme</li>
+            </ul>
+          </div>
+        </div>
 
-.card.bg-primary h4, .card.bg-warning h4, 
-.card.bg-info h4, .card.bg-success h4 {
-    font-size: 1.5rem;
-    margin-bottom: 0.25rem;
-}
+        <div class="card border-success mb-3">
+          <div class="card-body">
+            <h6 class="card-title text-success">
+              <i class="fas fa-check-circle me-2"></i>Émargement
+            </h6>
+            <p class="card-text">
+              Le système permet de gérer la présence des candidats :
+            </p>
+            <ul class="mb-0">
+              <li><strong>Par lien email</strong> : Le candidat signe depuis son email</li>
+              <li><strong>Direct sur place</strong> : Signature sur tablette lors de la session</li>
+              <li><strong>Signature digitale</strong> : Signature manuscrite sur écran</li>
+              <li><strong>Photo</strong> : Prise de photo pour validation</li>
+            </ul>
+          </div>
+        </div>
 
-.card.bg-primary p, .card.bg-warning p, 
-.card.bg-info p, .card.bg-success p {
-    font-size: 0.875rem;
-    margin-bottom: 0;
-}
+        <div class="card border-warning">
+          <div class="card-body">
+            <h6 class="card-title text-warning">
+              <i class="fas fa-file-alt me-2"></i>Livrables
+            </h6>
+            <p class="card-text">
+              Les candidats peuvent être amenés à fournir des <strong>livrables</strong> (documents, rapports, etc.) dans le cadre du séminaire.
+            </p>
+          </div>
+        </div>
+      </div>
 
-.card.bg-primary .fa-2x, .card.bg-warning .fa-2x, 
-.card.bg-info .fa-2x, .card.bg-success .fa-2x {
-    font-size: 1.5rem !important;
-}
+      <div class="mb-4">
+        <h5 class="text-primary mb-3">
+          <i class="fas fa-route me-2"></i>Processus
+        </h5>
+        <div class="timeline">
+          <div class="d-flex mb-3">
+            <div class="flex-shrink-0">
+              <div class="rounded-circle bg-primary text-white d-flex align-items-center justify-content-center" style="width: 40px; height: 40px; font-weight: bold;">1</div>
+            </div>
+            <div class="flex-grow-1 ms-3">
+              <h6 class="mb-1">Création du Séminaire</h6>
+              <p class="mb-0 text-muted">Définir le titre, la description, les dates, le lieu et l'organisateur.</p>
+            </div>
+          </div>
 
-.table th {
-    border-top: none;
-    font-weight: 600;
-    color: #495057;
-}
+          <div class="d-flex mb-3">
+            <div class="flex-shrink-0">
+              <div class="rounded-circle bg-info text-white d-flex align-items-center justify-content-center" style="width: 40px; height: 40px; font-weight: bold;">2</div>
+            </div>
+            <div class="flex-grow-1 ms-3">
+              <h6 class="mb-1">Ajout de Sessions</h6>
+              <p class="mb-0 text-muted">Créer les différentes sessions du séminaire avec leurs dates et horaires.</p>
+            </div>
+          </div>
 
-.btn-group .btn {
-    border-radius: 0.25rem;
-}
+          <div class="d-flex mb-3">
+            <div class="flex-shrink-0">
+              <div class="rounded-circle bg-success text-white d-flex align-items-center justify-content-center" style="width: 40px; height: 40px; font-weight: bold;">3</div>
+            </div>
+            <div class="flex-grow-1 ms-3">
+              <h6 class="mb-1">Envoi d'Invitations</h6>
+              <p class="mb-0 text-muted">Inviter les candidats individuellement, par promotion ou par programme.</p>
+            </div>
+          </div>
 
-.btn-group .btn:not(:last-child) {
-    margin-right: 0.25rem;
-}
+          <div class="d-flex mb-3">
+            <div class="flex-shrink-0">
+              <div class="rounded-circle bg-warning text-white d-flex align-items-center justify-content-center" style="width: 40px; height: 40px; font-weight: bold;">4</div>
+            </div>
+            <div class="flex-grow-1 ms-3">
+              <h6 class="mb-1">Gestion de l'Émargement</h6>
+              <p class="mb-0 text-muted">Suivre la présence des candidats lors de chaque session.</p>
+            </div>
+          </div>
 
-.badge {
-    font-size: 0.75em;
-}
+          <div class="d-flex mb-3">
+            <div class="flex-shrink-0">
+              <div class="rounded-circle bg-danger text-white d-flex align-items-center justify-content-center" style="width: 40px; height: 40px; font-weight: bold;">5</div>
+            </div>
+            <div class="flex-grow-1 ms-3">
+              <h6 class="mb-1">Collecte des Livrables</h6>
+              <p class="mb-0 text-muted">Récupérer et valider les documents fournis par les candidats.</p>
+            </div>
+          </div>
+        </div>
+      </div>
 
-.table-responsive {
-    border-radius: 0.375rem;
-}
+      <div class="alert alert-info">
+        <h6 class="alert-heading">
+          <i class="fas fa-info-circle me-2"></i>Conseils
+        </h6>
+        <ul class="mb-0">
+          <li><strong>Planifiez à l'avance</strong> : Créez le séminaire et les sessions suffisamment tôt</li>
+          <li><strong>Invitez régulièrement</strong> : Envoyez les invitations au moins une semaine avant</li>
+          <li><strong>Suivez les présences</strong> : Utilisez l'émargement pour valider la participation</li>
+          <li><strong>Gérez les livrables</strong> : Définissez clairement les documents attendus</li>
+        </ul>
+      </div>
+    </div>
+    <div class="modal-footer">
+      <button type="button" class="btn btn-secondary" onclick="closeModal('seminaireHelpModal')">
+        <i class="fas fa-times me-2"></i>Fermer
+      </button>
+    </div>
+  </div>
+</div>
 
-/* Réduction des paddings généraux */
-.card-body {
-    padding: 0.75rem; /* Réduit encore plus de 1rem à 0.75rem */
-}
-
-.card-header {
-    padding: 0.5rem 0.75rem; /* Réduit encore plus le padding du header */
-}
-
-/* Statistiques compactes */
-.stats-compact .card-body {
-    padding: 0.5rem !important;
-}
-
-.stats-compact h5 {
-    font-size: 1.1rem;
-    margin-bottom: 0.25rem;
-}
-
-.stats-compact small {
-    font-size: 0.7rem;
-    opacity: 0.9;
-}
-
-.stats-compact .fa-lg {
-    font-size: 1.2rem;
-}
-
-/* Labels et inputs compacts */
-.form-label-sm {
-    font-size: 0.8rem;
-    margin-bottom: 0.25rem;
-}
-
-.form-select-sm, .form-control-sm {
-    font-size: 0.8rem;
-    padding: 0.25rem 0.5rem;
-}
-
-/* Boutons extra-small */
-.btn-xs {
-    padding: 0.125rem 0.25rem;
-    font-size: 0.7rem;
-    line-height: 1.2;
-}
-
-/* Tableau compact */
-.table-sm th, .table-sm td {
-    padding: 0.5rem 0.25rem;
-    font-size: 0.8rem;
-}
-
-.table-sm th {
-    font-weight: 600;
-    font-size: 0.75rem;
-}
-
-/* Card header compact */
-.card-header.py-2 {
-    padding: 0.5rem 1rem;
-}
-
-.card-header.py-2 h6 {
-    font-size: 0.9rem;
-    font-weight: 600;
-}
-</style>
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    const modal = document.getElementById('seminaireHelpModal');
+    if (modal) {
+        modal.addEventListener('click', function(e) {
+            if (e.target === modal) {
+                closeModal('seminaireHelpModal');
+            }
+        });
+    }
+});
+</script>
 {% endblock %}

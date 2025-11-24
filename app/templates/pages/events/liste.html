@@ -1,166 +1,342 @@
-{% extends "base.html" %}
+{% extends "layouts/base.html" %}
 {% from "components/page_header.html" import page_header %}
 
-{% block title %}Liste des Événements{% endblock %}
+{% block title %}Gestion des Événements{% endblock %}
 
 {% block content %}
-<!--<div class="container-fluid p-4">-->
-    <!-- Entête -->
-    {{ page_header(
-        title="<i class='fas fa-calendar-alt me-2'></i>Événements",
-        breadcrumbs=[{"name": "Gestion des données des événements du programme"}],
-        actions=[{"url": url_for('form_event'), "label": "<i class='fas fa-calendar-alt'></i> + Événement", "primary": True}]
-    ) }}
-    <div class="toolbar" style="margin-top: 1rem;">
-        <a href="{{ url_for('form_event') }}" class="submenu-item">
-            <div class="icon"><i class="fas fa-calendar-alt"></i></div><div>+ Événement</div>
-        </a>
-    </div>
+{% set programme_param = request.query_params.get('programme') or (schema_name.upper() if schema_name and schema_name != 'public' else '') %}
+{% set form_event_url = url_for('form_event') %}
+{% if programme_param %}
+    {% set form_event_url = form_event_url ~ '?programme=' ~ programme_param %}
+{% endif %}
+
+<style>
+/* Styles pour rendre la page plus compacte */
+.compact-page {
+    font-size: 0.85rem;
+}
+
+.compact-page .card-header {
+    padding: 0.5rem 0.75rem;
+    font-size: 0.9rem;
+}
+
+.compact-page .card-body {
+    padding: 0.75rem;
+}
+
+/* Styles pour les KPIs dans le page_header */
+.page-header-right-content .event-kpis {
+    display: flex;
+    gap: 1rem;
+    align-items: center;
+    flex-wrap: wrap;
+    flex-direction: row;
+}
+
+.page-header-right-content .info-box-sm {
+    display: flex;
+    align-items: center;
+    padding: 0.4rem;
+    background: rgba(255, 255, 255, 0.15);
+    border-radius: 0.375rem;
+    margin-bottom: 0;
+}
+
+.page-header-right-content .info-box-sm .info-box-icon {
+    width: 2.5rem;
+    height: 2.5rem;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border-radius: 50%;
+    margin-right: 0.5rem;
+    font-size: 0.9rem;
+}
+
+.page-header-right-content .info-box-sm .info-box-content {
+    flex: 1;
+    padding-left: 0;
+}
+
+.page-header-right-content .info-box-sm .info-box-text {
+    display: block;
+    font-size: 0.7rem;
+    font-weight: 500;
+    color: rgba(255, 255, 255, 0.9);
+    margin-bottom: 0.25rem;
+}
+
+.page-header-right-content .info-box-sm .info-box-number {
+    display: block;
+    font-size: 0.9rem;
+    font-weight: 600;
+    color: white;
+}
+
+/* Styles pour la sidebar */
+.event-sidebar {
+    background-color: #2a2a2a;
+    border-left: 1px solid #dee2e6;
+    border-radius: 12px;
+    padding: 0.75rem;
+    height: calc(100vh - 300px);
+    max-height: calc(100vh - 300px);
+    position: sticky;
+    top: 0;
+    overflow-y: auto;
+    display: flex;
+    flex-direction: column;
+}
+
+.event-sidebar::-webkit-scrollbar {
+    width: 6px;
+}
+
+.event-sidebar::-webkit-scrollbar-track {
+    background: transparent;
+}
+
+.event-sidebar::-webkit-scrollbar-thumb {
+    background: #dee2e6;
+    border-radius: 3px;
+}
+
+.event-sidebar::-webkit-scrollbar-thumb:hover {
+    background: #adb5bd;
+}
+
+.event-sidebar .sidebar-section {
+    margin-bottom: 1rem;
+}
+
+.event-sidebar .sidebar-section:last-child {
+    margin-bottom: 0;
+}
+
+.event-sidebar .sidebar-section-title {
+    font-size: 0.8rem;
+    font-weight: 600;
+    color: #ffffff;
+    margin-bottom: 0.5rem;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    border-bottom: 2px solid rgba(255, 255, 255, 0.2);
+    padding-bottom: 0.4rem;
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+}
+
+.event-sidebar .btn-new-event {
+    width: 100%;
+    padding: 0.5rem 0.75rem;
+    font-weight: 600;
+    margin-bottom: 0.75rem;
+    font-size: 0.85rem;
+    box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+    transition: all 0.2s ease;
+}
+
+.event-sidebar .btn-new-event:hover {
+    transform: translateY(-1px);
+    box-shadow: 0 4px 6px rgba(0,0,0,0.15);
+}
+
+.event-sidebar .form-label {
+    font-size: 0.75rem;
+    font-weight: 500;
+    margin-bottom: 0.4rem;
+    color: #ffffff;
+}
+
+.event-sidebar .form-select-sm {
+    height: 28px;
+    padding: 0.25rem 0.5rem;
+    font-size: 0.75rem;
+    line-height: 1.2;
+}
+
+.event-sidebar .form-control-sm {
+    height: 28px;
+    padding: 0.25rem 0.5rem;
+    font-size: 0.75rem;
+    line-height: 1.2;
+}
+
+.event-main-content {
+    padding: 1rem;
+    height: calc(100vh - 250px);
+    display: flex;
+    flex-direction: column;
+}
+
+.event-main-content .card {
+    height: 100%;
+    display: flex;
+    flex-direction: column;
+}
+
+.event-main-content .card-body {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    min-height: 0;
+}
+
+.event-main-content .table-responsive {
+    flex: 1;
+    overflow-y: auto;
+    overflow-x: auto;
+    min-height: 0;
+    position: relative;
+}
+
+/* Tableau */
+.data-table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 0.85rem;
+}
+
+.data-table thead {
+    position: sticky;
+    top: 0;
+    background-color: #f8f9fa;
+    z-index: 10;
+}
+
+.data-table th {
+    padding: 0.75rem 0.5rem;
+    text-align: left;
+    font-weight: 600;
+    font-size: 0.8rem;
+    color: #495057;
+    border-bottom: 2px solid #dee2e6;
+    white-space: nowrap;
+}
+
+.data-table td {
+    padding: 0.75rem 0.5rem;
+    border-bottom: 1px solid #dee2e6;
+    vertical-align: middle;
+}
+
+.data-table tbody tr:hover {
+    background-color: #f8f9fa;
+}
+
+.data-table .actions-col {
+    width: 200px;
+    min-width: 200px;
+    text-align: center;
+}
+
+.table-actions {
+    display: flex;
+    gap: 0.25rem;
+    justify-content: center;
+    flex-wrap: wrap;
+}
+
+.table-actions .btn {
+    padding: 0.25rem 0.5rem;
+    font-size: 0.75rem;
+}
+
+/* Responsive */
+@media (max-width: 768px) {
+    .event-sidebar {
+        position: relative;
+        min-height: auto;
+        max-height: none;
+        border-left: none;
+        border-top: 1px solid #dee2e6;
+        margin-top: 1rem;
+    }
     
-    <!--div class="row mb-4">
-        <div class="col-12">
-            <div class="d-flex justify-content-between align-items-center">
-                <div>
-                    <h1 class="mb-0">Événements</h1>
-                    <p class="text-muted mb-0">Gestion des événements du programme</p>
-                </div>
-                <div>
-                    <a href="{{ url_for('form_event') }}" class="btn btn-primary">
-                        <i class="fas fa-plus me-2"></i>Nouvel Événement
-                    </a>
-                </div>
+    .event-main-content {
+        padding: 0.5rem;
+    }
+}
+</style>
+
+<div class="compact-page">
+    <!-- KPIs dans le page_header -->
+    {% set kpis_content %}
+    <div class="event-kpis">
+        <div class="info-box-sm">
+            <div class="info-box-icon bg-primary">
+                <i class="fas fa-calendar-alt"></i>
+            </div>
+            <div class="info-box-content">
+                <span class="info-box-text">Total</span>
+                <span class="info-box-number">{{ stats.total_events or 0 }}</span>
+            </div>
+        </div>
+        <div class="info-box-sm">
+            <div class="info-box-icon bg-info">
+                <i class="fas fa-clock"></i>
+            </div>
+            <div class="info-box-content">
+                <span class="info-box-text">Planifiés</span>
+                <span class="info-box-number">{{ stats.events_planifies or 0 }}</span>
+            </div>
+        </div>
+        <div class="info-box-sm">
+            <div class="info-box-icon bg-warning">
+                <i class="fas fa-play"></i>
+            </div>
+            <div class="info-box-content">
+                <span class="info-box-text">En Cours</span>
+                <span class="info-box-number">{{ stats.events_en_cours or 0 }}</span>
+            </div>
+        </div>
+        <div class="info-box-sm">
+            <div class="info-box-icon bg-success">
+                <i class="fas fa-check"></i>
+            </div>
+            <div class="info-box-content">
+                <span class="info-box-text">Terminés</span>
+                <span class="info-box-number">{{ stats.events_termines or 0 }}</span>
             </div>
         </div>
     </div>
+    {% endset %}
 
-    <!-- Statistiques -->
-    <div class="row mb-2">
-        <div class="col-md-3">
-            <div class="card bg-primary text-white" style="height: 60px;">
-                <div class="card-body py-1 px-3">
-                    <div class="d-flex justify-content-between align-items-center h-100">
-                        <div>
-                            <h6 class="mb-0">{{ stats.total_events }}</h6>
-                            <small class="mb-0" style="font-size: 0.7rem;">Total Événements</small>
-                        </div>
-                        <div>
-                            <i class="fas fa-calendar-alt"></i>
-                        </div>
-                    </div>
-                </div>
-            </div>
-        </div>
-        <div class="col-md-3">
-            <div class="card bg-info text-white" style="height: 60px;">
-                <div class="card-body py-1 px-3">
-                    <div class="d-flex justify-content-between align-items-center h-100">
-                        <div>
-                            <h6 class="mb-0">{{ stats.events_planifies }}</h6>
-                            <small class="mb-0" style="font-size: 0.7rem;">Planifiés</small>
-                        </div>
-                        <div>
-                            <i class="fas fa-clock"></i>
-                        </div>
-                    </div>
-                </div>
-            </div>
-        </div>
-        <div class="col-md-3">
-            <div class="card bg-warning text-white" style="height: 60px;">
-                <div class="card-body py-1 px-3">
-                    <div class="d-flex justify-content-between align-items-center h-100">
-                        <div>
-                            <h6 class="mb-0">{{ stats.events_en_cours }}</h6>
-                            <small class="mb-0" style="font-size: 0.7rem;">En Cours</small>
-                        </div>
-                        <div>
-                            <i class="fas fa-play"></i>
-                        </div>
-                    </div>
-                </div>
-            </div>
-        </div>
-        <div class="col-md-3">
-            <div class="card bg-success text-white" style="height: 60px;">
-                <div class="card-body py-1 px-3">
-                    <div class="d-flex justify-content-between align-items-center h-100">
-                        <div>
-                            <h6 class="mb-0">{{ stats.events_termines }}</h6>
-                            <small class="mb-0" style="font-size: 0.7rem;">Terminés</small>
-                        </div>
-                        <div>
-                            <i class="fas fa-check"></i>
-                        </div>
-                    </div>
-                </div>
-            </div>
-        </div>
-    </div>
+    {% set title_with_help %}
+    <i class='fas fa-calendar-alt me-2'></i>Événements
+    <button type="button" class="btn btn-outline-light btn-sm ms-2" onclick="showModal('eventHelpModal')" title="Aide - Comment fonctionnent les Événements ?">
+        <i class="fas fa-question-circle me-1"></i>Aide
+    </button>
+    {% endset %}
 
-    <!-- Filtres -->
-    <div class="row mb-3">
-        <div class="col-12">
+    {{ page_header(
+        title=title_with_help,
+        breadcrumbs=[{"name": "Gestion des événements du programme"}],
+        right_content=kpis_content
+    ) }}
+
+    <!-- Contenu principal avec sidebar -->
+    <div class="row">
+        <!-- Contenu principal -->
+        <div class="col-md-9 col-lg-10 event-main-content">
             <div class="card">
-                <div class="card-body py-2">
-                    <form method="GET" class="row g-2">
-                        <div class="col-md-3">
-                            <label for="programme_id" class="form-label">Programme</label>
-                            <select class="form-select form-select-sm" id="programme_id" name="programme_id">
-                                <option value="">Tous les programmes</option>
-                                {% for programme in programmes %}
-                                <option value="{{ programme.id }}" {% if programme_id == programme.id %}selected{% endif %}>
-                                    {{ programme.nom }}
-                                </option>
-                                {% endfor %}
-                            </select>
-                        </div>
-                        <div class="col-md-3">
-                            <label for="statut" class="form-label">Statut</label>
-                            <select class="form-select form-select-sm" id="statut" name="statut">
-                                <option value="">Tous les statuts</option>
-                                <option value="planifie">Planifié</option>
-                                <option value="en_cours">En Cours</option>
-                                <option value="termine">Terminé</option>
-                                <option value="annule">Annulé</option>
-                            </select>
-                        </div>
-                        <div class="col-md-3">
-                            <label for="date_from" class="form-label">Date de début</label>
-                            <input type="date" class="form-control form-control-sm" id="date_from" name="date_from">
-                        </div>
-                        <div class="col-md-3 d-flex align-items-end">
-                            <button type="submit" class="btn btn-primary btn-sm me-2">
-                                <i class="fas fa-filter"></i> Filtrer
-                            </button>
-                            <a href="{{ url_for('liste_events') }}" class="btn btn-outline-secondary btn-sm">
-                                <i class="fas fa-times"></i> Effacer
-                            </a>
-                        </div>
-                    </form>
-                </div>
-            </div>
-        </div>
-    </div>
-
-    <!-- Liste des événements -->
-    <div class="row" style="height: 400px;">
-        <div class="col-12" style="height: 100%;">
-            <div class="card" style="height: 100%;">
                 <div class="card-header">
                     <h5 class="mb-0">Liste des Événements</h5>
                 </div>
-                <div class="card-body p-0" style="height: calc(100% - 60px);">
+                <div class="card-body p-0">
                     {% if events %}
-                        <div class="table-responsive" style="height: 100%; overflow-y: auto;">
-                            <table class="table table-hover mb-0">
-                                <thead class="table-light sticky-top">
+                        <div class="table-responsive">
+                            <table class="data-table">
+                                <thead>
                                     <tr>
                                         <th>Titre</th>
-                                        <th>Programme</th>
+                                        
                                         <th>Dates</th>
                                         <th>Lieu</th>
                                         <th>Statut</th>
-                                        <th>Actions</th>
+                                        <th class="actions-col">Actions</th>
                                     </tr>
                                 </thead>
                                 <tbody>
@@ -174,13 +350,7 @@
                                                 {% endif %}
                                             </div>
                                         </td>
-                                        <td>
-                                            {% if event.programme %}
-                                                <span class="badge bg-info">{{ event.programme.nom }}</span>
-                                            {% else %}
-                                                <span class="text-muted">Non défini</span>
-                                            {% endif %}
-                                        </td>
+                                        
                                         <td>
                                             <div>
                                                 <strong>{{ event.date_debut.strftime('%d/%m/%Y') }}</strong>
@@ -213,11 +383,11 @@
                                             {% endif %}
                                         </td>
                                         <td>
-                                            <div class="btn-group" role="group">
-                                                <a href="{{ url_for('detail_event', event_id=event.id) }}" class="btn btn-sm btn-outline-primary">
+                                            <div class="table-actions">
+                                                <a href="{{ url_for('detail_event', event_id=event.id) }}{% if programme_param %}?programme={{ programme_param }}{% endif %}" class="btn btn-sm btn-outline-primary" title="Voir les détails">
                                                     <i class="fas fa-eye"></i>
                                                 </a>
-                                                <a href="{{ url_for('emargement_event', event_id=event.id) }}" class="btn btn-sm btn-outline-success">
+                                                <a href="{{ url_for('emargement_event', event_id=event.id) }}{% if programme_param %}?programme={{ programme_param }}{% endif %}" class="btn btn-sm btn-outline-success" title="Émargement">
                                                     <i class="fas fa-signature"></i>
                                                 </a>
                                             </div>
@@ -228,25 +398,255 @@
                             </table>
                         </div>
                     {% else %}
-                        <div class="text-center py-5" style="height: 100%;">
+                        <div class="text-center py-5">
                             <i class="fas fa-calendar-alt fa-3x text-muted mb-3"></i>
                             <h4 class="text-muted">Aucun événement trouvé</h4>
                             <p class="text-muted">Créez votre premier événement pour commencer.</p>
-                            <a href="{{ url_for('form_event') }}" class="btn btn-primary">
+                            <a href="{{ form_event_url }}" class="btn btn-primary">
                                 <i class="fas fa-plus me-2"></i>Créer un Événement
                             </a>
                         </div>
                     {% endif %}
                 </div>
+
+                <!-- Informations sur les résultats -->
+                {% if events %}
+                    <div class="card-footer flex-shrink-0">
+                        <div class="d-flex justify-content-between align-items-center">
+                            <small class="text-muted">
+                                Affichage de <strong>{{ events|length }}</strong> événement{% if events|length > 1 %}s{% endif %}
+                                {% if stats.total_events > events|length %}
+                                    sur <strong>{{ stats.total_events }}</strong> au total
+                                {% endif %}
+                            </small>
+                        </div>
+                    </div>
+                {% endif %}
+            </div>
+        </div>
+
+        <!-- Sidebar avec filtres -->
+        <div class="col-md-3 col-lg-2 event-sidebar">
+            <!-- Bouton Nouvel Événement -->
+            <div class="sidebar-section">
+                <a href="{{ form_event_url }}" class="btn btn-primary btn-new-event">
+                    <i class="fas fa-calendar-plus me-2"></i>Nouvel Événement
+                </a>
+            </div>
+
+            <!-- Filtres -->
+            <div class="sidebar-section">
+                <div class="sidebar-section-title">
+                    <i class="fas fa-filter me-1"></i>Filtres
+                </div>
+                <form method="get" class="mb-0">
+                    <!-- Préserver le paramètre programme -->
+                    {% if request.query_params.get('programme') %}
+                        <input type="hidden" name="programme" value="{{ request.query_params.get('programme') }}">
+                    {% endif %}
+                    
+                    <div class="mb-2">
+                        <label class="form-label">Programme</label>
+                        <select name="programme_id" class="form-select form-select-sm" aria-label="Filtrer par programme">
+                            <option value="">Tous les programmes</option>
+                            {% for programme in programmes %}
+                            <option value="{{ programme.id }}" {% if programme_id == programme.id %}selected{% endif %}>
+                                {{ programme.code }}
+                            </option>
+                            {% endfor %}
+                        </select>
+                    </div>
+                    
+                    <div class="mb-2">
+                        <label class="form-label">Statut</label>
+                        <select name="statut" class="form-select form-select-sm" aria-label="Filtrer par statut">
+                            <option value="">Tous les statuts</option>
+                            <option value="planifie" {% if request.query_params.get('statut') == 'planifie' %}selected{% endif %}>Planifié</option>
+                            <option value="en_cours" {% if request.query_params.get('statut') == 'en_cours' %}selected{% endif %}>En cours</option>
+                            <option value="termine" {% if request.query_params.get('statut') == 'termine' %}selected{% endif %}>Terminé</option>
+                            <option value="annule" {% if request.query_params.get('statut') == 'annule' %}selected{% endif %}>Annulé</option>
+                        </select>
+                    </div>
+                    
+                    <div class="mb-2">
+                        <label for="date_from" class="form-label">Date début</label>
+                        <input type="date" name="date_from" id="date_from" class="form-control form-control-sm" value="{{ request.query_params.get('date_from') or '' }}" aria-label="Filtrer par date de début">
+                    </div>
+                    
+                    <div class="mb-2">
+                        <label for="date_to" class="form-label">Date fin</label>
+                        <input type="date" name="date_to" id="date_to" class="form-control form-control-sm" value="{{ request.query_params.get('date_to') or '' }}" aria-label="Filtrer par date de fin">
+                    </div>
+                    
+                    <div class="d-grid gap-2">
+                        <button type="submit" class="btn btn-primary btn-sm">
+                            <i class="fas fa-search me-1"></i>Rechercher
+                        </button>
+                        <a href="{{ url_for('liste_events') }}{% if request.query_params.get('programme') %}?programme={{ request.query_params.get('programme') }}{% endif %}" class="btn btn-outline-secondary btn-sm">
+                            <i class="fas fa-times me-1"></i>Réinitialiser
+                        </a>
+                    </div>
+                </form>
             </div>
         </div>
     </div>
-<!--</div>-->
+</div>
 
-<style>
-/* Réduction des espaces entre les éléments */
-.row {
-    padding: 0px 0px 0px 0px;
-}
-</style>
+<!-- Modal d'aide Événements -->
+<div class="modal-lg" id="eventHelpModal">
+  <div class="modal-content">
+    <div class="modal-header">
+      <h3 class="modal-title">
+        <i class="fas fa-question-circle me-2"></i>Guide des Événements
+      </h3>
+      <button type="button" class="modal-close" onclick="closeModal('eventHelpModal')" aria-label="Fermer">
+        <i class="fas fa-times"></i>
+      </button>
+    </div>
+    <div class="modal-body">
+      <div class="mb-4">
+        <h4 class="text-primary mb-3">
+          <i class="fas fa-lightbulb me-2"></i>Qu'est-ce qu'un Événement ?
+        </h4>
+        <p class="lead">
+          Un <strong>Événement</strong> est une activité ponctuelle organisée dans le cadre d'un programme, permettant de rassembler les candidats autour d'un objectif commun (conférence, atelier, networking, etc.).
+        </p>
+      </div>
+
+      <div class="mb-4">
+        <h5 class="text-primary mb-3">
+          <i class="fas fa-sitemap me-2"></i>Caractéristiques d'un Événement
+        </h5>
+        <div class="card border-primary mb-3">
+          <div class="card-body">
+            <h6 class="card-title text-primary">
+              <i class="fas fa-calendar me-2"></i>Dates et Horaires
+            </h6>
+            <p class="card-text">
+              Un événement a une <strong>date de début</strong> et une <strong>date de fin</strong>, avec des heures précises.
+            </p>
+          </div>
+        </div>
+
+        <div class="card border-info mb-3">
+          <div class="card-body">
+            <h6 class="card-title text-info">
+              <i class="fas fa-map-marker-alt me-2"></i>Lieu
+            </h6>
+            <p class="card-text">
+              L'événement peut se dérouler dans un <strong>lieu physique</strong> ou être organisé en <strong>visioconférence</strong>.
+            </p>
+          </div>
+        </div>
+
+        <div class="card border-success mb-3">
+          <div class="card-body">
+            <h6 class="card-title text-success">
+              <i class="fas fa-envelope me-2"></i>Invitations
+            </h6>
+            <p class="card-text">
+              Les candidats reçoivent une <strong>invitation par email</strong> avec deux options :
+            </p>
+            <ul class="mb-0">
+              <li><strong>Accepter</strong> : Le candidat confirme sa participation</li>
+              <li><strong>Refuser</strong> : Le candidat décline l'invitation</li>
+            </ul>
+          </div>
+        </div>
+
+        <div class="card border-warning">
+          <div class="card-body">
+            <h6 class="card-title text-warning">
+              <i class="fas fa-check-circle me-2"></i>Émargement
+            </h6>
+            <p class="card-text">
+              Le jour de l'événement, les candidats peuvent signer :
+            </p>
+            <ul class="mb-0">
+              <li><strong>Par lien email</strong> : Depuis leur smartphone</li>
+              <li><strong>Direct sur place</strong> : Sur une tablette mise à disposition</li>
+            </ul>
+          </div>
+        </div>
+      </div>
+
+      <div class="mb-4">
+        <h5 class="text-primary mb-3">
+          <i class="fas fa-route me-2"></i>Processus
+        </h5>
+        <div class="timeline">
+          <div class="d-flex mb-3">
+            <div class="flex-shrink-0">
+              <div class="rounded-circle bg-primary text-white d-flex align-items-center justify-content-center" style="width: 40px; height: 40px; font-weight: bold;">1</div>
+            </div>
+            <div class="flex-grow-1 ms-3">
+              <h6 class="mb-1">Création de l'Événement</h6>
+              <p class="mb-0 text-muted">Définir le titre, la description, les dates, le lieu et le statut.</p>
+            </div>
+          </div>
+
+          <div class="d-flex mb-3">
+            <div class="flex-shrink-0">
+              <div class="rounded-circle bg-info text-white d-flex align-items-center justify-content-center" style="width: 40px; height: 40px; font-weight: bold;">2</div>
+            </div>
+            <div class="flex-grow-1 ms-3">
+              <h6 class="mb-1">Envoi d'Invitations</h6>
+              <p class="mb-0 text-muted">Sélectionner les candidats à inviter et envoyer les emails.</p>
+            </div>
+          </div>
+
+          <div class="d-flex mb-3">
+            <div class="flex-shrink-0">
+              <div class="rounded-circle bg-success text-white d-flex align-items-center justify-content-center" style="width: 40px; height: 40px; font-weight: bold;">3</div>
+            </div>
+            <div class="flex-grow-1 ms-3">
+              <h6 class="mb-1">Réponses des Candidats</h6>
+              <p class="mb-0 text-muted">Suivre les acceptations et refus d'invitation.</p>
+            </div>
+          </div>
+
+          <div class="d-flex mb-3">
+            <div class="flex-shrink-0">
+              <div class="rounded-circle bg-warning text-white d-flex align-items-center justify-content-center" style="width: 40px; height: 40px; font-weight: bold;">4</div>
+            </div>
+            <div class="flex-grow-1 ms-3">
+              <h6 class="mb-1">Émargement le Jour J</h6>
+              <p class="mb-0 text-muted">Gérer la présence des participants lors de l'événement.</p>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div class="alert alert-info">
+        <h6 class="alert-heading">
+          <i class="fas fa-info-circle me-2"></i>Conseils
+        </h6>
+        <ul class="mb-0">
+          <li><strong>Planifiez tôt</strong> : Créez l'événement plusieurs semaines à l'avance</li>
+          <li><strong>Invitez ciblé</strong> : Sélectionnez les candidats pertinents pour l'événement</li>
+          <li><strong>Suivez les réponses</strong> : Vérifiez qui accepte ou refuse l'invitation</li>
+          <li><strong>Préparez l'émargement</strong> : Testez les liens et tablettes avant l'événement</li>
+        </ul>
+      </div>
+    </div>
+    <div class="modal-footer">
+      <button type="button" class="btn btn-secondary" onclick="closeModal('eventHelpModal')">
+        <i class="fas fa-times me-2"></i>Fermer
+      </button>
+    </div>
+  </div>
+</div>
+
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    const modal = document.getElementById('eventHelpModal');
+    if (modal) {
+        modal.addEventListener('click', function(e) {
+            if (e.target === modal) {
+                closeModal('eventHelpModal');
+            }
+        });
+    }
+});
+</script>
 {% endblock %}

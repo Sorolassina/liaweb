@@ -4,7 +4,7 @@ from __future__ import annotations
 import os
 import logging
 from datetime import date as _date, datetime, timezone
-from typing import Optional
+from typing import Optional, Literal
 
 from fastapi import APIRouter, Depends, Form, HTTPException, Query, Request, UploadFile, File
 from fastapi.responses import HTMLResponse, RedirectResponse, JSONResponse
@@ -19,14 +19,15 @@ from ..core.path_config import path_config
 from ..core.program_schema_integration import (
     get_schema_routing_service,
     SchemaRoutingService,
-    safe_count_query
+    safe_count_query,
+    get_schema_from_request
 )
 from ..services.file_upload_service import FileUploadService
 from ..templates import templates
 
 from ..models.base import (
     Programme, Candidat, Entreprise, Preinscription, Eligibilite,
-    Inscription, EtapePipeline, AvancementEtape, StatutEtape,
+    EtapePipeline, AvancementEtape, StatutEtape,
     DecisionJuryTable, Jury, DecisionJuryCandidat, Partenaire, User, Promotion, Groupe,
     ReorientationCandidat, Document
 )
@@ -37,6 +38,10 @@ from ..services.service_qpv import verif_qpv
 from ..services.service_siret_pappers import get_entreprise_process
 from ..models.enums import TypeDocument, DecisionJury, UserRole, GroupeCodev, TypePromotion
 from ..services.eligibilite import evaluate_eligibilite, entreprise_age_annees
+from ..services.audit import log_activity
+from .admin import admin_required, configure_schema
+
+logger = logging.getLogger("app.inscriptions")
 
 router = APIRouter()
 
@@ -49,7 +54,9 @@ def _table_exists_in_schema(session: Session, table_name: str, schema_name: str)
                 WHERE table_schema = :schema_name AND table_name = :table_name
             )
         """)
-        return session.execute(check_query.bindparams(schema_name=schema_name, table_name=table_name)).scalar() or False
+        result = session.exec(check_query.bindparams(schema_name=schema_name, table_name=table_name))
+        first_row = result.first()
+        return first_row[0] if first_row else False
     except Exception:
         return False
 
@@ -63,6 +70,739 @@ def _prog_by_code(session: Session, code: str) -> Programme | None:
         print(f"⚠️ [WARNING] Erreur lors de la récupération du programme {code}: {e}")
         return None
 
+
+# ============================================================================
+# HELPERS POUR inscriptions_ui
+# ============================================================================
+
+def _get_preinscriptions(session: Session, prog, schema_name: str, q: Optional[str] = None):
+    """Récupère la liste des préinscriptions pour un programme"""
+    logging.info(f"🔵 [DEBUG _get_preinscriptions] Début - schema={schema_name}, prog.id={prog.id if prog else None}, q={q}")
+    pre_rows = []
+    
+    if not (prog.id and _table_exists_in_schema(session, "preinscription", schema_name) and 
+            _table_exists_in_schema(session, "candidat", schema_name)):
+        logging.warning(f"🔵 [DEBUG _get_preinscriptions] ⚠ Tables manquantes ou prog.id=None")
+        if settings.DEBUG:
+            print(f"⚠️ [WARNING] Tables preinscription ou candidat manquantes - retour liste vide")
+        return pre_rows
+    
+    try:
+        logging.info(f"🔵 [DEBUG _get_preinscriptions] Configuration du search_path")
+        # Configurer le search_path pour utiliser le schéma du programme
+        session.exec(text(f"SET search_path TO {schema_name}, public"))
+        logging.info(f"🔵 [DEBUG _get_preinscriptions] ✓ Search_path configuré")
+        
+        # Utiliser des modèles dynamiques pour le schéma spécifique
+        logging.info(f"🔵 [DEBUG _get_preinscriptions] Création du SchemaRoutingService")
+        from ..core.program_schema_integration import SchemaRoutingService
+        schema_routing_service = SchemaRoutingService(session)
+        schema_routing_service.set_schema(schema_name)
+        logging.info(f"🔵 [DEBUG _get_preinscriptions] ✓ SchemaRoutingService créé")
+        
+        logging.info(f"🔵 [DEBUG _get_preinscriptions] Récupération des modèles de schéma")
+        PreinscriptionSchema = schema_routing_service.get_model_for_schema(Preinscription, schema_name)
+        CandidatSchema = schema_routing_service.get_model_for_schema(Candidat, schema_name)
+        EntrepriseSchema = schema_routing_service.get_model_for_schema(Entreprise, schema_name)
+        EligibiliteSchema = schema_routing_service.get_model_for_schema(Eligibilite, schema_name)
+        logging.info(f"🔵 [DEBUG _get_preinscriptions] ✓ Modèles récupérés")
+        
+        logging.info(f"🔵 [DEBUG _get_preinscriptions] Construction de la requête SQL")
+        stmt = (
+            select(PreinscriptionSchema, CandidatSchema, EntrepriseSchema, EligibiliteSchema)
+            .join(CandidatSchema, CandidatSchema.id==PreinscriptionSchema.candidat_id)
+            .join(EntrepriseSchema, EntrepriseSchema.candidat_id==CandidatSchema.id, isouter=True)
+            .join(EligibiliteSchema, EligibiliteSchema.preinscription_id==PreinscriptionSchema.id, isouter=True)
+            .where(PreinscriptionSchema.programme_id==prog.id)
+        )
+        if q:
+            like = f"%{q}%"
+            stmt = stmt.where((CandidatSchema.nom.ilike(like)) | (CandidatSchema.prenom.ilike(like)) | (CandidatSchema.email.ilike(like)))
+            logging.info(f"🔵 [DEBUG _get_preinscriptions] Filtre de recherche appliqué: {q}")
+        
+        logging.info(f"🔵 [DEBUG _get_preinscriptions] Exécution de la requête")
+        pre_rows = session.exec(stmt.order_by(PreinscriptionSchema.cree_le.desc()).limit(400)).all()
+        logging.info(f"🔵 [DEBUG _get_preinscriptions] ✓ Requête exécutée: {len(pre_rows)} résultats")
+        
+        if pre_rows:
+            logging.info(f"🔵 [DEBUG _get_preinscriptions] Exemples de préinscriptions: {[row[0].id for row in pre_rows[:5]]}")
+        
+        if settings.DEBUG and pre_rows:
+            print(f"🔍 [DEBUG] Programme ID: {prog.id}")
+            print(f"📊 [DEBUG] Nombre de préinscriptions trouvées: {len(pre_rows)}")
+            for i, row in enumerate(pre_rows[:3]):  # Afficher les 3 premières
+                p, c, e, elig = row
+                print(f"   {i+1}. Préinscription ID: {p.id}, Candidat: {c.nom} {c.prenom}")
+                if c.photo_profil:
+                    print(f"      🔗 URL générée: /media/{c.photo_profil}")
+                    
+    except Exception as e:
+        logging.error(f"🔵 [DEBUG _get_preinscriptions] ❌ ERREUR: {type(e).__name__}: {str(e)}")
+        import traceback
+        logging.error(f"🔵 [DEBUG _get_preinscriptions] Traceback:\n{traceback.format_exc()}")
+        try:
+            session.rollback()
+            logging.info(f"🔵 [DEBUG _get_preinscriptions] ✓ Rollback effectué")
+        except Exception as rollback_err:
+            logging.error(f"🔵 [DEBUG _get_preinscriptions] ❌ Erreur rollback: {rollback_err}")
+        pre_rows = []
+    
+    logging.info(f"🔵 [DEBUG _get_preinscriptions] Fin - retour de {len(pre_rows)} préinscriptions")
+    return pre_rows
+
+
+def _load_candidat_documents(session: Session, cand, schema_name: str):
+    """Charge les documents d'un candidat"""
+    logging.info(f"🔵 [DEBUG _load_candidat_documents] Début - candidat_id={cand.id if cand else None}, schema={schema_name}")
+    if not cand:
+        logging.warning(f"🔵 [DEBUG _load_candidat_documents] ⚠ Candidat est None, retour")
+        return
+    
+    cand.documents = []
+    try:
+        check_table = text(f"""
+            SELECT EXISTS (
+                SELECT 1 FROM information_schema.tables 
+                WHERE table_schema = :schema_name AND table_name = 'document'
+            )
+        """)
+        result = session.exec(check_table.bindparams(schema_name=schema_name))
+        first_row = result.first()
+        table_exists = first_row[0] if first_row else False
+        
+        if table_exists:
+            documents_query = text(f"""
+                SELECT * FROM {schema_name}.document 
+                WHERE candidat_id = :candidat_id
+                ORDER BY depose_le DESC
+            """)
+            doc_results = session.exec(documents_query.bindparams(candidat_id=cand.id)).all()
+            for doc_row in doc_results:
+                doc_dict = dict(doc_row._mapping)
+                doc = Document(**doc_dict)
+                merged_doc = session.merge(doc)
+                cand.documents.append(merged_doc)
+            logging.info(f"🔵 [DEBUG _load_candidat_documents] ✓ {len(cand.documents)} documents chargés")
+    except Exception as e:
+        logging.error(f"🔵 [DEBUG _load_candidat_documents] ❌ ERREUR: {type(e).__name__}: {str(e)}")
+        import traceback
+        logging.error(f"🔵 [DEBUG _load_candidat_documents] Traceback:\n{traceback.format_exc()}")
+        cand.documents = []
+        try:
+            session.rollback()
+            logging.info(f"🔵 [DEBUG _load_candidat_documents] ✓ Rollback effectué")
+        except Exception as rollback_err:
+            logging.error(f"🔵 [DEBUG _load_candidat_documents] ❌ Erreur rollback: {rollback_err}")
+
+
+def _get_inscription_for_candidat(session: Session, cand, prog, schema_name: str):
+    """Récupère l'inscription d'un candidat pour un programme"""
+    logging.info(f"🔵 [DEBUG _get_inscription_for_candidat] Début - candidat_id={cand.id if cand else None}, prog_id={prog.id if prog else None}, schema={schema_name}")
+    inscription = None
+    if not cand:
+        logging.warning(f"🔵 [DEBUG _get_inscription_for_candidat] ⚠ Candidat est None, retour")
+        return inscription
+        
+    try:
+        check_table = text(f"""
+            SELECT EXISTS (
+                SELECT 1 FROM information_schema.tables 
+                WHERE table_schema = :schema_name AND table_name = 'inscription'
+            )
+        """)
+        result = session.exec(check_table.bindparams(schema_name=schema_name))
+        first_row = result.first()
+        table_exists = first_row[0] if first_row else False
+        
+        if table_exists:
+            inscription_query = text(f"""
+                SELECT * FROM {schema_name}.inscription 
+                WHERE programme_id = :programme_id AND candidat_id = :candidat_id
+                LIMIT 1
+            """)
+            result = session.exec(inscription_query.bindparams(
+                programme_id=prog.id,
+                candidat_id=cand.id
+            )).first()
+            
+            # NOTE: Le modèle Inscription a été supprimé. Les candidats validés sont identifiés par leur statut dans la table Candidat.
+            if result:
+                # inscription = Inscription(**dict(result._mapping))
+                # logging.info(f"🔵 [DEBUG _get_inscription_for_candidat] ✓ Inscription créée: ID={inscription.id}")
+                logging.info(f"🔵 [DEBUG _get_inscription_for_candidat] ✓ Résultat trouvé (modèle Inscription supprimé)")
+            else:
+                logging.info(f"🔵 [DEBUG _get_inscription_for_candidat] ⚠ Aucun résultat trouvé")
+    except Exception as e:
+        logging.error(f"🔵 [DEBUG _get_inscription_for_candidat] ❌ ERREUR: {type(e).__name__}: {str(e)}")
+        import traceback
+        logging.error(f"🔵 [DEBUG _get_inscription_for_candidat] Traceback:\n{traceback.format_exc()}")
+    
+    # NOTE: Le modèle Inscription a été supprimé. Retourner None.
+    logging.info(f"🔵 [DEBUG _get_inscription_for_candidat] Fin - modèle Inscription supprimé")
+    return None
+
+
+def _get_pipeline_for_inscription(session: Session, candidat, schema_name: str):
+    """Récupère le pipeline (avancement) d'un candidat - NOTE: Le modèle Inscription a été supprimé"""
+    candidat_id = candidat.id if candidat and hasattr(candidat, 'id') else None
+    logging.info(f"🔵 [DEBUG _get_pipeline_for_inscription] Début - candidat_id={candidat_id}, schema={schema_name}")
+    pipeline = []
+    if not candidat:
+        logging.warning(f"🔵 [DEBUG _get_pipeline_for_inscription] ⚠ Candidat est None, retour")
+        return pipeline
+        
+    try:
+        check_av = text(f"""
+            SELECT EXISTS (
+                SELECT 1 FROM information_schema.tables 
+                WHERE table_schema = :schema_name AND table_name = 'avancement_etape'
+            )
+        """)
+        check_ep = text(f"""
+            SELECT EXISTS (
+                SELECT 1 FROM information_schema.tables 
+                WHERE table_schema = :schema_name AND table_name = 'etape_pipeline'
+            )
+        """)
+        result_av = session.exec(check_av.bindparams(schema_name=schema_name))
+        first_row_av = result_av.first()
+        av_exists = first_row_av[0] if first_row_av else False
+        
+        result_ep = session.exec(check_ep.bindparams(schema_name=schema_name))
+        first_row_ep = result_ep.first()
+        ep_exists = first_row_ep[0] if first_row_ep else False
+        
+        if av_exists and ep_exists:
+            av_query = text(f"""
+                SELECT ae.*, ep.* 
+                FROM {schema_name}.avancement_etape ae
+                JOIN {schema_name}.etape_pipeline ep ON ae.etape_id = ep.id
+                WHERE ae.inscription_id = :inscription_id
+                ORDER BY ep.ordre
+            """)
+            # NOTE: AvancementEtape utilise maintenant candidat_id au lieu de inscription_id
+            candidat_id = candidat.id if hasattr(candidat, 'id') else None
+            av_results = session.exec(av_query.bindparams(inscription_id=candidat_id)).all() if candidat_id else []
+            pipeline = []
+            for av_row in av_results:
+                pipeline.append({
+                    "id": av_row.id,
+                    "statut": av_row.statut,
+                    "etape": {"libelle": av_row.libelle, "type_etape": av_row.type_etape, "ordre": av_row.ordre},
+                    "debut": av_row.debut_le,
+                    "fin": av_row.termine_le
+                })
+            logging.info(f"🔵 [DEBUG _get_pipeline_for_inscription] ✓ {len(pipeline)} étapes récupérées")
+        else:
+            logging.info(f"🔵 [DEBUG _get_pipeline_for_inscription] ⚠ Tables avancement_etape ou etape_pipeline manquantes")
+    except Exception as e:
+        logging.error(f"🔵 [DEBUG _get_pipeline_for_inscription] ❌ ERREUR: {type(e).__name__}: {str(e)}")
+        import traceback
+        logging.error(f"🔵 [DEBUG _get_pipeline_for_inscription] Traceback:\n{traceback.format_exc()}")
+        pipeline = []
+    
+    logging.info(f"🔵 [DEBUG _get_pipeline_for_inscription] Fin - {len(pipeline)} étapes")
+    return pipeline
+
+
+def _calculate_kpis(session: Session, prog, schema_name: str):
+    """Calcule les KPI pour un programme"""
+    logging.info(f"🔵 [DEBUG _calculate_kpis] Début - prog_id={prog.id if prog else None}, schema={schema_name}")
+    total_pre = 0
+    total_insc = 0
+    taux_conv = 0.0
+    objectif_qpv_atteint = 0.0
+    
+    if not prog.id:
+        logging.warning(f"🔵 [DEBUG _calculate_kpis] ⚠ prog.id est None, retour valeurs par défaut")
+        return {"total_pre": 0, "total_insc": 0, "taux_conv": 0.0, "objectif_qpv_atteint": 0.0}
+    
+    try:
+        session.exec(text(f"SET search_path TO {schema_name}, public"))
+    except Exception as e:
+        logging.warning(f"Erreur lors de la définition du search_path pour KPI: {e}")
+    
+    if _table_exists_in_schema(session, "preinscription", schema_name):
+        try:
+            total_pre = safe_count_query(session, Preinscription, programme_id=prog.id)
+        except Exception as e:
+            logging.warning(f"Erreur lors du comptage des préinscriptions: {e}")
+            total_pre = 0
+    
+    # NOTE: Le modèle Inscription a été supprimé. Les candidats validés sont identifiés par leur statut dans la table Candidat.
+    if _table_exists_in_schema(session, "inscription", schema_name):
+        try:
+            # total_insc = safe_count_query(session, Inscription, programme_id=prog.id)
+            total_insc = 0  # Modèle Inscription supprimé
+        except Exception as e:
+            logging.warning(f"Erreur lors du comptage des inscriptions: {e}")
+            total_insc = 0
+    
+    taux_conv = round((total_insc / total_pre * 100), 1) if total_pre else 0.0
+
+    # Objectif QPV
+    # Note: qpv_ok est un VARCHAR qui stocke "QPV:nom", "QPV limit:nom", ou "Aucun QPV"
+    # Il faut vérifier si la valeur commence par "QPV" au lieu d'utiliser IS TRUE
+    qpv_ok_count = 0
+    if _table_exists_in_schema(session, "eligibilite", schema_name) and _table_exists_in_schema(session, "preinscription", schema_name):
+        try:
+            session.exec(text(f"SET search_path TO {schema_name}, public"))
+            # Utiliser une requête SQL brute pour vérifier si qpv_ok commence par "QPV"
+            qpv_query = text(f"""
+                SELECT count(e.id) 
+                FROM {schema_name}.eligibilite e
+                JOIN {schema_name}.preinscription p ON p.id = e.preinscription_id
+                WHERE p.programme_id = :programme_id 
+                AND e.qpv_ok IS NOT NULL 
+                AND e.qpv_ok LIKE 'QPV%'
+            """)
+            result = session.exec(qpv_query.bindparams(programme_id=prog.id))
+            first_row = result.first()
+            qpv_ok_count = first_row[0] if first_row else 0
+            logging.info(f"🔵 [DEBUG _calculate_kpis] ✓ Comptage QPV réussi: {qpv_ok_count}")
+        except Exception as e:
+            logging.error(f"🔵 [DEBUG _calculate_kpis] ❌ ERREUR lors du comptage QPV: {type(e).__name__}: {str(e)}")
+            import traceback
+            logging.error(f"🔵 [DEBUG _calculate_kpis] Traceback:\n{traceback.format_exc()}")
+            try:
+                session.rollback()
+                logging.info(f"🔵 [DEBUG _calculate_kpis] ✓ Rollback effectué après erreur QPV")
+            except Exception as rollback_err:
+                logging.error(f"🔵 [DEBUG _calculate_kpis] ❌ Erreur rollback: {rollback_err}")
+            qpv_ok_count = 0
+    
+    objectif_qpv_atteint = round((qpv_ok_count / total_pre * 100), 1) if total_pre else 0.0
+    
+    return {
+        "total_pre": total_pre,
+        "total_insc": total_insc,
+        "taux_conv": taux_conv,
+        "objectif_qpv_atteint": objectif_qpv_atteint
+    }
+
+
+def _get_jurys(session: Session, prog, schema_name: str):
+    """Récupère les jurys d'un programme"""
+    if settings.DEBUG:
+        logging.info(f"🔵 [DEBUG _get_jurys] Début - prog_id={prog.id if prog else None}, schema={schema_name}")
+    jurys = []
+    
+    if not prog.id:
+        if settings.DEBUG:
+            logging.warning(f"🔵 [DEBUG _get_jurys] ⚠ prog.id est None, retour liste vide")
+        return jurys
+    
+    if not _table_exists_in_schema(session, "jury", "public"):
+        if settings.DEBUG:
+            logging.warning(f"🔵 [DEBUG _get_jurys] ⚠ Table 'jury' n'existe pas dans le schéma 'public'")
+        return jurys
+    
+    if settings.DEBUG:
+        logging.info(f"🔵 [DEBUG _get_jurys] Table 'jury' existe, exécution de la requête")
+    try:
+        # Les jurys sont stockés dans le schéma public, pas dans le schéma du programme
+        # Configurer le search_path vers public
+        session.exec(text("SET search_path TO public, public"))
+        if settings.DEBUG:
+            logging.info(f"🔵 [DEBUG _get_jurys] ✓ Search_path configuré vers 'public'")
+        
+        # Utiliser directement le modèle Jury (qui pointe vers public.jury)
+        if settings.DEBUG:
+            logging.info(f"🔵 [DEBUG _get_jurys] Exécution de la requête pour programme_id={prog.id}")
+        
+        # Récupérer tous les jurys pour vérifier
+        all_jurys_check = session.exec(select(Jury)).all()
+        total_jurys = len(all_jurys_check)
+        if settings.DEBUG:
+            logging.info(f"🔵 [DEBUG _get_jurys] Total de jurys dans 'public': {total_jurys}")
+        
+        if total_jurys > 0:
+            prog_ids_all = list(set([j.programme_id for j in all_jurys_check]))
+            if settings.DEBUG:
+                logging.info(f"🔵 [DEBUG _get_jurys] Programme IDs des jurys existants: {prog_ids_all}")
+        
+        # Utiliser une requête SQL directe pour récupérer les données comme dictionnaires
+        # Cela évite complètement les problèmes de lazy loading et d'objets SQLAlchemy
+        jury_query = text("""
+            SELECT 
+                id,
+                programme_id,
+                promotion_id,
+                session_le,
+                lieu,
+                statut
+            FROM public.jury
+            WHERE programme_id = :programme_id
+            ORDER BY session_le DESC
+        """)
+        
+        result = session.exec(jury_query.bindparams(programme_id=prog.id))
+        rows = result.all()
+        
+        if settings.DEBUG:
+            logging.info(f"🔵 [DEBUG _get_jurys] ✓ Requête SQL directe exécutée: {len(rows)} jurys trouvés pour programme_id={prog.id}")
+        
+        if len(rows) == 0 and total_jurys > 0:
+            if settings.DEBUG:
+                logging.warning(f"🔵 [DEBUG _get_jurys] ⚠ Il y a {total_jurys} jurys dans 'public' mais aucun pour programme_id={prog.id}")
+                logging.warning(f"🔵 [DEBUG _get_jurys] Programme IDs disponibles: {prog_ids_all}")
+        
+        # Convertir les résultats en dictionnaires directement
+        # Les Row objects de SQLAlchemy peuvent être convertis en dict via _mapping
+        jurys = []
+        for row in rows:
+            try:
+                # Convertir le Row object en dictionnaire directement
+                # Utiliser _mapping pour obtenir un dictionnaire ordonné
+                jury_dict = dict(row._mapping)
+                jurys.append(jury_dict)
+                
+                if settings.DEBUG:
+                    logging.info(f"🔵 [DEBUG _get_jurys] ✓ Jury converti: ID={jury_dict.get('id')}, programme_id={jury_dict.get('programme_id')}, session_le={jury_dict.get('session_le')}, lieu={jury_dict.get('lieu')}")
+            except Exception as e:
+                logging.error(f"🔵 [DEBUG _get_jurys] ❌ Erreur lors de la conversion du jury: {e}")
+                import traceback
+                logging.error(traceback.format_exc())
+                continue
+        
+        if settings.DEBUG:
+            logging.info(f"🔵 [DEBUG _get_jurys] ✓ {len(jurys)} jurys récupérés avec succès et convertis en dictionnaires")
+            if len(jurys) > 0:
+                logging.info(f"🔵 [DEBUG _get_jurys] Type du premier élément: {type(jurys[0])}")
+                logging.info(f"🔵 [DEBUG _get_jurys] Clés du premier dictionnaire: {list(jurys[0].keys()) if isinstance(jurys[0], dict) else 'N/A'}")
+        
+        # Remettre le search_path sur le schéma du programme pour la suite
+        session.exec(text(f"SET search_path TO {schema_name}, public"))
+    except Exception as e:
+        logging.error(f"🔵 [DEBUG _get_jurys] ❌ ERREUR: {type(e).__name__}: {str(e)}")
+        import traceback
+        logging.error(f"🔵 [DEBUG _get_jurys] Traceback:\n{traceback.format_exc()}")
+        try:
+            session.rollback()
+            if settings.DEBUG:
+                logging.info(f"🔵 [DEBUG _get_jurys] ✓ Rollback effectué")
+        except Exception as rollback_err:
+            logging.error(f"🔵 [DEBUG _get_jurys] ❌ Erreur rollback: {rollback_err}")
+        jurys = []
+    
+    if settings.DEBUG:
+        logging.info(f"🔵 [DEBUG _get_jurys] Fin - {len(jurys)} jurys")
+        # Vérification finale stricte
+        for i, item in enumerate(jurys):
+            if not isinstance(item, dict):
+                logging.error(f"🔵 [DEBUG _get_jurys] ❌ ERREUR: L'élément {i} n'est pas un dictionnaire, type: {type(item)}")
+    
+    # Retourner uniquement les dictionnaires (sécurité supplémentaire)
+    return [item for item in jurys if isinstance(item, dict)]
+
+
+def _get_decisions_jury(session: Session, cand, schema_name: str):
+    """Récupère les décisions du jury pour un candidat sous forme de dictionnaires"""
+    decisions_jury = []
+    if not (cand and _table_exists_in_schema(session, "decision_jury_candidat", schema_name)):
+        return decisions_jury
+        
+    try:
+        session.exec(text(f"SET search_path TO {schema_name}, public"))
+        # Requête SQL avec JOINs pour récupérer toutes les données nécessaires
+        decision_query = text(f"""
+            SELECT 
+                djc.*,
+                j.session_le as jury_session_le,
+                j.lieu as jury_lieu,
+                u.nom_complet as conseiller_nom_complet,
+                u.email as conseiller_email,
+                g.nom as groupe_nom,
+                p.libelle as promotion_libelle,
+                pt.nom as partenaire_nom
+            FROM {schema_name}.decision_jury_candidat djc
+            LEFT JOIN public.jury j ON djc.jury_id = j.id
+            LEFT JOIN public."user" u ON djc.conseiller_id = u.id
+            LEFT JOIN public.groupe g ON djc.groupe_id = g.id
+            LEFT JOIN public.promotion p ON djc.promotion_id = p.id
+            LEFT JOIN public.partenaire pt ON djc.partenaire_id = pt.id
+            WHERE djc.candidat_id = :candidat_id
+            ORDER BY djc.date_decision DESC
+        """)
+        decision_results = session.exec(decision_query.bindparams(candidat_id=cand.id)).all()
+        # Convertir directement en dictionnaires avec les relations incluses
+        for dec_row in decision_results:
+            dec_dict = dict(dec_row._mapping)
+            # Ajouter les données des relations pour faciliter l'accès dans le template
+            if dec_dict.get('conseiller_nom_complet'):
+                dec_dict['conseiller'] = {
+                    'nom_complet': dec_dict.get('conseiller_nom_complet') or dec_dict.get('conseiller_email', '')
+                }
+            if dec_dict.get('groupe_nom'):
+                dec_dict['groupe'] = {'nom': dec_dict.get('groupe_nom')}
+            if dec_dict.get('promotion_libelle'):
+                dec_dict['promotion'] = {'libelle': dec_dict.get('promotion_libelle')}
+            if dec_dict.get('partenaire_nom'):
+                dec_dict['partenaire'] = {'nom': dec_dict.get('partenaire_nom')}
+            if dec_dict.get('jury_session_le'):
+                dec_dict['jury'] = {
+                    'session_le': dec_dict.get('jury_session_le'),
+                    'lieu': dec_dict.get('jury_lieu')
+                }
+            decisions_jury.append(dec_dict)
+    except Exception as e:
+        logging.warning(f"Erreur lors de la récupération des décisions jury: {e}")
+        import traceback
+        logging.error(traceback.format_exc())
+        decisions_jury = []
+    
+    return decisions_jury
+
+
+def _get_conseillers(session: Session):
+    """Récupère les conseillers sous forme de dictionnaires"""
+    if settings.DEBUG:
+        logging.info(f"🔵 [DEBUG _get_conseillers] Début")
+    conseillers = []
+    try:
+        # Les utilisateurs sont dans le schéma public
+        session.exec(text("SET search_path TO public, public"))
+        if settings.DEBUG:
+            logging.info(f"🔵 [DEBUG _get_conseillers] ✓ Search_path configuré vers 'public'")
+        
+        # Requête SQL directe
+        conseiller_query = text("""
+            SELECT 
+                id,
+                nom_complet,
+                email
+            FROM public."user"
+            WHERE role = :role
+        """)
+        
+        result = session.exec(conseiller_query.bindparams(role=UserRole.CONSEILLER.value))
+        rows = result.all()
+        
+        # Convertir en dictionnaires
+        for row in rows:
+            row_dict = dict(row._mapping)
+            conseillers.append({
+                "id": row_dict.get("id"),
+                "nom": None,  # User n'a pas de nom séparé
+                "prenom": None,  # User n'a pas de prénom séparé
+                "email": row_dict.get("email"),
+                "nom_complet": row_dict.get("nom_complet") or row_dict.get("email", "")
+            })
+        
+        if settings.DEBUG:
+            logging.info(f"🔵 [DEBUG _get_conseillers] ✓ {len(conseillers)} conseillers récupérés")
+    except Exception as e:
+        logging.error(f"🔵 [DEBUG _get_conseillers] ❌ ERREUR: {type(e).__name__}: {str(e)}")
+        import traceback
+        logging.error(f"🔵 [DEBUG _get_conseillers] Traceback:\n{traceback.format_exc()}")
+        try:
+            session.rollback()
+            if settings.DEBUG:
+                logging.info(f"🔵 [DEBUG _get_conseillers] ✓ Rollback effectué")
+        except Exception as rollback_err:
+            logging.error(f"🔵 [DEBUG _get_conseillers] ❌ Erreur rollback: {rollback_err}")
+        conseillers = []
+    
+    if settings.DEBUG:
+        logging.info(f"🔵 [DEBUG _get_conseillers] Fin - {len(conseillers)} conseillers")
+    return conseillers
+
+
+def _get_promotions(session: Session):
+    """Récupère les promotions actives sous forme de dictionnaires"""
+    if settings.DEBUG:
+        logging.info(f"🔵 [DEBUG _get_promotions] Début")
+    promotions = []
+    try:
+        # Les promotions sont dans le schéma public
+        session.exec(text("SET search_path TO public, public"))
+        if settings.DEBUG:
+            logging.info(f"🔵 [DEBUG _get_promotions] ✓ Search_path configuré vers 'public'")
+        
+        # Requête SQL directe
+        promo_query = text("""
+            SELECT 
+                id,
+                libelle,
+                programme_id,
+                capacite,
+                date_debut,
+                date_fin,
+                actif
+            FROM public.promotion
+            WHERE actif = true
+        """)
+        
+        result = session.exec(promo_query)
+        rows = result.all()
+        
+        # Convertir en dictionnaires
+        for row in rows:
+            promotions.append(dict(row._mapping))
+        
+        if settings.DEBUG:
+            logging.info(f"🔵 [DEBUG _get_promotions] ✓ {len(promotions)} promotions récupérées")
+    except Exception as e:
+        logging.error(f"🔵 [DEBUG _get_promotions] ❌ ERREUR: {type(e).__name__}: {str(e)}")
+        import traceback
+        logging.error(f"🔵 [DEBUG _get_promotions] Traceback:\n{traceback.format_exc()}")
+        try:
+            session.rollback()
+            if settings.DEBUG:
+                logging.info(f"🔵 [DEBUG _get_promotions] ✓ Rollback effectué")
+        except Exception as rollback_err:
+            logging.error(f"🔵 [DEBUG _get_promotions] ❌ Erreur rollback: {rollback_err}")
+        promotions = []
+    
+    if settings.DEBUG:
+        logging.info(f"🔵 [DEBUG _get_promotions] Fin - {len(promotions)} promotions")
+    return promotions
+
+
+def _get_partenaires(session: Session):
+    """Récupère les partenaires actifs sous forme de dictionnaires"""
+    if settings.DEBUG:
+        logging.info(f"🔵 [DEBUG _get_partenaires] Début")
+    partenaires = []
+    try:
+        # Les partenaires sont dans le schéma public
+        session.exec(text("SET search_path TO public, public"))
+        if settings.DEBUG:
+            logging.info(f"🔵 [DEBUG _get_partenaires] ✓ Search_path configuré vers 'public'")
+        
+        # Requête SQL directe
+        partenaire_query = text("""
+            SELECT 
+                id,
+                nom,
+                actif
+            FROM public.partenaire
+            WHERE actif = true
+        """)
+        
+        result = session.exec(partenaire_query)
+        rows = result.all()
+        
+        # Convertir en dictionnaires
+        for row in rows:
+            partenaires.append(dict(row._mapping))
+        
+        if settings.DEBUG:
+            logging.info(f"🔵 [DEBUG _get_partenaires] ✓ {len(partenaires)} partenaires récupérés")
+    except Exception as e:
+        logging.error(f"🔵 [DEBUG _get_partenaires] ❌ ERREUR: {type(e).__name__}: {str(e)}")
+        import traceback
+        logging.error(f"🔵 [DEBUG _get_partenaires] Traceback:\n{traceback.format_exc()}")
+        try:
+            session.rollback()
+            if settings.DEBUG:
+                logging.info(f"🔵 [DEBUG _get_partenaires] ✓ Rollback effectué")
+        except Exception as rollback_err:
+            logging.error(f"🔵 [DEBUG _get_partenaires] ❌ Erreur rollback: {rollback_err}")
+        partenaires = []
+    
+    if settings.DEBUG:
+        logging.info(f"🔵 [DEBUG _get_partenaires] Fin - {len(partenaires)} partenaires")
+    return partenaires
+
+
+def _get_groupes(session: Session):
+    """Récupère les groupes actifs sous forme de dictionnaires"""
+    if settings.DEBUG:
+        logging.info(f"🔵 [DEBUG _get_groupes] Début")
+    groupes = []
+    try:
+        # Les groupes sont dans le schéma public
+        session.exec(text("SET search_path TO public, public"))
+        if settings.DEBUG:
+            logging.info(f"🔵 [DEBUG _get_groupes] ✓ Search_path configuré vers 'public'")
+        
+        # Requête SQL directe
+        groupe_query = text("""
+            SELECT 
+                id,
+                nom,
+                actif
+            FROM public.groupe
+            WHERE actif = true
+            ORDER BY nom
+        """)
+        
+        result = session.exec(groupe_query)
+        rows = result.all()
+        
+        # Convertir en dictionnaires
+        for row in rows:
+            groupes.append(dict(row._mapping))
+        
+        if settings.DEBUG:
+            logging.info(f"🔵 [DEBUG _get_groupes] ✓ {len(groupes)} groupes récupérés")
+    except Exception as e:
+        logging.error(f"🔵 [DEBUG _get_groupes] ❌ ERREUR: {type(e).__name__}: {str(e)}")
+        import traceback
+        logging.error(f"🔵 [DEBUG _get_groupes] Traceback:\n{traceback.format_exc()}")
+        try:
+            session.rollback()
+            if settings.DEBUG:
+                logging.info(f"🔵 [DEBUG _get_groupes] ✓ Rollback effectué")
+        except Exception as rollback_err:
+            logging.error(f"🔵 [DEBUG _get_groupes] ❌ Erreur rollback: {rollback_err}")
+        groupes = []
+    
+    if settings.DEBUG:
+        logging.info(f"🔵 [DEBUG _get_groupes] Fin - {len(groupes)} groupes")
+    return groupes
+
+
+def _extract_qpv_name(elig):
+    """Extrait le nom du QPV depuis les détails d'éligibilité"""
+    qpv_name = None
+    if not (elig and elig.details_json):
+        return qpv_name
+        
+    try:
+        import json
+        qpv_details = json.loads(elig.details_json)
+        if qpv_details.get("adresses_analysees"):
+            for analyse in qpv_details["adresses_analysees"]:
+                if analyse.get("resultat") and analyse["resultat"].get("nom_qp"):
+                    nom_qp = analyse["resultat"]["nom_qp"]
+                    if "QPV:" in nom_qp or "QPV limit:" in nom_qp:
+                        qpv_name = nom_qp
+                        break
+    except (json.JSONDecodeError, KeyError, IndexError):
+        qpv_name = None
+    
+    return qpv_name
+
+
+def _prepare_user_for_template(current_user):
+    """Charge les attributs de l'utilisateur pour éviter le lazy loading"""
+    if not current_user:
+        return current_user
+        
+    try:
+        # Forcer le chargement de tous les attributs nécessaires
+        _ = current_user.id
+        _ = current_user.email
+        _ = current_user.nom_complet if hasattr(current_user, 'nom_complet') else None
+        _ = current_user.photo_profil if hasattr(current_user, 'photo_profil') else None
+        _ = current_user.role if hasattr(current_user, 'role') else None
+    except Exception as e:
+        logging.warning(f"Erreur lors du chargement des attributs utilisateur: {e}")
+        # En cas d'erreur, créer un objet simple pour éviter le lazy loading
+        current_user_dict = {
+            "id": getattr(current_user, 'id', None),
+            "email": getattr(current_user, 'email', ''),
+            "nom_complet": getattr(current_user, 'nom_complet', '') if hasattr(current_user, 'nom_complet') else '',
+            "photo_profil": getattr(current_user, 'photo_profil', None) if hasattr(current_user, 'photo_profil') else None,
+            "role": getattr(current_user, 'role', None) if hasattr(current_user, 'role') else None
+        }
+        current_user = type('UserDict', (), current_user_dict)()
+    
+    return current_user
+
+
 @router.get("/form", name="form_inscriptions_display", response_class=HTMLResponse)
 def inscriptions_ui(
     request: Request,
@@ -72,346 +812,163 @@ def inscriptions_ui(
     q: Optional[str] = Query(None),
     pre_id: Optional[int] = Query(None),
 ):
-    # Gestion des transactions échouées - rollback si nécessaire
-    try:
-        session.rollback()
-    except Exception:
-        pass  # Ignorer les erreurs de rollback
-    prog = _prog_by_code(session, programme)
-    if not prog:
-        # Au lieu de lever une erreur, créer un programme factice avec des valeurs vides
-        class ProgrammeFactice:
-            def __init__(self):
-                self.id = None
-                self.code = programme
-                self.nom = f"Programme {programme} (non trouvé)"
-        
-        prog = ProgrammeFactice()
-
-    # Liste de préinscriptions (colonnes pour la liste gauche)
-    pre_rows = []
-    schema_name = programme.lower() if programme else "public"  # Définir schema_name au début
+    """Page de gestion des inscriptions avec préinscriptions"""
+    logging.info(f"🔵 [DEBUG] ===== DEBUT inscriptions_ui =====")
+    logging.info(f"🔵 [DEBUG] Paramètres: programme={programme}, q={q}, pre_id={pre_id}")
     
-    if prog.id and _table_exists_in_schema(session, "preinscription", schema_name) and _table_exists_in_schema(session, "candidat", schema_name):
+    try:
+        # Gestion des transactions échouées - rollback si nécessaire
+        logging.info(f"🔵 [DEBUG] Étape 1: Rollback initial de la session")
         try:
-            
-            # Configurer le search_path pour utiliser le schéma du programme
-            session.execute(text(f"SET search_path TO {schema_name}, public"))
-            
-            # Utiliser des modèles dynamiques pour le schéma spécifique
-            from ..core.program_schema_integration import SchemaRoutingService
-            schema_routing_service = SchemaRoutingService(session)
-            schema_routing_service.set_schema(schema_name)
-            
-            PreinscriptionSchema = schema_routing_service.get_model_for_schema(Preinscription, schema_name)
-            CandidatSchema = schema_routing_service.get_model_for_schema(Candidat, schema_name)
-            EntrepriseSchema = schema_routing_service.get_model_for_schema(Entreprise, schema_name)
-            EligibiliteSchema = schema_routing_service.get_model_for_schema(Eligibilite, schema_name)
-            
-            stmt = (
-                select(PreinscriptionSchema, CandidatSchema, EntrepriseSchema, EligibiliteSchema)
-                .join(CandidatSchema, CandidatSchema.id==PreinscriptionSchema.candidat_id)
-                .join(EntrepriseSchema, EntrepriseSchema.candidat_id==CandidatSchema.id, isouter=True)
-                .join(EligibiliteSchema, EligibiliteSchema.preinscription_id==PreinscriptionSchema.id, isouter=True)
-                .where(PreinscriptionSchema.programme_id==prog.id)
-            )
-            if q:
-                like = f"%{q}%"
-                stmt = stmt.where((CandidatSchema.nom.ilike(like)) | (CandidatSchema.prenom.ilike(like)) | (CandidatSchema.email.ilike(like)))
-            pre_rows = session.exec(stmt.order_by(PreinscriptionSchema.cree_le.desc()).limit(400)).all()
-        except Exception as e:
-            logging.warning(f"⚠️ [WARNING] Erreur lors de la récupération des préinscriptions: {e}")
-            import traceback
-            logging.error(traceback.format_exc())
             session.rollback()
-            pre_rows = []
-    else:
-        print(f"⚠️ [WARNING] Tables preinscription ou candidat manquantes - retour liste vide")
+            logging.info(f"🔵 [DEBUG] ✓ Rollback réussi")
+        except Exception as e:
+            logging.warning(f"🔵 [DEBUG] ⚠ Erreur lors du rollback initial: {e}")
         
-        # Debug logs
-        if settings.DEBUG:
-            print(f"🔍 [DEBUG] Programme ID: {prog.id}")
-            print(f"📊 [DEBUG] Nombre de préinscriptions trouvées: {len(pre_rows)}")
-            for i, row in enumerate(pre_rows[:3]):  # Afficher les 3 premières
-                p, c, e, elig = row
-                print(f"   {i+1}. Préinscription ID: {p.id}, Candidat: {c.nom} {c.prenom}")
-                print(f"      📸 Photo profil: {repr(c.photo_profil)}")
-                if c.photo_profil:
-                    print(f"      🔗 URL générée: /media/{c.photo_profil}")
+        # Récupérer le programme
+        logging.info(f"🔵 [DEBUG] Étape 2: Récupération du programme '{programme}'")
+        prog = _prog_by_code(session, programme)
+        if not prog:
+            logging.warning(f"🔵 [DEBUG] ⚠ Programme '{programme}' non trouvé, création d'un programme factice")
+            # Créer un programme factice avec des valeurs vides
+            class ProgrammeFactice:
+                def __init__(self):
+                    self.id = None
+                    self.code = programme
+                    self.nom = f"Programme {programme} (non trouvé)"
+            prog = ProgrammeFactice()
+        else:
+            logging.info(f"🔵 [DEBUG] ✓ Programme trouvé: ID={prog.id}, Nom={prog.nom}")
 
-    selected = None; cand=None; ent=None; elig=None; inscription=None; pipeline=[]
-    if pre_id:
-        if settings.DEBUG:
-            print(f"🎯 [DEBUG] Recherche de préinscription ID: {pre_id}")
-        for row in pre_rows:
-            if row[0].id == pre_id:
-                selected, cand, ent, elig = row
+        schema_name = programme.lower() if programme else "public"
+        logging.info(f"🔵 [DEBUG] Schema name: {schema_name}")
+        
+        # Récupérer les préinscriptions
+        logging.info(f"🔵 [DEBUG] Étape 3: Récupération des préinscriptions")
+        pre_rows = _get_preinscriptions(session, prog, schema_name, q)
+        logging.info(f"🔵 [DEBUG] ✓ {len(pre_rows)} préinscriptions récupérées")
+
+        # Si une préinscription spécifique est demandée
+        selected = None
+        cand = None
+        ent = None
+        elig = None
+        inscription = None
+        pipeline = []
+        
+        if pre_id:
+            logging.info(f"🔵 [DEBUG] Étape 4: Recherche de préinscription ID={pre_id}")
+            if settings.DEBUG:
+                print(f"🎯 [DEBUG] Recherche de préinscription ID: {pre_id}")
+            
+            # Chercher la préinscription dans la liste
+            for row in pre_rows:
+                if row[0].id == pre_id:
+                    selected, cand, ent, elig = row
+                    logging.info(f"🔵 [DEBUG] ✓ Préinscription trouvée: ID={selected.id}, Candidat={cand.nom} {cand.prenom}")
+                    if settings.DEBUG:
+                        print(f"✅ [DEBUG] Préinscription trouvée: {selected.id}, Candidat: {cand.nom} {cand.prenom}")
+                    break
+            
+            if not selected:
+                logging.warning(f"🔵 [DEBUG] ⚠ Préinscription ID {pre_id} non trouvée dans la liste")
+                available_ids = [row[0].id for row in pre_rows]
+                logging.warning(f"🔵 [DEBUG] IDs disponibles: {available_ids}")
                 if settings.DEBUG:
-                    print(f"✅ [DEBUG] Préinscription trouvée: {selected.id}, Candidat: {cand.nom} {cand.prenom}")
-                break
-        
-        if not selected and settings.DEBUG:
-            print(f"❌ [DEBUG] Préinscription ID {pre_id} non trouvée dans la liste")
-            print(f"📋 [DEBUG] IDs disponibles: {[row[0].id for row in pre_rows]}")
-        
-        if selected:
-            # Utiliser le schéma du programme pour les requêtes d'inscription
-            session.execute(text(f"SET search_path TO {schema_name}, public"))
+                    print(f"❌ [DEBUG] Préinscription ID {pre_id} non trouvée dans la liste")
+                    print(f"📋 [DEBUG] IDs disponibles: {available_ids}")
             
-            # Charger les documents du candidat avec le bon schéma
-            cand.documents = []
-            try:
-                # Vérifier directement dans le schéma spécifique
-                check_table = text(f"""
-                    SELECT EXISTS (
-                        SELECT 1 FROM information_schema.tables 
-                        WHERE table_schema = :schema_name AND table_name = 'document'
-                    )
-                """)
-                table_exists = session.execute(check_table.bindparams(schema_name=schema_name)).scalar()
-                
-                if table_exists:
-                    # Utiliser une requête SQL directe avec le schéma explicite
-                    documents_query = text(f"""
-                        SELECT * FROM {schema_name}.document 
-                        WHERE candidat_id = :candidat_id
-                        ORDER BY depose_le DESC
-                    """)
-                    doc_results = session.execute(documents_query.bindparams(candidat_id=cand.id)).all()
-                    for doc_row in doc_results:
-                        doc_dict = dict(doc_row._mapping)
-                        # Utiliser merge() pour éviter les conflits avec les objets existants
-                        doc = Document(**doc_dict)
-                        merged_doc = session.merge(doc)
-                        cand.documents.append(merged_doc)
-            except Exception as e:
-                logging.warning(f"Erreur lors de la récupération des documents: {e}")
-                cand.documents = []
-                # Rollback pour nettoyer la session en cas d'erreur
+            # Charger les données du candidat sélectionné
+            if selected:
+                logging.info(f"🔵 [DEBUG] Étape 5: Chargement des données du candidat sélectionné")
                 try:
-                    session.rollback()
-                except Exception:
-                    pass
-            
-            # Récupérer l'inscription avec le schéma correct
-            inscription = None
-            try:
-                # Vérifier directement dans le schéma spécifique
-                check_table = text(f"""
-                    SELECT EXISTS (
-                        SELECT 1 FROM information_schema.tables 
-                        WHERE table_schema = :schema_name AND table_name = 'inscription'
-                    )
-                """)
-                table_exists = session.execute(check_table.bindparams(schema_name=schema_name)).scalar()
-                
-                if table_exists:
-                    # Utiliser une requête SQL directe avec le schéma explicite
-                    inscription_query = text(f"""
-                        SELECT * FROM {schema_name}.inscription 
-                        WHERE programme_id = :programme_id AND candidat_id = :candidat_id
-                        LIMIT 1
-                    """)
-                    result = session.execute(inscription_query.bindparams(
-                        programme_id=prog.id,
-                        candidat_id=cand.id
-                    )).first()
+                    session.exec(text(f"SET search_path TO {schema_name}, public"))
+                    logging.info(f"🔵 [DEBUG] ✓ Search_path défini: {schema_name}")
                     
-                    if result:
-                        # Créer un objet Inscription à partir du résultat
-                        inscription = Inscription(**dict(result._mapping))
-            except Exception as e:
-                logging.warning(f"Erreur lors de la récupération de l'inscription: {e}")
-                inscription = None
-            
-            if inscription:
-                # Pipeline (avancement attaché)
-                try:
-                    # Vérifier directement dans le schéma spécifique
-                    check_av = text(f"""
-                        SELECT EXISTS (
-                            SELECT 1 FROM information_schema.tables 
-                            WHERE table_schema = :schema_name AND table_name = 'avancement_etape'
-                        )
-                    """)
-                    check_ep = text(f"""
-                        SELECT EXISTS (
-                            SELECT 1 FROM information_schema.tables 
-                            WHERE table_schema = :schema_name AND table_name = 'etape_pipeline'
-                        )
-                    """)
-                    av_exists = session.execute(check_av.bindparams(schema_name=schema_name)).scalar()
-                    ep_exists = session.execute(check_ep.bindparams(schema_name=schema_name)).scalar()
+                    logging.info(f"🔵 [DEBUG] 5.1: Chargement des documents")
+                    _load_candidat_documents(session, cand, schema_name)
+                    logging.info(f"🔵 [DEBUG] ✓ Documents chargés: {len(cand.documents) if hasattr(cand, 'documents') else 0}")
                     
-                    if av_exists and ep_exists:
-                        av_query = text(f"""
-                            SELECT ae.*, ep.* 
-                            FROM {schema_name}.avancement_etape ae
-                            JOIN {schema_name}.etape_pipeline ep ON ae.etape_id = ep.id
-                            WHERE ae.inscription_id = :inscription_id
-                            ORDER BY ep.ordre
-                        """)
-                        av_results = session.execute(av_query.bindparams(inscription_id=inscription.id)).all()
-                        pipeline = []
-                        for av_row in av_results:
-                            pipeline.append({
-                                "id": av_row.id,
-                                "statut": av_row.statut,
-                                "etape": {"libelle": av_row.libelle, "type_etape": av_row.type_etape, "ordre": av_row.ordre},
-                                "debut": av_row.debut_le,
-                                "fin": av_row.termine_le
-                            })
-                    else:
-                        pipeline = []
+                    logging.info(f"🔵 [DEBUG] 5.2: Récupération de l'inscription")
+                    # NOTE: Le modèle Inscription a été supprimé. Utiliser directement le candidat.
+                    # inscription = _get_inscription_for_candidat(session, cand, prog, schema_name)
+                    # if inscription:
+                    #     logging.info(f"🔵 [DEBUG] ✓ Inscription trouvée: ID={inscription.id}")
+                    # else:
+                    #     logging.info(f"🔵 [DEBUG] ⚠ Aucune inscription trouvée pour ce candidat")
+                    
+                    if cand:
+                        logging.info(f"🔵 [DEBUG] 5.3: Récupération du pipeline")
+                        pipeline = _get_pipeline_for_inscription(session, inscription, schema_name)
+                        logging.info(f"🔵 [DEBUG] ✓ Pipeline récupéré: {len(pipeline)} étapes")
                 except Exception as e:
-                    logging.warning(f"Erreur lors de la récupération du pipeline: {e}")
-                    pipeline = []
+                    logging.error(f"🔵 [DEBUG] ❌ Erreur lors du chargement des données candidat: {e}")
+                    import traceback
+                    logging.error(traceback.format_exc())
 
-    # KPI simples
-    total_pre = 0
-    total_insc = 0
-    taux_conv = 0.0
-    objectif_qpv_atteint = 0.0
-    
-    if prog.id:
-        total_pre = 0
-        if _table_exists_in_schema(session, "preinscription", schema_name):
-            total_pre = safe_count_query(session, Preinscription, programme_id=prog.id)
+        # Calculer les KPI
+        logging.info(f"🔵 [DEBUG] Étape 6: Calcul des KPI")
+        kpi_data = _calculate_kpis(session, prog, schema_name)
+        logging.info(f"🔵 [DEBUG] ✓ KPI calculés: total_pre={kpi_data['total_pre']}, total_insc={kpi_data['total_insc']}, taux_conv={kpi_data['taux_conv']}%")
+
+        # Récupérer les données supplémentaires
+        logging.info(f"🔵 [DEBUG] Étape 7: Récupération des données supplémentaires")
         
-        total_insc = 0
-        if _table_exists_in_schema(session, "inscription", schema_name):
-            total_insc = safe_count_query(session, Inscription, programme_id=prog.id)
-        taux_conv = round((total_insc / total_pre * 100), 1) if total_pre else 0.0
+        logging.info(f"🔵 [DEBUG] 7.1: Jurys")
+        jurys = _get_jurys(session, prog, schema_name)
+        logging.info(f"🔵 [DEBUG] ✓ {len(jurys)} jurys récupérés")
+        if len(jurys) > 0:
+            logging.info(f"🔵 [DEBUG] Type du premier jury: {type(jurys[0])}")
+            if isinstance(jurys[0], dict):
+                logging.info(f"🔵 [DEBUG] ✓ Les jurys sont bien des dictionnaires")
+            else:
+                logging.warning(f"🔵 [DEBUG] ⚠ Les jurys ne sont PAS des dictionnaires, type: {type(jurys[0])}")
+        
+        logging.info(f"🔵 [DEBUG] 7.2: Décisions jury")
+        decisions_jury = _get_decisions_jury(session, cand, schema_name)
+        logging.info(f"🔵 [DEBUG] ✓ {len(decisions_jury)} décisions récupérées")
+        
+        logging.info(f"🔵 [DEBUG] 7.3: Conseillers")
+        conseillers = _get_conseillers(session)
+        logging.info(f"🔵 [DEBUG] ✓ {len(conseillers)} conseillers récupérés")
+        
+        logging.info(f"🔵 [DEBUG] 7.4: Promotions")
+        promotions = _get_promotions(session)
+        logging.info(f"🔵 [DEBUG] ✓ {len(promotions)} promotions récupérées")
+        
+        logging.info(f"🔵 [DEBUG] 7.5: Partenaires")
+        partenaires = _get_partenaires(session)
+        logging.info(f"🔵 [DEBUG] ✓ {len(partenaires)} partenaires récupérés")
+        
+        logging.info(f"🔵 [DEBUG] 7.6: Groupes")
+        groupes = _get_groupes(session)
+        logging.info(f"🔵 [DEBUG] ✓ {len(groupes)} groupes récupérés")
+        
+        # Extraire le nom QPV
+        logging.info(f"🔵 [DEBUG] Étape 8: Extraction du nom QPV")
+        qpv_name = _extract_qpv_name(elig)
+        logging.info(f"🔵 [DEBUG] ✓ QPV name: {qpv_name}")
 
-        # Objectif QPV (ex: % de préinscrits ayant qpv_ok) - Version sécurisée
-        qpv_ok_count = 0
-        if _table_exists_in_schema(session, "eligibilite", schema_name) and _table_exists_in_schema(session, "preinscription", schema_name):
+        # Préparer le search_path et les documents avant le rendu
+        logging.info(f"🔵 [DEBUG] Étape 9: Préparation avant rendu template")
+        if cand and schema_name:
             try:
-                qpv_ok_count = session.exec(
-                    select(func.count(Eligibilite.id)).join(Preinscription).where(
-                        (Preinscription.programme_id==prog.id) & (Eligibilite.qpv_ok.is_(True))
-                    )
-                ).one() or 0
+                session.exec(text(f"SET search_path TO {schema_name}, public"))
+                if hasattr(cand, 'documents'):
+                    _ = cand.documents
+                logging.info(f"🔵 [DEBUG] ✓ Search_path et documents préparés")
             except Exception as e:
-                logging.warning(f"Erreur lors du comptage QPV: {e}")
-                qpv_ok_count = 0
-        objectif_qpv_atteint = round((qpv_ok_count / total_pre * 100), 1) if total_pre else 0.0
+                logging.warning(f"🔵 [DEBUG] ⚠ Erreur lors de la configuration du search_path avant rendu: {e}")
+        
+        # Préparer l'utilisateur pour le template
+        logging.info(f"🔵 [DEBUG] Étape 10: Préparation de l'utilisateur")
+        current_user = _prepare_user_for_template(current_user)
+        logging.info(f"🔵 [DEBUG] ✓ Utilisateur préparé: ID={getattr(current_user, 'id', None)}")
+        
+        logging.info(f"🔵 [DEBUG] Étape 11: Rendu du template")
 
-    # Jury sessions futures + récentes - Version sécurisée
-    jurys = []
-    if prog.id and _table_exists_in_schema(session, "jury", schema_name):
-        try:
-            # Utiliser le schéma du programme pour les jurys
-            session.execute(text(f"SET search_path TO {schema_name}, public"))
-            jury_query = text(f"""
-                SELECT * FROM {schema_name}.jury 
-                WHERE programme_id = :programme_id 
-                ORDER BY session_le DESC
-            """)
-            jury_results = session.execute(jury_query.bindparams(programme_id=prog.id)).all()
-            jurys = []
-            for jury_row in jury_results:
-                jurys.append(Jury(**dict(jury_row._mapping)))
-        except Exception as e:
-            logging.warning(f"Erreur lors de la récupération des jurys: {e}")
-            jurys = []
-
-    # Données pour le système de décisions du jury
-    decisions_jury = []
-    conseillers = []
-    promotions = []
-    partenaires = []
-    
-    if cand and _table_exists_in_schema(session, "decision_jury_candidat", schema_name):
-        try:
-            # Utiliser le schéma du programme pour les décisions du jury
-            session.execute(text(f"SET search_path TO {schema_name}, public"))
-            decision_query = text(f"""
-                SELECT djc.* 
-                FROM {schema_name}.decision_jury_candidat djc
-                WHERE djc.candidat_id = :candidat_id
-                ORDER BY djc.date_decision DESC
-            """)
-            decision_results = session.execute(decision_query.bindparams(candidat_id=cand.id)).all()
-            decisions_jury = []
-            for dec_row in decision_results:
-                dec_dict = dict(dec_row._mapping)
-                # Charger les relations si nécessaire
-                decisions_jury.append(DecisionJuryCandidat(**dec_dict))
-        except Exception as e:
-            logging.warning(f"Erreur lors de la récupération des décisions jury: {e}")
-            import traceback
-            logging.error(traceback.format_exc())
-            decisions_jury = []
-    
-    # Récupérer les conseillers
-    conseillers = []
-    try:
-        session.rollback()
-        conseillers = session.exec(select(User).where(User.role == UserRole.CONSEILLER.value)).all()
-    except Exception as e:
-        print(f"⚠️ [WARNING] Erreur lors de la récupération des conseillers: {e}")
-        conseillers = []
-    
-    # Récupérer les promotions
-    promotions = []
-    try:
-        session.rollback()
-        promotions = session.exec(select(Promotion)).all()
-    except Exception as e:
-        print(f"⚠️ [WARNING] Erreur lors de la récupération des promotions: {e}")
-        promotions = []
-    
-    # Récupérer les partenaires actifs
-    partenaires = []
-    try:
-        session.rollback()
-        partenaires = session.exec(select(Partenaire).where(Partenaire.actif == True)).all()
-    except Exception as e:
-        print(f"⚠️ [WARNING] Erreur lors de la récupération des partenaires: {e}")
-        partenaires = []
-    
-    # Récupérer les groupes actifs
-    groupes = []
-    try:
-        session.rollback()
-        groupes = session.exec(select(Groupe).where(Groupe.actif == True).order_by(Groupe.nom)).all()
-    except Exception as e:
-        print(f"⚠️ [WARNING] Erreur lors de la récupération des groupes: {e}")
-        groupes = []
-
-    # Extraire le nom du QPV si disponible
-    qpv_name = None
-    if elig and elig.details_json:
-        try:
-            import json
-            qpv_details = json.loads(elig.details_json)
-            if qpv_details.get("adresses_analysees"):
-                for analyse in qpv_details["adresses_analysees"]:
-                    if analyse.get("resultat") and analyse["resultat"].get("nom_qp"):
-                        nom_qp = analyse["resultat"]["nom_qp"]
-                        if "QPV:" in nom_qp or "QPV limit:" in nom_qp:
-                            qpv_name =nom_qp # nom_qp.split(":")[1] if ":" in nom_qp else nom_qp
-                            break
-        except (json.JSONDecodeError, KeyError, IndexError):
-            qpv_name = None
-
-    # S'assurer que le search_path est défini avant le rendu du template
-    # pour éviter les problèmes de lazy loading dans le template
-    if cand and schema_name:
-        try:
-            session.execute(text(f"SET search_path TO {schema_name}, public"))
-            # S'assurer que les documents sont déjà chargés pour éviter le lazy loading
-            # Si les documents ne sont pas chargés, les charger maintenant
-            if hasattr(cand, 'documents'):
-                # Forcer le chargement des documents si nécessaire
-                _ = cand.documents  # Cela déclenchera le lazy loading maintenant avec le bon search_path
-        except Exception as e:
-            logging.warning(f"Erreur lors de la configuration du search_path avant rendu: {e}")
-
-    return templates.TemplateResponse(
-        "pages/programme/inscription.html",
-        {
+        logging.info(f"🔵 [DEBUG] Préparation du contexte template")
+        template_context = {
             "request": request,
             "settings": settings,
             "utilisateur": current_user,
@@ -435,14 +992,43 @@ def inscriptions_ui(
             "groupes": groupes,
             "type_promotion_enum": TypePromotion,
             "kpi": {
-                "total_pre": int(total_pre),
-                "total_insc": int(total_insc),
-                "taux_conv": taux_conv,
-                "objectif_qpv_atteint": objectif_qpv_atteint,
+                "total_pre": int(kpi_data["total_pre"]),
+                "total_insc": int(kpi_data["total_insc"]),
+                "taux_conv": kpi_data["taux_conv"],
+                "objectif_qpv_atteint": kpi_data["objectif_qpv_atteint"],
             },
             "timestamp": int(datetime.now().timestamp()),
         }
-    )
+        logging.info(f"🔵 [DEBUG] ✓ Contexte préparé, rendu du template")
+        logging.info(f"🔵 [DEBUG] ===== FIN inscriptions_ui (SUCCÈS) =====")
+        
+        return templates.TemplateResponse(
+            "pages/programme/inscription.html",
+            template_context
+        )
+    except Exception as e:
+        # Logger l'erreur complète pour le débogage
+        import traceback
+        error_traceback = traceback.format_exc()
+        logging.error(f"🔵 [DEBUG] ===== ERREUR dans inscriptions_ui =====")
+        logging.error(f"🔵 [DEBUG] ❌ Type d'erreur: {type(e).__name__}")
+        logging.error(f"🔵 [DEBUG] ❌ Message: {str(e)}")
+        logging.error(f"🔵 [DEBUG] ❌ Traceback complet:\n{error_traceback}")
+        logging.error(f"🔵 [DEBUG] ===== FIN inscriptions_ui (ERREUR) =====")
+        
+        # Rollback de la session en cas d'erreur
+        try:
+            session.rollback()
+            logging.info(f"🔵 [DEBUG] ✓ Rollback effectué après erreur")
+        except Exception as rollback_error:
+            logging.error(f"🔵 [DEBUG] ❌ Erreur lors du rollback: {rollback_error}")
+        
+        # Retourner une réponse d'erreur au lieu de laisser FastAPI gérer
+        # Cela permettra de mieux voir l'erreur dans les logs
+        raise HTTPException(
+            status_code=500,
+            detail=f"Erreur lors du chargement de la page d'inscriptions: {str(e)}. Consultez les logs pour plus de détails."
+        )
 
 
 # Crée une inscription à partir d'une préinscription
@@ -462,7 +1048,7 @@ def create_from_pre(
         schema_routing_service.set_schema(schema_name)
         
         # Configurer le search_path pour utiliser le schéma du programme
-        session.execute(text(f"SET search_path TO {schema_name}, public"))
+        session.exec(text(f"SET search_path TO {schema_name}, public"))
         
         from ..services import InscriptionService
         
@@ -533,7 +1119,7 @@ async def update_infos(
         schema_routing_service.set_schema(schema_name)
         
         # Configurer le search_path pour utiliser le schéma du programme
-        session.execute(text(f"SET search_path TO {schema_name}, public"))
+        session.exec(text(f"SET search_path TO {schema_name}, public"))
         
         # Obtenir les modèles spécifiques au schéma
         PreinscriptionSchema = schema_routing_service.get_model_for_schema(Preinscription, schema_name)
@@ -567,7 +1153,7 @@ async def update_infos(
                         WHERE candidat_id = :candidat_id
                         ORDER BY depose_le DESC
                     """)
-                    doc_results = session.execute(documents_query.bindparams(candidat_id=cand.id)).all()
+                    doc_results = session.exec(documents_query.bindparams(candidat_id=cand.id)).all()
                     for doc_row in doc_results:
                         doc_dict = dict(doc_row._mapping)
                         # Utiliser merge() pour éviter les conflits avec les objets existants
@@ -834,7 +1420,7 @@ async def elig_recalc(
         schema_routing_service.set_schema(schema_name)
         
         # Configurer le search_path pour utiliser le schéma du programme
-        session.execute(text(f"SET search_path TO {schema_name}, public"))
+        session.exec(text(f"SET search_path TO {schema_name}, public"))
         
         # Utiliser les modèles configurés pour le schéma
         PreinscriptionSchema = schema_routing_service.get_model_for_schema(Preinscription, schema_name)
@@ -993,7 +1579,7 @@ async def add_document(
         schema_routing_service.set_schema(schema_name)
         
         # Configurer le search_path pour utiliser le schéma du programme
-        session.execute(text(f"SET search_path TO {schema_name}, public"))
+        session.exec(text(f"SET search_path TO {schema_name}, public"))
         
         # Obtenir les modèles spécifiques au schéma
         CandidatSchema = schema_routing_service.get_model_for_schema(Candidat, schema_name)
@@ -1084,7 +1670,7 @@ def delete_document(
         schema_routing_service.set_schema(schema_name)
         
         # Configurer le search_path pour utiliser le schéma du programme
-        session.execute(text(f"SET search_path TO {schema_name}, public"))
+        session.exec(text(f"SET search_path TO {schema_name}, public"))
         
         # Obtenir les modèles spécifiques au schéma
         DocumentSchema = schema_routing_service.get_model_for_schema(Document, schema_name)
@@ -1150,11 +1736,12 @@ def etape_advance(
     schema_routing_service.set_schema(schema_name)
     
     # Configurer le search_path pour utiliser le schéma du programme
-    session.execute(text(f"SET search_path TO {schema_name}, public"))
+    session.exec(text(f"SET search_path TO {schema_name}, public"))
     
     # Obtenir les modèles spécifiques au schéma
     AvancementEtapeSchema = schema_routing_service.get_model_for_schema(AvancementEtape, schema_name)
-    InscriptionSchema = schema_routing_service.get_model_for_schema(Inscription, schema_name)
+    # NOTE: Le modèle Inscription a été supprimé
+    # InscriptionSchema = schema_routing_service.get_model_for_schema(Inscription, schema_name)
     PreinscriptionSchema = schema_routing_service.get_model_for_schema(Preinscription, schema_name)
     
     av = session.get(AvancementEtapeSchema, avancement_id)
@@ -1175,7 +1762,11 @@ def etape_advance(
         av.termine_le = now
 
     session.commit()
-    ins = session.get(InscriptionSchema, av.inscription_id)
+    # NOTE: Le modèle Inscription a été supprimé. Récupérer directement le candidat.
+    # ins = session.get(InscriptionSchema, av.inscription_id)
+    from ..models.base import Candidat
+    CandidatSchema = schema_routing_service.get_model_for_schema(Candidat, schema_name)
+    candidat = session.get(CandidatSchema, av.candidat_id) if hasattr(av, 'candidat_id') else None
     prog = session.exec(select(Programme).where(Programme.code == programme)).first()
     pre = session.exec(select(PreinscriptionSchema).where(PreinscriptionSchema.programme_id==prog.id, PreinscriptionSchema.candidat_id==ins.candidat_id)).first()
     return RedirectResponse(url=f"{request.url_for('form_inscriptions_display')}?programme={prog.code if prog else programme}&pre_id={pre.id if pre else ''}", status_code=303)
@@ -1202,146 +1793,287 @@ def create_jury_decision(
     schema_routing_service = Depends(get_schema_routing_service),
 ):
     """Créer une décision du jury"""
-    
-    # Récupérer le schéma du programme
-    schema_name = programme.lower() if programme else getattr(request.state, 'current_programme', 'acd').lower()
-    schema_routing_service.set_schema(schema_name)
-    
-    # Configurer le search_path pour utiliser le schéma du programme
-    session.execute(text(f"SET search_path TO {schema_name}, public"))
-    
-    # Obtenir les modèles spécifiques au schéma
-    CandidatSchema = schema_routing_service.get_model_for_schema(Candidat, schema_name)
-    DecisionJuryCandidatSchema = schema_routing_service.get_model_for_schema(DecisionJuryCandidat, schema_name)
-    ReorientationCandidatSchema = schema_routing_service.get_model_for_schema(ReorientationCandidat, schema_name)
-    
-    print(f"📋 [JURY] Données reçues:")
-    print(f"   - candidat_id: {candidat_id} (type: {type(candidat_id)})")
-    print(f"   - jury_id: {jury_id} (type: {type(jury_id)})")
-    print(f"   - decision: {decision} (type: {type(decision)})")
-    print(f"   - commentaires: {commentaires} (type: {type(commentaires)})")
-    print(f"   - conseiller_id: {conseiller_id} (type: {type(conseiller_id)})")
-    print(f"   - promotion_id: {promotion_id} (type: {type(promotion_id)})")
-    print(f"   - partenaire_id: {partenaire_id} (type: {type(partenaire_id)})")
-    
-    # Convertir les chaînes vides en None pour les IDs
-    def safe_int_convert(value):
-        if value is None:
-            return None
-        if isinstance(value, int):
-            return value
-        if isinstance(value, str) and value.strip():
-            try:
-                return int(value)
-            except ValueError:
+    try:
+        if settings.DEBUG:
+            logging.info("=" * 80)
+            logging.info("🔵 [CREATE_JURY_DECISION] Début de la création d'une décision de jury")
+            logging.info(f"🔵 [CREATE_JURY_DECISION] URL: {request.url}")
+            logging.info(f"🔵 [CREATE_JURY_DECISION] Méthode: {request.method}")
+            logging.info(f"🔵 [CREATE_JURY_DECISION] User: {current_user.id if current_user else 'None'} ({current_user.nom_complet if current_user else 'None'})")
+        
+        # Récupérer le schéma du programme
+        schema_name = programme.lower() if programme else getattr(request.state, 'current_programme', 'acd').lower()
+        if settings.DEBUG:
+            logging.info(f"🔵 [CREATE_JURY_DECISION] Programme: {programme} → Schéma: {schema_name}")
+        schema_routing_service.set_schema(schema_name)
+        
+        # Configurer le search_path pour utiliser le schéma du programme
+        session.exec(text(f"SET search_path TO {schema_name}, public"))
+        if settings.DEBUG:
+            logging.info(f"🔵 [CREATE_JURY_DECISION] Search path configuré: {schema_name}, public")
+        
+        # Obtenir les modèles spécifiques au schéma
+        CandidatSchema = schema_routing_service.get_model_for_schema(Candidat, schema_name)
+        DecisionJuryCandidatSchema = schema_routing_service.get_model_for_schema(DecisionJuryCandidat, schema_name)
+        ReorientationCandidatSchema = schema_routing_service.get_model_for_schema(ReorientationCandidat, schema_name)
+        if settings.DEBUG:
+            logging.info(f"🔵 [CREATE_JURY_DECISION] Modèles chargés pour le schéma {schema_name}")
+        
+        if settings.DEBUG:
+            logging.info(f"🔵 [CREATE_JURY_DECISION] Données reçues du formulaire:")
+            logging.info(f"   - candidat_id: {candidat_id} (type: {type(candidat_id).__name__})")
+            logging.info(f"   - jury_id: {jury_id} (type: {type(jury_id).__name__})")
+            logging.info(f"   - decision: {decision} (type: {type(decision).__name__})")
+            logging.info(f"   - commentaires: {commentaires} (type: {type(commentaires).__name__})")
+            logging.info(f"   - conseiller_id: {conseiller_id} (type: {type(conseiller_id).__name__})")
+            logging.info(f"   - groupe_id: {groupe_id} (type: {type(groupe_id).__name__})")
+            logging.info(f"   - promotion_id: {promotion_id} (type: {type(promotion_id).__name__})")
+            logging.info(f"   - partenaire_id: {partenaire_id} (type: {type(partenaire_id).__name__})")
+            logging.info(f"   - envoyer_mail_candidat: {envoyer_mail_candidat}")
+            logging.info(f"   - envoyer_mail_conseiller: {envoyer_mail_conseiller}")
+            logging.info(f"   - envoyer_mail_partenaire: {envoyer_mail_partenaire}")
+        
+        # Convertir les chaînes vides en None pour les IDs
+        def safe_int_convert(value):
+            if value is None:
                 return None
-        return None
-    
-    promotion_id_int = safe_int_convert(promotion_id)
-    partenaire_id_int = safe_int_convert(partenaire_id)
-    conseiller_id_int = safe_int_convert(conseiller_id)
-    groupe_id_int = safe_int_convert(groupe_id)
-    
-    # Vérifier que le groupe existe (si fourni)
-    groupe = None
-    if groupe_id_int:
-        groupe = session.get(Groupe, groupe_id_int)
-        if not groupe:
-            print(f"⚠️ [JURY] Groupe introuvable: {groupe_id}")
-            groupe_id_int = None
-    
-    print(f"📋 [JURY] IDs convertis:")
-    print(f"   - promotion_id_int: {promotion_id_int}")
-    print(f"   - partenaire_id_int: {partenaire_id_int}")
-    print(f"   - conseiller_id_int: {conseiller_id_int}")
-    print(f"   - groupe_id_int: {groupe_id_int}")
-    
-    # Vérifier que le candidat existe
-    candidat = session.get(CandidatSchema, candidat_id)
-    if not candidat:
-        raise HTTPException(status_code=404, detail="Candidat introuvable")
-    
-    # Vérifier que le jury existe (si fourni)
-    jury = None
-    if jury_id:
-        jury = session.get(Jury, jury_id)  # Jury est dans le schéma public
-        if not jury:
-            raise HTTPException(status_code=404, detail="Jury introuvable")
-    
-    # Vérifier qu'il n'y a pas déjà une décision pour ce candidat et ce jury
-    existing = session.exec(
-        select(DecisionJuryCandidatSchema).where(
-            (DecisionJuryCandidatSchema.candidat_id == candidat_id) &
-            (DecisionJuryCandidatSchema.jury_id == jury_id)
-        )
-    ).first()
-    
-    if existing:
-        raise HTTPException(status_code=400, detail="Une décision existe déjà pour ce candidat et ce jury")
-    
-    # Créer la décision
-    decision_obj = DecisionJuryCandidatSchema(
-        candidat_id=candidat_id,
-        jury_id=jury_id,
-        decision=DecisionJury(decision),
-        commentaires=commentaires,
-        conseiller_id=conseiller_id_int if decision == DecisionJury.VALIDE.value else None,
-        groupe_id=groupe_id_int if decision == DecisionJury.VALIDE.value else None,
-        promotion_id=promotion_id_int if decision == DecisionJury.VALIDE.value else None,
-        partenaire_id=partenaire_id_int if decision == DecisionJury.REORIENTE.value else None,
-        envoyer_mail_candidat=envoyer_mail_candidat,
-        envoyer_mail_conseiller=envoyer_mail_conseiller,
-        envoyer_mail_partenaire=envoyer_mail_partenaire,
-    )
-    
-    session.add(decision_obj)
-    session.flush()
-    
-    # Mettre à jour le statut du candidat
-    candidat.statut = decision
-    
-    # Si réorienté, créer l'enregistrement de réorientation
-    if decision == DecisionJury.REORIENTE.value and partenaire_id:
-        reorientation = ReorientationCandidatSchema(
+            if isinstance(value, int):
+                return value
+            if isinstance(value, str) and value.strip():
+                try:
+                    return int(value)
+                except ValueError:
+                    return None
+            return None
+        
+        promotion_id_int = safe_int_convert(promotion_id)
+        partenaire_id_int = safe_int_convert(partenaire_id)
+        conseiller_id_int = safe_int_convert(conseiller_id)
+        groupe_id_int = safe_int_convert(groupe_id)
+        
+        # Vérifier que le groupe existe (si fourni)
+        groupe = None
+        if groupe_id_int:
+            if settings.DEBUG:
+                logging.info(f"🔵 [CREATE_JURY_DECISION] Vérification du groupe ID: {groupe_id_int}")
+            groupe = session.get(Groupe, groupe_id_int)
+            if not groupe:
+                if settings.DEBUG:
+                    logging.warning(f"⚠️ [CREATE_JURY_DECISION] Groupe introuvable: {groupe_id} (converti: {groupe_id_int})")
+                groupe_id_int = None
+            else:
+                if settings.DEBUG:
+                    logging.info(f"🔵 [CREATE_JURY_DECISION] Groupe trouvé: {groupe.nom}")
+        
+        if settings.DEBUG:
+            logging.info(f"🔵 [CREATE_JURY_DECISION] IDs convertis:")
+            logging.info(f"   - promotion_id_int: {promotion_id_int}")
+            logging.info(f"   - partenaire_id_int: {partenaire_id_int}")
+            logging.info(f"   - conseiller_id_int: {conseiller_id_int}")
+            logging.info(f"   - groupe_id_int: {groupe_id_int}")
+        
+        # Vérifier que le candidat existe
+        if settings.DEBUG:
+            logging.info(f"🔵 [CREATE_JURY_DECISION] Vérification du candidat ID: {candidat_id}")
+        candidat = session.get(CandidatSchema, candidat_id)
+        if not candidat:
+            logging.error(f"❌ [CREATE_JURY_DECISION] Candidat introuvable: {candidat_id}")
+            raise HTTPException(status_code=404, detail="Candidat introuvable")
+        if settings.DEBUG:
+            logging.info(f"🔵 [CREATE_JURY_DECISION] Candidat trouvé: {candidat.nom} {candidat.prenom} (ID: {candidat.id})")
+        
+        # Vérifier que le jury existe (si fourni)
+        jury = None
+        if jury_id:
+            if settings.DEBUG:
+                logging.info(f"🔵 [CREATE_JURY_DECISION] Vérification du jury ID: {jury_id}")
+            # Jury est dans le schéma public, utiliser une requête SQL directe avec schéma explicite
+            # Configurer temporairement le search_path vers public pour s'assurer que la requête fonctionne
+            session.exec(text("SET search_path TO public, public"))
+            if settings.DEBUG:
+                logging.info(f"🔵 [CREATE_JURY_DECISION] Search_path temporairement configuré vers 'public'")
+            
+            jury_query = text("""
+                SELECT id, programme_id, promotion_id, session_le, lieu, statut
+                FROM public.jury
+                WHERE id = :jury_id
+            """)
+            # Utiliser bindparams pour passer les paramètres
+            if settings.DEBUG:
+                logging.info(f"🔵 [CREATE_JURY_DECISION] Exécution de la requête SQL pour jury_id={jury_id}")
+            jury_result = session.exec(jury_query.bindparams(jury_id=jury_id)).first()
+            if settings.DEBUG:
+                logging.info(f"🔵 [CREATE_JURY_DECISION] Résultat de la requête: {jury_result}")
+                logging.info(f"🔵 [CREATE_JURY_DECISION] Type du résultat: {type(jury_result)}")
+            
+            # Restaurer le search_path pour le schéma du programme
+            session.exec(text(f"SET search_path TO {schema_name}, public"))
+            if settings.DEBUG:
+                logging.info(f"🔵 [CREATE_JURY_DECISION] Search_path restauré vers '{schema_name}, public'")
+            
+            if not jury_result:
+                logging.error(f"❌ [CREATE_JURY_DECISION] Jury introuvable: {jury_id}")
+                raise HTTPException(status_code=404, detail="Jury introuvable")
+            
+            # Convertir le résultat en dictionnaire
+            if hasattr(jury_result, '_mapping'):
+                jury = dict(jury_result._mapping)
+            elif hasattr(jury_result, '__dict__'):
+                jury = dict(jury_result.__dict__)
+            else:
+                # Si c'est un tuple, le convertir en dict
+                jury = {
+                    "id": jury_result[0] if len(jury_result) > 0 else None,
+                    "programme_id": jury_result[1] if len(jury_result) > 1 else None,
+                    "promotion_id": jury_result[2] if len(jury_result) > 2 else None,
+                    "session_le": jury_result[3] if len(jury_result) > 3 else None,
+                    "lieu": jury_result[4] if len(jury_result) > 4 else None,
+                    "statut": jury_result[5] if len(jury_result) > 5 else None,
+                }
+            if settings.DEBUG:
+                logging.info(f"🔵 [CREATE_JURY_DECISION] Jury trouvé: Session du {jury.get('session_le')} - {jury.get('lieu')}")
+        
+        # Vérifier s'il existe déjà une décision pour ce candidat et ce jury
+        if settings.DEBUG:
+            logging.info(f"🔵 [CREATE_JURY_DECISION] Vérification d'une décision existante pour candidat_id={candidat_id}, jury_id={jury_id}")
+        existing = session.exec(
+            select(DecisionJuryCandidatSchema).where(
+                (DecisionJuryCandidatSchema.candidat_id == candidat_id) &
+                (DecisionJuryCandidatSchema.jury_id == jury_id)
+            )
+        ).first()
+        
+        if existing:
+            if settings.DEBUG:
+                logging.info(f"🔵 [CREATE_JURY_DECISION] Une décision existe déjà pour ce candidat et ce jury (ID: {existing.id}), suppression de l'ancienne décision")
+            # Supprimer les réorientations associées à l'ancienne décision
+            reorientations = session.exec(
+                select(ReorientationCandidatSchema).where(
+                    ReorientationCandidatSchema.decision_jury_id == existing.id
+                )
+            ).all()
+            for reo in reorientations:
+                if settings.DEBUG:
+                    logging.info(f"🔵 [CREATE_JURY_DECISION] Suppression de la réorientation ID: {reo.id}")
+                session.delete(reo)
+            # Supprimer l'ancienne décision
+            session.delete(existing)
+            if settings.DEBUG:
+                logging.info(f"🔵 [CREATE_JURY_DECISION] Ancienne décision supprimée, création de la nouvelle")
+        else:
+            if settings.DEBUG:
+                logging.info(f"🔵 [CREATE_JURY_DECISION] Aucune décision existante trouvée, création possible")
+        
+        # Créer la décision
+        if settings.DEBUG:
+            logging.info(f"🔵 [CREATE_JURY_DECISION] Création de l'objet DecisionJuryCandidat")
+        decision_obj = DecisionJuryCandidatSchema(
             candidat_id=candidat_id,
-            partenaire_id=partenaire_id_int,
-            decision_jury_id=decision_obj.id,
-            mail_envoye=envoyer_mail_partenaire,
+            jury_id=jury_id,
+            decision=DecisionJury(decision),
+            commentaires=commentaires,
+            conseiller_id=conseiller_id_int if decision == DecisionJury.VALIDE.value else None,
+            groupe_id=groupe_id_int if decision == DecisionJury.VALIDE.value else None,
+            promotion_id=promotion_id_int if decision == DecisionJury.VALIDE.value else None,
+            partenaire_id=partenaire_id_int if decision == DecisionJury.REORIENTE.value else None,
+            envoyer_mail_candidat=envoyer_mail_candidat,
+            envoyer_mail_conseiller=envoyer_mail_conseiller,
+            envoyer_mail_partenaire=envoyer_mail_partenaire,
         )
-        session.add(reorientation)
-    
-    session.commit()
-    
-    # TODO: Envoyer les emails selon les cases cochées
-    if envoyer_mail_candidat or envoyer_mail_conseiller or envoyer_mail_partenaire:
-        # Logique d'envoi d'emails à implémenter
-        pass
-    
-    # Log de l'activité
-    from ..services.audit import log_activity
-    log_activity(
-        session=session,
-        user=current_user,
-        action="Décision jury créée",
-        entity="DecisionJuryCandidat",
-        entity_id=decision_obj.id,
-        activity_data={
-            "candidat_id": candidat_id,
-            "jury_id": jury_id,
-            "decision": decision,
-            "emails_envoyes": {
-                "candidat": envoyer_mail_candidat,
-                "conseiller": envoyer_mail_conseiller,
-                "partenaire": envoyer_mail_partenaire,
+        
+        if settings.DEBUG:
+            logging.info(f"🔵 [CREATE_JURY_DECISION] Ajout de la décision à la session")
+        session.add(decision_obj)
+        session.flush()
+        if settings.DEBUG:
+            logging.info(f"🔵 [CREATE_JURY_DECISION] Décision flushée, ID généré: {decision_obj.id}")
+        
+        # NOTE: Le modèle Inscription a été supprimé. Le statut est maintenant stocké directement dans Candidat.
+        # Mettre à jour le statut du candidat
+        if settings.DEBUG:
+            logging.info(f"🔵 [CREATE_JURY_DECISION] Mise à jour du statut du candidat: {candidat.statut if hasattr(candidat, 'statut') else 'N/A'} → {decision}")
+        candidat.statut = DecisionJury(decision)
+        # S'assurer que le candidat est dans la session pour que les modifications soient trackées
+        session.add(candidat)
+        if settings.DEBUG:
+            logging.info(f"🔵 [CREATE_JURY_DECISION] Statut du candidat mis à jour: {candidat.statut}")
+        
+        # NOTE: Le modèle Inscription a été supprimé. Le statut est maintenant dans Candidat.
+        # Le statut du candidat a déjà été mis à jour plus haut dans la fonction.
+        if settings.DEBUG:
+            logging.info(f"🔵 [CREATE_JURY_DECISION] Statut du candidat mis à jour (modèle Inscription supprimé)")
+        
+        # Si réorienté, créer l'enregistrement de réorientation
+        if decision == DecisionJury.REORIENTE.value and partenaire_id:
+            if settings.DEBUG:
+                logging.info(f"🔵 [CREATE_JURY_DECISION] Décision REORIENTE, création de l'enregistrement de réorientation")
+            reorientation = ReorientationCandidatSchema(
+                candidat_id=candidat_id,
+                partenaire_id=partenaire_id_int,
+                decision_jury_id=decision_obj.id,
+                mail_envoye=envoyer_mail_partenaire,
+            )
+            session.add(reorientation)
+            if settings.DEBUG:
+                logging.info(f"🔵 [CREATE_JURY_DECISION] Réorientation créée pour partenaire_id: {partenaire_id_int}")
+        
+        if settings.DEBUG:
+            logging.info(f"🔵 [CREATE_JURY_DECISION] Commit de la transaction")
+        session.commit()
+        if settings.DEBUG:
+            logging.info(f"🔵 [CREATE_JURY_DECISION] ✅ Transaction commitée avec succès")
+        
+        # TODO: Envoyer les emails selon les cases cochées
+        if envoyer_mail_candidat or envoyer_mail_conseiller or envoyer_mail_partenaire:
+            # Logique d'envoi d'emails à implémenter
+            pass
+        
+        # Log de l'activité
+        from ..services.audit import log_activity
+        log_activity(
+            session=session,
+            user=current_user,
+            action="Décision jury créée",
+            entity="DecisionJuryCandidat",
+            entity_id=decision_obj.id,
+            activity_data={
+                "candidat_id": candidat_id,
+                "jury_id": jury_id,
+                "decision": decision,
+                "emails_envoyes": {
+                    "candidat": envoyer_mail_candidat,
+                    "conseiller": envoyer_mail_conseiller,
+                    "partenaire": envoyer_mail_partenaire,
+                }
             }
-        }
-    )
+        )
+        
+        # Redirection vers la page d'inscription
+        if settings.DEBUG:
+            logging.info(f"🔵 [CREATE_JURY_DECISION] Préparation de la redirection")
+        PreinscriptionSchema = schema_routing_service.get_model_for_schema(Preinscription, schema_name)
+        prog = session.exec(select(Programme).where(Programme.code == programme)).first()
+        pre = session.exec(select(PreinscriptionSchema).where(PreinscriptionSchema.candidat_id == candidat_id)).first()
+        redirect_url = f"{request.url_for('form_inscriptions_display')}?programme={prog.code if prog else programme}&pre_id={pre.id if pre else ''}&success=decision_created"
+        if settings.DEBUG:
+            logging.info(f"🔵 [CREATE_JURY_DECISION] Redirection vers: {redirect_url}")
+            logging.info("=" * 80)
+        return RedirectResponse(url=redirect_url, status_code=303)
     
-    # Redirection vers la page d'inscription
-    PreinscriptionSchema = schema_routing_service.get_model_for_schema(Preinscription, schema_name)
-    prog = session.exec(select(Programme).where(Programme.code == programme)).first()
-    pre = session.exec(select(PreinscriptionSchema).where(PreinscriptionSchema.candidat_id == candidat_id)).first()
-    return RedirectResponse(url=f"{request.url_for('form_inscriptions_display')}?programme={prog.code if prog else programme}&pre_id={pre.id if pre else ''}&success=decision_created", status_code=303)
+    except HTTPException as e:
+        logging.error(f"❌ [CREATE_JURY_DECISION] HTTPException: {e.status_code} - {e.detail}")
+        if settings.DEBUG:
+            logging.info("=" * 80)
+        raise
+    except Exception as e:
+        logging.error(f"❌ [CREATE_JURY_DECISION] Erreur inattendue: {type(e).__name__}: {str(e)}")
+        logging.error(f"❌ [CREATE_JURY_DECISION] Traceback complet:")
+        import traceback
+        logging.error(traceback.format_exc())
+        if settings.DEBUG:
+            logging.info("=" * 80)
+        session.rollback()
+        raise HTTPException(status_code=500, detail=f"Erreur lors de la création de la décision: {str(e)}")
 
 
 @router.post("/jury/decision/{decision_id}/delete", name="delete_jury_decision_inscription")
@@ -1360,7 +2092,7 @@ def delete_jury_decision(
     schema_routing_service.set_schema(schema_name)
     
     # Configurer le search_path pour utiliser le schéma du programme
-    session.execute(text(f"SET search_path TO {schema_name}, public"))
+    session.exec(text(f"SET search_path TO {schema_name}, public"))
     
     # Obtenir les modèles spécifiques au schéma
     DecisionJuryCandidatSchema = schema_routing_service.get_model_for_schema(DecisionJuryCandidat, schema_name)
@@ -1376,7 +2108,9 @@ def delete_jury_decision(
     # Remettre le candidat en attente
     candidat = session.get(CandidatSchema, candidat_id)
     if candidat:
-        candidat.statut = DecisionJury.EN_ATTENTE.value
+        candidat.statut = DecisionJury.EN_ATTENTE
+        # S'assurer que le candidat est dans la session pour que les modifications soient trackées
+        session.add(candidat)
     
     # Supprimer les réorientations associées
     reorientations = session.exec(
@@ -1435,7 +2169,7 @@ async def check_qpv_candidate(
     schema_routing_service.set_schema(schema_name)
     
     # Configurer le search_path pour utiliser le schéma du programme
-    session.execute(text(f"SET search_path TO {schema_name}, public"))
+    session.exec(text(f"SET search_path TO {schema_name}, public"))
     
     # Utiliser les modèles configurés pour le schéma
     CandidatSchema = schema_routing_service.get_model_for_schema(Candidat, schema_name)
@@ -1716,7 +2450,7 @@ async def check_siret_candidate(
     schema_routing_service.set_schema(schema_name)
     
     # Configurer le search_path pour utiliser le schéma du programme
-    session.execute(text(f"SET search_path TO {schema_name}, public"))
+    session.exec(text(f"SET search_path TO {schema_name}, public"))
     
     # Obtenir les modèles spécifiques au schéma
     CandidatSchema = schema_routing_service.get_model_for_schema(Candidat, schema_name)
@@ -1808,7 +2542,7 @@ def get_qpv_status(
     schema_routing_service.set_schema(schema_name)
     
     # Configurer le search_path pour utiliser le schéma du programme
-    session.execute(text(f"SET search_path TO {schema_name}, public"))
+    session.exec(text(f"SET search_path TO {schema_name}, public"))
     
     # Obtenir les modèles spécifiques au schéma
     CandidatSchema = schema_routing_service.get_model_for_schema(Candidat, schema_name)
@@ -1871,7 +2605,7 @@ async def download_siret_document(
         schema_routing_service.set_schema(schema_name)
         
         # Configurer le search_path pour utiliser le schéma du programme
-        session.execute(text(f"SET search_path TO {schema_name}, public"))
+        session.exec(text(f"SET search_path TO {schema_name}, public"))
         
         # Obtenir les modèles spécifiques au schéma
         CandidatSchema = schema_routing_service.get_model_for_schema(Candidat, schema_name)
@@ -2008,7 +2742,7 @@ def view_document(
         schema_routing_service.set_schema(schema_name)
         
         # Configurer le search_path pour utiliser le schéma du programme
-        session.execute(text(f"SET search_path TO {schema_name}, public"))
+        session.exec(text(f"SET search_path TO {schema_name}, public"))
         
         # Obtenir le modèle spécifique au schéma
         DocumentSchema = schema_routing_service.get_model_for_schema(Document, schema_name)
@@ -2068,7 +2802,7 @@ def download_document(
         schema_routing_service.set_schema(schema_name)
         
         # Configurer le search_path pour utiliser le schéma du programme
-        session.execute(text(f"SET search_path TO {schema_name}, public"))
+        session.exec(text(f"SET search_path TO {schema_name}, public"))
         
         # Obtenir le modèle spécifique au schéma
         DocumentSchema = schema_routing_service.get_model_for_schema(Document, schema_name)
@@ -2221,3 +2955,358 @@ async def check_siret_route(siret_request: SiretRequest, request: Request):
             status_code=500,
             detail=f"Erreur lors de la vérification SIRET: {str(e)}"
         )
+
+# ===== PROMOTIONS =====
+@router.get("/promotions", response_class=HTMLResponse, name="admin_promotions")
+def admin_promotions(
+    request: Request, 
+    session: Session = Depends(get_shared_session), 
+    current_user: User = Depends(get_current_user), 
+    q: Optional[str] = Query(None)):
+    
+    admin_required(current_user)
+    request.state.admin_title = "Gestion des promotions"
+    
+    # Récupérer et configurer le schéma
+    schema_name = get_schema_from_request(request) or 'acd'
+    session.exec(text(f"SET search_path TO {schema_name}, public"))
+    session.commit()
+    
+    # Récupérer les promotions du schéma du programme avec SQL direct
+    promotions_query = text(f"""
+        SELECT 
+            id,
+            libelle,
+            programme_id,
+            capacite,
+            date_debut,
+            date_fin,
+            actif
+        FROM {schema_name}.promotion
+        {"WHERE libelle ILIKE :q" if q else ""}
+        ORDER BY libelle
+    """)
+    
+    params = {}
+    if q:
+        params['q'] = f"%{q}%"
+    
+    promotions_results = session.exec(promotions_query.bindparams(**params) if params else promotions_query).all()
+    
+    # Convertir en objets simples avec relation programme
+    promotions = []
+    for row in promotions_results:
+        promo_dict = dict(row._mapping)
+        # Récupérer le programme depuis public.programme
+        programme_query = text("SELECT id, code, nom FROM public.programme WHERE id = :programme_id")
+        programme_result = session.exec(programme_query.bindparams(programme_id=promo_dict['programme_id'])).first()
+        if programme_result:
+            promo_dict['programme'] = type('Programme', (), dict(programme_result._mapping))()
+        else:
+            promo_dict['programme'] = None
+        promotions.append(type('Promotion', (), promo_dict)())
+    
+    # Récupérer tous les programmes pour les dropdowns (depuis public)
+    programmes_query = text("SELECT id, code, nom FROM public.programme WHERE actif = true ORDER BY code")
+    programmes_results = session.exec(programmes_query).all()
+    programmes = [type('Programme', (), dict(row._mapping))() for row in programmes_results]
+    
+    # Récupérer le programme actuel correspondant au schéma
+    current_programme = None
+    programme_code = schema_name.upper()  # Le schéma correspond généralement au code du programme
+    current_programme_query = text("SELECT id, code, nom FROM public.programme WHERE LOWER(code) = :schema_name OR code = :programme_code LIMIT 1")
+    current_programme_result = session.exec(current_programme_query.bindparams(schema_name=schema_name, programme_code=programme_code)).first()
+    if current_programme_result:
+        current_programme = type('Programme', (), dict(current_programme_result._mapping))()
+    
+    return templates.TemplateResponse("pages/programme/promotions.html", {
+        "request": request, 
+        "settings": settings, 
+        "utilisateur": current_user, 
+        "promotions": promotions, 
+        "programmes": programmes,
+        "current_programme": current_programme,
+        "q": q or ""
+    })
+
+@router.post("/promotions/add")
+def admin_promotions_add(
+    programme_id: int = Form(...),
+    libelle: str = Form(...), 
+    capacite: Optional[str] = Form(None),
+    date_debut: Optional[str] = Form(None),
+    date_fin: Optional[str] = Form(None),
+    actif: Literal["on", "off", ""] = Form("on"),
+    request: Request = None, 
+    session: Session = Depends(get_shared_session), 
+    current_user: User = Depends(get_current_user)
+):
+    admin_required(current_user)
+    
+    # Récupérer et configurer le schéma
+    schema_name = get_schema_from_request(request) or 'acd'
+    session.exec(text(f"SET search_path TO {schema_name}, public"))
+    session.commit()
+    
+    # Vérifier que le programme existe dans public.programme
+    programme_query = text("SELECT id, code, nom FROM public.programme WHERE id = :programme_id AND actif = true")
+    programme_result = session.exec(programme_query.bindparams(programme_id=programme_id)).first()
+    if not programme_result:
+        raise HTTPException(status_code=400, detail="Programme introuvable")
+    
+    # Vérifier si une promotion avec ce libellé existe déjà pour ce programme
+    existing_query = text(f"""
+        SELECT id FROM {schema_name}.promotion 
+        WHERE programme_id = :programme_id AND libelle = :libelle
+    """)
+    existing = session.exec(existing_query.bindparams(
+        programme_id=programme_id,
+        libelle=libelle.strip()
+    )).first()
+    if existing:
+        raise HTTPException(status_code=400, detail="Une promotion avec ce libellé existe déjà pour ce programme")
+    
+    # Préparer les valeurs pour l'insertion
+    capacite_val = int(capacite) if capacite and capacite.strip().isdigit() else None
+    date_debut_val = datetime.fromisoformat(date_debut).date() if date_debut else None
+    date_fin_val = datetime.fromisoformat(date_fin).date() if date_fin else None
+    actif_val = (actif != "off")
+    
+    # Insertion SQL directe
+    insert_query = text(f"""
+        INSERT INTO {schema_name}.promotion 
+        (programme_id, libelle, capacite, date_debut, date_fin, actif)
+        VALUES (:programme_id, :libelle, :capacite, :date_debut, :date_fin, :actif)
+        RETURNING id
+    """)
+    
+    result = session.exec(insert_query.bindparams(
+        programme_id=programme_id,
+        libelle=libelle.strip(),
+        capacite=capacite_val,
+        date_debut=date_debut_val,
+        date_fin=date_fin_val,
+        actif=actif_val
+    )).first()
+    
+    promotion_id = result[0] if result else None
+    
+    log_activity(session, user=current_user, action="PROMOTION_CREATE", entity="Promotion", entity_id=promotion_id,
+                 activity_data={"libelle": libelle.strip(), "programme_id": programme_id}, request=request)
+    session.commit()
+    
+    timestamp = int(datetime.now(timezone.utc).timestamp())
+    programme_param = request.query_params.get('programme', '')
+    redirect_url = f"{request.url_for('admin_promotions')}?success=1&action=add&t={timestamp}"
+    if programme_param:
+        redirect_url += f"&programme={programme_param}"
+    return RedirectResponse(url=redirect_url, status_code=303)
+
+@router.post("/promotions/{promotion_id}/update")
+def admin_promotions_update(
+    promotion_id: int,
+    programme_id: int = Form(...),
+    libelle: str = Form(...),
+    capacite: Optional[str] = Form(None),
+    date_debut: Optional[str] = Form(None),
+    date_fin: Optional[str] = Form(None),
+    actif: Literal["on", "off", ""] = Form("on"),
+    request: Request = None,
+    session: Session = Depends(get_shared_session),
+    current_user: User = Depends(get_current_user)
+):
+    admin_required(current_user)
+    
+    # Récupérer et configurer le schéma
+    schema_name = get_schema_from_request(request) or 'acd'
+    session.exec(text(f"SET search_path TO {schema_name}, public"))
+    session.commit()
+    
+    # Récupérer la promotion existante avec SQL direct
+    promotion_query = text(f"""
+        SELECT id, programme_id, libelle, capacite, date_debut, date_fin, actif
+        FROM {schema_name}.promotion
+        WHERE id = :promotion_id
+    """)
+    promotion_result = session.exec(promotion_query.bindparams(promotion_id=promotion_id)).first()
+    if not promotion_result:
+        raise HTTPException(status_code=404, detail="Promotion introuvable")
+    
+    old_values = dict(promotion_result._mapping)
+    
+    # Vérifier que le programme existe dans public.programme
+    programme_query = text("SELECT id, code, nom FROM public.programme WHERE id = :programme_id AND actif = true")
+    programme_result = session.exec(programme_query.bindparams(programme_id=programme_id)).first()
+    if not programme_result:
+        raise HTTPException(status_code=400, detail="Programme introuvable")
+    
+    # Vérifier si une autre promotion avec ce libellé existe déjà pour ce programme
+    existing_query = text(f"""
+        SELECT id FROM {schema_name}.promotion 
+        WHERE programme_id = :programme_id AND libelle = :libelle AND id != :promotion_id
+    """)
+    existing = session.exec(existing_query.bindparams(
+        programme_id=programme_id,
+        libelle=libelle.strip(),
+        promotion_id=promotion_id
+    )).first()
+    if existing:
+        raise HTTPException(status_code=400, detail="Une autre promotion avec ce libellé existe déjà pour ce programme")
+    
+    # Préparer les nouvelles valeurs
+    capacite_val = int(capacite) if capacite and capacite.strip().isdigit() else None
+    date_debut_val = datetime.fromisoformat(date_debut).date() if date_debut else None
+    date_fin_val = datetime.fromisoformat(date_fin).date() if date_fin else None
+    actif_val = (actif != "off")
+    
+    # Mise à jour SQL directe
+    update_query = text(f"""
+        UPDATE {schema_name}.promotion
+        SET programme_id = :programme_id,
+            libelle = :libelle,
+            capacite = :capacite,
+            date_debut = :date_debut,
+            date_fin = :date_fin,
+            actif = :actif
+        WHERE id = :promotion_id
+    """)
+    
+    session.exec(update_query.bindparams(
+        programme_id=programme_id,
+        libelle=libelle.strip(),
+        capacite=capacite_val,
+        date_debut=date_debut_val,
+        date_fin=date_fin_val,
+        actif=actif_val,
+        promotion_id=promotion_id
+    ))
+    
+    new_values = {
+        "programme_id": programme_id,
+        "libelle": libelle.strip(),
+        "capacite": capacite_val,
+        "date_debut": date_debut_val,
+        "date_fin": date_fin_val,
+        "actif": actif_val
+    }
+    
+    log_activity(session, user=current_user, action="PROMOTION_UPDATE", entity="Promotion", entity_id=promotion_id,
+                 activity_data={"old": old_values, "new": new_values}, request=request)
+    session.commit()
+    
+    timestamp = int(datetime.now(timezone.utc).timestamp())
+    programme_param = request.query_params.get('programme', '')
+    redirect_url = f"{request.url_for('admin_promotions')}?success=1&action=update&t={timestamp}"
+    if programme_param:
+        redirect_url += f"&programme={programme_param}"
+    return RedirectResponse(url=redirect_url, status_code=303)
+
+@router.post("/promotions/{promotion_id}/toggle")
+def admin_promotions_toggle(promotion_id: int, request: Request, session: Session = Depends(get_shared_session), current_user: User = Depends(get_current_user)):
+    admin_required(current_user)
+    
+    # Récupérer et configurer le schéma
+    schema_name = get_schema_from_request(request) or 'acd'
+    session.exec(text(f"SET search_path TO {schema_name}, public"))
+    session.commit()
+    
+    # Récupérer la promotion existante avec SQL direct
+    promotion_query = text(f"""
+        SELECT id, libelle, actif
+        FROM {schema_name}.promotion
+        WHERE id = :promotion_id
+    """)
+    promotion_result = session.exec(promotion_query.bindparams(promotion_id=promotion_id)).first()
+    if not promotion_result:
+        raise HTTPException(status_code=404, detail="Promotion introuvable")
+    
+    promotion_dict = dict(promotion_result._mapping)
+    new_actif = not bool(promotion_dict['actif'])
+    
+    # Mise à jour SQL directe
+    update_query = text(f"""
+        UPDATE {schema_name}.promotion
+        SET actif = :actif
+        WHERE id = :promotion_id
+    """)
+    
+    session.exec(update_query.bindparams(
+        actif=new_actif,
+        promotion_id=promotion_id
+    ))
+    
+    log_activity(session, user=current_user, action="PROMOTION_TOGGLE", entity="Promotion", entity_id=promotion_id,
+                activity_data={"libelle": promotion_dict['libelle'], "actif": new_actif}, request=request)
+    session.commit()
+    
+    timestamp = int(datetime.now(timezone.utc).timestamp())
+    programme_param = request.query_params.get('programme', '')
+    redirect_url = f"{request.url_for('admin_promotions')}?success=1&action=toggle&t={timestamp}"
+    if programme_param:
+        redirect_url += f"&programme={programme_param}"
+    return RedirectResponse(url=redirect_url, status_code=303)
+
+@router.post("/promotions/{promotion_id}/delete")
+def admin_promotions_delete(
+    promotion_id: int,
+    request: Request = None,
+    session: Session = Depends(get_shared_session),
+    current_user: User = Depends(get_current_user)
+):
+    admin_required(current_user)
+    
+    # Récupérer et configurer le schéma
+    schema_name = get_schema_from_request(request) or 'acd'
+    session.exec(text(f"SET search_path TO {schema_name}, public"))
+    session.commit()
+    
+    # Récupérer la promotion existante avec SQL direct
+    promotion_query = text(f"""
+        SELECT id, libelle, programme_id
+        FROM {schema_name}.promotion
+        WHERE id = :promotion_id
+    """)
+    promotion_result = session.exec(promotion_query.bindparams(promotion_id=promotion_id)).first()
+    if not promotion_result:
+        raise HTTPException(status_code=404, detail="Promotion introuvable")
+    
+    promotion_dict = dict(promotion_result._mapping)
+    promotion_libelle = promotion_dict['libelle']
+    promotion_programme_id = promotion_dict['programme_id']
+    
+    # Vérifier si la promotion est utilisée dans des jurys (dans public.jury)
+    try:
+        jurys_query = text("SELECT COUNT(*) as count FROM public.jury WHERE promotion_id = :promotion_id")
+        jurys_result = session.exec(jurys_query.bindparams(promotion_id=promotion_id)).first()
+        jurys_count = jurys_result[0] if jurys_result else 0
+    except Exception as e:
+        logger.warning(f"Erreur lors de la vérification des jurys: {e}")
+        jurys_count = 0
+    
+    if jurys_count > 0:
+        timestamp = int(datetime.now(timezone.utc).timestamp())
+        programme_param = request.query_params.get('programme', '')
+        redirect_url = f"{request.url_for('admin_promotions')}?error=1&message=Impossible de supprimer la promotion '{promotion_libelle}' car elle est utilisée dans {jurys_count} jury(s). Veuillez d'abord réassigner ces jurys.&t={timestamp}"
+        if programme_param:
+            redirect_url += f"&programme={programme_param}"
+        return RedirectResponse(url=redirect_url, status_code=303)
+    
+    # Suppression SQL directe
+    try:
+        delete_query = text(f"DELETE FROM {schema_name}.promotion WHERE id = :promotion_id")
+        session.exec(delete_query.bindparams(promotion_id=promotion_id))
+        session.commit()
+        
+        log_activity(session, user=current_user, action="PROMOTION_DELETE", entity="Promotion", entity_id=promotion_id,
+                     activity_data={"deleted_promotion_libelle": promotion_libelle, "deleted_promotion_programme_id": promotion_programme_id}, request=request)
+        
+    except Exception as e:
+        session.rollback()
+        raise HTTPException(status_code=500, detail="Erreur lors de la suppression de la promotion")
+    
+    timestamp = int(datetime.now(timezone.utc).timestamp())
+    programme_param = request.query_params.get('programme', '')
+    redirect_url = f"{request.url_for('admin_promotions')}?success=1&action=delete&t={timestamp}"
+    if programme_param:
+        redirect_url += f"&programme={programme_param}"
+    return RedirectResponse(url=redirect_url, status_code=303)

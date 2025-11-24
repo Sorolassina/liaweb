@@ -22,6 +22,7 @@ from ..models.base import (
 from ..models.jury import Jury, MembreJury, DecisionJuryTable, DecisionJuryCandidat
 from ..models.activity import ActivityLog
 from ..models.message import Conversation, Message
+from ..models.admin import AppSetting
 
 # Configuration du logging  
 logging.basicConfig(level=logging.INFO)
@@ -30,12 +31,16 @@ logger = logging.getLogger(__name__)
 # Schéma OAuth2 pour l'authentification (token via /auth/token)
 oauth2_scheme = OAuth2PasswordBearer(tokenUrl="/auth/token", auto_error=False)
 
+# Importer AppSetting pour le schéma public
+from ..models.admin import AppSetting
+
 # Liste des modèles qui restent dans le schéma public
 public_models = [
     User, Programme, Partenaire, Groupe, PasswordRecoveryCode,
     ProgrammeUtilisateur, Promotion,
     Jury, MembreJury,
-    ActivityLog, Conversation, Message
+    ActivityLog, Conversation, Message,
+    AppSetting,  # Table de paramètres de l'application
 ]
 
 # Engine SQLModel
@@ -98,6 +103,7 @@ def create_db_and_tables() -> None:
             'activity_log': ActivityLog,
             'conversation': Conversation,
             'message': Message,
+            'app_setting': AppSetting,
         }
         
         columns_added = []

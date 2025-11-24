@@ -1,44 +1,53 @@
-{% extends "base.html" %}
+{% extends "layouts/base.html" %}
 
 {% block title %}Nouvelle Session - {{ seminaire.titre }}{% endblock %}
 
 {% block content %}
-<div class="container-fluid p-4">
-    <div class="row mb-4">
+{% set programme_param = request.query_params.get('programme') or (schema_name.upper() if schema_name and schema_name != 'public' else '') %}
+<div class="container-fluid p-4 page-content-wrapper">
+    <div class="row mb-3">
         <div class="col-12">
             <nav aria-label="breadcrumb">
                 <ol class="breadcrumb">
-                    <li class="breadcrumb-item"><a href="{{ url_for('liste_seminaires') }}">Séminaires</a></li>
-                    <li class="breadcrumb-item"><a href="{{ url_for('detail_seminaire', seminaire_id=seminaire.id) }}">{{ seminaire.titre }}</a></li>
+                    <li class="breadcrumb-item"><a href="{{ url_for('liste_seminaires') }}{% if programme_param %}?programme={{ programme_param }}{% endif %}">Séminaires</a></li>
+                    <li class="breadcrumb-item"><a href="{{ url_for('detail_seminaire', seminaire_id=seminaire.id) }}{% if programme_param %}?programme={{ programme_param }}{% endif %}">{{ seminaire.titre }}</a></li>
                     <li class="breadcrumb-item active">Nouvelle Session</li>
                 </ol>
             </nav>
-            <h1 class="mb-0">
-                <i class="fas fa-plus me-2"></i>Nouvelle Session
-            </h1>
-            <p class="text-muted">Ajouter une nouvelle session au séminaire "{{ seminaire.titre }}"</p>
+           
         </div>
     </div>
 
     <div class="row">
-        <div class="col-lg-8">
-            <div class="card">
-                <div class="card-header">
-                    <h5 class="mb-0">Informations de la Session</h5>
+        <div class="col-lg-12">
+            <div class="card modal-style-card">
+                <div class="card-header modal-style-header">
+                    <h5 class="mb-0 modal-style-title">
+                        <i class="fas fa-calendar-day me-2"></i>Informations de la Session
+                    </h5>
+                    <div class="mt-2">
+                        <small class="text-white-50">
+                            <i class="fas fa-info-circle me-1"></i>
+                            Séminaire: <strong>{{ seminaire.titre }}</strong>
+                            {% if seminaire.programme %}
+                                | Programme: <strong>{{ seminaire.programme.code }}</strong>
+                            {% endif %}
+                        </small>
+                    </div>
                 </div>
-                <div class="card-body">
-                    <form method="POST" action="{{ url_for('creer_session_seminaire', seminaire_id=seminaire.id) }}">
+                <div class="card-body modal-style-body">
+                    <form id="session-form" method="POST" action="{{ url_for('creer_session_seminaire', seminaire_id=seminaire.id) }}{% if programme_param %}?programme={{ programme_param }}{% endif %}">
                         <div class="row">
                             <div class="col-md-6">
                                 <div class="mb-3">
                                     <label for="titre" class="form-label">Titre de la Session *</label>
-                                    <input type="text" class="form-control" id="titre" name="titre" required>
+                                    <input type="text" class="form-control form-control-sm" id="titre" name="titre" required placeholder="Ex: Session matin - Introduction">
                                 </div>
                             </div>
                             <div class="col-md-6">
                                 <div class="mb-3">
                                     <label for="date_session" class="form-label">Date de la Session *</label>
-                                    <input type="date" class="form-control" id="date_session" name="date_session" required>
+                                    <input type="date" class="form-control form-control-sm" id="date_session" name="date_session" required>
                                 </div>
                             </div>
                         </div>
@@ -47,13 +56,13 @@
                             <div class="col-md-6">
                                 <div class="mb-3">
                                     <label for="heure_debut" class="form-label">Heure de Début *</label>
-                                    <input type="time" class="form-control" id="heure_debut" name="heure_debut" required>
+                                    <input type="time" class="form-control form-control-sm" id="heure_debut" name="heure_debut" required>
                                 </div>
                             </div>
                             <div class="col-md-6">
                                 <div class="mb-3">
                                     <label for="heure_fin" class="form-label">Heure de Fin *</label>
-                                    <input type="time" class="form-control" id="heure_fin" name="heure_fin" required>
+                                    <input type="time" class="form-control form-control-sm" id="heure_fin" name="heure_fin" required>
                                 </div>
                             </div>
                         </div>
@@ -62,32 +71,26 @@
                             <div class="col-md-6">
                                 <div class="mb-3">
                                     <label for="lieu" class="form-label">Lieu</label>
-                                    <input type="text" class="form-control" id="lieu" name="lieu" placeholder="Ex: Salle de conférence A">
+                                    <input type="text" class="form-control form-control-sm" id="lieu" name="lieu" placeholder="Ex: Salle de conférence A">
                                 </div>
                             </div>
-                        </div>
-
-                        <div class="row">
                             <div class="col-md-6">
                                 <div class="mb-3">
-                                    <label for="capacite_max" class="form-label">Capacité Maximale</label>
-                                    <input type="number" class="form-control" id="capacite_max" name="capacite_max" min="1" placeholder="Ex: 50">
+                                    <label for="capacite" class="form-label">Capacité Maximale</label>
+                                    <input type="number" class="form-control form-control-sm" id="capacite" name="capacite" min="1" placeholder="Ex: 50">
                                 </div>
-                            </div>
-                            <div class="col-md-6">
-                                <!-- Espace vide pour l'alignement -->
                             </div>
                         </div>
 
                         <div class="mb-3">
                             <label for="description" class="form-label">Description</label>
-                            <textarea class="form-control" id="description" name="description" rows="4" placeholder="Décrivez le contenu et les objectifs de cette session..."></textarea>
+                            <textarea class="form-control form-control-sm" id="description" name="description" rows="3" placeholder="Décrivez le contenu et les objectifs de cette session..."></textarea>
                         </div>
 
                         <div class="mb-3">
                             <label for="visioconf_url" class="form-label">URL de Visioconférence</label>
-                            <input type="url" class="form-control" id="visioconf_url" name="visioconf_url" placeholder="https://meet.google.com/xxx-xxxx-xxx">
-                            <div class="form-text">Optionnel - Lien pour participer à distance</div>
+                            <input type="url" class="form-control form-control-sm" id="visioconf_url" name="visioconf_url" placeholder="https://meet.google.com/xxx-xxxx-xxx">
+                            <small class="form-text text-muted">Optionnel - Lien pour participer à distance</small>
                         </div>
 
                         <div class="mb-3">
@@ -97,80 +100,341 @@
                                     Session obligatoire
                                 </label>
                             </div>
-                            <div class="form-text">Si coché, la présence sera obligatoire pour cette session</div>
+                            <small class="form-text text-muted">Si coché, la présence sera obligatoire pour cette session</small>
                         </div>
 
-                        <div class="d-flex justify-content-between mt-4">
-                            <a href="{{ url_for('detail_seminaire', seminaire_id=seminaire.id) }}" class="btn btn-secondary">
-                                <i class="fas fa-arrow-left me-2"></i>Annuler
-                            </a>
-                            <button type="submit" class="btn btn-primary">
-                                <i class="fas fa-save me-2"></i>Créer la Session
-                            </button>
-                        </div>
                     </form>
                 </div>
-            </div>
-        </div>
-
-        <div class="col-lg-4">
-            <div class="card">
-                <div class="card-header">
-                    <h5 class="mb-0">Informations du Séminaire</h5>
-                </div>
-                <div class="card-body">
-                    <h6>{{ seminaire.titre }}</h6>
-                    <p class="text-muted small">{{ seminaire.description[:100] }}{% if seminaire.description|length > 100 %}...{% endif %}</p>
-                    
-                    <div class="mb-2">
-                        <strong>Programme:</strong> {{ seminaire.programme.code }}
+                <div class="card-footer modal-style-footer">
+                    <div class="d-flex justify-content-between w-100">
+                        <a href="{{ url_for('detail_seminaire', seminaire_id=seminaire.id) }}{% if programme_param %}?programme={{ programme_param }}{% endif %}" class="btn btn-secondary">
+                            <i class="fas fa-arrow-left me-2"></i>Annuler
+                        </a>
+                        <button type="submit" form="session-form" id="submit-session-btn" class="btn btn-primary">
+                            <i class="fas fa-save me-2"></i>Créer la Session
+                        </button>
                     </div>
-                    
-                    {% if seminaire.lieu %}
-                    <div class="mb-2">
-                        <strong>Lieu:</strong> {{ seminaire.lieu }}
-                    </div>
-                    {% endif %}
-                    
-                    <div class="mb-2">
-                        <strong>Organisateur:</strong> {{ seminaire.organisateur.nom_complet }}
-                    </div>
-                    
-                    <div class="mb-2">
-                        <strong>Statut:</strong> 
-                        <span class="badge bg-{% if seminaire.statut == 'PLANIFIE' %}primary{% elif seminaire.statut == 'EN_COURS' %}success{% elif seminaire.statut == 'TERMINE' %}secondary{% else %}warning{% endif %}">
-                            {{ seminaire.statut }}
-                        </span>
-                    </div>
-                </div>
-            </div>
-
-            <div class="card mt-3">
-                <div class="card-header">
-                    <h5 class="mb-0">Conseils</h5>
-                </div>
-                <div class="card-body">
-                    <ul class="list-unstyled small">
-                        <li class="mb-2">
-                            <i class="fas fa-lightbulb text-warning me-2"></i>
-                            Donnez un titre clair et descriptif à votre session
-                        </li>
-                        <li class="mb-2">
-                            <i class="fas fa-clock text-info me-2"></i>
-                            Vérifiez que les horaires ne se chevauchent pas avec d'autres sessions
-                        </li>
-                        <li class="mb-2">
-                            <i class="fas fa-users text-success me-2"></i>
-                            Définissez une capacité maximale selon votre salle
-                        </li>
-                        <li class="mb-2">
-                            <i class="fas fa-video text-primary me-2"></i>
-                            Ajoutez un lien de visioconférence si nécessaire
-                        </li>
-                    </ul>
                 </div>
             </div>
         </div>
     </div>
 </div>
+
+<script>
+// Gestion de l'overlay pour la création de session
+document.addEventListener('DOMContentLoaded', function() {
+    // Validation des dates et heures
+    const dateSession = document.getElementById('date_session');
+    const heureDebut = document.getElementById('heure_debut');
+    const heureFin = document.getElementById('heure_fin');
+    
+    // Définir la date minimale à aujourd'hui
+    const today = new Date().toISOString().split('T')[0];
+    if (dateSession) {
+        dateSession.min = today;
+    }
+    
+    // Validation : heure de fin après heure de début
+    function validateHeures() {
+        if (heureDebut.value && heureFin.value && dateSession.value) {
+            const debut = new Date(`${dateSession.value}T${heureDebut.value}`);
+            const fin = new Date(`${dateSession.value}T${heureFin.value}`);
+            if (fin <= debut) {
+                heureFin.setCustomValidity('L\'heure de fin doit être postérieure à l\'heure de début');
+            } else {
+                heureFin.setCustomValidity('');
+            }
+        }
+    }
+    
+    if (heureDebut && heureFin) {
+        heureDebut.addEventListener('change', validateHeures);
+        heureFin.addEventListener('change', validateHeures);
+    }
+    
+    // Validation côté client et gestion de l'overlay
+    const form = document.getElementById('session-form');
+    const submitBtn = document.getElementById('submit-session-btn');
+    
+    if (form && submitBtn) {
+        form.addEventListener('submit', function(e) {
+            const titre = document.getElementById('titre').value.trim();
+            const date = document.getElementById('date_session').value;
+            const heureDebutVal = document.getElementById('heure_debut').value;
+            const heureFinVal = document.getElementById('heure_fin').value;
+            
+            if (!titre || !date || !heureDebutVal || !heureFinVal) {
+                e.preventDefault();
+                alert('Veuillez remplir tous les champs obligatoires.');
+                return;
+            }
+            
+            // Vérifier que l'heure de fin est après l'heure de début
+            if (heureFinVal <= heureDebutVal) {
+                e.preventDefault();
+                alert('L\'heure de fin doit être postérieure à l\'heure de début.');
+                return;
+            }
+            
+            // Afficher l'overlay global
+            if (typeof showGlobalLoading === 'function') {
+                showGlobalLoading(
+                    'Création de la session',
+                    'Traitement en cours, veuillez patienter...'
+                );
+            }
+            
+            // Désactiver le bouton et afficher un spinner
+            submitBtn.disabled = true;
+            const originalHtml = submitBtn.innerHTML;
+            submitBtn.innerHTML = '<i class="fas fa-spinner fa-spin me-2"></i>Traitement...';
+            
+            // Timeout de sécurité
+            setTimeout(function() {
+                if (typeof hideGlobalLoading === 'function') {
+                    hideGlobalLoading();
+                }
+                submitBtn.disabled = false;
+                submitBtn.innerHTML = originalHtml;
+            }, 10000);
+        });
+    }
+    
+    // Ajouter l'overlay global aux liens de navigation
+    const navLinks = document.querySelectorAll('a[href*="/seminaires/"]');
+    navLinks.forEach(function(link) {
+        const href = link.getAttribute('href');
+        // Ignorer les liens externes
+        if (href && !href.startsWith('http') && !href.startsWith('#')) {
+            link.addEventListener('click', function(e) {
+                // Ne pas intercepter si Ctrl/Cmd est pressé (nouvel onglet)
+                if (e.ctrlKey || e.metaKey) return;
+                
+                // Afficher l'overlay global
+                if (typeof showGlobalLoading === 'function') {
+                    showGlobalLoading('Chargement', 'Veuillez patienter...');
+                }
+            });
+        }
+    });
+});
+</script>
+
+<style>
+/* Limiter la hauteur de la page pour éviter le scroll */
+.page-content-wrapper {
+    height: calc(100vh - 120px);
+    max-height: calc(100vh - 120px);
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+}
+
+.page-content-wrapper .row:first-child {
+    flex-shrink: 0;
+}
+
+.page-content-wrapper .row:last-child {
+    flex: 1;
+    min-height: 0;
+    overflow: hidden;
+    display: flex;
+    height: 100%;
+}
+
+.page-content-wrapper .row:last-child .col-lg-12 {
+    display: flex;
+    flex-direction: column;
+    min-height: 0;
+    max-height: 100%;
+    height: 95%;
+    margin: 1rem 0;
+    padding: 0 1rem;
+    overflow: hidden;
+}
+
+/* Style modal pour la card */
+.modal-style-card {
+    box-shadow: 0 10px 40px rgba(0, 0, 0, 0.2);
+    border-radius: 5px;
+    border: none;
+    display: flex;
+    flex-direction: column;
+    max-width: 1000px;
+    margin: 0 auto;
+    width: 100%;
+    height: 100%;
+    min-height: 0;
+}
+
+.modal-style-card > .card-header {
+    flex: 0 0 auto;
+}
+
+.modal-style-card > .card-body {
+    flex: 1 1 auto;
+    min-height: 0;
+}
+
+.modal-style-card > .card-footer {
+    flex: 0 0 auto;
+}
+
+.modal-style-header {
+    padding: 1.5rem;
+    border: 2px solid var(--primary-color);
+    background: var(--secondary-color);
+    flex-shrink: 0;
+    z-index: 10;
+    border-radius: 5px 5px 0 0;
+    border-bottom: 2px solid var(--primary-color);
+}
+
+.modal-style-title {
+    margin: 0;
+    color: var(--white-color);
+    font-size: 1.3rem;
+    font-weight: 700;
+}
+
+.modal-style-body {
+    padding: 1.5rem;
+    margin: 0;
+    flex: 1;
+    overflow-y: auto;
+    overflow-x: hidden;
+    min-height: 0;
+    border-left: 1px solid var(--primary-color);
+    border-right: 1px solid var(--primary-color);
+}
+
+.modal-style-footer {
+    padding: 1rem 1.5rem;
+    border: 2px solid var(--primary-color);
+    background: var(--gray-50);
+    display: flex !important;
+    gap: 1rem;
+    justify-content: flex-end;
+    flex-shrink: 0;
+    flex-grow: 0;
+    z-index: 10;
+    border-radius: 0 0 5px 5px;
+    border-top: 2px solid var(--primary-color);
+    visibility: visible !important;
+    opacity: 1 !important;
+    height: auto !important;
+    min-height: 60px;
+}
+
+/* Scroll personnalisé dans le body */
+.modal-style-body::-webkit-scrollbar {
+    width: 8px;
+}
+
+.modal-style-body::-webkit-scrollbar-track {
+    background: var(--gray-100);
+    border-radius: 4px;
+}
+
+.modal-style-body::-webkit-scrollbar-thumb {
+    background: var(--gray-400);
+    border-radius: 4px;
+}
+
+.modal-style-body::-webkit-scrollbar-thumb:hover {
+    background: var(--gray-500);
+}
+
+/* Styles des formulaires */
+.form-label {
+    font-weight: 600;
+    color: #495057;
+    font-size: 0.875rem;
+    margin-bottom: 0.4rem;
+}
+
+.form-control-sm, .form-select-sm {
+    height: 32px;
+    padding: 0.375rem 0.5rem;
+    font-size: 0.875rem;
+    line-height: 1.4;
+    border: 1px solid var(--gray-300);
+    border-radius: 4px;
+}
+
+.form-control-sm:focus, .form-select-sm:focus {
+    border-color: var(--primary-color);
+    box-shadow: 0 0 0 0.2rem rgba(var(--primary-color-rgb), 0.25);
+}
+
+.form-control-sm[type="date"] {
+    padding: 0.375rem 0.5rem;
+}
+
+.form-control-sm[type="time"] {
+    padding: 0.375rem 0.5rem;
+}
+
+.form-control-sm[type="number"] {
+    padding: 0.375rem 0.5rem;
+}
+
+.form-control-sm[type="url"] {
+    padding: 0.375rem 0.5rem;
+}
+
+textarea.form-control-sm {
+    height: auto;
+    padding: 0.375rem 0.5rem;
+    line-height: 1.4;
+    min-height: 80px;
+}
+
+.form-check-label {
+    font-size: 0.875rem;
+    color: #495057;
+}
+
+.breadcrumb {
+    background-color: transparent;
+    padding: 0;
+}
+
+.breadcrumb-item + .breadcrumb-item::before {
+    content: ">";
+}
+
+.mb-3 {
+    margin-bottom: 0.75rem !important;
+}
+
+/* Responsive */
+@media (max-width: 768px) {
+    .page-content-wrapper {
+        height: calc(100vh - 150px);
+        max-height: calc(100vh - 150px);
+    }
+    
+    .modal-style-header {
+        padding: 1rem;
+    }
+    
+    .modal-style-title {
+        font-size: 1.1rem;
+    }
+    
+    .modal-style-body {
+        padding: 1rem;
+    }
+    
+    .modal-style-footer {
+        padding: 1rem;
+        flex-direction: column-reverse;
+    }
+    
+    .modal-style-footer .btn {
+        width: 100%;
+    }
+}
+</style>
 {% endblock %}

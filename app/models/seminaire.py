@@ -1,9 +1,10 @@
 # app/models/seminaire.py
 from sqlmodel import SQLModel, Field, Relationship
+from sqlalchemy import UniqueConstraint
 from typing import Optional, List
 from datetime import datetime, timezone, date
 from .enums import TypeSession, StatutPresence, StatutSeminaire, TypeInvitation
-from .base import Programme, User, Inscription
+from .base import Programme, User, Candidat
 
 class Seminaire(SQLModel, table=True):
     __tablename__ = "seminaire"
@@ -22,7 +23,7 @@ class Seminaire(SQLModel, table=True):
     adresse_complete: Optional[str] = None
     
     # Organisation
-    organisateur_id: int = Field(foreign_key="user.id")
+    organisateur: str  # Nom de l'organisateur (string)
     capacite_max: Optional[int] = None
     
     # Statut et configuration
@@ -39,7 +40,6 @@ class Seminaire(SQLModel, table=True):
     
     # Relations
     programme: "Programme" = Relationship(back_populates="seminaires")
-    organisateur: "User" = Relationship()
     sessions: List["SessionSeminaire"] = Relationship(back_populates="seminaire")
     invitations: List["InvitationSeminaire"] = Relationship(back_populates="seminaire")
     livrables: List["LivrableSeminaire"] = Relationship(back_populates="seminaire")
@@ -87,7 +87,7 @@ class InvitationSeminaire(SQLModel, table=True):
     type_invitation: TypeInvitation
     
     # Cible de l'invitation
-    inscription_id: Optional[int] = Field(foreign_key="inscription.id", index=True)
+    candidat_id: Optional[int] = Field(foreign_key="candidat.id", index=True)
     promotion_id: Optional[int] = Field(foreign_key="promotion.id", index=True)
     
     # Statut de l'invitation
@@ -106,18 +106,32 @@ class InvitationSeminaire(SQLModel, table=True):
     
     # Relations
     seminaire: "Seminaire" = Relationship(back_populates="invitations")
-    inscription: Optional["Inscription"] = Relationship()
+    candidat: Optional["Candidat"] = Relationship()
 
 class PresenceSeminaire(SQLModel, table=True):
     __tablename__ = "presence_seminaire"
+    __table_args__ = (
+        # Contrainte unique : un candidat ne peut avoir qu'une seule présence par session
+        # Mais peut avoir plusieurs présences pour différentes sessions du même séminaire
+        # IMPORTANT : L'émargement est attaché à une SESSION, pas au séminaire
+        # L'acceptation d'invitation est attachée au SÉMINAIRE
+        UniqueConstraint('session_id', 'candidat_id', name='uq_presence_session_candidat'),
+    )
     
-    """Présence d'un candidat à une session de séminaire"""
+    """Présence d'un candidat à une session de séminaire
+    
+    IMPORTANT : 
+    - Un émargement (présence) est attaché à une SESSION de séminaire
+    - Une acceptation (invitation) est attachée à un SÉMINAIRE
+    - Un candidat peut avoir plusieurs présences pour un même séminaire (une par session)
+    - Un candidat ne peut avoir qu'une seule présence par session (contrainte unique)
+    """
     id: Optional[int] = Field(default=None, primary_key=True)
     session_id: int = Field(foreign_key="session_seminaire.id", index=True)
-    inscription_id: int = Field(foreign_key="inscription.id", index=True)
+    candidat_id: int = Field(foreign_key="candidat.id", index=True)
     
     # Statut de présence
-    presence: str = Field(default="absent")  # "absent", "present", "excuse"
+    presence: str = Field(default="en_attente")  # "en_attente", "absent", "present", "excuse"
     
     # Méthode de signature
     methode_signature: Optional[str] = None  # "MANUEL", "DIGITAL", "QR_CODE"
@@ -142,7 +156,7 @@ class PresenceSeminaire(SQLModel, table=True):
     
     # Relations
     session: "SessionSeminaire" = Relationship(back_populates="participants")
-    inscription: "Inscription" = Relationship()
+    candidat: "Candidat" = Relationship()
 
 class LivrableSeminaire(SQLModel, table=True):
     __tablename__ = "livrable_seminaire"
@@ -178,7 +192,7 @@ class RenduLivrable(SQLModel, table=True):
     """Rendu d'un livrable par un candidat"""
     id: Optional[int] = Field(default=None, primary_key=True)
     livrable_id: int = Field(foreign_key="livrable_seminaire.id", index=True)
-    inscription_id: int = Field(foreign_key="inscription.id", index=True)
+    candidat_id: int = Field(foreign_key="candidat.id", index=True)
     
     # Fichier rendu
     nom_fichier: str
@@ -200,5 +214,5 @@ class RenduLivrable(SQLModel, table=True):
     
     # Relations
     livrable: "LivrableSeminaire" = Relationship(back_populates="rendus")
-    inscription: "Inscription" = Relationship()
+    candidat: "Candidat" = Relationship()
     evaluateur: Optional["User"] = Relationship()

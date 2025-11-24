@@ -3,6 +3,7 @@ from sqlmodel import SQLModel, Field, Relationship
 from typing import Optional, List
 from datetime import datetime, timezone
 from .enums import *
+from .base import User, Programme, Candidat
 
 class RessourceElearning(SQLModel, table=True):
     __tablename__ = "ressource_elearning"
@@ -74,7 +75,7 @@ class ProgressionElearning(SQLModel, table=True):
 
     """Progression d'un candidat dans le e-learning"""
     id: Optional[int] = Field(default=None, primary_key=True)
-    inscription_id: int = Field(foreign_key="inscription.id")
+    candidat_id: int = Field(foreign_key="candidat.id")
     module_id: int = Field(foreign_key="module_elearning.id")
     ressource_id: int = Field(foreign_key="ressource_elearning.id")
     statut: str = Field(default="non_commence", max_length=20)  # "non_commence", "en_cours", "termine", "abandonne"
@@ -87,7 +88,7 @@ class ProgressionElearning(SQLModel, table=True):
     cree_le: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
     
     # Relations
-    inscription: "Inscription" = Relationship(back_populates="progressions_elearning")
+    candidat: "Candidat" = Relationship()
     module: "ModuleElearning" = Relationship(back_populates="progressions")
     ressource: "RessourceElearning" = Relationship(back_populates="progressions")
 
@@ -133,7 +134,7 @@ class ReponseQuiz(SQLModel, table=True):
 
     """Réponse d'un candidat à un quiz"""
     id: Optional[int] = Field(default=None, primary_key=True)
-    inscription_id: int = Field(foreign_key="inscription.id")
+    candidat_id: int = Field(foreign_key="candidat.id")
     quiz_id: int = Field(foreign_key="quiz_elearning.id")
     reponse_donnee: str
     est_correcte: bool
@@ -141,7 +142,7 @@ class ReponseQuiz(SQLModel, table=True):
     date_reponse: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
     
     # Relations
-    inscription: "Inscription" = Relationship(back_populates="reponses_quiz")
+    candidat: "Candidat" = Relationship()
     quiz: "QuizElearning" = Relationship(back_populates="reponses")
 
 class CertificatElearning(SQLModel, table=True):
@@ -149,7 +150,7 @@ class CertificatElearning(SQLModel, table=True):
 
     """Certificat de completion e-learning"""
     id: Optional[int] = Field(default=None, primary_key=True)
-    inscription_id: int = Field(foreign_key="inscription.id")
+    candidat_id: int = Field(foreign_key="candidat.id")
     module_id: Optional[int] = Field(foreign_key="module_elearning.id")
     titre: str
     description: Optional[str] = None
@@ -160,7 +161,7 @@ class CertificatElearning(SQLModel, table=True):
     valide: bool = True
     
     # Relations
-    inscription: "Inscription" = Relationship(back_populates="certificats_elearning")
+    candidat: "Candidat" = Relationship()
     module: Optional["ModuleElearning"] = Relationship()
 
 # Table de liaison pour ModuleElearning <-> RessourceElearning

@@ -17,7 +17,7 @@ import logging
 
 logger = logging.getLogger(__name__)
 from ..models.base import (
-    Candidat, Entreprise, Programme, Preinscription, Inscription,
+    Candidat, Entreprise, Programme, Preinscription,
     Jury, AvancementEtape, EtapePipeline, Eligibilite, DecisionJuryCandidat
 )
 from ..templates import templates

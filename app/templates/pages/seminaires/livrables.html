@@ -1,31 +1,24 @@
-{% extends "base.html" %}
+{% extends "layouts/base.html" %}
+{% from "components/page_header.html" import page_header %}
 
 {% block title %}Livrables - {{ seminaire.titre }}{% endblock %}
 
 {% block content %}
+{% set programme_param = request.query_params.get('programme') or (schema_name.upper() if schema_name and schema_name != 'public' else '') %}
+
+{{ page_header(
+    title="<i class='fas fa-file-alt me-2'></i>Gestion des Livrables",
+    breadcrumbs=[
+        {"label": "Séminaires", "url": url_for('liste_seminaires') ~ ('?programme=' ~ programme_param if programme_param else '')},
+        {"label": seminaire.titre, "url": url_for('detail_seminaire', seminaire_id=seminaire.id) ~ ('?programme=' ~ programme_param if programme_param else '')},
+        {"label": "Livrables", "url": ""}
+    ],
+    actions=[
+        {"label": "<i class='fas fa-plus me-2'></i>Nouveau Livrable", "class": "btn-primary", "onclick": "openCreateLivrableModal();"}
+    ]
+) }}
+
 <div class="container-fluid p-4">
-    <div class="row mb-4">
-        <div class="col-12">
-            <nav aria-label="breadcrumb">
-                <ol class="breadcrumb">
-                    <li class="breadcrumb-item"><a href="{{ url_for('liste_seminaires') }}">Séminaires</a></li>
-                    <li class="breadcrumb-item"><a href="{{ url_for('detail_seminaire', seminaire_id=seminaire.id) }}">{{ seminaire.titre }}</a></li>
-                    <li class="breadcrumb-item active">Livrables</li>
-                </ol>
-            </nav>
-            <div class="d-flex justify-content-between align-items-center">
-                <div>
-                    <h1 class="mb-0">
-                        <i class="fas fa-file-alt me-2"></i>Livrables
-                    </h1>
-                    <p class="text-muted mb-0">{{ seminaire.titre }}</p>
-                </div>
-                <button class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#livrableModal">
-                    <i class="fas fa-plus me-2"></i>Nouveau Livrable
-                </button>
-            </div>
-        </div>
-    </div>
 
     <!-- Liste des livrables -->
     <div class="row">
@@ -109,7 +102,7 @@
                             <i class="fas fa-file-alt fa-3x text-muted mb-3"></i>
                             <h4 class="text-muted">Aucun livrable défini</h4>
                             <p class="text-muted">Commencez par définir les livrables à rendre pour ce séminaire.</p>
-                            <button class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#livrableModal">
+                            <button class="btn btn-primary" onclick="openCreateLivrableModal()">
                                 <i class="fas fa-plus me-2"></i>Créer un Livrable
                             </button>
                         </div>
@@ -121,17 +114,17 @@
 </div>
 
 <!-- Modal de création de livrable -->
-<div class="modal fade" id="livrableModal" tabindex="-1" aria-labelledby="livrableModalLabel" aria-hidden="true">
-    <div class="modal-dialog modal-lg">
-        <div class="modal-content">
-            <div class="modal-header">
-                <h5 class="modal-title" id="livrableModalLabel">
-                    <i class="fas fa-file-alt me-2"></i>Nouveau Livrable
-                </h5>
-                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
-            </div>
-            <form method="POST" action="/seminaires/{{ seminaire.id }}/livrables/nouveau">
-                <div class="modal-body">
+<div class="modal-lg" id="livrableModal">
+    <div class="modal-content modal-lg">
+        <div class="modal-header">
+            <h3 class="modal-title" id="livrableModalLabel">
+                <i class="fas fa-file-alt me-2"></i><span id="livrableModalTitle">Nouveau Livrable</span>
+            </h3>
+            <button class="modal-close" onclick="closeLivrableModal()" title="Fermer">&times;</button>
+        </div>
+        <div class="modal-body">
+            <form id="livrable-form" method="POST" action="{{ url_for('creer_livrable_seminaire', seminaire_id=seminaire.id) }}{% if programme_param %}?programme={{ programme_param }}{% endif %}">
+                    <input type="hidden" id="livrable_id" name="livrable_id" value="">
                     <div class="row">
                         <div class="col-md-6">
                             <div class="mb-3">
@@ -199,36 +192,200 @@
                             </div>
                         </div>
                     </div>
-                </div>
-                <div class="modal-footer">
-                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Annuler</button>
-                    <button type="submit" class="btn btn-primary">
-                        <i class="fas fa-save me-2"></i>Créer le Livrable
-                    </button>
-                </div>
-            </form>
+                </form>
+        </div>
+        <div class="modal-footer">
+            <button type="button" class="btn btn-secondary" onclick="closeLivrableModal()">Annuler</button>
+            <button type="submit" form="livrable-form" class="btn btn-primary" id="submit-livrable-btn">
+                <i class="fas fa-save me-2"></i><span id="submit-livrable-text">Créer le Livrable</span>
+            </button>
         </div>
     </div>
 </div>
 
 <script>
-function editLivrable(livrableId) {
-    // Implémenter l'édition du livrable
-    console.log('Éditer livrable:', livrableId);
+// Fonction pour ouvrir le modal (utilitaire commun)
+function openModalLivrable() {
+    const modalElement = document.getElementById('livrableModal');
+    if (modalElement) {
+        modalElement.classList.add('show');
+        document.body.classList.add('modal-open');
+        
+        // Forcer le sidebar en mode réduit
+        const sidebar = document.getElementById('sidebar');
+        if (sidebar) {
+            sidebar.classList.add('collapsed');
+        }
+    }
 }
 
-function deleteLivrable(livrableId) {
+// Fonction pour créer un nouveau livrable
+window.openCreateLivrableModal = function() {
+    // Réinitialiser le formulaire
+    const form = document.getElementById('livrable-form');
+    if (form) {
+        form.reset();
+    }
+    
+    // Réinitialiser l'ID du livrable
+    document.getElementById('livrable_id').value = '';
+    
+    // Configurer l'action du formulaire pour la création
+    const programmeParam = '{{ programme_param }}' || new URLSearchParams(window.location.search).get('programme') || '';
+    const programmeParamForForm = programmeParam ? `?programme=${programmeParam}` : '';
+    form.action = `{{ url_for('creer_livrable_seminaire', seminaire_id=seminaire.id) }}` + programmeParamForForm;
+    
+    // Configurer le titre du modal
+    document.getElementById('livrableModalTitle').textContent = 'Nouveau Livrable';
+    
+    // Configurer le texte du bouton
+    document.getElementById('submit-livrable-text').textContent = 'Créer le Livrable';
+    
+    // Ouvrir le modal
+    openModalLivrable();
+}
+
+window.editLivrable = async function(livrableId) {
+    try {
+        // Afficher l'overlay global
+        if (typeof showGlobalLoading === 'function') {
+            showGlobalLoading();
+        }
+        
+        // Récupérer le livrable via l'API
+        const programmeParam = '{{ programme_param }}' || new URLSearchParams(window.location.search).get('programme') || '';
+        const originUrl = window.location.origin;
+        const url = `${originUrl}/seminaires/{{ seminaire.id }}/livrables/${livrableId}` + (programmeParam ? `?programme=${programmeParam}` : '');
+        
+        console.log('🔍 URL de récupération du livrable:', url);
+        console.log('🔍 programmeParam:', programmeParam);
+        
+        const response = await fetch(url);
+        if (!response.ok) {
+            throw new Error('Erreur lors de la récupération du livrable');
+        }
+        
+        const livrable = await response.json();
+        
+        // Pré-remplir le formulaire
+        document.getElementById('livrable_id').value = livrable.id;
+        document.getElementById('titre').value = livrable.titre || '';
+        document.getElementById('description').value = livrable.description || '';
+        document.getElementById('type_livrable').value = livrable.type_livrable || '';
+        document.getElementById('date_limite').value = livrable.date_limite || '';
+        document.getElementById('obligatoire').checked = livrable.obligatoire || false;
+        document.getElementById('consignes').value = livrable.consignes || '';
+        document.getElementById('format_accepte').value = livrable.format_accepte || '';
+        document.getElementById('taille_max_mb').value = livrable.taille_max_mb || '';
+        
+        // Configurer l'action du formulaire pour la modification
+        // Construire l'URL manuellement en suivant le même pattern que la route de création
+        const programmeParamForForm = programmeParam ? `?programme=${programmeParam}` : '';
+        // L'URL doit être: /seminaires/{seminaire_id}/livrables/{livrable_id}/modifier
+        const formAction = `/seminaires/{{ seminaire.id }}/livrables/${livrableId}/modifier` + programmeParamForForm;
+        document.getElementById('livrable-form').action = formAction;
+        console.log('🚀🚀🚀 DEBUG MODIFIER LIVRABLE 🚀🚀🚀');
+        console.log('🔍 livrableId:', livrableId);
+        console.log('🔍 programmeParam:', programmeParam);
+        console.log('🔍 formAction construite:', formAction);
+        console.log('🔍 Form action après assignation:', document.getElementById('livrable-form').action);
+        
+        // Configurer le titre du modal
+        document.getElementById('livrableModalTitle').textContent = 'Modifier le Livrable';
+        
+        // Configurer le texte du bouton
+        document.getElementById('submit-livrable-text').textContent = 'Modifier le Livrable';
+        
+        // Ouvrir le modal
+        openModalLivrable();
+        
+        // Masquer l'overlay global
+        if (typeof hideGlobalLoading === 'function') {
+            hideGlobalLoading();
+        }
+    } catch (error) {
+        console.error('Erreur lors de l\'édition du livrable:', error);
+        alert('Erreur lors du chargement du livrable. Veuillez réessayer.');
+        if (typeof hideGlobalLoading === 'function') {
+            hideGlobalLoading();
+        }
+    }
+}
+
+window.closeLivrableModal = function() {
+    // Réinitialiser le formulaire et l'ID
+    document.getElementById('livrable_id').value = '';
+    const form = document.getElementById('livrable-form');
+    if (form) {
+        form.reset();
+    }
+    closeModals();
+}
+
+window.deleteLivrable = function(livrableId) {
     if (confirm('Êtes-vous sûr de vouloir supprimer ce livrable ?')) {
+        // Afficher l'overlay global
+        if (typeof showGlobalLoading === 'function') {
+            showGlobalLoading('Suppression du livrable', 'Suppression en cours, veuillez patienter...');
+        }
+        
         // Implémenter la suppression
         console.log('Supprimer livrable:', livrableId);
+        
+        // TODO: Implémenter l'appel API pour supprimer le livrable
+        // Après la suppression réussie, masquer l'overlay et recharger la page
+        setTimeout(function() {
+            if (typeof hideGlobalLoading === 'function') {
+                hideGlobalLoading();
+            }
+            window.location.reload();
+        }, 2000);
     }
 }
 
 // Définir la date limite minimale à aujourd'hui
 document.addEventListener('DOMContentLoaded', function() {
     const dateLimite = document.getElementById('date_limite');
-    const today = new Date().toISOString().slice(0, 16);
-    dateLimite.min = today;
+    if (dateLimite) {
+        const today = new Date().toISOString().slice(0, 16);
+        dateLimite.min = today;
+    }
+    
+    // Gestion de l'overlay pour la création de livrable
+    const form = document.getElementById('livrable-form');
+    const submitBtn = document.getElementById('submit-livrable-btn');
+    
+    if (form && submitBtn) {
+        form.addEventListener('submit', function(e) {
+            console.log('🚀🚀🚀 FORM SUBMIT DÉCLENCHÉ 🚀🚀🚀');
+            console.log('🔍 Form action:', form.action);
+            console.log('🔍 Form method:', form.method);
+            console.log('🔍 Form data:', new FormData(form));
+            console.log('🔍 Current URL:', window.location.href);
+            
+            // Afficher l'overlay global
+            if (typeof showGlobalLoading === 'function') {
+                showGlobalLoading(
+                    'Création du livrable',
+                    'Traitement en cours, veuillez patienter...'
+                );
+            }
+            
+            // Désactiver le bouton et afficher un spinner
+            submitBtn.disabled = true;
+            const originalHtml = submitBtn.innerHTML;
+            submitBtn.innerHTML = '<i class="fas fa-spinner fa-spin me-2"></i>Traitement...';
+            
+            // Timeout de sécurité
+            setTimeout(function() {
+                if (typeof hideGlobalLoading === 'function') {
+                    hideGlobalLoading();
+                }
+                submitBtn.disabled = false;
+                submitBtn.innerHTML = originalHtml;
+            }, 10000);
+        });
+    }
 });
 </script>
 

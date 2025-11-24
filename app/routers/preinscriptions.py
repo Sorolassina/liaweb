@@ -43,7 +43,6 @@ from ..models.base import (
     StatutDossier, Document
 )
 from ..models.preinscription import Preinscription, Eligibilite
-from ..models.inscription import Inscription
 
 # Enums
 try:

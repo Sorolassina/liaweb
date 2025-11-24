@@ -6,7 +6,7 @@ from ..models.enums import TypeRDV, StatutRDV
 
 class RendezVousBase(BaseModel):
     """Schéma de base pour un rendez-vous"""
-    inscription_id: int
+    candidat_id: int
     conseiller_id: Optional[int] = None
     type_rdv: TypeRDV = TypeRDV.ENTRETIEN
     statut: StatutRDV = StatutRDV.PLANIFIE

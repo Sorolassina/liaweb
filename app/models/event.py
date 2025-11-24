@@ -48,8 +48,8 @@ class InvitationEvent(SQLModel, table=True):
     event_id: int = Field(foreign_key="event.id")
     event: Optional["Event"] = Relationship(back_populates="invitations")
     
-    inscription_id: int = Field(foreign_key="inscription.id")
-    inscription: Optional["Inscription"] = Relationship(back_populates="invitations_event")
+    candidat_id: int = Field(foreign_key="candidat.id")
+    candidat: Optional["Candidat"] = Relationship(back_populates="invitations_event")
     
     # Timestamps
     cree_le: datetime = Field(default_factory=lambda: datetime.now())
@@ -59,7 +59,7 @@ class PresenceEvent(SQLModel, table=True):
     __tablename__ = "presence_event"
     
     id: Optional[int] = Field(default=None, primary_key=True)
-    presence: str = Field(default="absent")
+    presence: str = Field(default="en_attente")
     methode_signature: Optional[MethodeSignatureEvent] = Field(default=None)
     signature_manuelle: Optional[str] = Field(default=None)
     signature_digitale: Optional[str] = Field(default=None)
@@ -72,8 +72,8 @@ class PresenceEvent(SQLModel, table=True):
     event_id: int = Field(foreign_key="event.id")
     event: Optional["Event"] = Relationship(back_populates="presences")
     
-    inscription_id: int = Field(foreign_key="inscription.id")
-    inscription: Optional["Inscription"] = Relationship(back_populates="presences_event")
+    candidat_id: int = Field(foreign_key="candidat.id")
+    candidat: Optional["Candidat"] = Relationship(back_populates="presences_event")
     
     # Timestamps
     cree_le: datetime = Field(default_factory=lambda: datetime.now())

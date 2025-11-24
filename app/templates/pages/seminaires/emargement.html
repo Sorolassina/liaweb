@@ -1,31 +1,130 @@
-{% extends "base.html" %}
+{% extends "layouts/base.html" %}
+{% from "components/page_header.html" import page_header %}
 
 {% block title %}Émargement - {{ session.titre }}{% endblock %}
 
 {% block content %}
+{% set programme_param = request.query_params.get('programme') or (schema_name.upper() if schema_name and schema_name != 'public' else '') %}
+
+<style>
+.page-header-right-content .seminaire-kpis {
+    display: flex;
+    gap: 1rem;
+    align-items: center;
+    flex-wrap: wrap;
+    flex-direction: row;
+}
+
+.page-header-right-content .info-box-sm {
+    display: flex;
+    align-items: center;
+    padding: 0.4rem;
+    background: rgba(255, 255, 255, 0.15);
+    border-radius: 0.375rem;
+    margin-bottom: 0;
+}
+
+.page-header-right-content .info-box-sm .info-box-icon {
+    width: 2.5rem;
+    height: 2.5rem;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border-radius: 50%;
+    margin-right: 0.5rem;
+    font-size: 0.9rem;
+}
+
+.page-header-right-content .info-box-sm .info-box-content {
+    flex: 1;
+    padding-left: 0;
+}
+
+.page-header-right-content .info-box-sm .info-box-text {
+    display: block;
+    font-size: 0.7rem;
+    font-weight: 500;
+    color: rgba(255, 255, 255, 0.9);
+    margin-bottom: 0.25rem;
+}
+
+.page-header-right-content .info-box-sm .info-box-number {
+    display: block;
+    font-size: 0.9rem;
+    font-weight: 600;
+    color: white;
+}
+
+/* Réduction de la hauteur des champs dans "Marquer la Présence" */
+#presence-form .form-select,
+#presence-form .form-control {
+    padding: 0.375rem 0.75rem;
+    font-size: 0.875rem;
+    line-height: 1.5;
+    height: auto;
+    min-height: 2rem;
+}
+
+#presence-form textarea.form-control {
+    min-height: 3rem;
+}
+</style>
+
+{% set kpis_content %}
+<div class="seminaire-kpis">
+    <div class="info-box-sm">
+        <span class="info-box-icon bg-primary">
+            <i class="fas fa-users"></i>
+        </span>
+        <div class="info-box-content">
+            <span class="info-box-text">Total</span>
+            <span class="info-box-number">{{ stats.total }}</span>
+        </div>
+    </div>
+    <div class="info-box-sm">
+        <span class="info-box-icon bg-success">
+            <i class="fas fa-check-circle"></i>
+        </span>
+        <div class="info-box-content">
+            <span class="info-box-text">Présents</span>
+            <span class="info-box-number">{{ stats.present }}</span>
+        </div>
+    </div>
+    <div class="info-box-sm">
+        <span class="info-box-icon bg-danger">
+            <i class="fas fa-times-circle"></i>
+        </span>
+        <div class="info-box-content">
+            <span class="info-box-text">Absents</span>
+            <span class="info-box-number">{{ stats.absent }}</span>
+        </div>
+    </div>
+    <div class="info-box-sm">
+        <span class="info-box-icon bg-info">
+            <i class="fas fa-percentage"></i>
+        </span>
+        <div class="info-box-content">
+            <span class="info-box-text">Taux Présence</span>
+            <span class="info-box-number">{{ stats.taux_presence }}%</span>
+        </div>
+    </div>
+</div>
+{% endset %}
+
+{{ page_header(
+    title="<i class='fas fa-signature me-2'></i>Émargement",
+    breadcrumbs=[
+        {"label": "Séminaires", "url": url_for('liste_seminaires') ~ ('?programme=' ~ programme_param if programme_param else '')},
+        {"label": seminaire.titre, "url": url_for('detail_seminaire', seminaire_id=seminaire.id) ~ ('?programme=' ~ programme_param if programme_param else '')},
+        {"label": "Émargement", "url": ""}
+    ],
+    right_content=kpis_content
+) }}
+
 <div class="container-fluid p-4">
-    <div class="row mb-4">
+    <div class="row mb-3">
         <div class="col-12">
-            <nav aria-label="breadcrumb">
-                <ol class="breadcrumb">
-                    <li class="breadcrumb-item"><a href="{{ url_for('liste_seminaires') }}">Séminaires</a></li>
-                    <li class="breadcrumb-item"><a href="{{ url_for('detail_seminaire', seminaire_id=seminaire.id) }}">{{ seminaire.titre }}</a></li>
-                    <li class="breadcrumb-item active">Émargement</li>
-                </ol>
-            </nav>
-            <div class="d-flex justify-content-between align-items-center">
-                <div>
-                    <h1 class="mb-0">
-                        <i class="fas fa-signature me-2"></i>Émargement
-                    </h1>
-                    <p class="text-muted mb-0">{{ session.titre }} - {{ session.date_session.strftime('%d/%m/%Y') }}</p>
-                </div>
-                <div class="text-end">
-                    <div class="badge bg-primary fs-6">{{ stats.total }} participants</div>
-                    <div class="badge bg-success fs-6">{{ stats.present }} présents</div>
-                    <div class="badge bg-danger fs-6">{{ stats.absent }} absents</div>
-                </div>
-            </div>
+            <p class="text-muted mb-0">{{ session.titre }} - {{ session.date_session.strftime('%d/%m/%Y') }}</p>
         </div>
     </div>
 
@@ -41,9 +140,9 @@
                 </div>
                 <div class="card-body">
                     <div class="row">
-                        <div class="col-md-6">
+                        <div class="col-md-4">
                             <div class="d-grid">
-                                <a href="{{ url_for('emargement_direct', seminaire_id=seminaire.id, session_id=session.id) }}" class="btn btn-primary btn-lg">
+                                <a href="{{ url_for('emargement_direct', seminaire_id=seminaire.id, session_id=session.id) }}{% if programme_param %}?programme={{ programme_param }}{% endif %}" class="btn btn-primary btn-lg">
                                     <i class="fas fa-tablet-alt me-2"></i>
                                     Mode Tablette
                                 </a>
@@ -52,9 +151,20 @@
                                 Interface optimisée pour les tablettes
                             </p>
                         </div>
-                        <div class="col-md-6">
+                        <div class="col-md-4">
                             <div class="d-grid">
-                                <button class="btn btn-outline-primary btn-lg" onclick="generateEmargementLinks()">
+                                <button class="btn btn-success btn-lg" onclick="copyEmargementDirectLink()" id="copy-link-btn">
+                                    <i class="fas fa-copy me-2"></i>
+                                    Copier le Lien
+                                </button>
+                            </div>
+                            <p class="text-muted small mt-2 text-center">
+                                Copier le lien d'émargement direct pour l'envoyer (SMS, WhatsApp, etc.)
+                            </p>
+                        </div>
+                        <div class="col-md-4" style="display: none;">
+                            <div class="d-grid">
+                                <button class="btn btn-outline-primary btn-lg" onclick="generateEmargementLinks()" disabled>
                                     <i class="fas fa-link me-2"></i>
                                     Générer Liens Email
                                 </button>
@@ -70,42 +180,6 @@
     </div>
 
 
-    <!-- Statistiques -->
-    <div class="row mb-4">
-        <div class="col-md-3">
-            <div class="card bg-primary text-white">
-                <div class="card-body text-center">
-                    <h3 class="mb-0">{{ stats.total }}</h3>
-                    <p class="mb-0">Total</p>
-                </div>
-            </div>
-        </div>
-        <div class="col-md-3">
-            <div class="card bg-success text-white">
-                <div class="card-body text-center">
-                    <h3 class="mb-0">{{ stats.present }}</h3>
-                    <p class="mb-0">Présents</p>
-                </div>
-            </div>
-        </div>
-        <div class="col-md-3">
-            <div class="card bg-danger text-white">
-                <div class="card-body text-center">
-                    <h3 class="mb-0">{{ stats.absent }}</h3>
-                    <p class="mb-0">Absents</p>
-                </div>
-            </div>
-        </div>
-        <div class="col-md-3">
-            <div class="card bg-info text-white">
-                <div class="card-body text-center">
-                    <h3 class="mb-0">{{ stats.taux_presence }}%</h3>
-                    <p class="mb-0">Taux Présence</p>
-                </div>
-            </div>
-        </div>
-    </div>
-
     <!-- Formulaire d'émargement -->
     <div class="row">
         <div class="col-lg-4">
@@ -114,10 +188,10 @@
                     <h5 class="mb-0">Marquer la Présence</h5>
                 </div>
                 <div class="card-body">
-                    <form method="POST" action="/seminaires/{{ seminaire.id }}/sessions/{{ session.id }}/emargement">
+                    <form id="presence-form" method="POST" action="{{ url_for('marquer_presence_session', seminaire_id=seminaire.id, session_id=session.id) }}{% if programme_param %}?programme={{ programme_param }}{% endif %}">
                         <div class="mb-3">
-                            <label for="inscription_id" class="form-label">Candidat</label>
-                            <select class="form-select" id="inscription_id" name="inscription_id" required>
+                            <label for="candidat_id" class="form-label">Candidat</label>
+                            <select class="form-select" id="candidat_id" name="candidat_id" required>
                                 <option value="">Sélectionner un candidat</option>
                                 <!-- Les options seront chargées dynamiquement -->
                             </select>
@@ -162,7 +236,7 @@
 
                         <input type="hidden" id="signature_data" name="signature_data" value="">
 
-                        <button type="submit" class="btn btn-primary w-100">
+                        <button type="submit" id="submit-presence-btn" class="btn btn-primary w-100">
                             <i class="fas fa-check me-2"></i>Enregistrer la Présence
                         </button>
                     </form>
@@ -206,10 +280,10 @@
                                 <tr data-presence="{{ presence_data.presence.presence }}">
                                     <td>
                                         <div class="d-flex align-items-center">
-                                            {% if presence_data.presence.inscription.candidat.photo_profil %}
-                                                <img src="/media/{{ presence_data.presence.inscription.candidat.photo_profil.replace('\\', '/') }}" 
+                                            {% if presence_data.presence.candidat and presence_data.presence.candidat.photo_profil %}
+                                                <img src="/media/{{ presence_data.presence.candidat.photo_profil.replace('\\', '/') }}" 
                                                      class="rounded-circle me-2" width="30" height="30" 
-                                                     alt="{{ presence_data.presence.inscription.candidat.nom }}">
+                                                     alt="{{ presence_data.presence.candidat.nom }}">
                                             {% else %}
                                                 <div class="bg-secondary rounded-circle me-2 d-flex align-items-center justify-content-center" 
                                                      style="width: 30px; height: 30px;">
@@ -217,9 +291,12 @@
                                                 </div>
                                             {% endif %}
                                             <div>
-                                                <strong>{{ presence_data.presence.inscription.candidat.prenom }} {{ presence_data.presence.inscription.candidat.nom }}</strong>
-                                                <br><small class="text-muted">{{ presence_data.presence.inscription.candidat.email }}</small>
-                                                <br><small class="text-muted">{{ presence_data.presence.inscription.candidat.entreprise.nom if presence_data.presence.inscription.candidat.entreprise else 'Sans entreprise' }}</small>
+                                                {% if presence_data.presence.candidat %}
+                                                    <strong>{{ presence_data.presence.candidat.prenom }} {{ presence_data.presence.candidat.nom }}</strong>
+                                                    <br><small class="text-muted">{{ presence_data.presence.candidat.email }}</small>
+                                                {% else %}
+                                                    <strong>Candidat #{{ presence_data.presence.candidat_id }}</strong>
+                                                {% endif %}
                                             </div>
                                         </div>
                                     </td>
@@ -266,7 +343,7 @@
                                             <button class="btn btn-sm btn-outline-primary" onclick="editPresence({{ presence_data.presence.id }})" title="Modifier">
                                                 <i class="fas fa-edit"></i>
                                             </button>
-                                            <button class="btn btn-sm btn-outline-danger" onclick="supprimerParticipant({{ seminaire.id }}, {{ session.id }}, {{ presence_data.presence.inscription_id }}, '{{ presence_data.presence.inscription.candidat.prenom }} {{ presence_data.presence.inscription.candidat.nom }}')" title="Supprimer">
+                                            <button class="btn btn-sm btn-outline-danger" onclick="supprimerParticipant({{ seminaire.id }}, {{ session.id }}, {{ presence_data.presence.candidat_id }}, '{% if presence_data.presence.candidat %}{{ presence_data.presence.candidat.prenom }} {{ presence_data.presence.candidat.nom }}{% else %}Candidat #{{ presence_data.presence.candidat_id }}{% endif %}')" title="Supprimer">
                                                 <i class="fas fa-trash"></i>
                                             </button>
                                         </div>
@@ -333,8 +410,46 @@ function filterPresence(status) {
 
 function generateEmargementLinks() {
     if (confirm('Générer et envoyer les liens d\'émargement par email à tous les candidats ?')) {
-        window.location.href = '{{ url_for("generer_liens_emargement", seminaire_id=seminaire.id, session_id=session.id) }}';
+        window.location.href = '{{ url_for("generer_liens_emargement", seminaire_id=seminaire.id, session_id=session.id) }}{% if programme_param %}?programme={{ programme_param }}{% endif %}';
     }
+}
+
+// URL du lien d'émargement direct (générée côté serveur)
+const emargementDirectLinkUrl = '{{ url_for("emargement_direct", seminaire_id=seminaire.id, session_id=session.id) }}{% if programme_param %}?programme={{ programme_param }}{% endif %}';
+
+function copyEmargementDirectLink() {
+    // Construire l'URL complète du lien d'émargement direct
+    let fullUrl;
+    if (emargementDirectLinkUrl.startsWith('http://') || emargementDirectLinkUrl.startsWith('https://')) {
+        // L'URL est déjà complète
+        fullUrl = emargementDirectLinkUrl;
+    } else {
+        // L'URL est relative, ajouter le domaine
+        const baseUrl = window.location.origin;
+        fullUrl = baseUrl + emargementDirectLinkUrl;
+    }
+    
+    // Copier dans le presse-papiers
+    navigator.clipboard.writeText(fullUrl).then(function() {
+        // Afficher un message de succès
+        const btn = document.getElementById('copy-link-btn');
+        const originalHtml = btn.innerHTML;
+        btn.innerHTML = '<i class="fas fa-check me-2"></i>Lien copié !';
+        btn.classList.remove('btn-success');
+        btn.classList.add('btn-success');
+        
+        // Réinitialiser après 2 secondes
+        setTimeout(function() {
+            btn.innerHTML = originalHtml;
+        }, 2000);
+        
+        // Afficher une notification
+        alert('Lien d\'émargement direct copié dans le presse-papiers !\n\nVous pouvez maintenant l\'envoyer par SMS, WhatsApp, etc.');
+    }).catch(function(err) {
+        console.error('Erreur lors de la copie:', err);
+        // Fallback : afficher le lien dans une alerte pour copier manuellement
+        prompt('Copiez ce lien manuellement :', fullUrl);
+    });
 }
 
 function editPresence(presenceId) {
@@ -343,11 +458,21 @@ function editPresence(presenceId) {
     console.log('Modifier présence:', presenceId);
 }
 
-function supprimerParticipant(seminaireId, sessionId, inscriptionId, nomParticipant) {
+// Récupérer le paramètre programme depuis l'URL
+const urlParams = new URLSearchParams(window.location.search);
+const programmeCode = urlParams.get('programme') || '';
+
+function supprimerParticipant(seminaireId, sessionId, candidatId, nomParticipant) {
     // Confirmation avant suppression
     if (confirm(`Êtes-vous sûr de vouloir supprimer ${nomParticipant} de cette session ?\n\nCette action supprimera définitivement l'invitation et la présence de ce participant.`)) {
+        // Afficher l'overlay global
+        if (typeof showGlobalLoading === 'function') {
+            showGlobalLoading('Suppression du participant', 'Suppression en cours, veuillez patienter...');
+        }
+        
         // Utiliser fetch pour une suppression AJAX
-        fetch(`/seminaires/${seminaireId}/sessions/${sessionId}/participant/${inscriptionId}/supprimer`, {
+        const url = `/seminaires/${seminaireId}/sessions/${sessionId}/participant/${candidatId}/supprimer${programmeCode ? `?programme=${programmeCode}` : ''}`;
+        fetch(url, {
             method: 'POST',
             headers: {
                 'Content-Type': 'application/x-www-form-urlencoded',
@@ -355,17 +480,55 @@ function supprimerParticipant(seminaireId, sessionId, inscriptionId, nomParticip
         })
         .then(response => {
             if (response.ok) {
+                if (typeof hideGlobalLoading === 'function') {
+                    hideGlobalLoading();
+                }
                 // Recharger la page pour actualiser la liste
                 window.location.reload();
             } else {
+                if (typeof hideGlobalLoading === 'function') {
+                    hideGlobalLoading();
+                }
                 alert('Erreur lors de la suppression du participant');
             }
         })
         .catch(error => {
             console.error('Erreur:', error);
+            if (typeof hideGlobalLoading === 'function') {
+                hideGlobalLoading();
+            }
             alert('Erreur lors de la suppression du participant');
         });
     }
 }
+
+// Gestion de l'overlay pour le marquage de présence
+document.addEventListener('DOMContentLoaded', function() {
+    const form = document.getElementById('presence-form');
+    const submitBtn = document.getElementById('submit-presence-btn');
+    
+    if (form && submitBtn) {
+        form.addEventListener('submit', function(e) {
+            // Afficher l'overlay global
+            if (typeof showGlobalLoading === 'function') {
+                showGlobalLoading('Enregistrement de la présence', 'Traitement en cours, veuillez patienter...');
+            }
+            
+            // Désactiver le bouton et afficher un spinner
+            submitBtn.disabled = true;
+            const originalHtml = submitBtn.innerHTML;
+            submitBtn.innerHTML = '<i class="fas fa-spinner fa-spin me-2"></i>Traitement...';
+            
+            // Timeout de sécurité
+            setTimeout(function() {
+                if (typeof hideGlobalLoading === 'function') {
+                    hideGlobalLoading();
+                }
+                submitBtn.disabled = false;
+                submitBtn.innerHTML = originalHtml;
+            }, 10000);
+        });
+    }
+});
 </script>
 {% endblock %}

@@ -1,7 +1,8 @@
 # app/models/jury.py
 from sqlmodel import SQLModel, Field, Relationship
+from sqlalchemy import ForeignKeyConstraint
 from typing import Optional, List
-from datetime import datetime
+from datetime import datetime, timezone
 from .enums import DecisionJury
 
 class Jury(SQLModel, table=True):
@@ -37,9 +38,9 @@ class MembreJury(SQLModel, table=True):
 class DecisionJuryTable(SQLModel, table=True):
     __tablename__ = "decision_jury_table"
     
-    """Décision d'un jury sur une inscription"""
+    """Décision d'un jury sur un candidat"""
     id: Optional[int] = Field(default=None, primary_key=True)
-    inscription_id: int = Field(foreign_key="inscription.id")
+    candidat_id: int = Field(foreign_key="candidat.id")
     jury_id: int = Field(foreign_key="jury.id")
     decision: DecisionJury
     commentaires: Optional[str] = None
@@ -47,7 +48,7 @@ class DecisionJuryTable(SQLModel, table=True):
     decide_le: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
     
     # Relations
-    inscription: "Inscription" = Relationship(back_populates="decisions_jury")
+    candidat: "Candidat" = Relationship()
     jury: Jury = Relationship(back_populates="decisions")
 
 class DecisionJuryCandidat(SQLModel, table=True):
@@ -56,6 +57,8 @@ class DecisionJuryCandidat(SQLModel, table=True):
     """Décisions du jury pour chaque candidat"""
     id: Optional[int] = Field(default=None, primary_key=True)
     candidat_id: int = Field(foreign_key="candidat.id", index=True)
+    # jury_id référence public.jury.id (la contrainte en base référence public.jury)
+    # On utilise "jury.id" pour SQLModel, mais la contrainte en base référence public.jury
     jury_id: int = Field(foreign_key="jury.id", index=True)
     decision: DecisionJury = Field(default=DecisionJury.EN_ATTENTE)
     commentaires: Optional[str] = None
@@ -71,6 +74,7 @@ class DecisionJuryCandidat(SQLModel, table=True):
     
     # Relations
     candidat: "Candidat" = Relationship()
+    # Relation vers Jury - la clé étrangère est définie dans le Field ci-dessus
     jury: "Jury" = Relationship()
     conseiller: Optional["User"] = Relationship()
     groupe: Optional["Groupe"] = Relationship()

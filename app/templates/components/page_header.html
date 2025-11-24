@@ -1,5 +1,5 @@
 {# Composant d'en-tête de page réutilisable #}
-{% macro page_header(title, breadcrumbs=[], actions=[]) %}
+{% macro page_header(title, breadcrumbs=[], actions=[], right_content=None) %}
 <div class="page-header">
     <div class="page-header-content">
         <h1>{{ title|safe }}</h1>
@@ -7,9 +7,9 @@
         <div class="breadcrumbs">
             {% for crumb in breadcrumbs %}
                 {% if crumb.url %}
-                    <a href="{{ crumb.url }}">{{ crumb.name }}</a>
+                    <a href="{{ crumb.url }}">{{ crumb.label if crumb.label else crumb.name }}</a>
                 {% else %}
-                    <span>{{ crumb.name }}</span>
+                    <span>{{ crumb.label if crumb.label else crumb.name }}</span>
                 {% endif %}
                 {% if not loop.last %} / {% endif %}
             {% endfor %}
@@ -17,25 +17,41 @@
         {% endif %}
     </div>
     
-    {% if actions %}
-    <div class="page-header-actions">
-        {% for action in actions %}
-            {% if action.disabled %}
-                <span class="btn {{ 'btn-primary' if action.primary else 'btn-secondary' }} disabled">
-                    {{ action.label|safe }}
-                </span>
-            {% elif action.url %}
-                <a href="{{ action.url }}" class="btn {{ 'btn-primary' if action.primary else 'btn-secondary' }}">
-                    {{ action.label|safe }}
-                </a>
-            {% elif action.onclick %}
-                <button onclick="{{ action.onclick }}" class="btn {{ 'btn-primary' if action.primary else 'btn-secondary' }}">
-                    {{ action.label|safe }}
-                </button>
-            {% endif %}
-        {% endfor %}
+    <div class="page-header-right">
+        {% if right_content %}
+        <div class="page-header-right-content">
+            {{ right_content|safe }}
+        </div>
+        {% endif %}
+        
+        {% if actions %}
+        <div class="page-header-actions">
+            {% for action in actions %}
+                {% if action.disabled %}
+                    <span class="btn {{ action.class if action.class else ('btn-primary' if action.primary else 'btn-secondary') }} disabled">
+                        {{ action.label|safe }}
+                    </span>
+                {% elif action.url %}
+                    <a href="{{ action.url }}" class="btn {{ action.class if action.class else ('btn-primary' if action.primary else 'btn-secondary') }}">
+                        {{ action.label|safe }}
+                    </a>
+                {% elif action.onclick %}
+                    <button onclick="{{ action.onclick }}" class="btn {{ action.class if action.class else ('btn-primary' if action.primary else 'btn-secondary') }}">
+                        {{ action.label|safe }}
+                    </button>
+                {% elif action.attrs %}
+                    <button class="btn {{ action.class if action.class else ('btn-primary' if action.primary else 'btn-secondary') }}" {{ action.attrs|safe }}>
+                        {{ action.label|safe }}
+                    </button>
+                {% else %}
+                    <button class="btn {{ action.class if action.class else ('btn-primary' if action.primary else 'btn-secondary') }}">
+                        {{ action.label|safe }}
+                    </button>
+                {% endif %}
+            {% endfor %}
+        </div>
+        {% endif %}
     </div>
-    {% endif %}
 </div>
 
 <style>
@@ -88,6 +104,32 @@
 
 .breadcrumbs span {
     color: rgba(255, 255, 255, 0.9);
+}
+
+.page-header-right {
+    display: flex;
+    gap: 1rem;
+    align-items: center;
+    flex-wrap: wrap;
+}
+
+.page-header-right-content {
+    display: flex;
+    flex-direction: column;
+    align-items: flex-end;
+    text-align: right;
+    color: white;
+}
+
+.page-header-right-content .candidate-name {
+    font-weight: 600;
+    font-size: 1rem;
+    margin-bottom: 0.25rem;
+}
+
+.page-header-right-content .candidate-email {
+    font-size: 0.85rem;
+    opacity: 0.9;
 }
 
 .page-header-actions {

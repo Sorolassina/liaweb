@@ -1,129 +1,175 @@
-{% extends "base.html" %}
+{% extends "layouts/base.html" %}
+{% from "components/page_header.html" import page_header %}
 
 {% block title %}Émargement - {{ event.titre }}{% endblock %}
 
 {% block content %}
-<div class="container-fluid p-3">
-    <!-- En-tête compact -->
-    <div class="row mb-2 sticky-header">
+{% set programme_param = request.query_params.get('programme') or (schema_name.upper() if schema_name and schema_name != 'public' else '') %}
+
+<style>
+.page-header-right-content .seminaire-kpis {
+    display: flex;
+    gap: 1rem;
+    align-items: center;
+    flex-wrap: wrap;
+    flex-direction: row;
+}
+
+.page-header-right-content .info-box-sm {
+    display: flex;
+    align-items: center;
+    padding: 0.4rem;
+    background: rgba(255, 255, 255, 0.15);
+    border-radius: 0.375rem;
+    margin-bottom: 0;
+}
+
+.page-header-right-content .info-box-sm .info-box-icon {
+    width: 2.5rem;
+    height: 2.5rem;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border-radius: 50%;
+    margin-right: 0.5rem;
+    font-size: 0.9rem;
+}
+
+.page-header-right-content .info-box-sm .info-box-content {
+    flex: 1;
+    padding-left: 0;
+}
+
+.page-header-right-content .info-box-sm .info-box-text {
+    display: block;
+    font-size: 0.7rem;
+    font-weight: 500;
+    color: rgba(255, 255, 255, 0.9);
+    margin-bottom: 0.25rem;
+}
+
+.page-header-right-content .info-box-sm .info-box-number {
+    display: block;
+    font-size: 0.9rem;
+    font-weight: 600;
+    color: white;
+}
+
+/* Réduction de la hauteur des champs dans "Marquer la Présence" */
+#presence-form .form-select,
+#presence-form .form-control {
+    padding: 0.375rem 0.75rem;
+    font-size: 0.875rem;
+    line-height: 1.5;
+    height: auto;
+    min-height: 2rem;
+}
+
+#presence-form textarea.form-control {
+    min-height: 3rem;
+}
+</style>
+
+{% set kpis_content %}
+<div class="seminaire-kpis">
+    <div class="info-box-sm">
+        <span class="info-box-icon bg-primary">
+            <i class="fas fa-users"></i>
+        </span>
+        <div class="info-box-content">
+            <span class="info-box-text">Total</span>
+            <span class="info-box-number">{{ stats.total }}</span>
+        </div>
+    </div>
+    <div class="info-box-sm">
+        <span class="info-box-icon bg-success">
+            <i class="fas fa-check-circle"></i>
+        </span>
+        <div class="info-box-content">
+            <span class="info-box-text">Présents</span>
+            <span class="info-box-number">{{ stats.present }}</span>
+        </div>
+    </div>
+    <div class="info-box-sm">
+        <span class="info-box-icon bg-danger">
+            <i class="fas fa-times-circle"></i>
+        </span>
+        <div class="info-box-content">
+            <span class="info-box-text">Absents</span>
+            <span class="info-box-number">{{ stats.absent }}</span>
+        </div>
+    </div>
+    <div class="info-box-sm">
+        <span class="info-box-icon bg-info">
+            <i class="fas fa-percentage"></i>
+        </span>
+        <div class="info-box-content">
+            <span class="info-box-text">Taux Présence</span>
+            <span class="info-box-number">{{ stats.taux_presence }}%</span>
+        </div>
+    </div>
+</div>
+{% endset %}
+
+{{ page_header(
+    title="<i class='fas fa-signature me-2'></i>Émargement",
+    breadcrumbs=[
+        {"label": "Événements", "url": url_for('liste_events') ~ ('?programme=' ~ programme_param if programme_param else '')},
+        {"label": event.titre, "url": url_for('detail_event', event_id=event.id) ~ ('?programme=' ~ programme_param if programme_param else '')},
+        {"label": "Émargement", "url": ""}
+    ],
+    right_content=kpis_content
+) }}
+
+<div class="container-fluid p-4">
+    <div class="row mb-3">
         <div class="col-12">
-            <nav aria-label="breadcrumb" class="mb-1">
-                <ol class="breadcrumb mb-0" style="font-size: 0.8rem;">
-                    <li class="breadcrumb-item"><a href="{{ url_for('liste_events') }}">Événements</a></li>
-                    <li class="breadcrumb-item"><a href="{{ url_for('detail_event', event_id=event.id) }}">{{ event.titre }}</a></li>
-                    <li class="breadcrumb-item active">Émargement</li>
-                </ol>
-            </nav>
-            <div class="d-flex justify-content-between align-items-center">
-                <div>
-                    <h3 class="mb-0" style="font-size: 1.3rem;">Émargement - {{ event.titre }}</h3>
-                    <p class="text-muted mb-0 small">{{ event.programme.nom }} - {{ event.date_debut.strftime('%d/%m/%Y') }}</p>
-                </div>
-            </div>
+            <p class="text-muted mb-0">{{ event.titre }} - {{ event.date_debut.strftime('%d/%m/%Y') }}</p>
         </div>
     </div>
-
-    <!-- Statistiques ultra-compactes -->
-    <div class="row mb-2" style="justify-content: center;">
-        <div class="col-md-2">
-            <div class="card bg-primary text-white py-1">
-                <div class="card-body p-1">
-                    <div class="d-flex justify-content-between align-items-center">
-                        <div>
-                            <h6 class="mb-0">{{ stats.total }}</h6>
-                            <small style="font-size: 0.7rem;">Total</small>
-                        </div>
-                        <i class="fas fa-users" style="font-size: 0.8rem;"></i>
-                    </div>
-                </div>
-            </div>
-        </div>
-        <div class="col-md-2">
-            <div class="card bg-success text-white py-1">
-                <div class="card-body p-1">
-                    <div class="d-flex justify-content-between align-items-center">
-                        <div>
-                            <h6 class="mb-0">{{ stats.present }}</h6>
-                            <small style="font-size: 0.7rem;">Présents</small>
-                        </div>
-                        <i class="fas fa-check" style="font-size: 0.8rem;"></i>
-                    </div>
-                </div>
-            </div>
-        </div>
-        <div class="col-md-2">
-            <div class="card bg-info text-white py-1">
-                <div class="card-body p-1">
-                    <div class="d-flex justify-content-between align-items-center">
-                        <div>
-                            <h6 class="mb-0">{{ stats.en_attente }}</h6>
-                            <small style="font-size: 0.7rem;">En Attente</small>
-                        </div>
-                        <i class="fas fa-clock" style="font-size: 0.8rem;"></i>
-                    </div>
-                </div>
-            </div>
-        </div>
-        <div class="col-md-2">
-            <div class="card bg-danger text-white py-1">
-                <div class="card-body p-1">
-                    <div class="d-flex justify-content-between align-items-center">
-                        <div>
-                            <h6 class="mb-0">{{ stats.absent }}</h6>
-                            <small style="font-size: 0.7rem;">Absents</small>
-                        </div>
-                        <i class="fas fa-times" style="font-size: 0.8rem;"></i>
-                    </div>
-                </div>
-            </div>
-        </div>
-        <div class="col-md-2">
-            <div class="card bg-warning text-white py-1">
-                <div class="card-body p-1">
-                    <div class="d-flex justify-content-between align-items-center">
-                        <div>
-                            <h6 class="mb-0">{{ stats.excuse }}</h6>
-                            <small style="font-size: 0.7rem;">Excusés</small>
-                        </div>
-                        <i class="fas fa-user-clock" style="font-size: 0.8rem;"></i>
-                    </div>
-                </div>
-            </div>
-        </div>
-    </div>
-
 
     <!-- Mode d'émargement -->
-    <div class="row mb-2">
+    <div class="row mb-4">
         <div class="col-12">
             <div class="card">
-                <div class="card-header py-2">
-                    <h6 class="mb-0">
+                <div class="card-header">
+                    <h5 class="mb-0">
                         <i class="fas fa-tablet-alt me-2"></i>
                         Mode d'Émargement
-                    </h6>
+                    </h5>
                 </div>
-                <div class="card-body py-2">
+                <div class="card-body">
                     <div class="row">
-                        <div class="col-md-6">
+                        <div class="col-md-4">
                             <div class="d-grid">
-                                <a href="{{ url_for('emargement_direct_event', event_id=event.id) }}" class="btn btn-primary btn-sm">
+                                <a href="{{ url_for('emargement_direct_event', event_id=event.id) }}{% if programme_param %}?programme={{ programme_param }}{% endif %}" class="btn btn-primary btn-lg">
                                     <i class="fas fa-tablet-alt me-2"></i>
                                     Mode Tablette
                                 </a>
                             </div>
-                            <p class="text-muted small mt-1 text-center mb-0">
+                            <p class="text-muted small mt-2 text-center">
                                 Interface optimisée pour les tablettes
                             </p>
                         </div>
-                        <div class="col-md-6">
+                        <div class="col-md-4">
                             <div class="d-grid">
-                                <a href="{{ url_for('generer_liens_emargement_event', event_id=event.id) }}" class="btn btn-outline-primary btn-sm">
+                                <button class="btn btn-success btn-lg" onclick="copyEmargementDirectLink()" id="copy-link-btn">
+                                    <i class="fas fa-copy me-2"></i>
+                                    Copier le Lien
+                                </button>
+                            </div>
+                            <p class="text-muted small mt-2 text-center">
+                                Copier le lien d'émargement direct pour l'envoyer (SMS, WhatsApp, etc.)
+                            </p>
+                        </div>
+                        <div class="col-md-4" style="display: none;">
+                            <div class="d-grid">
+                                <button class="btn btn-outline-primary btn-lg" onclick="generateEmargementLinks()" disabled>
                                     <i class="fas fa-link me-2"></i>
                                     Générer Liens Email
-                                </a>
+                                </button>
                             </div>
-                            <p class="text-muted small mt-1 text-center mb-0">
+                            <p class="text-muted small mt-2 text-center">
                                 Envoyer des liens par email aux candidats
                             </p>
                         </div>
@@ -133,100 +179,185 @@
         </div>
     </div>
 
-    
 
-    <!-- Liste des participants compacte -->
+    <!-- Formulaire d'émargement -->
     <div class="row">
-        <div class="col-12">
+        <div class="col-lg-4">
             <div class="card">
-                <div class="card-header py-1">
-                    <h6 class="mb-0">Liste des Participants</h6>
+                <div class="card-header">
+                    <h5 class="mb-0">Marquer la Présence</h5>
                 </div>
-                <div class="card-body p-0">
-                    {% if presences %}
-                        <div class="table-responsive participants-scroll-area">
-                            <table class="table table-hover table-sm mb-0">
-                                <thead class="table-light sticky-table-header">
-                                    <tr>
-                                        <th style="font-size: 0.8rem;">Candidat</th>
-                                        <th style="font-size: 0.8rem;">Statut</th>
-                                        <th style="font-size: 0.8rem;">Méthode</th>
-                                        <th style="font-size: 0.8rem;">Heure</th>
-                                        <th style="font-size: 0.8rem;">Actions</th>
-                                    </tr>
-                                </thead>
-                                <tbody>
-                                    {% for presence in presences %}
-                                    <tr>
-                                        <td>
-                                            <div class="d-flex align-items-center">
-                                                {% if presence.inscription.candidat.photo_profil %}
-                                                    <img src="/media/{{ presence.inscription.candidat.photo_profil.replace('\\', '/') }}" 
-                                                         class="rounded-circle me-2" width="24" height="24" 
-                                                         alt="{{ presence.inscription.candidat.nom }}">
-                                                {% else %}
-                                                    <div class="bg-secondary rounded-circle me-2 d-flex align-items-center justify-content-center" 
-                                                         style="width: 24px; height: 24px;">
-                                                        <i class="fas fa-user text-white" style="font-size: 0.7rem;"></i>
-                                                    </div>
-                                                {% endif %}
-                                                <div>
-                                                    <div class="fw-bold" style="font-size: 0.8rem; line-height: 1.1;">
-                                                        {{ presence.inscription.candidat.prenom }} {{ presence.inscription.candidat.nom }}
-                                                    </div>
-                                                    <small class="text-muted" style="font-size: 0.7rem;">{{ presence.inscription.candidat.email }}</small>
+                <div class="card-body">
+                    <form id="presence-form" method="POST" action="{{ url_for('marquer_presence_event_direct', event_id=event.id) }}{% if programme_param %}?programme={{ programme_param }}{% endif %}">
+                        <div class="mb-3">
+                            <label for="candidat_id" class="form-label">Candidat</label>
+                            <select class="form-select" id="candidat_id" name="candidat_id" required>
+                                <option value="">Sélectionner un candidat</option>
+                                {% for presence in presences %}
+                                <option value="{{ presence.candidat_id }}">{{ presence.candidat_prenom }} {{ presence.candidat_nom }}</option>
+                                {% endfor %}
+                            </select>
+                        </div>
+
+                        <div class="mb-3">
+                            <label for="presence" class="form-label">Statut</label>
+                            <select class="form-select" id="presence" name="presence" required>
+                                <option value="present">Présent</option>
+                                <option value="absent">Absent</option>
+                                <option value="excuse">Excusé</option>
+                            </select>
+                        </div>
+
+                        <div class="mb-3">
+                            <label for="methode_signature" class="form-label">Méthode de Signature</label>
+                            <select class="form-select" id="methode_signature" name="methode_signature">
+                                <option value="MANUEL">Manuel (Liste papier)</option>
+                                <option value="DIGITAL">Digital (Signature écran)</option>
+                                <option value="QR_CODE">QR Code</option>
+                                <option value="EMAIL">Email</option>
+                            </select>
+                        </div>
+
+                        <!-- Zone de signature digitale -->
+                        <div class="mb-3" id="signature_zone" style="display: none;">
+                            <label class="form-label">Signature Digitale</label>
+                            <canvas id="signature_canvas" width="400" height="200" 
+                                    style="border: 1px solid #ddd; border-radius: 4px;"></canvas>
+                            <div class="mt-2">
+                                <button type="button" class="btn btn-sm btn-outline-secondary" onclick="clearSignature()">
+                                    <i class="fas fa-eraser me-1"></i>Effacer
+                                </button>
+                            </div>
+                        </div>
+
+                        <div class="mb-3">
+                            <label for="note" class="form-label">Note</label>
+                            <textarea class="form-control" id="note" name="note" rows="2" 
+                                      placeholder="Commentaires sur la présence..."></textarea>
+                        </div>
+
+                        <input type="hidden" id="signature_data" name="signature_data" value="">
+
+                        <button type="submit" id="submit-presence-btn" class="btn btn-primary w-100">
+                            <i class="fas fa-check me-2"></i>Enregistrer la Présence
+                        </button>
+                    </form>
+                </div>
+            </div>
+        </div>
+
+        <div class="col-lg-8">
+            <div class="card">
+                <div class="card-header">
+                    <div class="d-flex justify-content-between align-items-center">
+                        <h5 class="mb-0">Liste des Participants</h5>
+                        <div class="btn-group" role="group">
+                            <button type="button" class="btn btn-sm btn-outline-primary" onclick="filterPresence('all')">
+                                Tous
+                            </button>
+                            <button type="button" class="btn btn-sm btn-outline-success" onclick="filterPresence('present')">
+                                Présents
+                            </button>
+                            <button type="button" class="btn btn-sm btn-outline-danger" onclick="filterPresence('absent')">
+                                Absents
+                            </button>
+                        </div>
+                    </div>
+                </div>
+                <div class="card-body">
+                    <div class="table-responsive">
+                        <table class="table table-hover" id="participants_table">
+                            <thead>
+                                <tr>
+                                    <th>Candidat</th>
+                                    <th>Invitation</th>
+                                    <th>Présence</th>
+                                    <th>Méthode</th>
+                                    <th>Heure</th>
+                                    <th>Actions</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% for presence in presences %}
+                                <tr data-presence="{{ presence.presence }}">
+                                    <td>
+                                        <div class="d-flex align-items-center">
+                                            {% if presence.candidat_photo_profil %}
+                                                <img src="/media/{{ presence.candidat_photo_profil.replace('\\', '/') }}" 
+                                                     class="rounded-circle me-2" width="30" height="30" 
+                                                     alt="{{ presence.candidat_nom }}">
+                                            {% else %}
+                                                <div class="bg-secondary rounded-circle me-2 d-flex align-items-center justify-content-center" 
+                                                     style="width: 30px; height: 30px;">
+                                                    <i class="fas fa-user text-white"></i>
                                                 </div>
+                                            {% endif %}
+                                            <div>
+                                                <strong>{{ presence.candidat_prenom }} {{ presence.candidat_nom }}</strong>
+                                                <br><small class="text-muted">{{ presence.candidat_email }}</small>
                                             </div>
-                                        </td>
-                                        <td>
-                                            {% if presence.presence == 'present' %}
-                                                <span class="badge bg-success" style="font-size: 0.65rem;">Présent</span>
-                                            {% elif presence.presence == 'absent' %}
-                                                <span class="badge bg-danger" style="font-size: 0.65rem;">Absent</span>
-                                            {% elif presence.presence == 'excuse' %}
-                                                <span class="badge bg-warning" style="font-size: 0.65rem;">Excusé</span>
-                                            {% elif presence.presence == 'en_attente' %}
-                                                <span class="badge bg-info" style="font-size: 0.65rem;">En Attente</span>
+                                        </div>
+                                    </td>
+                                    <td>
+                                        {% if presence.invitation_statut %}
+                                            {% set statut_lower = presence.invitation_statut.lower() %}
+                                            {% if statut_lower == 'acceptee' %}
+                                                <span class="badge bg-success">Acceptée</span>
+                                            {% elif statut_lower == 'refusee' %}
+                                                <span class="badge bg-danger">Refusée</span>
+                                            {% elif statut_lower == 'envoyee' %}
+                                                <span class="badge bg-warning">En attente</span>
+                                            {% elif statut_lower == 'en_attente' %}
+                                                <span class="badge bg-info">En attente</span>
                                             {% else %}
-                                                <span class="badge bg-secondary" style="font-size: 0.65rem;">{{ presence.presence }}</span>
+                                                <span class="badge bg-secondary">{{ presence.invitation_statut }}</span>
                                             {% endif %}
-                                        </td>
-                                        <td>
-                                            {% if presence.methode_signature %}
-                                                <span class="badge bg-info" style="font-size: 0.65rem;">{{ presence.methode_signature.value|title }}</span>
-                                            {% else %}
-                                                <span class="text-muted" style="font-size: 0.7rem;">-</span>
-                                            {% endif %}
-                                        </td>
-                                        <td>
-                                            {% if presence.heure_arrivee %}
-                                                <span style="font-size: 0.8rem;">{{ presence.heure_arrivee.strftime('%H:%M') }}</span>
-                                            {% else %}
-                                                <span class="text-muted" style="font-size: 0.7rem;">-</span>
-                                            {% endif %}
-                                        </td>
-                                        <td>
-                                            <div class="btn-group" role="group">
-                                                <button class="btn btn-sm btn-outline-primary" onclick="editPresence({{ presence.id }})" style="font-size: 0.7rem; padding: 0.2rem 0.4rem;" title="Modifier">
-                                                    <i class="fas fa-edit"></i>
-                                                </button>
-                                                <button class="btn btn-sm btn-outline-danger" onclick="supprimerParticipant({{ event.id }}, {{ presence.inscription_id }}, '{{ presence.inscription.candidat.prenom }} {{ presence.inscription.candidat.nom }}')" style="font-size: 0.7rem; padding: 0.2rem 0.4rem;" title="Supprimer">
-                                                    <i class="fas fa-trash"></i>
-                                                </button>
-                                            </div>
-                                        </td>
-                                    </tr>
-                                    {% endfor %}
-                                </tbody>
-                            </table>
-                        </div>
-                    {% else %}
-                        <div class="text-center py-3">
-                            <i class="fas fa-users fa-2x text-muted mb-2"></i>
-                            <h6 class="text-muted">Aucun participant</h6>
-                            <p class="text-muted small">Les invitations n'ont pas encore été envoyées.</p>
-                        </div>
-                    {% endif %}
+                                        {% else %}
+                                            <span class="badge bg-secondary">N/A</span>
+                                        {% endif %}
+                                    </td>
+                                    <td>
+                                        {% if presence.presence == 'present' %}
+                                            <span class="badge bg-success">Présent</span>
+                                        {% elif presence.presence == 'absent' %}
+                                            <span class="badge bg-danger">Absent</span>
+                                        {% elif presence.presence == 'excuse' %}
+                                            <span class="badge bg-warning">Excusé</span>
+                                        {% elif presence.presence == 'en_attente' %}
+                                            <span class="badge bg-secondary">En attente</span>
+                                        {% else %}
+                                            <span class="badge bg-info">{{ presence.presence }}</span>
+                                        {% endif %}
+                                    </td>
+                                    <td>
+                                        {% if presence.methode_signature %}
+                                            <span class="badge bg-info">{{ presence.methode_signature }}</span>
+                                        {% else %}
+                                            <span class="text-muted">-</span>
+                                        {% endif %}
+                                    </td>
+                                    <td>
+                                        {% if presence.heure_arrivee %}
+                                            {{ presence.heure_arrivee.strftime('%H:%M') }}
+                                        {% else %}
+                                            <span class="text-muted">-</span>
+                                        {% endif %}
+                                    </td>
+                                    <td>
+                                        <div class="btn-group" role="group">
+                                            <button class="btn btn-sm btn-outline-primary" data-presence-id="{{ presence.id if presence.id else '' }}" onclick="editPresence(this)" title="Modifier">
+                                                <i class="fas fa-edit"></i>
+                                            </button>
+                                            <button class="btn btn-sm btn-outline-danger" data-event-id="{{ event.id }}" data-candidat-id="{{ presence.candidat_id }}" data-candidat-nom="{{ presence.candidat_prenom }} {{ presence.candidat_nom }}" onclick="supprimerParticipant(this)" title="Supprimer">
+                                                <i class="fas fa-trash"></i>
+                                            </button>
+                                        </div>
+                                    </td>
+                                </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
                 </div>
             </div>
         </div>
@@ -234,79 +365,126 @@
 </div>
 
 <style>
-/* En-tête fixe */
-.sticky-header {
-    position: sticky;
-    top: 0;
-    z-index: 15;
-    background-color: white;
-    border-bottom: 1px solid #dee2e6;
-    margin-bottom: 0.5rem !important;
-    padding-bottom: 0.5rem;
+.card {
+    box-shadow: 0 0.125rem 0.25rem rgba(0, 0, 0, 0.075);
+    border: 1px solid rgba(0, 0, 0, 0.125);
 }
 
-/* En-tête de tableau fixe */
-.sticky-table-header {
-    position: sticky;
-    top: 0;
-    z-index: 10;
-    background-color: #f8f9fa;
+.btn-group .btn.active {
+    background-color: var(--bs-primary);
+    color: white;
 }
 
-/* Zone de scroll pour les participants */
-.participants-scroll-area {
-    max-height: 30vh;
-    overflow-y: auto;
-    scrollbar-width: thin;
-    background-color: #f8f9fa;
-    height: 30vh;
+.table th {
+    border-top: none;
+    font-weight: 600;
+    color: #495057;
 }
 
-.participants-scroll-area::-webkit-scrollbar {
-    width: 6px;
+.badge {
+    font-size: 0.75em;
 }
 
-.participants-scroll-area::-webkit-scrollbar-track {
-    background: #f1f1f1;
+.breadcrumb {
+    background-color: transparent;
+    padding: 0;
 }
 
-.participants-scroll-area::-webkit-scrollbar-thumb {
-    background: #c1c1c1;
-    border-radius: 3px;
-}
-
-.participants-scroll-area::-webkit-scrollbar-thumb:hover {
-    background: #a8a8a8;
-}
-
-/* Tableau compact */
-.table-sm td, .table-sm th {
-    padding: 0.2rem 0.4rem;
-    vertical-align: middle;
-}
-
-/* Cards compactes */
-.card-body {
-    padding: 0.3rem;
-}
-
-.card-header {
-    padding: 0.3rem 0.8rem;
+.breadcrumb-item + .breadcrumb-item::before {
+    content: ">";
 }
 </style>
 
 <script>
-function editPresence(presenceId) {
-    // Fonction pour éditer une présence
-    console.log('Édition de la présence:', presenceId);
-    // TODO: Implémenter l'édition de présence
+function filterPresence(status) {
+    const rows = document.querySelectorAll('#participants_table tbody tr');
+    rows.forEach(row => {
+        if (status === 'all' || row.dataset.presence === status) {
+            row.style.display = '';
+        } else {
+            row.style.display = 'none';
+        }
+    });
+    
+    // Mettre à jour les boutons
+    document.querySelectorAll('.btn-group button').forEach(btn => {
+        btn.classList.remove('active');
+    });
+    event.target.classList.add('active');
 }
 
-function supprimerParticipant(eventId, inscriptionId, nomParticipant) {
+function generateEmargementLinks() {
+    if (confirm('Générer et envoyer les liens d\'émargement par email à tous les candidats ?')) {
+        window.location.href = '{{ url_for("generer_liens_emargement_event", event_id=event.id) }}{% if programme_param %}?programme={{ programme_param }}{% endif %}';
+    }
+}
+
+// URL du lien d'émargement direct (générée côté serveur)
+const emargementDirectLinkUrl = '{{ url_for("emargement_direct_event", event_id=event.id) }}{% if programme_param %}?programme={{ programme_param }}{% endif %}';
+
+function copyEmargementDirectLink() {
+    // Construire l'URL complète du lien d'émargement direct
+    let fullUrl;
+    if (emargementDirectLinkUrl.startsWith('http://') || emargementDirectLinkUrl.startsWith('https://')) {
+        // L'URL est déjà complète
+        fullUrl = emargementDirectLinkUrl;
+    } else {
+        // L'URL est relative, ajouter le domaine
+        const baseUrl = window.location.origin;
+        fullUrl = baseUrl + emargementDirectLinkUrl;
+    }
+    
+    // Copier dans le presse-papiers
+    navigator.clipboard.writeText(fullUrl).then(function() {
+        // Afficher un message de succès
+        const btn = document.getElementById('copy-link-btn');
+        const originalHtml = btn.innerHTML;
+        btn.innerHTML = '<i class="fas fa-check me-2"></i>Lien copié !';
+        btn.classList.remove('btn-success');
+        btn.classList.add('btn-success');
+        
+        // Réinitialiser après 2 secondes
+        setTimeout(function() {
+            btn.innerHTML = originalHtml;
+        }, 2000);
+        
+        // Afficher une notification
+        alert('Lien d\'émargement direct copié dans le presse-papiers !\n\nVous pouvez maintenant l\'envoyer par SMS, WhatsApp, etc.');
+    }).catch(function(err) {
+        console.error('Erreur lors de la copie:', err);
+        // Fallback : afficher le lien dans une alerte pour copier manuellement
+        prompt('Copiez ce lien manuellement :', fullUrl);
+    });
+}
+
+function editPresence(button) {
+    // Récupérer l'ID depuis l'attribut data-*
+    const presenceId = button.getAttribute('data-presence-id');
+    // Ouvrir un modal pour modifier la présence
+    // À implémenter selon vos besoins
+    console.log('Modifier présence:', presenceId);
+}
+
+// Récupérer le paramètre programme depuis l'URL
+const urlParams = new URLSearchParams(window.location.search);
+const programmeCode = urlParams.get('programme') || '';
+
+function supprimerParticipant(button) {
+    // Récupérer les données depuis les attributs data-*
+    const eventId = button.getAttribute('data-event-id');
+    const candidatId = button.getAttribute('data-candidat-id');
+    const nomParticipant = button.getAttribute('data-candidat-nom');
+    
     // Confirmation avant suppression
     if (confirm(`Êtes-vous sûr de vouloir supprimer ${nomParticipant} de cet événement ?\n\nCette action supprimera définitivement l'invitation et la présence de ce participant.`)) {
+        // Afficher l'overlay global
+        if (typeof showGlobalLoading === 'function') {
+            showGlobalLoading('Suppression du participant', 'Suppression en cours, veuillez patienter...');
+        }
+        
         // Utiliser fetch pour une suppression AJAX
-        fetch(`/events/${eventId}/participant/${inscriptionId}/supprimer`, {
+        const url = `/events/${eventId}/participant/${candidatId}/supprimer${programmeCode ? `?programme=${programmeCode}` : ''}`;
+        fetch(url, {
             method: 'POST',
             headers: {
                 'Content-Type': 'application/x-www-form-urlencoded',
@@ -314,17 +492,142 @@ function supprimerParticipant(eventId, inscriptionId, nomParticipant) {
         })
         .then(response => {
             if (response.ok) {
+                if (typeof hideGlobalLoading === 'function') {
+                    hideGlobalLoading();
+                }
                 // Recharger la page pour actualiser la liste
                 window.location.reload();
             } else {
+                if (typeof hideGlobalLoading === 'function') {
+                    hideGlobalLoading();
+                }
                 alert('Erreur lors de la suppression du participant');
             }
         })
         .catch(error => {
             console.error('Erreur:', error);
+            if (typeof hideGlobalLoading === 'function') {
+                hideGlobalLoading();
+            }
             alert('Erreur lors de la suppression du participant');
         });
     }
 }
+
+// Gestion de l'affichage de la zone de signature digitale
+document.addEventListener('DOMContentLoaded', function() {
+    const methodeSignature = document.getElementById('methode_signature');
+    const signatureZone = document.getElementById('signature_zone');
+    
+    if (methodeSignature && signatureZone) {
+        methodeSignature.addEventListener('change', function() {
+            if (this.value === 'DIGITAL') {
+                signatureZone.style.display = 'block';
+                initSignatureCanvas();
+            } else {
+                signatureZone.style.display = 'none';
+            }
+        });
+    }
+});
+
+// Initialiser le canvas de signature
+let canvas, ctx;
+let isDrawing = false;
+
+function initSignatureCanvas() {
+    canvas = document.getElementById('signature_canvas');
+    if (!canvas) return;
+    
+    ctx = canvas.getContext('2d');
+    ctx.strokeStyle = '#000';
+    ctx.lineWidth = 2;
+    ctx.lineCap = 'round';
+    ctx.lineJoin = 'round';
+    
+    // Gestion des événements de souris
+    canvas.addEventListener('mousedown', startDrawing);
+    canvas.addEventListener('mousemove', draw);
+    canvas.addEventListener('mouseup', stopDrawing);
+    canvas.addEventListener('mouseout', stopDrawing);
+    
+    // Gestion des événements tactiles
+    canvas.addEventListener('touchstart', handleTouch);
+    canvas.addEventListener('touchmove', handleTouch);
+    canvas.addEventListener('touchend', stopDrawing);
+}
+
+function startDrawing(e) {
+    isDrawing = true;
+    const rect = canvas.getBoundingClientRect();
+    ctx.beginPath();
+    ctx.moveTo(e.clientX - rect.left, e.clientY - rect.top);
+}
+
+function draw(e) {
+    if (!isDrawing) return;
+    const rect = canvas.getBoundingClientRect();
+    ctx.lineTo(e.clientX - rect.left, e.clientY - rect.top);
+    ctx.stroke();
+}
+
+function stopDrawing() {
+    if (isDrawing) {
+        isDrawing = false;
+        ctx.beginPath();
+    }
+}
+
+function handleTouch(e) {
+    e.preventDefault();
+    const touch = e.touches[0];
+    const mouseEvent = new MouseEvent(e.type === 'touchstart' ? 'mousedown' : e.type === 'touchmove' ? 'mousemove' : 'mouseup', {
+        clientX: touch.clientX,
+        clientY: touch.clientY
+    });
+    canvas.dispatchEvent(mouseEvent);
+}
+
+function clearSignature() {
+    if (ctx && canvas) {
+        ctx.clearRect(0, 0, canvas.width, canvas.height);
+    }
+}
+
+// Gestion de l'overlay pour le marquage de présence
+document.addEventListener('DOMContentLoaded', function() {
+    const form = document.getElementById('presence-form');
+    const submitBtn = document.getElementById('submit-presence-btn');
+    
+    if (form && submitBtn) {
+        form.addEventListener('submit', function(e) {
+            // Si méthode de signature est DIGITAL, capturer la signature
+            const methodeSignature = document.getElementById('methode_signature');
+            if (methodeSignature && methodeSignature.value === 'DIGITAL') {
+                const signatureData = canvas ? canvas.toDataURL('image/png') : '';
+                document.getElementById('signature_data').value = signatureData;
+            }
+            
+            // Afficher l'overlay global
+            if (typeof showGlobalLoading === 'function') {
+                showGlobalLoading('Enregistrement de la présence', 'Traitement en cours, veuillez patienter...');
+            }
+            
+            // Désactiver le bouton et afficher un spinner
+            submitBtn.disabled = true;
+            const originalHtml = submitBtn.innerHTML;
+            submitBtn.innerHTML = '<i class="fas fa-spinner fa-spin me-2"></i>Traitement...';
+            
+            // Timeout de sécurité
+            setTimeout(function() {
+                if (typeof hideGlobalLoading === 'function') {
+                    hideGlobalLoading();
+                }
+                submitBtn.disabled = false;
+                submitBtn.innerHTML = originalHtml;
+            }, 10000);
+        });
+    }
+});
 </script>
 {% endblock %}

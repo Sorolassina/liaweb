@@ -130,8 +130,12 @@ class ProgramSchemaMiddleware(BaseHTTPMiddleware):
     """Middleware pour router automatiquement vers le bon schéma selon le programme"""
     
     async def dispatch(self, request: Request, call_next):
+        # Log pour debug
+        if 'livrables' in str(request.url.path) and 'modifier' in str(request.url.path):
+            logger.info(f"🔍 MIDDLEWARE: Requête POST vers {request.url.path} - Méthode: {request.method}")
+        
         # Extraire le programme de l'URL ou des paramètres
-        programme_code = self._extract_program_from_request(request)
+        programme_code = await self._extract_program_from_request(request)
         
         # Si aucun programme détecté, récupérer depuis request.state
         if not programme_code:
@@ -180,18 +184,21 @@ class ProgramSchemaMiddleware(BaseHTTPMiddleware):
         response = await call_next(request)
         return response
     
-    def _extract_program_from_request(self, request: Request) -> str:
+    async def _extract_program_from_request(self, request: Request) -> str:
         """Extrait le code du programme de la requête"""
         
         # PRIORITÉ 1: Depuis les données de formulaire (pour les requêtes POST)
-        if request.method == 'POST':
-            try:
-                form_data = request.form()
-                programme = form_data.get('programme') or form_data.get('programme_code')
-                if programme and self._is_valid_program_code(programme.upper()):
-                    return programme.upper()
-            except:
-                pass
+        # NOTE: On ne peut pas lire request.form() ici car cela consomme le body
+        # et empêche les routes de le lire. On utilise plutôt le Referer ou les query params.
+        # Les routes liront elles-mêmes le formulaire si nécessaire.
+        # if request.method == 'POST':
+        #     try:
+        #         form_data = await request.form()
+        #         programme = form_data.get('programme') or form_data.get('programme_code')
+        #         if programme and self._is_valid_program_code(programme.upper()):
+        #             return programme.upper()
+        #     except:
+        #         pass
         
         # PRIORITÉ 2: Depuis les paramètres de query
         programme = request.query_params.get('programme')
@@ -203,7 +210,17 @@ class ProgramSchemaMiddleware(BaseHTTPMiddleware):
         if programme and self._is_valid_program_code(programme.upper()):
             return programme.upper()
 
-        # PRIORITÉ 4: Depuis l'URL (ex: /ACD/candidats, /CODEV/sessions)
+        # PRIORITÉ 4: Depuis le header Referer (extraction du paramètre programme de l'URL précédente)
+        referer = request.headers.get("referer", "")
+        if referer and "programme=" in referer:
+            import re
+            match = re.search(r'programme=([^&]+)', referer)
+            if match:
+                programme = match.group(1).upper()
+                if self._is_valid_program_code(programme):
+                    return programme
+
+        # PRIORITÉ 5: Depuis l'URL (ex: /ACD/candidats, /CODEV/sessions)
         path_parts = request.url.path.strip('/').split('/')
         if len(path_parts) > 0:
             potential_program = path_parts[0].upper()

@@ -21,7 +21,6 @@ from ..models.base import (
     User,
     Programme,
     Candidat,
-    Inscription,
     Preinscription,
     Entreprise,
     Eligibilite,
@@ -990,21 +989,24 @@ async def api_kpis_directeur_technique(
 
     inscriptions_en_cours = 0
     if table_exists_anywhere("inscription", session):
+        # NOTE: Le modèle Inscription a été supprimé. Utiliser les candidats en attente.
         try:
+            from ..models.enums import DecisionJury
             inscriptions_en_cours = session.exec(
-                select(func.count(Inscription.id)).where(Inscription.statut == "en_examen")
+                select(func.count(Candidat.id)).where(Candidat.statut == DecisionJury.EN_ATTENTE)
             ).first() or 0
         except Exception as e:
-            logging.warning(f"Erreur lors du comptage des inscriptions en cours: {e}")
+            logging.warning(f"Erreur lors du comptage des candidats en attente: {e}")
             inscriptions_en_cours = 0
 
     candidats_valides = 0
-    if table_exists_anywhere("inscription", session):
-        try:
-            candidats_valides = session.exec(
-                select(func.count(Inscription.id)).where(Inscription.statut == "valide")
-            ).first() or 0
-        except Exception as e:
+    # NOTE: Le modèle Inscription a été supprimé. Utiliser directement les candidats validés.
+    try:
+        from ..models.enums import DecisionJury
+        candidats_valides = session.exec(
+            select(func.count(Candidat.id)).where(Candidat.statut == DecisionJury.VALIDE)
+        ).first() or 0
+    except Exception as e:
             logging.warning(f"Erreur lors du comptage des candidats validés: {e}")
             candidats_valides = 0
 
@@ -1045,15 +1047,16 @@ async def api_alertes_directeur_technique(
 
     programmes = session.exec(select(Programme).where(Programme.actif == True)).all()
     for programme in programmes:
+        # NOTE: Le modèle Inscription a été supprimé. Utiliser directement les candidats.
+        from ..models.enums import DecisionJury
         total_prog = session.exec(
-            select(func.count(Inscription.id)).where(Inscription.programme_id == programme.id)
+            select(func.count(Candidat.id)).where(Candidat.statut == DecisionJury.VALIDE)
         ).first() or 0
 
         qpv_prog = session.exec(
-            select(func.count(Inscription.id))
-            .join(Candidat, Inscription.candidat_id == Candidat.id)
+            select(func.count(Candidat.id))
             .join(Entreprise, Candidat.id == Entreprise.candidat_id)
-            .where(and_(Inscription.programme_id == programme.id, Entreprise.qpv == True))
+            .where(and_(Candidat.statut == DecisionJury.VALIDE, Entreprise.qpv == True))
         ).first() or 0
 
         taux_qpv_prog = (qpv_prog / total_prog * 100) if total_prog > 0 else 0.0
@@ -1069,11 +1072,12 @@ async def api_alertes_directeur_technique(
 
     # Délais QPV dépassés (public)
     seuil = now_utc() - timedelta(days=15)
+    # NOTE: Le modèle Inscription a été supprimé. Utiliser directement les candidats.
+    from ..models.enums import DecisionJury
     candidats_qpv_en_attente = session.exec(
-        select(func.count(Inscription.id))
-        .join(Candidat, Inscription.candidat_id == Candidat.id)
+        select(func.count(Candidat.id))
         .join(Entreprise, Candidat.id == Entreprise.candidat_id)
-        .where(and_(Entreprise.qpv == True, Inscription.statut == "en_examen", Inscription.cree_le <= seuil))
+        .where(and_(Entreprise.qpv == True, Candidat.statut == DecisionJury.EN_ATTENTE))
     ).first() or 0
     if candidats_qpv_en_attente > 0:
         alertes_importantes.append({
@@ -1084,11 +1088,11 @@ async def api_alertes_directeur_technique(
 
     # Nouveaux QPV cette semaine (public)
     debut_semaine = now_utc() - timedelta(days=7)
+    # NOTE: Le modèle Inscription a été supprimé. Utiliser directement les candidats.
     nouveaux_qpv = session.exec(
         select(func.count(func.distinct(Candidat.id)))
         .join(Entreprise, Candidat.id == Entreprise.candidat_id)
-        .join(Inscription, Candidat.id == Inscription.candidat_id)
-        .where(and_(Entreprise.qpv == True, Inscription.cree_le >= debut_semaine))
+        .where(and_(Entreprise.qpv == True))
     ).first() or 0
     if nouveaux_qpv > 0:
         alertes_info.append({

@@ -2,7 +2,7 @@
 Service de gestion du Codéveloppement
 """
 from typing import List, Optional, Dict, Any
-from sqlmodel import Session, select, func, and_, or_
+from sqlmodel import Session, select, func, and_, or_, text
 from datetime import datetime, timezone, date, timedelta
 import logging
 from ..core.program_schema_integration import safe_count_query, table_exists_anywhere
@@ -11,7 +11,7 @@ from ..models.codev import (
     SeanceCodev, PresentationCodev, ContributionCodev, ParticipationSeance,
     CycleCodev, GroupeCodev, MembreGroupeCodev
 )
-from ..models.base import Inscription, User, Programme, Promotion, Groupe
+from ..models.base import User, Programme, Promotion, Groupe
 from ..models.enums import (
     StatutSeanceCodev, StatutPresentation, TypeContribution,
     StatutCycleCodev, StatutGroupeCodev, StatutMembreGroupe, StatutPresence
@@ -25,6 +25,21 @@ from ..schemas import (
 
 logger = logging.getLogger(__name__)
 
+def extract_count_value(result):
+    """Extrait la valeur d'un résultat COUNT(*) qui peut être un tuple ou une valeur simple"""
+    if result is None:
+        return 0
+    if isinstance(result, tuple):
+        return result[0] if result else 0
+    if hasattr(result, '_mapping'):  # Handle SQLAlchemy Row objects
+        return result._mapping[next(iter(result._mapping))] if result._mapping else 0
+    if hasattr(result, '__iter__') and not isinstance(result, str):
+        try:
+            return next(iter(result)) if result else 0
+        except:
+            return 0
+    return result
+
 class CodevService:
     """Service de gestion du codéveloppement"""
     
@@ -37,32 +52,69 @@ class CodevService:
         date_debut: date = None,
         date_fin: date = None,
         nombre_seances: int = 6,
-        animateur_principal_id: Optional[int] = None
-    ) -> CycleCodev:
-        """Crée un nouveau cycle de codéveloppement"""
+        animateur_principal_id: Optional[int] = None,
+        schema_name: str = 'acd'
+    ) -> Dict[str, Any]:
+        """Crée un nouveau cycle de codéveloppement - SQL direct"""
+        
+        # Configurer le search_path
+        session.exec(text(f"SET search_path TO {schema_name}, public"))
+        session.commit()
         
         if not date_debut:
             date_debut = date.today()
         if not date_fin:
             date_fin = date_debut + timedelta(weeks=nombre_seances * 2)  # 1 séance toutes les 2 semaines
         
-        cycle = CycleCodev(
+        # Vérifier que le programme existe dans public.programme
+        check_programme_query = text("SELECT id FROM public.programme WHERE id = :programme_id AND actif = true")
+        programme_exists = session.exec(check_programme_query.bindparams(programme_id=programme_id)).first()
+        if not programme_exists:
+            raise ValueError(f"Programme ID {programme_id} n'existe pas dans public.programme")
+        
+        # Vérifier que la promotion existe dans le schéma du programme si promotion_id est fourni
+        if promotion_id is not None:
+            logger.info(f"🔍 [DEBUG] Vérification promotion_id={promotion_id} dans {schema_name}.promotion")
+            check_promotion_query = text(f"SELECT id FROM {schema_name}.promotion WHERE id = :promotion_id AND actif = true")
+            promotion_exists = session.exec(check_promotion_query.bindparams(promotion_id=promotion_id)).first()
+            logger.info(f"🔍 [DEBUG] Résultat vérification promotion: {promotion_exists}")
+            if not promotion_exists:
+                logger.warning(f"⚠️ Promotion ID {promotion_id} n'existe pas dans {schema_name}.promotion, mise à NULL")
+                promotion_id = None
+            else:
+                logger.info(f"✅ Promotion ID {promotion_id} trouvée dans {schema_name}.promotion")
+        
+        # Insertion SQL directe
+        insert_query = text(f"""
+            INSERT INTO {schema_name}.cycle_codev 
+            (nom, programme_id, promotion_id, date_debut, date_fin, nombre_seances_prevues, 
+             animateur_principal_id, statut, cree_le)
+            VALUES (:nom, :programme_id, :promotion_id, :date_debut, :date_fin, :nombre_seances, 
+                    :animateur_principal_id, :statut, CURRENT_TIMESTAMP)
+            RETURNING *
+        """)
+        
+        logger.info(f"🔍 [DEBUG] Valeurs avant insertion:")
+        logger.info(f"  - promotion_id: {promotion_id}")
+        logger.info(f"  - programme_id: {programme_id}")
+        
+        cycle_result = session.exec(insert_query.bindparams(
             nom=nom,
             programme_id=programme_id,
             promotion_id=promotion_id,
             date_debut=date_debut,
             date_fin=date_fin,
-            nombre_seances_prevues=nombre_seances,
+            nombre_seances=nombre_seances,
             animateur_principal_id=animateur_principal_id,
             statut=StatutCycleCodev.PLANIFIE.value
-        )
+        )).first()
         
-        session.add(cycle)
         session.commit()
-        session.refresh(cycle)
         
-        logger.info(f"Cycle de codéveloppement créé: {cycle.nom} (ID: {cycle.id})")
-        return cycle
+        # Convertir le Row object en dictionnaire
+        cycle_dict = dict(cycle_result._mapping) if cycle_result else {}
+        logger.info(f"Cycle de codéveloppement créé: {nom} (ID: {cycle_dict.get('id')})")
+        return cycle_dict
     
     @staticmethod
     def create_groupe_codev(
@@ -96,79 +148,129 @@ class CodevService:
         session: Session,
         groupe_codev_id: int,
         candidat_id: int,
-        role_special: Optional[str] = None
-    ) -> MembreGroupeCodev:
-        """Ajoute un candidat à un groupe de codéveloppement"""
+        role_special: Optional[str] = None,
+        schema_name: str = 'acd'
+    ) -> Dict[str, Any]:
+        """Ajoute un candidat à un groupe de codéveloppement - SQL direct"""
         
-        # Vérifier que le groupe n'est pas complet
-        groupe_codev = session.get(GroupeCodev, groupe_codev_id)
-        if not groupe_codev:
+        from datetime import datetime, timezone
+        
+        # Configurer le search_path
+        session.exec(text(f"SET search_path TO {schema_name}, public"))
+        session.commit()
+        
+        # Vérifier que le groupe existe et récupérer sa capacité
+        groupe_query = text(f"SELECT * FROM {schema_name}.groupe_codev WHERE id = :groupe_id")
+        groupe_result = session.exec(groupe_query.bindparams(groupe_id=groupe_codev_id)).first()
+        if not groupe_result:
             raise ValueError("Groupe de codéveloppement introuvable")
+        groupe = dict(groupe_result._mapping)
         
-        membres_actifs = session.exec(
-            select(func.count()).select_from(MembreGroupeCodev)
-            .where(and_(
-                MembreGroupeCodev.groupe_codev_id == groupe_codev_id,
-                MembreGroupeCodev.statut == StatutMembreGroupe.ACTIF.value
-            ))
-        ).one()
+        # Vérifier que le candidat existe avec statut VALIDE
+        candidat_query = text(f"SELECT id FROM {schema_name}.candidat WHERE id = :candidat_id AND statut = 'VALIDE'")
+        candidat_result = session.exec(candidat_query.bindparams(candidat_id=candidat_id)).first()
+        if not candidat_result:
+            raise ValueError("Candidat introuvable ou non validé")
         
-        if membres_actifs >= groupe_codev.capacite_max:
+        # Compter les membres du groupe (tous les membres, sans filtre de statut)
+        membres_count_query = text(f"""
+            SELECT COUNT(*) FROM {schema_name}.membre_groupe_codev
+            WHERE groupe_codev_id = :groupe_id
+        """)
+        membres_count_result = session.exec(membres_count_query.bindparams(groupe_id=groupe_codev_id)).one()
+        membres_count = extract_count_value(membres_count_result)
+        
+        if membres_count >= groupe.get('capacite_max', 12):
             raise ValueError("Le groupe est complet")
         
-        # Vérifier que le candidat n'est pas déjà dans le groupe
-        existing = session.exec(
-            select(MembreGroupeCodev).where(and_(
-                MembreGroupeCodev.groupe_codev_id == groupe_codev_id,
-                MembreGroupeCodev.candidat_id == candidat_id
-            ))
-        ).first()
+        # Vérifier que le candidat n'est pas déjà dans le groupe (sans filtre de statut)
+        existing_query = text(f"""
+            SELECT id FROM {schema_name}.membre_groupe_codev
+            WHERE groupe_codev_id = :groupe_id AND candidat_id = :candidat_id
+        """)
+        existing = session.exec(existing_query.bindparams(groupe_id=groupe_codev_id, candidat_id=candidat_id)).first()
         
         if existing:
             raise ValueError("Le candidat est déjà dans ce groupe")
         
-        membre = MembreGroupeCodev(
+        # Insérer le membre avec SQL direct
+        insert_query = text(f"""
+            INSERT INTO {schema_name}.membre_groupe_codev
+            (groupe_codev_id, candidat_id, date_integration, statut, role_special, notes_integration)
+            VALUES (:groupe_codev_id, :candidat_id, :date_integration, :statut, :role_special, :notes_integration)
+            RETURNING *
+        """)
+        
+        membre_result = session.exec(insert_query.bindparams(
             groupe_codev_id=groupe_codev_id,
             candidat_id=candidat_id,
+            date_integration=datetime.now(timezone.utc),
+            statut='actif',
             role_special=role_special,
-            statut=StatutMembreGroupe.ACTIF.value
-        )
+            notes_integration=None
+        )).first()
         
-        session.add(membre)
         session.commit()
-        session.refresh(membre)
         
+        membre = dict(membre_result._mapping) if membre_result else {}
         logger.info(f"Candidat {candidat_id} ajouté au groupe {groupe_codev_id}")
         return membre
     
+    @staticmethod
     @staticmethod
     def create_seance_codev(
         session: Session,
         groupe_id: int,
         numero_seance: int,
-        date_seance: datetime,
+        date_seance: date,
         lieu: Optional[str] = None,
         animateur_id: Optional[int] = None,
-        duree_minutes: int = 180
-    ) -> SeanceCodev:
-        """Crée une séance de codéveloppement"""
+        duree_minutes: int = 180,
+        schema_name: str = 'acd'
+    ) -> Dict[str, Any]:
+        """Crée une séance de codéveloppement - SQL direct"""
         
-        seance = SeanceCodev(
+        # Configurer le search_path
+        session.exec(text(f"SET search_path TO {schema_name}, public"))
+        session.commit()
+        
+        # Insérer la séance
+        insert_query = text(f"""
+            INSERT INTO {schema_name}.seance_codev 
+            (groupe_id, numero_seance, date_seance, lieu, animateur_id, duree_minutes, statut, cree_le)
+            VALUES (:groupe_id, :numero_seance, :date_seance, :lieu, :animateur_id, :duree_minutes, :statut, :cree_le)
+            RETURNING id
+        """)
+        
+        result = session.exec(insert_query.bindparams(
             groupe_id=groupe_id,
             numero_seance=numero_seance,
             date_seance=date_seance,
             lieu=lieu,
             animateur_id=animateur_id,
             duree_minutes=duree_minutes,
-            statut=StatutSeanceCodev.PLANIFIEE.value
-        )
+            statut=StatutSeanceCodev.PLANIFIEE.value,
+            cree_le=datetime.now(timezone.utc)
+        )).one()
         
-        session.add(seance)
         session.commit()
-        session.refresh(seance)
         
-        logger.info(f"Séance {numero_seance} créée pour le groupe {groupe_id}")
-        return seance
+        seance_id = result if isinstance(result, int) else result[0] if isinstance(result, tuple) else result.id
+        
+        logger.info(f"Séance {numero_seance} créée pour le groupe {groupe_id} (ID: {seance_id})")
+        
+        # Récupérer la séance créée
+        select_query = text(f"SELECT * FROM {schema_name}.seance_codev WHERE id = :seance_id")
+        seance_result = session.exec(select_query.bindparams(seance_id=seance_id)).one()
+        
+        if hasattr(seance_result, '_asdict'):
+            return seance_result._asdict()
+        elif hasattr(seance_result, '__dict__'):
+            return seance_result.__dict__
+        elif isinstance(seance_result, dict):
+            return seance_result
+        else:
+            return {key: getattr(seance_result, key) for key in dir(seance_result) if not key.startswith('_')}
     
     @staticmethod
     def planifier_presentations_seance(
@@ -243,49 +345,77 @@ class CodevService:
         return contribution
     
     @staticmethod
-    def get_statistiques_cycle(session: Session, cycle_id: int) -> Dict[str, Any]:
+    def get_statistiques_cycle(session: Session, cycle_id: int, schema_name: str = 'acd') -> Dict[str, Any]:
         """Récupère les statistiques d'un cycle de codéveloppement"""
         
-        cycle = session.get(CycleCodev, cycle_id)
-        if not cycle:
+        # Configurer le search_path
+        session.exec(text(f"SET search_path TO {schema_name}, public"))
+        session.commit()
+        
+        # Récupérer le cycle - SQL direct
+        cycle_query = text(f"SELECT * FROM {schema_name}.cycle_codev WHERE id = :cycle_id")
+        cycle_result = session.exec(cycle_query.bindparams(cycle_id=cycle_id)).first()
+        if not cycle_result:
             return {}
         
-        # Nombre de groupes - Version sécurisée
-        nb_groupes = 0
-        if table_exists_anywhere("groupe_codev", session):
-            nb_groupes = safe_count_query(session, GroupeCodev, cycle_id=cycle_id)
+        cycle = type('CycleCodev', (), dict(cycle_result._mapping))()
         
-        # Nombre total de membres - Version sécurisée
-        nb_membres = 0
-        if table_exists_anywhere("membre_groupe_codev", session) and table_exists_anywhere("groupe_codev", session):
-            try:
-                nb_membres = session.exec(
-                    select(func.count()).select_from(MembreGroupeCodev)
-                    .join(GroupeCodev, MembreGroupeCodev.groupe_codev_id == GroupeCodev.id)
-                    .where(GroupeCodev.cycle_id == cycle_id)
-                ).one()
-            except Exception as e:
-                logging.warning(f"Erreur lors du comptage des membres du cycle: {e}")
-                nb_membres = 0
+        # Nombre de groupes - SQL direct
+        try:
+            nb_groupes_query = text(f"SELECT COUNT(*) FROM {schema_name}.groupe_codev WHERE cycle_id = :cycle_id")
+            nb_groupes_result = session.exec(nb_groupes_query.bindparams(cycle_id=cycle_id)).one()
+            nb_groupes = extract_count_value(nb_groupes_result)
+        except Exception as e:
+            logger.warning(f"Erreur lors du comptage des groupes: {e}")
+            nb_groupes = 0
         
-        # Nombre de séances réalisées
-        nb_seances = session.exec(
-            select(func.count()).select_from(SeanceCodev)
-            .join(Groupe, SeanceCodev.groupe_id == Groupe.id)
-            .join(GroupeCodev, Groupe.id == GroupeCodev.groupe_id)
-            .where(GroupeCodev.cycle_id == cycle_id)
-            .where(SeanceCodev.statut == StatutSeanceCodev.TERMINEE.value)
-        ).one()
+        # Nombre total de membres - SQL direct
+        try:
+            nb_membres_query = text(f"""
+                SELECT COUNT(*) FROM {schema_name}.membre_groupe_codev mgc
+                INNER JOIN {schema_name}.groupe_codev gc ON mgc.groupe_codev_id = gc.id
+                WHERE gc.cycle_id = :cycle_id
+            """)
+            nb_membres_result = session.exec(nb_membres_query.bindparams(cycle_id=cycle_id)).one()
+            nb_membres = extract_count_value(nb_membres_result)
+        except Exception as e:
+            logger.warning(f"Erreur lors du comptage des membres du cycle: {e}")
+            nb_membres = 0
         
-        # Nombre de présentations terminées
-        nb_presentations = session.exec(
-            select(func.count()).select_from(PresentationCodev)
-            .join(SeanceCodev, PresentationCodev.seance_id == SeanceCodev.id)
-            .join(Groupe, SeanceCodev.groupe_id == Groupe.id)
-            .join(GroupeCodev, Groupe.id == GroupeCodev.groupe_id)
-            .where(GroupeCodev.cycle_id == cycle_id)
-            .where(PresentationCodev.statut == StatutPresentation.RETOUR_FAIT.value)
-        ).one()
+        # Nombre de séances réalisées - SQL direct
+        try:
+            nb_seances_query = text(f"""
+                SELECT COUNT(*) FROM {schema_name}.seance_codev s
+                INNER JOIN {schema_name}.groupe_codev gc ON s.groupe_id = gc.groupe_id
+                WHERE gc.cycle_id = :cycle_id
+                AND s.statut = :statut
+            """)
+            nb_seances_result = session.exec(nb_seances_query.bindparams(
+                cycle_id=cycle_id,
+                statut=StatutSeanceCodev.TERMINEE.value
+            )).one()
+            nb_seances = extract_count_value(nb_seances_result)
+        except Exception as e:
+            logger.warning(f"Erreur lors du comptage des séances: {e}")
+            nb_seances = 0
+        
+        # Nombre de présentations terminées - SQL direct
+        try:
+            nb_presentations_query = text(f"""
+                SELECT COUNT(*) FROM {schema_name}.presentation_codev p
+                INNER JOIN {schema_name}.seance_codev s ON p.seance_id = s.id
+                INNER JOIN {schema_name}.groupe_codev gc ON s.groupe_id = gc.groupe_id
+                WHERE gc.cycle_id = :cycle_id
+                AND p.statut = :statut
+            """)
+            nb_presentations_result = session.exec(nb_presentations_query.bindparams(
+                cycle_id=cycle_id,
+                statut=StatutPresentation.RETOUR_FAIT.value
+            )).one()
+            nb_presentations = extract_count_value(nb_presentations_result)
+        except Exception as e:
+            logger.warning(f"Erreur lors du comptage des présentations: {e}")
+            nb_presentations = 0
         
         return {
             "cycle": cycle,
@@ -297,8 +427,15 @@ class CodevService:
         }
     
     @staticmethod
-    def get_prochaines_seances(session: Session, limit: int = 10, programme_id: Optional[int] = None) -> List[SeanceCodev]:
+    def get_prochaines_seances(session: Session, limit: int = 10, programme_id: Optional[int] = None, schema_name: str = 'acd') -> List[SeanceCodev]:
         """Récupère les prochaines séances de codéveloppement"""
+        
+        # Configurer le search_path
+        session.exec(text(f"SET search_path TO {schema_name}, public"))
+        session.commit()
+        
+        # Forcer l'expiration de tous les objets de la session pour éviter le cache
+        session.expire_all()
         
         # Vérifier l'existence des tables essentielles
         required_tables = ["seance_codev"]
@@ -307,7 +444,7 @@ class CodevService:
         
         missing_tables = []
         for table in required_tables:
-            if not table_exists_anywhere(table, session):
+            if not table_exists_anywhere(table, session, schema_name):
                 missing_tables.append(table)
         
         if missing_tables:
@@ -317,27 +454,51 @@ class CodevService:
         try:
             maintenant = datetime.now(timezone.utc)
             
-            query = select(SeanceCodev).where(and_(
-                SeanceCodev.date_seance >= maintenant,
-                SeanceCodev.statut == StatutSeanceCodev.PLANIFIEE.value
-            ))
-            
+            # SQL direct
             if programme_id:
-                # Joindre avec GroupeCodev et CycleCodev pour filtrer par programme
-                query = query.join(GroupeCodev, SeanceCodev.groupe_id == GroupeCodev.groupe_id).join(CycleCodev, GroupeCodev.cycle_id == CycleCodev.id).where(CycleCodev.programme_id == programme_id)
+                seances_query = text(f"""
+                    SELECT s.* FROM {schema_name}.seance_codev s
+                    INNER JOIN {schema_name}.groupe_codev gc ON s.groupe_id = gc.groupe_id
+                    INNER JOIN {schema_name}.cycle_codev cc ON gc.cycle_id = cc.id
+                    WHERE s.date_seance >= :maintenant
+                    AND s.statut = :statut
+                    AND cc.programme_id = :programme_id
+                    ORDER BY s.date_seance
+                    LIMIT :limit
+                """)
+                seances_results = session.exec(seances_query.bindparams(
+                    maintenant=maintenant,
+                    statut=StatutSeanceCodev.PLANIFIEE.value,
+                    programme_id=programme_id,
+                    limit=limit
+                )).all()
+            else:
+                seances_query = text(f"""
+                    SELECT * FROM {schema_name}.seance_codev
+                    WHERE date_seance >= :maintenant
+                    AND statut = :statut
+                    ORDER BY date_seance
+                    LIMIT :limit
+                """)
+                seances_results = session.exec(seances_query.bindparams(
+                    maintenant=maintenant,
+                    statut=StatutSeanceCodev.PLANIFIEE.value,
+                    limit=limit
+                )).all()
             
-            seances = session.exec(
-                query.order_by(SeanceCodev.date_seance).limit(limit)
-            ).all()
-            
+            seances = [type('SeanceCodev', (), dict(row._mapping))() for row in seances_results]
             return seances
         except Exception as e:
             print(f"⚠️ [WARNING] Erreur lors de la récupération des prochaines séances CoDev: {e}")
             return []
     
     @staticmethod
-    def get_engagements_en_cours(session: Session, programme_id: Optional[int] = None) -> List[PresentationCodev]:
+    def get_engagements_en_cours(session: Session, programme_id: Optional[int] = None, schema_name: str = 'acd') -> List[PresentationCodev]:
         """Récupère les engagements en cours de test"""
+        
+        # Configurer le search_path
+        session.exec(text(f"SET search_path TO {schema_name}, public"))
+        session.commit()
         
         # Vérifier l'existence des tables essentielles
         required_tables = ["presentation_codev"]
@@ -346,7 +507,7 @@ class CodevService:
         
         missing_tables = []
         for table in required_tables:
-            if not table_exists_anywhere(table, session):
+            if not table_exists_anywhere(table, session, schema_name):
                 missing_tables.append(table)
         
         if missing_tables:
@@ -356,20 +517,52 @@ class CodevService:
         try:
             maintenant = datetime.now(timezone.utc)
             
-            query = select(PresentationCodev).where(and_(
-                PresentationCodev.statut == StatutPresentation.TEST_EN_COURS.value,
-                PresentationCodev.delai_engagement >= maintenant.date()
-            ))
-            
+            # SQL direct avec JOIN candidat
             if programme_id:
-                # Joindre avec SeanceCodev, GroupeCodev et CycleCodev pour filtrer par programme
-                query = query.join(SeanceCodev, PresentationCodev.seance_id == SeanceCodev.id).join(
-                    GroupeCodev, SeanceCodev.groupe_id == GroupeCodev.groupe_id
-                ).join(CycleCodev, GroupeCodev.cycle_id == CycleCodev.id).where(CycleCodev.programme_id == programme_id)
+                presentations_query = text(f"""
+                    SELECT p.*, c.nom as candidat_nom, c.prenom as candidat_prenom, c.email as candidat_email
+                    FROM {schema_name}.presentation_codev p
+                    INNER JOIN {schema_name}.candidat c ON p.candidat_id = c.id
+                    INNER JOIN {schema_name}.seance_codev s ON p.seance_id = s.id
+                    INNER JOIN {schema_name}.groupe_codev gc ON s.groupe_id = gc.groupe_id
+                    INNER JOIN {schema_name}.cycle_codev cc ON gc.cycle_id = cc.id
+                    WHERE p.statut = :statut
+                    AND p.delai_engagement >= :maintenant_date
+                    AND cc.programme_id = :programme_id
+                    ORDER BY p.delai_engagement
+                """)
+                presentations_results = session.exec(presentations_query.bindparams(
+                    statut=StatutPresentation.TEST_EN_COURS.value,
+                    maintenant_date=maintenant.date(),
+                    programme_id=programme_id
+                )).all()
+            else:
+                presentations_query = text(f"""
+                    SELECT p.*, c.nom as candidat_nom, c.prenom as candidat_prenom, c.email as candidat_email
+                    FROM {schema_name}.presentation_codev p
+                    INNER JOIN {schema_name}.candidat c ON p.candidat_id = c.id
+                    WHERE p.statut = :statut
+                    AND p.delai_engagement >= :maintenant_date
+                    ORDER BY p.delai_engagement
+                """)
+                presentations_results = session.exec(presentations_query.bindparams(
+                    statut=StatutPresentation.TEST_EN_COURS.value,
+                    maintenant_date=maintenant.date()
+                )).all()
             
-            presentations = session.exec(
-                query.order_by(PresentationCodev.delai_engagement)
-            ).all()
+            # Créer des objets avec candidat inclus
+            presentations = []
+            for row in presentations_results:
+                row_dict = dict(row._mapping) if hasattr(row, '_mapping') else dict(row)
+                presentation_obj = type('PresentationCodev', (), row_dict)()
+                # Ajouter l'objet candidat
+                candidat_obj = type('Candidat', (), {
+                    'nom': row_dict.get('candidat_nom', ''),
+                    'prenom': row_dict.get('candidat_prenom', ''),
+                    'email': row_dict.get('candidat_email', '')
+                })()
+                presentation_obj.candidat = candidat_obj
+                presentations.append(presentation_obj)
         except Exception as e:
             print(f"⚠️ [WARNING] Erreur lors de la récupération des engagements CoDev: {e}")
             return []

@@ -4,7 +4,7 @@ Service pour la gestion des pipelines de formation
 from typing import List, Dict, Any
 from sqlmodel import Session, select
 import logging
-from ..models.base import EtapePipeline, AvancementEtape, Inscription, Candidat
+from ..models.base import EtapePipeline, AvancementEtape, Candidat
 from ..core.program_schema_integration import table_exists_anywhere
 
 logger = logging.getLogger(__name__)
@@ -98,11 +98,11 @@ class PipelineService:
         return etape
     
     @staticmethod
-    def get_inscription_avancement(session: Session, inscription_id: int) -> List[dict]:
-        """Récupère l'avancement d'un candidat dans le pipeline"""
+    def get_inscription_avancement(session: Session, candidat_id: int) -> List[dict]:
+        """Récupère l'avancement d'un candidat dans le pipeline - NOTE: inscription_id remplacé par candidat_id"""
         avancements = session.exec(
             select(AvancementEtape)
-            .where(AvancementEtape.inscription_id == inscription_id)
+            .where(AvancementEtape.candidat_id == candidat_id)
             .order_by(AvancementEtape.etape_id)
         ).all()
         
@@ -124,13 +124,13 @@ class PipelineService:
         ]
     
     @staticmethod
-    def update_inscription_avancement(session: Session, inscription_id: int, avancement_data: dict) -> AvancementEtape:
-        """Met à jour l'avancement d'un candidat dans le pipeline"""
+    def update_inscription_avancement(session: Session, candidat_id: int, avancement_data: dict) -> AvancementEtape:
+        """Met à jour l'avancement d'un candidat dans le pipeline - NOTE: inscription_id remplacé par candidat_id"""
         # Vérifier si l'avancement existe déjà
         existing = session.exec(
             select(AvancementEtape)
             .where(
-                AvancementEtape.inscription_id == inscription_id,
+                AvancementEtape.candidat_id == candidat_id,
                 AvancementEtape.etape_id == avancement_data.etape_id
             )
         ).first()
@@ -143,7 +143,7 @@ class PipelineService:
         else:
             # Créer un nouvel avancement
             avancement = AvancementEtape(
-                inscription_id=inscription_id,
+                candidat_id=candidat_id,
                 etape_id=avancement_data.etape_id,
                 statut=avancement_data.statut,
                 commentaires=avancement_data.commentaires,
@@ -192,8 +192,8 @@ class PipelineService:
         
         candidats = []
         for av in avancements:
-            inscription = session.get(Inscription, av.inscription_id)
-            candidat = session.get(Candidat, inscription.candidat_id)
+            # NOTE: Le modèle Inscription a été supprimé. Utiliser directement candidat_id.
+            candidat = session.get(Candidat, av.candidat_id)
             
             candidats.append({
                 "candidat_id": candidat.id,
@@ -211,13 +211,18 @@ class PipelineService:
     def reinitialiser_pipeline(session: Session, programme_id: int):
         """Réinitialise le pipeline d'un programme"""
         # Supprimer tous les avancements pour ce programme
-        inscriptions = session.exec(
-            select(Inscription).where(Inscription.programme_id == programme_id)
+        # NOTE: Le modèle Inscription a été supprimé. Utiliser directement les candidats.
+        # inscriptions = session.exec(
+        #     select(Inscription).where(Inscription.programme_id == programme_id)
+        # ).all()
+        from ..models.enums import DecisionJury
+        candidats = session.exec(
+            select(Candidat).where(Candidat.statut == DecisionJury.VALIDE)
         ).all()
         
-        for inscription in inscriptions:
+        for candidat in candidats:
             avancements = session.exec(
-                select(AvancementEtape).where(AvancementEtape.inscription_id == inscription.id)
+                select(AvancementEtape).where(AvancementEtape.candidat_id == candidat.id)
             ).all()
             
             for av in avancements:

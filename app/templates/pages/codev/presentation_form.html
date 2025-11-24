@@ -1,0 +1,306 @@
+{% extends "layouts/base.html" %}
+
+{% block title %}{% if is_edit %}Modifier une Présentation{% else %}Créer une Présentation{% endif %} - {{ super() }}{% endblock %}
+
+{% block head_extra %}
+<style>
+  .presentation-form-container {
+    width: 100%;
+    max-width: 100%;
+  }
+  
+  .form-card {
+    background: white;
+    border-radius: 12px;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
+    overflow: hidden;
+  }
+  
+  .form-header {
+    background: var(--primary-color);
+    color: white;
+    padding: 1.5rem;
+    border-bottom: 3px solid var(--secondary-color);
+  }
+  
+  .form-header h2 {
+    margin: 0;
+    font-size: 1.5rem;
+    font-weight: 700;
+  }
+  
+  .form-body {
+    padding: 2rem;
+  }
+  
+  .form-group {
+    margin-bottom: 1.5rem;
+  }
+  
+  .form-group label {
+    display: block;
+    margin-bottom: 0.5rem;
+    font-weight: 600;
+    color: #333;
+  }
+  
+  .form-group label.required::after {
+    content: " *";
+    color: #dc3545;
+  }
+  
+  .form-control {
+    width: 100%;
+    padding: 0.75rem;
+    border: 1px solid #ddd;
+    border-radius: 6px;
+    font-size: 0.95rem;
+  }
+  
+  .form-control:focus {
+    outline: none;
+    border-color: var(--primary-color);
+    box-shadow: 0 0 0 3px rgba(255, 193, 7, 0.1);
+  }
+  
+  textarea.form-control {
+    min-height: 120px;
+    resize: vertical;
+  }
+  
+  .form-actions {
+    display: flex;
+    gap: 1rem;
+    justify-content: flex-end;
+    margin-top: 2rem;
+    padding-top: 1.5rem;
+    border-top: 1px solid #eee;
+  }
+  
+  .btn {
+    padding: 0.75rem 1.5rem;
+    border: none;
+    border-radius: 6px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.3s ease;
+  }
+  
+  .btn-primary {
+    background-color: var(--primary-color);
+    color: white;
+  }
+  
+  .btn-primary:hover {
+    background-color: #d4a600;
+  }
+  
+  .btn-secondary {
+    background-color: #6c757d;
+    color: white;
+  }
+  
+  .btn-secondary:hover {
+    background-color: #5a6268;
+  }
+</style>
+{% endblock %}
+
+{% block content %}
+{% set programme_param = request.query_params.get('programme', '') or (schema_name.upper() if schema_name and schema_name != 'public' else '') %}
+<div class="container-fluid p-4">
+  <div class="presentation-form-container">
+    {% from "components/page_header.html" import page_header %}
+    
+    {{ page_header(
+      title=("<i class='fas fa-edit me-2'></i>Modifier une Présentation" if is_edit else "<i class='fas fa-plus-circle me-2'></i>Créer une Présentation"),
+      breadcrumbs=[
+        {"name": "Codéveloppement", "url": url_for("codev_dashboard") ~ ("?programme=" ~ programme_param if programme_param else "")},
+        {"name": "Séances", "url": url_for("codev_seances") ~ ("?programme=" ~ programme_param if programme_param else "")},
+        {"name": "Séance #" ~ (seance.numero_seance | default(seance.id)), "url": url_for("codev_seance_detail", seance_id=seance.id) ~ ("?programme=" ~ programme_param if programme_param else "")},
+        {"name": ("Modifier la présentation" if is_edit else "Créer une présentation")}
+      ],
+      actions=[
+        {
+          "label": "<i class='fas fa-arrow-left me-2'></i>Retour",
+          "url": url_for("codev_seance_detail", seance_id=seance.id) ~ ("?programme=" ~ programme_param if programme_param else ""),
+          "class": "btn-outline-light btn-sm",
+          "primary": false
+        }
+      ]
+    ) }}
+    
+    {# Messages d'erreur/succès #}
+    {% if request.query_params.get('error') %}
+    <div class="alert alert-danger alert-dismissible fade show mt-3" role="alert">
+      <i class="fas fa-exclamation-circle me-2"></i>
+      <strong>Erreur :</strong> {{ request.query_params.get('message', 'Une erreur est survenue lors de la création de la présentation.') }}
+      <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+    </div>
+    {% endif %}
+    
+    <div class="row mt-4">
+      <div class="col-12">
+        <div class="form-card">
+          <div class="form-header">
+            <h2><i class="fas fa-microphone me-2"></i>{% if is_edit %}Modifier la Présentation{% else %}Nouvelle Présentation{% endif %}</h2>
+          </div>
+          
+          <form method="POST" action="{% if is_edit %}{{ url_for('codev_presentation_update', presentation_id=presentation.id) }}{{ '?programme=' ~ programme_param if programme_param else '' }}{% else %}{{ url_for('codev_presentation_create', seance_id=seance.id) }}{{ '?programme=' ~ programme_param if programme_param else '' }}{% endif %}" class="form-body">
+        {% if programme_param %}
+        <input type="hidden" name="programme" value="{{ programme_param }}">
+        {% endif %}
+        {% if is_edit %}
+        <input type="hidden" name="ordre_presentation" value="{{ presentation.ordre_presentation | default(1) }}">
+        {% else %}
+        <input type="hidden" name="ordre_presentation" value="{{ next_ordre }}">
+        {% endif %}
+        
+        <div class="form-group">
+          <label for="candidat_id" class="required">
+            <i class="fas fa-user me-1"></i>Membre présentateur
+          </label>
+          <select name="candidat_id" id="candidat_id" class="form-control" required>
+            <option value="">-- Sélectionner un membre --</option>
+            {% for membre in membres %}
+            <option value="{{ membre.candidat_id }}" {% if is_edit and presentation.candidat_id == membre.candidat_id %}selected{% endif %}>{{ membre.candidat_nom_complet | default('Membre inconnu') }}</option>
+            {% endfor %}
+          </select>
+        </div>
+        
+        <div class="form-group">
+          <label for="probleme_expose" class="required">
+            <i class="fas fa-question-circle me-1"></i>Problématique
+          </label>
+          <textarea 
+            name="probleme_expose" 
+            id="probleme_expose" 
+            class="form-control" 
+            required
+            placeholder="Décrivez la situation concrète à résoudre..."
+          >{% if is_edit %}{{ presentation.probleme_expose | default('') }}{% endif %}</textarea>
+          <small class="text-muted">Situation concrète à résoudre</small>
+        </div>
+        
+        <div class="form-group">
+          <label for="contexte">
+            <i class="fas fa-info-circle me-1"></i>Contexte
+          </label>
+          <textarea 
+            name="contexte" 
+            id="contexte" 
+            class="form-control"
+            placeholder="Informations complémentaires sur la situation..."
+          >{% if is_edit %}{{ presentation.contexte | default('') }}{% endif %}</textarea>
+          <small class="text-muted">Informations complémentaires</small>
+        </div>
+        
+        <div class="form-group">
+          <label for="solutions_proposees">
+            <i class="fas fa-lightbulb me-1"></i>Solutions proposées
+          </label>
+          <textarea 
+            name="solutions_proposees" 
+            id="solutions_proposees" 
+            class="form-control"
+            placeholder="Suggestions du groupe..."
+          >{% if is_edit %}{{ presentation.solutions_proposees | default('') }}{% endif %}</textarea>
+          <small class="text-muted">Suggestions du groupe</small>
+        </div>
+        
+        <div class="form-group">
+          <label for="engagement_candidat">
+            <i class="fas fa-handshake me-1"></i>Engagement
+          </label>
+          <textarea 
+            name="engagement_candidat" 
+            id="engagement_candidat" 
+            class="form-control"
+            placeholder="Action que le candidat s'engage à tester..."
+          >{% if is_edit %}{{ presentation.engagement_candidat | default('') }}{% endif %}</textarea>
+          <small class="text-muted">Action que le candidat s'engage à tester</small>
+        </div>
+        
+        <div class="form-group">
+          <label for="delai_engagement">
+            <i class="fas fa-calendar-check me-1"></i>Délai d'engagement
+          </label>
+          <input 
+            type="date" 
+            name="delai_engagement" 
+            id="delai_engagement" 
+            class="form-control"
+            {% if is_edit and presentation.delai_engagement %}value="{{ presentation.delai_engagement | format_date_input }}"{% endif %}
+          />
+          <small class="text-muted">Date limite pour tester la solution</small>
+        </div>
+        
+        <div class="form-actions">
+          <a href="{{ url_for('codev_seance_detail', seance_id=seance.id) }}{{ '?programme=' ~ programme_param if programme_param else '' }}" class="btn btn-secondary">
+            <i class="fas fa-times me-1"></i>Annuler
+          </a>
+          <button type="submit" class="btn btn-primary">
+            <i class="fas fa-save me-1"></i>{% if is_edit %}Enregistrer les modifications{% else %}Créer la présentation{% endif %}
+          </button>
+        </div>
+      </form>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    const form = document.querySelector('form[method="POST"]');
+    const submitBtn = form ? form.querySelector('button[type="submit"]') : null;
+    
+    if (form && submitBtn) {
+        form.addEventListener('submit', function(e) {
+            // Validation basique
+            const candidatId = form.querySelector('#candidat_id');
+            const problemeExpose = form.querySelector('#probleme_expose');
+            
+            if (!candidatId || !candidatId.value) {
+                e.preventDefault();
+                alert('Veuillez sélectionner un membre présentateur.');
+                candidatId.focus();
+                return false;
+            }
+            
+            if (!problemeExpose || !problemeExpose.value.trim()) {
+                e.preventDefault();
+                alert('Veuillez saisir une problématique.');
+                problemeExpose.focus();
+                return false;
+            }
+            
+            // Afficher l'overlay global
+            if (typeof showGlobalLoading === 'function') {
+                const actionText = form.action.includes('modifier') ? 'Modification' : 'Création';
+            showGlobalLoading(
+                    `${actionText} de la présentation`,
+                    'Traitement en cours, veuillez patienter...'
+                );
+            }
+            
+            // Désactiver le bouton et afficher un spinner
+            submitBtn.disabled = true;
+            const originalHtml = submitBtn.innerHTML;
+            const actionText = form.action.includes('modifier') ? 'Modification' : 'Création';
+            submitBtn.innerHTML = `<i class="fas fa-spinner fa-spin me-1"></i>${actionText} en cours...`;
+            
+            // Timeout de sécurité pour masquer l'overlay après 10 secondes
+            setTimeout(function() {
+                if (typeof hideGlobalLoading === 'function') {
+                    hideGlobalLoading();
+                }
+                submitBtn.disabled = false;
+                submitBtn.innerHTML = originalHtml;
+            }, 10000);
+        });
+    }
+});
+</script>
+{% endblock %}
+

@@ -1,199 +1,158 @@
-{% extends "base.html" %}
+{% extends "layouts/base.html" %}
 
 {% block title %}{% if ressource %}Modifier la ressource{% else %}Nouvelle ressource{% endif %} - E-learning{% endblock %}
 
 {% block head_extra %}
 <style>
-  .container-fluid.p-4 {
-    width: 100%;
-    margin: 0 auto;
-    padding: 15px;
+/* Limiter la hauteur de la page pour éviter le scroll */
+.page-content-wrapper {
+    height: calc(100vh - 20px);
+    max-height: calc(100vh - 20px);
+    display: flex;
+    flex-direction: column;
     overflow: hidden;
-  }
+}
 
-  .form-container {
-    width: 100%;
-    margin: 0 auto;
-    padding: 15px;
-  }
-
-  .form-card {
-    background: white;
-    border-radius: 12px;
-    box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
-    padding: 0;
+.page-content-wrapper .row {
+    flex: 1;
+    min-height: 0;
     overflow: hidden;
-  }
+    display: flex;
+    height: 100%;
+}
 
-  .form-header {
-    background: var(--primary-color);
-    color: white;
-    padding: 1.5rem;
-    border-radius: 0;
+.page-content-wrapper .row .col-lg-12 {
+    display: flex;
+    flex-direction: column;
+    min-height: 0;
+    max-height: 100%;
+    height: 100%;
     margin: 0;
-    position: sticky;
-    top: 0;
-    z-index: 100;
-  }
+    padding: 0 1rem;
+    overflow: hidden;
+}
 
-  .form-header h1 {
-    font-size: 1.5rem;
-    margin: 0;
-  }
-
-  /* Styles pour les onglets */
-  .nav-tabs {
-    border-bottom: 2px solid #e9ecef;
-    margin: 0;
-    padding: 0 1.5rem;
-    background: #f8f9fa;
-    position: sticky;
-    top: 80px;
-    z-index: 99;
-  }
-
-  .nav-tabs .nav-link {
+/* Style modal pour la card */
+.modal-style-card {
+    box-shadow: 0 10px 40px rgba(0, 0, 0, 0.2);
+    border-radius: 5px;
     border: none;
-    border-radius: 0;
-    padding: 1rem 1.5rem;
-    color: #6c757d;
-    font-weight: 600;
-    transition: all 0.3s ease;
-    position: relative;
-  }
+    display: flex;
+    flex-direction: column;
+    max-width: 1000px;
+    margin: 0 auto;
+    width: 100%;
+    height: 100%;
+    min-height: 0;
+}
 
-  .nav-tabs .nav-link:hover {
-    border-color: transparent;
-    color: var(--primary-color);
-    background: transparent;
-  }
+.modal-style-card > .card-header {
+    flex: 0 0 auto;
+}
 
-  .nav-tabs .nav-link.active {
-    color: var(--primary-color);
-    background: white;
-    border-color: transparent;
-    border-bottom: 3px solid var(--primary-color);
-  }
+.modal-style-card > .card-body {
+    flex: 1 1 auto;
+    min-height: 0;
+}
 
-  .nav-tabs .nav-link i {
-    margin-right: 0.5rem;
-  }
+.modal-style-card > .card-footer {
+    flex: 0 0 auto;
+}
 
-  .tab-content {
-    padding: 1rem;
-    background: white;
-    min-height: 350px;
-    max-height: calc(70vh - 160px);
+.modal-style-header {
+    padding: 0.75rem 1.5rem;
+    border: 2px solid var(--primary-color);
+    background: var(--secondary-color);
+    flex-shrink: 0;
+    z-index: 10;
+    border-radius: 5px 5px 0 0;
+    border-bottom: 2px solid var(--primary-color);
+}
+
+.modal-style-title {
+    margin: 0;
+    color: var(--white-color);
+    font-size: 1.1rem;
+    font-weight: 700;
+}
+
+.modal-style-body {
+    padding: 1.5rem;
+    margin: 0;
+    flex: 1;
     overflow-y: auto;
-    margin-top: 0;
-  }
+    overflow-x: hidden;
+    min-height: 0;
+    max-height: calc(100vh - 200px);
+    border-left: 1px solid var(--primary-color);
+    border-right: 1px solid var(--primary-color);
+}
 
-  .tab-pane {
-    animation: fadeIn 0.3s ease-in;
-  }
+/* Espacement entre les sections */
+.mb-4:not(:last-child) {
+    border-bottom: 1px solid #e9ecef;
+    padding-bottom: 2rem;
+    margin-bottom: 2rem;
+}
 
-  @keyframes fadeIn {
-    from { opacity: 0; transform: translateY(10px); }
-    to { opacity: 1; transform: translateY(0); }
-  }
+.modal-style-footer {
+    padding: 0.75rem 1.5rem;
+    border: 2px solid var(--primary-color);
+    background: var(--secondary-color);
+    flex-shrink: 0;
+    z-index: 10;
+    border-radius: 0 0 5px 5px;
+    border-top: 2px solid var(--primary-color);
+    display: flex;
+    justify-content: flex-end;
+    gap: 0.5rem;
+}
 
-  .form-group {
+/* Styles pour les sections */
+.mb-4 {
+    margin-bottom: 2rem;
+    padding-bottom: 1.5rem;
+    border-bottom: 1px solid #e9ecef;
+}
+
+.mb-4:last-child {
+    border-bottom: none;
+}
+
+.form-group {
     margin-bottom: 1rem;
-  }
+}
 
-  .form-label {
+.form-label {
     font-weight: 600;
     color: #495057;
     margin-bottom: 0.5rem;
     display: block;
-  }
+}
 
-  .form-control, .form-select {
-    padding: 0.75rem;
+.form-control, .form-select {
+    padding: 0.5rem;
     border: 1px solid #e0e0e0;
-    border-radius: 8px;
-    font-size: 0.95rem;
+    border-radius: 4px;
+    font-size: 0.9rem;
     transition: all 0.3s ease;
-  }
+}
 
-  .form-control:focus, .form-select:focus {
+.form-control:focus, .form-select:focus {
     border-color: var(--primary-color);
     box-shadow: 0 0 0 0.2rem rgba(var(--primary-color-rgb), 0.25);
-  }
+}
 
-  .form-row {
+.form-row {
     display: flex;
     gap: 1rem;
-  }
+}
 
-  .form-row .form-group {
+.form-row .form-group {
     flex: 1;
-  }
+}
 
-  .btn-submit {
-    background: var(--primary-color);
-    color: white;
-    border: none;
-    height: 30px;
-    padding: 0.5rem 0.5rem;
-    border-radius: 8px;
-    font-weight: 600;
-    margin-left: 0rem;
-    font-size: 12px;
-    justify-content: center;
-    color: var(--secondary-color);
-    margin-bottom: 20px;
-    margin-right: 20px;
-    cursor: pointer;
-  }
-
-  .btn-submit-icon {
-    font-size: 0.8rem;
-    width: 12px;
-    height: 12px;
-  }
-
-  .btn-submit:hover {
-    transform: translateY(-2px);
-    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2);
-    cursor: pointer;
-    background: var(--secondary-color);
-    color: var(--white-color);
-  }
-
-  .btn-cancel {
-    background: var(--primary-color);
-    color: white;
-    border: none;
-    height: 30px;
-    padding: 0.5rem 0.5rem;
-    border-radius: 8px;
-    font-weight: 600;
-    margin-left: 0rem;
-    font-size: 12px;
-    justify-content: center;
-    color: var(--secondary-color);
-    margin-bottom: 20px;
-    margin-right: 20px;
-    cursor: pointer;
-  }
-
-  .btn-cancel-icon {
-    font-size: 0.8rem;
-    width: 12px;
-    height: 12px;
-  }
-
-  .btn-cancel:hover {
-    transform: translateY(-2px);
-    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2);
-    cursor: pointer;
-    background: var(--secondary-color);
-    color: var(--white-color);
-  }
-  
-
-  .file-upload-area {
+.file-upload-area {
     border: 2px dashed #dee2e6;
     border-radius: 8px;
     padding: 2rem;
@@ -201,130 +160,46 @@
     background: #f8f9fa;
     transition: all 0.3s ease;
     cursor: pointer;
-  }
+}
 
-  .file-upload-area:hover {
+.file-upload-area:hover {
     border-color: var(--primary-color);
     background: #f0f4ff;
-  }
+}
 
-  .file-upload-area.dragover {
-    border-color: var(--primary-color);
-    background: #e3f2fd;
-  }
-
-  .type-specific-fields {
+.type-specific-fields {
     background: #f8f9fa;
     padding: 1.5rem;
     border-radius: 8px;
     margin-top: 1rem;
     border-left: 4px solid var(--primary-color);
-    display: block; /* Always visible by default */
-  }
+}
 
-  .type-fields {
-    display: block; /* Always visible - multiple files can be uploaded */
-  }
+.type-fields {
+    display: block;
+}
 
-  .preview-area {
+.preview-area {
     margin-top: 1rem;
     padding: 1rem;
     background: #f8f9fa;
     border-radius: 8px;
     display: none;
-  }
+}
 
-  .preview-area.show {
+.preview-area.show {
     display: block;
-  }
+}
 
-  .file-preview-content {
-    display: flex;
-    align-items: center;
-    gap: 1rem;
-    padding: 1rem;
-    background: #f8f9fa;
-    border-radius: 8px;
-    border: 2px dashed #28a745;
-  }
-
-  .file-icon {
-    flex-shrink: 0;
-  }
-
-  .file-info {
-    flex-grow: 1;
-  }
-
-  .file-name {
-    font-weight: 600;
-    color: #333;
-    margin-bottom: 0.25rem;
-  }
-
-  .file-size {
-    font-size: 0.875rem;
-    color: #666;
-  }
-
-  .file-actions {
-    display: flex;
-    gap: 0.5rem;
-    flex-shrink: 0;
-  }
-
-  .tags-input {
-    display: flex;
-    flex-wrap: wrap;
-    gap: 0.5rem;
-    padding: 0.5rem;
-    border: 1px solid #e0e0e0;
-    border-radius: 8px;
-    min-height: 50px;
-  }
-
-  .tag {
-    background: var(--primary-color);
-    color: white;
-    padding: 0.25rem 0.5rem;
-    border-radius: 12px;
-    font-size: 0.8rem;
-    display: flex;
-    align-items: center;
-    gap: 0.25rem;
-  }
-
-  .tag-remove {
-    cursor: pointer;
-    font-weight: bold;
-  }
-
-  .tag-input {
-    border: none;
-    outline: none;
-    flex: 1;
-    min-width: 100px;
-  }
-
-  .section-title {
+.section-title {
     color: var(--primary-color);
     font-weight: 600;
     margin-bottom: 1rem;
     padding-bottom: 0.5rem;
     border-bottom: 2px solid #e9ecef;
-  }
+}
 
-  .form-actions {
-    background: #f8f9fa;
-    padding: 1rem;
-    margin: 0 -1rem -1rem -1rem;
-    border-top: 1px solid #e9ecef;
-    display: flex;
-    justify-content: flex-end;
-    gap: 0.5rem;
-  }
-
-  .progress-indicator {
+.progress-indicator {
     display: flex;
     align-items: center;
     gap: 0.5rem;
@@ -334,809 +209,635 @@
     border-radius: 6px;
     font-size: 0.9rem;
     color: #1976d2;
-  }
+}
 
-  .progress-step {
+.progress-step {
     width: 8px;
     height: 8px;
     border-radius: 50%;
     background: #1976d2;
     opacity: 0.3;
-  }
+}
 
-  .progress-step.active {
+.progress-step.active {
     opacity: 1;
-  }
+}
+
+@media (max-width: 768px) {
+    .page-content-wrapper {
+        height: calc(100vh - 100px);
+        max-height: calc(100vh - 100px);
+    }
+    
+    .modal-style-header {
+        padding: 0.5rem 1rem;
+    }
+    
+    .modal-style-title {
+        font-size: 1rem;
+    }
+    
+    .modal-style-body {
+        padding: 1rem;
+        max-height: calc(100vh - 180px);
+    }
+    
+    .modal-style-footer {
+        padding: 0.5rem 1rem;
+        flex-direction: column-reverse;
+    }
+    
+    .modal-style-footer .btn {
+        width: 100%;
+    }
+}
 </style>
 {% endblock %}
 
 {% block content %}
-<!--<div class="container-fluid">-->
-  <div class="form-container">
-    <div class="form-card">
-      <div class="form-header" style="position: sticky">
-        <div class="d-flex justify-content-between align-items-center">
-          <h1>
-            <i class="fas fa-{% if ressource %}edit{% else %}plus-circle{% endif %} me-2"></i>
-            {% if ressource %}
-              Modifier la ressource
-            {% else %}
-              Nouvelle ressource
-            {% endif %}
-          </h1>
-          <button class="btn btn-outline-light btn-sm" 
-          style="background: var(--secondary-color);height: 30px;font-size: 12px;color: var(--primary-color);" 
-          onclick="window.location.href='{% if return_url %}{{ url_for('elearning_module_detail', module_id=module_id) }}{% else %}{{ url_for('elearning_modules') }}{% endif %}'">
-            <i class="fas fa-arrow-left me-2"></i>
-            Retour
-          </button>
-        </div>
-      </div>
+{% set programme_param = request.query_params.get('programme') or (schema_name.upper() if schema_name and schema_name != 'public' else '') %}
+{% set modules_url = url_for('elearning_modules') ~ ('?programme=' ~ programme_param if programme_param else '') %}
+{% set return_url_final = return_url if return_url else (url_for('elearning_module_detail', module_id=module_id) ~ ('?programme=' ~ programme_param if programme_param else '') if module_id else (url_for('elearning_modules') ~ ('?programme=' ~ programme_param if programme_param else ''))) %}
 
-      <!-- Onglets -->
-      <ul class="nav nav-tabs" id="ressourceTabs" role="tablist">
-        <li class="nav-item" role="presentation">
-          <button class="nav-link active" id="general-tab" data-bs-toggle="tab" data-bs-target="#general" type="button" role="tab">
-            <i class="fas fa-info-circle"></i>
-            Informations générales
-          </button>
-        </li>
-        <li class="nav-item" role="presentation">
-          <button class="nav-link" id="ressource-content-tab" data-bs-toggle="tab" data-bs-target="#ressource-content" type="button" role="tab">
-            <i class="fas fa-file-alt"></i>
-            Contenu
-          </button>
-        </li>
-        <li class="nav-item" role="presentation">
-          <button class="nav-link" id="settings-tab" data-bs-toggle="tab" data-bs-target="#settings" type="button" role="tab">
-            <i class="fas fa-cog"></i>
-            Paramètres
-          </button>
-        </li>
-        {% if module_id %}
-        <li class="nav-item" role="presentation">
-          <button class="nav-link" id="module-tab" data-bs-toggle="tab" data-bs-target="#module" type="button" role="tab">
-            <i class="fas fa-book"></i>
-            Module
-          </button>
-        </li>
-        {% endif %}
-      </ul>
-
-      <form method="post" enctype="multipart/form-data" id="ressourceForm" action="{% if ressource %}{{ url_for('elearning_ressource_edit', ressource_id=ressource.id) }}{% else %}{{ url_for('elearning_ressource_creer') }}{% endif %}">
-        <div class="tab-content" id="ressourceTabContent" style="background: #f0f2f5;">
-          <!-- Onglet Informations générales -->
-          <div class="tab-pane fade show active" id="general" role="tabpanel" aria-labelledby="general-tab" tabindex="0" style="background: #f0f2f5">
-            <div class="progress-indicator">
-              <i class="fas fa-info-circle"></i>
-              <span>Étape 1/{{ 4 if module_id else 3 }} : Informations de base</span>
-              <div class="progress-step active"></div>
-              <div class="progress-step"></div>
-              <div class="progress-step"></div>
-              {% if module_id %}<div class="progress-step"></div>{% endif %}
-            </div>
-
-            <h5 class="section-title">
-              <i class="fas fa-info-circle me-2"></i>
-              Informations de base
-            </h5>
-
-            <div class="form-group">
-              <label class="form-label" for="titre">Titre de la ressource *</label>
-              <input type="text" class="form-control" id="titre" name="titre" 
-                     value="{{ ressource.titre if ressource else '' }}" required
-                     placeholder="Ex: Introduction à la programmation Python">
-            </div>
-
-            <div class="form-group">
-              <label class="form-label" for="description">Description</label>
-              <textarea class="form-control" id="description" name="description" rows="4"
-                        placeholder="Décrivez le contenu de cette ressource, ses objectifs et ce que l'apprenant va apprendre...">{{ ressource.description if ressource else '' }}</textarea>
-            </div>
-
-            <div class="form-group">
-              <label class="form-label" for="difficulte">Niveau de difficulté</label>
-              <select class="form-select" id="difficulte" name="difficulte">
-                <option value="facile" {% if ressource and ressource.difficulte == 'facile' %}selected{% endif %}>🟢 Facile</option>
-                <option value="moyen" {% if ressource and ressource.difficulte == 'moyen' %}selected{% endif %}>🟡 Moyen</option>
-                <option value="difficile" {% if ressource and ressource.difficulte == 'difficile' %}selected{% endif %}>🔴 Difficile</option>
-              </select>
-            </div>
-
-            <div class="form-group">
-              <label class="form-label" for="tags">Tags (séparés par des virgules)</label>
-              <div class="tags-input" id="tagsContainer">
-                <input type="text" class="tag-input" id="tagInput" placeholder="Ajouter un tag...">
-              </div>
-              <input type="hidden" id="tags" name="tags" value="{{ ressource.tags if ressource else '' }}">
-              <small class="text-muted">Ex: programmation, python, débutant, tutoriel</small>
-            </div>
-          </div>
-
-          <!-- Onglet Contenu -->
-          <div class="tab-pane fade" id="ressource-content" role="tabpanel" aria-labelledby="ressource-content-tab" tabindex="0">
-            <div class="progress-indicator">
-              <i class="fas fa-file-alt"></i>
-              <span>Étape 2/{{ 4 if module_id else 3 }} : Configuration du contenu</span>
-              <div class="progress-step"></div>
-              <div class="progress-step active"></div>
-              <div class="progress-step"></div>
-              {% if module_id %}<div class="progress-step"></div>{% endif %}
-            </div>
-
-            <h5 class="section-title">
-              <i class="fas fa-file-alt me-2"></i>
-              Configuration du contenu
-            </h5>
-
-            <!-- Message d'information -->
-            <div id="contentInfo" class="alert alert-info" style="display: none;">
-              <i class="fas fa-info-circle me-2"></i>
-              <strong>Information :</strong> Sélectionnez un type de ressource dans l'onglet "Informations générales" pour voir les options spécifiques.
-              <div class="mt-2">
-                <button type="button" class="btn btn-sm btn-outline-primary" onclick="switchToTab('general')">
-                  <i class="fas fa-arrow-left me-1"></i>
-                  Retour aux informations générales
-                </button>
-              </div>
-            </div>
-
-            <!-- Information générale sur les types de ressources -->
-            <div class="alert alert-light border">
-              <h6><i class="fas fa-lightbulb me-2"></i>Types de ressources disponibles</h6>
-              <div class="row">
-                <div class="col-md-6">
-                  <ul class="list-unstyled mb-0">
-                    <li><i class="fas fa-video text-primary me-2"></i><strong>Vidéo :</strong> Fichiers vidéo ou liens YouTube/Vimeo</li>
-                    <li><i class="fas fa-file-pdf text-danger me-2"></i><strong>Document :</strong> PDF, Word, PowerPoint</li>
-                    <li><i class="fas fa-question-circle text-warning me-2"></i><strong>Quiz :</strong> Questions à choix multiples</li>
-                  </ul>
-                </div>
-                <div class="col-md-6">
-                  <ul class="list-unstyled mb-0">
-                    <li><i class="fas fa-external-link-alt text-info me-2"></i><strong>Lien :</strong> Liens vers des ressources externes</li>
-                    <li><i class="fas fa-volume-up text-success me-2"></i><strong>Audio :</strong> Fichiers audio ou podcasts</li>
-                  </ul>
-                </div>
-              </div>
-            <div class="alert alert-info">
-              <i class="fas fa-info-circle me-2"></i>
-              <strong>Upload multiple :</strong> Vous pouvez maintenant uploader plusieurs types de fichiers pour une même ressource. Tous les champs ci-dessous sont disponibles simultanément.
-            </div>
-            </div>
-
-            <!-- Champs spécifiques au type -->
-            <div id="typeSpecificFields" class="type-specific-fields">
-              <!-- Champs pour vidéo -->
-              <div id="videoFields" class="type-fields">
-                <h6><i class="fas fa-video me-2"></i>Configuration vidéo</h6>
-                
-                <!-- Option URL -->
-                <div class="form-group">
-                  <label class="form-label" for="url_contenu_video">URL de la vidéo (optionnel)</label>
-                  <input type="url" class="form-control" id="url_contenu_video" name="url_contenu_video" 
-                         value="{{ ressource.url_contenu_video if ressource else '' }}" 
-                         placeholder="https://www.youtube.com/watch?v=... ou https://vimeo.com/...">
-                  <small class="text-muted">Utilisez cette option pour des vidéos hébergées en ligne</small>
-                </div>
-                
-                <!-- Fichier vidéo existant -->
-                {% if ressource and ressource.fichier_video_path %}
-                <div class="form-group">
-                  <label class="form-label">Fichier vidéo actuel</label>
-                  <div class="alert alert-info">
-                    <i class="fas fa-video me-2"></i>
-                    <strong>{{ ressource.fichier_video_nom_original or 'Fichier vidéo' }}</strong>
-                    <br>
-                    <small class="text-muted">Chemin: {{ ressource.fichier_video_path }}</small>
-                    <br>
-                    <a href="{{ url_for('serve_uploaded_file', file_path=ressource.fichier_video_path) }}" target="_blank" class="btn btn-sm btn-outline-primary mt-1">
-                      <i class="fas fa-play me-1"></i>Voir le fichier
+<div class="container-fluid p-4 page-content-wrapper">
+    <div class="row">
+        <div class="col-lg-12">
+            <div class="card modal-style-card">
+                <div class="card-header modal-style-header d-flex justify-content-between align-items-center">
+                    <h5 class="mb-0 modal-style-title">
+                        <i class="fas fa-{% if ressource %}edit{% else %}plus-circle{% endif %} me-2"></i>
+                        {% if ressource %}
+                            Modifier la ressource
+                        {% else %}
+                            Nouvelle ressource
+                        {% endif %}
+                    </h5>
+                    <a href="{{ return_url_final }}" class="btn btn-sm btn-outline-secondary">
+                        <i class="fas fa-arrow-left me-2"></i>Retour
                     </a>
-                  </div>
                 </div>
-                {% endif %}
-                
-                <!-- Option Upload -->
-                <div class="form-group">
-                  <label class="form-label">Ou uploader un fichier vidéo</label>
-                  <div class="file-upload-area" onclick="document.getElementById('videoFile').click()">
-                    <i class="fas fa-video fa-2x text-muted mb-2"></i>
-                    <p class="mb-0">Cliquez pour sélectionner une vidéo</p>
-                    <small class="text-muted">Formats supportés: MP4, AVI, MOV, WMV, FLV, WEBM (max 500 MB)</small>
-                    <input type="file" id="videoFile" name="fichier_video" accept="video/*" style="display: none;">
-                  </div>
-                  <div id="videoFilePreview" class="preview-area"></div>
-                </div>
-              </div>
+                <div class="card-body modal-style-body">
+                    {% if error %}
+                    <div class="alert alert-danger alert-dismissible fade show" role="alert">
+                        <i class="fas fa-exclamation-triangle me-2"></i>
+                        <strong>Erreur :</strong> {{ error }}
+                        <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+                    </div>
+                    {% endif %}
+                    
+                    <form method="post" enctype="multipart/form-data" id="ressourceForm" action="{% if ressource %}{{ url_for('elearning_ressource_edit', ressource_id=ressource.id) }}{% else %}{{ url_for('elearning_ressource_create') }}{% endif %}">
+                        {% if programme_param %}
+                        <input type="hidden" name="programme" value="{{ programme_param }}">
+                        {% endif %}
+                        
+                        <!-- Section Informations générales -->
+                        <div class="mb-4">
+                            <h5 class="section-title">
+                                <i class="fas fa-info-circle me-2"></i>
+                                Informations de base
+                            </h5>
 
-              <!-- Champs pour document -->
-              <div id="documentFields" class="type-fields">
-                <h6><i class="fas fa-file-pdf me-2"></i>Configuration document</h6>
-                
-                <!-- Option URL -->
-                <div class="form-group">
-                  <label class="form-label" for="url_contenu_document">URL du document (optionnel)</label>
-                  <input type="url" class="form-control" id="url_contenu_document" name="url_contenu_document" 
-                         value="{{ ressource.url_contenu_document if ressource else '' }}" 
-                         placeholder="https://example.com/document.pdf">
-                  <small class="text-muted">Utilisez cette option pour des documents hébergés en ligne</small>
+                                <div class="form-group">
+                                    <label class="form-label" for="titre">Titre de la ressource *</label>
+                                    <input type="text" class="form-control form-control-sm" id="titre" name="titre" 
+                                           value="{{ (ressource.titre or '') if ressource else '' }}" required
+                                           placeholder="Ex: Introduction à la programmation Python">
+                                </div>
+
+                                <div class="form-group">
+                                    <label class="form-label" for="description">Description</label>
+                                    <textarea class="form-control form-control-sm" id="description" name="description" rows="4"
+                                              placeholder="Décrivez le contenu de cette ressource, ses objectifs et ce que l'apprenant va apprendre...">{{ (ressource.description or '') if ressource else '' }}</textarea>
+                                </div>
+
+                                <div class="form-group">
+                                    <label class="form-label" for="difficulte">Niveau de difficulté</label>
+                                    <select class="form-select form-select-sm" id="difficulte" name="difficulte">
+                                        <option value="facile" {% if ressource and ressource.difficulte == 'facile' %}selected{% endif %}>🟢 Facile</option>
+                                        <option value="moyen" {% if ressource and ressource.difficulte == 'moyen' %}selected{% endif %}>🟡 Moyen</option>
+                                        <option value="difficile" {% if ressource and ressource.difficulte == 'difficile' %}selected{% endif %}>🔴 Difficile</option>
+                                    </select>
+                                </div>
+
+                                <div class="form-group">
+                                    <label class="form-label" for="tagInput">Tags (séparés par des virgules)</label>
+                                    <div class="tags-input" id="tagsContainer">
+                                        <input type="text" class="tag-input" id="tagInput" placeholder="Ajouter un tag...">
+                                    </div>
+                                    <input type="hidden" id="tags" name="tags" value="{{ (ressource.tags or '') if ressource else '' }}">
+                                    <small class="text-muted">Ex: programmation, python, débutant, tutoriel</small>
+                                </div>
+                        </div>
+
+                        <!-- Section Contenu -->
+                        <div class="mb-4">
+                            <h5 class="section-title">
+                                <i class="fas fa-file-alt me-2"></i>
+                                Configuration du contenu
+                            </h5>
+
+                                <div class="alert alert-light border">
+                                    <h6><i class="fas fa-lightbulb me-2"></i>Types de ressources disponibles</h6>
+                                    <div class="row">
+                                        <div class="col-md-6">
+                                            <ul class="list-unstyled mb-0">
+                                                <li><i class="fas fa-video text-primary me-2"></i><strong>Vidéo :</strong> Fichiers vidéo ou liens YouTube/Vimeo</li>
+                                                <li><i class="fas fa-file-pdf text-danger me-2"></i><strong>Document :</strong> PDF, Word, PowerPoint</li>
+                                                <li><i class="fas fa-question-circle text-warning me-2"></i><strong>Quiz :</strong> Questions à choix multiples</li>
+                                            </ul>
+                                        </div>
+                                        <div class="col-md-6">
+                                            <ul class="list-unstyled mb-0">
+                                                <li><i class="fas fa-external-link-alt text-info me-2"></i><strong>Lien :</strong> Liens vers des ressources externes</li>
+                                                <li><i class="fas fa-volume-up text-success me-2"></i><strong>Audio :</strong> Fichiers audio ou podcasts</li>
+                                            </ul>
+                                        </div>
+                                    </div>
+                                </div>
+
+                                <div id="typeSpecificFields" class="type-specific-fields">
+                                    <!-- Champs pour vidéo -->
+                                    <div id="videoFields" class="type-fields">
+                                        <h6><i class="fas fa-video me-2"></i>Configuration vidéo</h6>
+                                        
+                                        <div class="form-group">
+                                            <label class="form-label" for="url_contenu_video">URL de la vidéo (optionnel)</label>
+                                            <input type="url" class="form-control form-control-sm" id="url_contenu_video" name="url_contenu_video" 
+                                                   value="{{ (ressource.url_contenu_video or '') if ressource else '' }}" 
+                                                   placeholder="https://www.youtube.com/watch?v=... ou https://vimeo.com/...">
+                                            <small class="text-muted">Utilisez cette option pour des vidéos hébergées en ligne</small>
+                                        </div>
+                                        
+                                        {% if ressource and ressource.fichier_video_path %}
+                                        <div class="form-group">
+                                            <label class="form-label">Fichier vidéo actuel</label>
+                                            <div class="alert alert-info">
+                                                <i class="fas fa-video me-2"></i>
+                                                <strong>{{ ressource.fichier_video_nom_original or 'Fichier vidéo' }}</strong>
+                                                <br>
+                                                <small class="text-muted">Chemin: {{ ressource.fichier_video_path }}</small>
+                                            </div>
+                                        </div>
+                                        {% endif %}
+                                        
+                                        <div class="form-group">
+                                            <label class="form-label">Ou uploader un fichier vidéo</label>
+                                            <div class="file-upload-area" onclick="document.getElementById('videoFile').click()">
+                                                <i class="fas fa-video fa-2x text-muted mb-2"></i>
+                                                <p class="mb-0">Cliquez pour sélectionner une vidéo</p>
+                                                <small class="text-muted">Formats supportés: MP4, AVI, MOV, WMV, FLV, WEBM (max 500 MB)</small>
+                                                <input type="file" id="videoFile" name="fichier_video" accept="video/*" style="display: none;">
+                                            </div>
+                                        </div>
+                                    </div>
+
+                                    <!-- Champs pour document -->
+                                    <div id="documentFields" class="type-fields">
+                                        <h6><i class="fas fa-file-pdf me-2"></i>Configuration document</h6>
+                                        
+                                        <div class="form-group">
+                                            <label class="form-label" for="url_contenu_document">URL du document (optionnel)</label>
+                                            <input type="url" class="form-control form-control-sm" id="url_contenu_document" name="url_contenu_document" 
+                                                   value="{{ (ressource.url_contenu_document or '') if ressource else '' }}" 
+                                                   placeholder="https://example.com/document.pdf">
+                                            <small class="text-muted">Utilisez cette option pour des documents hébergés en ligne</small>
+                                        </div>
+                                        
+                                        {% if ressource and ressource.fichier_document_path %}
+                                        <div class="form-group">
+                                            <label class="form-label">Fichier document actuel</label>
+                                            <div class="alert alert-info">
+                                                <i class="fas fa-file-pdf me-2"></i>
+                                                <strong>{{ ressource.fichier_document_nom_original or 'Fichier document' }}</strong>
+                                                <br>
+                                                <small class="text-muted">Chemin: {{ ressource.fichier_document_path }}</small>
+                                            </div>
+                                        </div>
+                                        {% endif %}
+                                        
+                                        <div class="form-group">
+                                            <label class="form-label">Ou uploader un fichier document</label>
+                                            <div class="file-upload-area" onclick="document.getElementById('documentFile').click()">
+                                                <i class="fas fa-file-upload fa-2x text-muted mb-2"></i>
+                                                <p class="mb-0">Cliquez pour sélectionner un document</p>
+                                                <small class="text-muted">Formats supportés: PDF, DOC, DOCX, PPT, PPTX, TXT, RTF (max 50 MB)</small>
+                                                <input type="file" id="documentFile" name="fichier_document" accept=".pdf,.doc,.docx,.ppt,.pptx,.txt,.rtf" style="display: none;">
+                                            </div>
+                                        </div>
+                                    </div>
+
+                                    <!-- Champs pour quiz -->
+                                    <div id="quizFields" class="type-fields">
+                                        <h6><i class="fas fa-question-circle me-2"></i>Configuration quiz</h6>
+                                        <div class="form-group">
+                                            <label class="form-label" for="quizQuestions">Nombre de questions</label>
+                                            <input type="number" class="form-control form-control-sm" id="quizQuestions" name="quiz_questions" 
+                                                   value="{{ ressource.quiz_questions if ressource else 5 }}" min="1" max="50">
+                                        </div>
+                                        <div class="form-group">
+                                            <label class="form-label" for="quizTimeLimit">Limite de temps (minutes)</label>
+                                            <input type="number" class="form-control form-control-sm" id="quizTimeLimit" name="quiz_time_limit" 
+                                                   value="{{ ressource.quiz_time_limit if ressource else 30 }}" min="1">
+                                        </div>
+                                    </div>
+
+                                    <!-- Champs pour lien -->
+                                    <div id="lienFields" class="type-fields">
+                                        <h6><i class="fas fa-external-link-alt me-2"></i>Configuration lien</h6>
+                                        <div class="form-group">
+                                            <label class="form-label" for="url_contenu_lien">URL du lien</label>
+                                            <input type="url" class="form-control form-control-sm" id="url_contenu_lien" name="url_contenu_lien" 
+                                                   value="{{ (ressource.url_contenu_lien or '') if ressource else '' }}" 
+                                                   placeholder="https://example.com">
+                                        </div>
+                                        <div class="form-group">
+                                            <label class="form-check-label">
+                                                <input type="checkbox" class="form-check-input" name="ouvrir_nouvel_onglet" checked>
+                                                Ouvrir dans un nouvel onglet
+                                            </label>
+                                        </div>
+                                    </div>
+
+                                    <!-- Champs pour audio -->
+                                    <div id="audioFields" class="type-fields">
+                                        <h6><i class="fas fa-volume-up me-2"></i>Configuration audio</h6>
+                                        
+                                        <div class="form-group">
+                                            <label class="form-label" for="url_contenu_audio">URL du fichier audio (optionnel)</label>
+                                            <input type="url" class="form-control form-control-sm" id="url_contenu_audio" name="url_contenu_audio" 
+                                                   value="{{ (ressource.url_contenu_audio or '') if ressource else '' }}" 
+                                                   placeholder="https://example.com/audio.mp3">
+                                            <small class="text-muted">Utilisez cette option pour des fichiers audio hébergés en ligne</small>
+                                        </div>
+                                        
+                                        {% if ressource and ressource.fichier_audio_path %}
+                                        <div class="form-group">
+                                            <label class="form-label">Fichier audio actuel</label>
+                                            <div class="alert alert-info">
+                                                <i class="fas fa-volume-up me-2"></i>
+                                                <strong>{{ ressource.fichier_audio_nom_original or 'Fichier audio' }}</strong>
+                                                <br>
+                                                <small class="text-muted">Chemin: {{ ressource.fichier_audio_path }}</small>
+                                            </div>
+                                        </div>
+                                        {% endif %}
+                                        
+                                        <div class="form-group">
+                                            <label class="form-label">Ou uploader un fichier audio</label>
+                                            <div class="file-upload-area" onclick="document.getElementById('audioFile').click()">
+                                                <i class="fas fa-music fa-2x text-muted mb-2"></i>
+                                                <p class="mb-0">Cliquez pour sélectionner un fichier audio</p>
+                                                <small class="text-muted">Formats supportés: MP3, WAV, OGG, M4A, AAC (max 100 MB)</small>
+                                                <input type="file" id="audioFile" name="fichier_audio" accept="audio/*" style="display: none;">
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                        </div>
+
+                        <!-- Section Paramètres -->
+                        <div class="mb-4">
+                            <h5 class="section-title">
+                                <i class="fas fa-cog me-2"></i>
+                                Paramètres avancés
+                            </h5>
+
+                                <div class="form-row">
+                                    <div class="form-group">
+                                        <label class="form-label" for="duree_minutes">Durée estimée (minutes)</label>
+                                        <input type="number" class="form-control form-control-sm" id="duree_minutes" name="duree_minutes" 
+                                               value="{{ ressource.duree_minutes if ressource and ressource.duree_minutes is not none else '' }}" min="0"
+                                               placeholder="Ex: 30">
+                                        <small class="text-muted">Temps estimé pour compléter cette ressource</small>
+                                    </div>
+
+                                    <div class="form-group">
+                                        <label class="form-label" for="ordre">Ordre d'affichage</label>
+                                        <input type="number" class="form-control form-control-sm" id="ordre" name="ordre" 
+                                               value="{{ ressource.ordre if ressource and ressource.ordre is not none else 0 }}" min="0"
+                                               placeholder="Ex: 1">
+                                        <small class="text-muted">Position dans la liste des ressources</small>
+                                    </div>
+                                </div>
+
+                                <div class="form-group">
+                                    <div class="form-check">
+                                        <input class="form-check-input" type="checkbox" id="actif" name="actif" 
+                                               {% if not ressource or ressource.actif %}checked{% endif %}>
+                                        <label class="form-check-label" for="actif">
+                                            <i class="fas fa-check-circle text-success me-2"></i>
+                                            Ressource active et visible pour les apprenants
+                                        </label>
+                                    </div>
+                                    <small class="text-muted">Décochez pour désactiver temporairement cette ressource</small>
+                                </div>
+                        </div>
+
+                        <!-- Section Module (si applicable) -->
+                        {% if module_id %}
+                        <div class="mb-4">
+                            <h5 class="section-title">
+                                <i class="fas fa-book me-2"></i>
+                                Configuration du module
+                            </h5>
+
+                                <div class="alert alert-info">
+                                    <i class="fas fa-info-circle me-2"></i>
+                                    Cette ressource sera automatiquement ajoutée au module sélectionné.
+                                </div>
+
+                                <div class="form-group">
+                                    <div class="form-check">
+                                        <input class="form-check-input" type="checkbox" id="obligatoire" name="obligatoire" checked>
+                                        <label class="form-check-label" for="obligatoire">
+                                            <i class="fas fa-exclamation-circle text-warning me-2"></i>
+                                            Ressource obligatoire dans le module
+                                        </label>
+                                    </div>
+                                    <small class="text-muted">Les ressources obligatoires doivent être complétées pour valider le module</small>
+                                </div>
+
+                            <input type="hidden" name="module_id" value="{{ module_id }}">
+                            <input type="hidden" name="return_url" value="{{ return_url }}">
+                        </div>
+                        {% endif %}
+                    </form>
                 </div>
-                
-                <!-- Fichier document existant -->
-                {% if ressource and ressource.fichier_document_path %}
-                <div class="form-group">
-                  <label class="form-label">Fichier document actuel</label>
-                  <div class="alert alert-info">
-                    <i class="fas fa-file-pdf me-2"></i>
-                    <strong>{{ ressource.fichier_document_nom_original or 'Fichier document' }}</strong>
-                    <br>
-                    <small class="text-muted">Chemin: {{ ressource.fichier_document_path }}</small>
-                    <br>
-                    <a href="{{ url_for('serve_uploaded_file', file_path=ressource.fichier_document_path) }}" target="_blank" class="btn btn-sm btn-outline-primary mt-1">
-                      <i class="fas fa-file-pdf me-1"></i>Voir le fichier
+                <div class="card-footer modal-style-footer">
+                    <button type="submit" form="ressourceForm" class="btn btn-primary btn-sm">
+                        <i class="fas fa-save me-2"></i>
+                        {% if ressource %}Mettre à jour{% else %}Créer{% endif %}
+                    </button>
+                    <a href="{{ return_url_final }}" class="btn btn-secondary btn-sm">
+                        <i class="fas fa-times me-2"></i>
+                        Annuler
                     </a>
-                  </div>
                 </div>
-                {% endif %}
-                
-                <!-- Option Upload -->
-                <div class="form-group">
-                  <label class="form-label">Ou uploader un fichier document</label>
-                  <div class="file-upload-area" onclick="document.getElementById('documentFile').click()">
-                    <i class="fas fa-file-upload fa-2x text-muted mb-2"></i>
-                    <p class="mb-0">Cliquez pour sélectionner un document</p>
-                    <small class="text-muted">Formats supportés: PDF, DOC, DOCX, PPT, PPTX, TXT, RTF (max 50 MB)</small>
-                    <input type="file" id="documentFile" name="fichier_document" accept=".pdf,.doc,.docx,.ppt,.pptx,.txt,.rtf" style="display: none;">
-                  </div>
-                  <div id="documentFilePreview" class="preview-area"></div>
-                </div>
-              </div>
-
-              <!-- Champs pour quiz -->
-              <div id="quizFields" class="type-fields">
-                <h6><i class="fas fa-question-circle me-2"></i>Configuration quiz</h6>
-                <div class="form-group">
-                  <label class="form-label" for="quizQuestions">Nombre de questions</label>
-                  <input type="number" class="form-control" id="quizQuestions" name="quiz_questions" 
-                         value="{{ ressource.quiz_questions if ressource else 5 }}" min="1" max="50">
-                </div>
-                <div class="form-group">
-                  <label class="form-label" for="quizTimeLimit">Limite de temps (minutes)</label>
-                  <input type="number" class="form-control" id="quizTimeLimit" name="quiz_time_limit" 
-                         value="{{ ressource.quiz_time_limit if ressource else 30 }}" min="1">
-                </div>
-              </div>
-
-              <!-- Champs pour lien -->
-              <div id="lienFields" class="type-fields">
-                <h6><i class="fas fa-external-link-alt me-2"></i>Configuration lien</h6>
-                <div class="form-group">
-                  <label class="form-label" for="lienUrl">URL du lien</label>
-                  <input type="url" class="form-control" id="url_contenu_lien" name="url_contenu_lien" 
-                         value="{{ ressource.url_contenu_lien if ressource else '' }}" 
-                         placeholder="https://example.com">
-                </div>
-                <div class="form-group">
-                  <label class="form-check-label">
-                    <input type="checkbox" class="form-check-input" name="ouvrir_nouvel_onglet" checked>
-                    Ouvrir dans un nouvel onglet
-                  </label>
-                </div>
-              </div>
-
-              <!-- Champs pour audio -->
-              <div id="audioFields" class="type-fields">
-                <h6><i class="fas fa-volume-up me-2"></i>Configuration audio</h6>
-                
-                <!-- Option URL -->
-                <div class="form-group">
-                  <label class="form-label" for="url_contenu_audio">URL du fichier audio (optionnel)</label>
-                  <input type="url" class="form-control" id="url_contenu_audio" name="url_contenu_audio" 
-                         value="{{ ressource.url_contenu_audio if ressource else '' }}" 
-                         placeholder="https://example.com/audio.mp3">
-                  <small class="text-muted">Utilisez cette option pour des fichiers audio hébergés en ligne</small>
-                </div>
-                
-                <!-- Fichier audio existant -->
-                {% if ressource and ressource.fichier_audio_path %}
-                <div class="form-group">
-                  <label class="form-label">Fichier audio actuel</label>
-                  <div class="alert alert-info">
-                    <i class="fas fa-volume-up me-2"></i>
-                    <strong>{{ ressource.fichier_audio_nom_original or 'Fichier audio' }}</strong>
-                    <br>
-                    <small class="text-muted">Chemin: {{ ressource.fichier_audio_path }}</small>
-                    <br>
-                    <a href="{{ url_for('serve_uploaded_file', file_path=ressource.fichier_audio_path) }}" target="_blank" class="btn btn-sm btn-outline-primary mt-1">
-                      <i class="fas fa-play me-1"></i>Écouter le fichier
-                    </a>
-                  </div>
-                </div>
-                {% endif %}
-                
-                <!-- Option Upload -->
-                <div class="form-group">
-                  <label class="form-label">Ou uploader un fichier audio</label>
-                  <div class="file-upload-area" onclick="document.getElementById('audioFile').click()">
-                    <i class="fas fa-music fa-2x text-muted mb-2"></i>
-                    <p class="mb-0">Cliquez pour sélectionner un fichier audio</p>
-                    <small class="text-muted">Formats supportés: MP3, WAV, OGG, M4A, AAC (max 100 MB)</small>
-                    <input type="file" id="audioFile" name="fichier_audio" accept="audio/*" style="display: none;">
-                  </div>
-                  <div id="audioFilePreview" class="preview-area"></div>
-                </div>
-              </div>
             </div>
-          </div>
-
-          <!-- Onglet Paramètres -->
-          <div class="tab-pane fade" id="settings" role="tabpanel" aria-labelledby="settings-tab" tabindex="0">
-            <div class="progress-indicator">
-              <i class="fas fa-cog"></i>
-              <span>Étape 3/{{ 4 if module_id else 3 }} : Paramètres avancés</span>
-              <div class="progress-step"></div>
-              <div class="progress-step"></div>
-              <div class="progress-step active"></div>
-              {% if module_id %}<div class="progress-step"></div>{% endif %}
-            </div>
-
-            <h5 class="section-title">
-              <i class="fas fa-cog me-2"></i>
-              Paramètres avancés
-            </h5>
-
-            <div class="form-row">
-              <div class="form-group">
-                <label class="form-label" for="duree_minutes">Durée estimée (minutes)</label>
-                <input type="number" class="form-control" id="duree_minutes" name="duree_minutes" 
-                       value="{{ ressource.duree_minutes if ressource else '' }}" min="0"
-                       placeholder="Ex: 30">
-                <small class="text-muted">Temps estimé pour compléter cette ressource</small>
-              </div>
-
-              <div class="form-group">
-                <label class="form-label" for="ordre">Ordre d'affichage</label>
-                <input type="number" class="form-control" id="ordre" name="ordre" 
-                       value="{{ ressource.ordre if ressource else 0 }}" min="0"
-                       placeholder="Ex: 1">
-                <small class="text-muted">Position dans la liste des ressources</small>
-              </div>
-            </div>
-
-            <div class="form-group">
-              <label class="form-label" for="actif">Statut de la ressource</label>
-              <div class="form-check">
-                <input class="form-check-input" type="checkbox" id="actif" name="actif" 
-                       {% if not ressource or ressource.actif %}checked{% endif %}>
-                <label class="form-check-label" for="actif">
-                  <i class="fas fa-check-circle text-success me-2"></i>
-                  Ressource active et visible pour les apprenants
-                </label>
-              </div>
-              <small class="text-muted">Décochez pour désactiver temporairement cette ressource</small>
-            </div>
-          </div>
-
-          <!-- Onglet Module (si applicable) -->
-          {% if module_id %}
-          <div class="tab-pane fade" id="module" role="tabpanel" aria-labelledby="module-tab" tabindex="0">
-            <div class="progress-indicator">
-              <i class="fas fa-book"></i>
-              <span>Étape 4/4 : Configuration du module</span>
-              <div class="progress-step"></div>
-              <div class="progress-step"></div>
-              <div class="progress-step"></div>
-              <div class="progress-step active"></div>
-            </div>
-
-            <h5 class="section-title">
-              <i class="fas fa-book me-2"></i>
-              Configuration du module
-            </h5>
-
-            <div class="alert alert-info">
-              <i class="fas fa-info-circle me-2"></i>
-              Cette ressource sera automatiquement ajoutée au module sélectionné.
-            </div>
-
-            <div class="form-group">
-              <label class="form-label" for="obligatoire">Type de ressource dans le module</label>
-              <div class="form-check">
-                <input class="form-check-input" type="checkbox" id="obligatoire" name="obligatoire" checked>
-                <label class="form-check-label" for="obligatoire">
-                  <i class="fas fa-exclamation-circle text-warning me-2"></i>
-                  Ressource obligatoire dans le module
-                </label>
-              </div>
-              <small class="text-muted">Les ressources obligatoires doivent être complétées pour valider le module</small>
-            </div>
-
-            <!-- Champs cachés pour l'association au module -->
-            <input type="hidden" name="module_id" value="{{ module_id }}">
-            <input type="hidden" name="return_url" value="{{ return_url }}">
-          </div>
-          {% endif %}
         </div>
-
-        <!-- Actions du formulaire -->
-        <div class="form-actions">
-          <button type="submit" class="btn-submit">
-            <i class="fas fa-save me-2 btn-submit-icon"></i>
-            {% if ressource %}Mettre à jour{% else %}Créer{% endif %}
-          </button>
-            <button class="btn-cancel" onclick="window.location.href='{% if return_url %}{{ url_for('elearning_module_detail', module_id=module_id) }}{% else %}{{ url_for('elearning_modules') }}{% endif %}'">
-              <i class="fas fa-times me-2 btn-cancel-icon"></i>
-              Annuler
-            </button>
-        </div>
-  </form>
+    </div>
 </div>
-  </div>
-<!--</div>-->
 
 <script>
-// Gestion des onglets et progression
+// Initialisation du formulaire
 document.addEventListener('DOMContentLoaded', function() {
-  // Initialiser les onglets
-  initializeTabs();
-  
-  // Initialiser les champs spécifiques si une ressource existe
-  const typeSelect = document.getElementById('type_ressource');
-  if (typeSelect && typeSelect.value) {
-    typeSelect.dispatchEvent(new Event('change'));
-  }
-  
-  // Mettre à jour l'indicateur de progression
-  updateProgressIndicator();
-});
-
-// Fonction pour initialiser les onglets (Bootstrap gère déjà les onglets)
-function initializeTabs() {
-  // Bootstrap gère automatiquement les onglets avec data-bs-toggle="tab"
-  // On ajoute juste un listener pour mettre à jour la progression
-  const tabButtons = document.querySelectorAll('#ressourceTabs button[data-bs-toggle="tab"]');
-  
-  tabButtons.forEach(button => {
-    button.addEventListener('shown.bs.tab', function() {
-      // Mettre à jour l'indicateur de progression quand un onglet est affiché
-      updateProgressIndicator();
-    });
-  });
-}
-
-// Plus besoin de gestion du type de ressource - tous les champs sont visibles
-// Fonction pour mettre à jour l'indicateur de progression
-function updateProgressIndicator() {
-  const activeTab = document.querySelector('#ressourceTabs .nav-link.active');
-  const progressSteps = document.querySelectorAll('.progress-step');
-  
-  // Réinitialiser tous les steps
-  progressSteps.forEach(step => step.classList.remove('active'));
-  
-  // Activer les steps selon l'onglet actif
-  if (activeTab) {
-    const tabId = activeTab.getAttribute('data-bs-target');
-    const stepIndex = getStepIndex(tabId);
-    
-    for (let i = 0; i <= stepIndex; i++) {
-      if (progressSteps[i]) {
-        progressSteps[i].classList.add('active');
-      }
-    }
-  }
-}
-
-// Fonction pour obtenir l'index de l'étape selon l'onglet
-function getStepIndex(tabId) {
-  const stepMap = {
-    '#general': 0,
-    '#ressource-content': 1,
-    '#settings': 2,
-    '#module': 3
-  };
-  return stepMap[tabId] || 0;
-}
-
-// Fonction pour passer à un onglet spécifique (utilise Bootstrap)
-function switchToTab(tabName) {
-  const tabButton = document.getElementById(tabName + '-tab');
-  if (tabButton) {
-    // Utiliser Bootstrap pour basculer vers l'onglet
-    const tab = new bootstrap.Tab(tabButton);
-    tab.show();
-  }
-}
-
-// Validation du formulaire par onglets
-function validateTab(tabName) {
-  const tabPane = document.getElementById(tabName);
-  if (!tabPane) return true;
-  
-  const requiredFields = tabPane.querySelectorAll('[required]');
-  let isValid = true;
-  
-  requiredFields.forEach(field => {
-    if (!field.value.trim()) {
-      field.classList.add('is-invalid');
-      isValid = false;
-    } else {
-      field.classList.remove('is-invalid');
-    }
-  });
-  
-  return isValid;
-}
-
-// Gestion de la soumission du formulaire
-document.getElementById('ressourceForm').addEventListener('submit', function(e) {
-  console.log("🔥 FORMULAIRE SOUMIS - Validation désactivée temporairement");
-  // VALIDATION TEMPORAIREMENT DÉSACTIVÉE POUR TEST
-  // Valider tous les onglets avant soumission
-  const tabs = ['general', 'content', 'settings'];
-  if (document.getElementById('module')) tabs.push('module');
-  
-  let allValid = true;
-  tabs.forEach(tab => {
-    if (!validateTab(tab)) {
-      allValid = false;
-    }
-  });
-  
-  // DÉSACTIVÉ TEMPORAIREMENT POUR TEST
-  // if (!allValid) {
-  //   e.preventDefault();
-  //   alert('Veuillez remplir tous les champs obligatoires dans tous les onglets.');
-  //   
-  //   // Passer au premier onglet avec des erreurs
-  //   tabs.forEach(tab => {
-  //     const tabPane = document.getElementById(tab);
-  //     if (tabPane && tabPane.querySelector('.is-invalid')) {
-  //       switchToTab(tab);
-  //       return false;
-  //     }
-  //   });
-  // }
-});
+    console.log('✅ Formulaire de ressource initialisé');
 
 // Gestion des tags
-const tagsContainer = document.getElementById('tagsContainer');
 const tagInput = document.getElementById('tagInput');
+const tagsContainer = document.getElementById('tagsContainer');
 const tagsHidden = document.getElementById('tags');
+let tags = [];
 
-// Charger les tags existants
-function loadExistingTags() {
-  const existingTags = tagsHidden.value.split(',').filter(tag => tag.trim());
-  existingTags.forEach(tag => addTag(tag.trim()));
-}
-
-function addTag(tagText) {
-  if (!tagText.trim()) return;
-  
-  const tag = document.createElement('div');
-  tag.className = 'tag';
-  tag.innerHTML = `
-    ${tagText}
-    <span class="tag-remove" onclick="removeTag(this)">&times;</span>
-  `;
-  
-  tagsContainer.insertBefore(tag, tagInput);
-  updateTagsHidden();
-}
-
-function removeTag(element) {
-  element.parentElement.remove();
-  updateTagsHidden();
-}
-
-function updateTagsHidden() {
-  const tags = Array.from(tagsContainer.querySelectorAll('.tag'))
-    .map(tag => tag.textContent.replace('×', '').trim())
-    .filter(tag => tag);
-  tagsHidden.value = tags.join(',');
-}
-
-tagInput.addEventListener('keypress', function(e) {
-  if (e.key === 'Enter' || e.key === ',') {
-    e.preventDefault();
-    addTag(this.value);
-    this.value = '';
-  }
-});
-
-tagInput.addEventListener('blur', function() {
-  if (this.value.trim()) {
-    addTag(this.value);
-    this.value = '';
-  }
-});
-
-// Charger les tags existants au chargement de la page
-loadExistingTags();
-
-// Gestion du drag & drop pour les fichiers
-function setupDragDrop(area, input) {
-  area.addEventListener('dragover', function(e) {
-    e.preventDefault();
-    this.classList.add('dragover');
-  });
-
-  area.addEventListener('dragleave', function(e) {
-    e.preventDefault();
-    this.classList.remove('dragover');
-  });
-
-  area.addEventListener('drop', function(e) {
-    e.preventDefault();
-    this.classList.remove('dragover');
+// Fonction pour rendre les tags
+function renderTags() {
+    if (!tagsContainer) return;
     
-    const files = e.dataTransfer.files;
-    if (files.length > 0) {
-      input.files = files;
-      updateFilePreview(input);
-    }
-  });
-}
-
-// Configurer le drag & drop pour tous les inputs de fichier
-console.log("🔥 INITIALISATION: Recherche des inputs de fichier...");
-document.querySelectorAll('input[type="file"]').forEach(input => {
-  console.log("🔥 INPUT TROUVÉ:", input.name, input.id);
-  let area = input.closest('.file-upload-area');
-  if (!area) area = input.closest('.form-group') || input.parentElement;
-  setupDragDrop(area, input);
-  
-  input.addEventListener('change', function() {
-    console.log("🔥 FICHIER SÉLECTIONNÉ:", this.name, this.files[0]?.name);
-    updateFilePreview(this);
-    // Masquer l'URL si un fichier est sélectionné
-    toggleUrlField(this);
-  });
-  
-  // Ajouter un événement de clic sur la zone pour debug
-  if (area) {
-    area.addEventListener('click', function(e) {
-      console.log("🔥 CLIC SUR ZONE:", input.name, "Zone:", area.className);
+    tagsContainer.innerHTML = '';
+    tags.forEach((tag, index) => {
+        const tagElement = document.createElement('span');
+        tagElement.className = 'tag';
+        tagElement.innerHTML = `${tag} <span class="tag-remove" onclick="removeTag(${index})">×</span>`;
+        tagsContainer.appendChild(tagElement);
     });
-  }
-});
-
-// Fonction pour masquer/afficher le champ URL selon le type de ressource
-function toggleUrlField(fileInput) {
-  const section = fileInput.closest('.type-fields');
-  if (!section) return;
-  const urlInput = section.querySelector('input[type="url"]');
-  if (!urlInput) return;
-  const urlGroup = urlInput.closest('.form-group');
-  if (!urlGroup) return;
-  urlGroup.style.display = fileInput.files && fileInput.files.length > 0 ? 'none' : 'block';
+    
+    const input = document.createElement('input');
+    input.type = 'text';
+    input.className = 'tag-input';
+    input.id = 'tagInput';
+    input.placeholder = 'Ajouter un tag...';
+    input.addEventListener('keypress', function(e) {
+        if (e.key === 'Enter') {
+            e.preventDefault();
+            const tag = input.value.trim();
+            if (tag && !tags.includes(tag)) {
+                tags.push(tag);
+                input.value = '';
+                renderTags();
+            }
+        }
+    });
+    tagsContainer.appendChild(input);
+    
+    if (tagsHidden) {
+        tagsHidden.value = tags.join(',');
+    }
 }
 
-// Plus besoin de gestion du type de ressource - tous les champs sont visibles
-function updateFilePreview(input) {
-  const fileType = input.id.replace('File', ''); // video, document, audio
-  const area = input.closest('.file-upload-area');
-  
-  if (input.files.length > 0) {
-    const file = input.files[0];
+// Fonction pour supprimer un tag
+function removeTag(index) {
+    tags.splice(index, 1);
+    renderTags();
+}
+
+// Charger les tags existants depuis le champ caché
+if (tagsHidden && tagsHidden.value && tagsHidden.value.trim() !== '') {
+    tags = tagsHidden.value.split(',').map(t => t.trim()).filter(t => t !== '');
+    renderTags();
+}
+
+// Ajouter l'écouteur d'événement sur le champ de saisie initial
+if (tagInput) {
+    tagInput.addEventListener('keypress', function(e) {
+        if (e.key === 'Enter') {
+            e.preventDefault();
+            const tag = tagInput.value.trim();
+            if (tag && !tags.includes(tag)) {
+                tags.push(tag);
+                tagInput.value = '';
+                renderTags();
+            }
+        }
+    });
+}
+
+// Gestion de l'upload de fichiers
+const fileUploadConfig = {
+    'videoFile': { icon: 'fa-video', type: 'vidéo' },
+    'documentFile': { icon: 'fa-file-pdf', type: 'document' },
+    'audioFile': { icon: 'fa-music', type: 'audio' }
+};
+
+Object.keys(fileUploadConfig).forEach(fileId => {
+    const fileInput = document.getElementById(fileId);
+    if (fileInput) {
+        fileInput.addEventListener('change', function(e) {
+            const file = e.target.files[0];
+            if (file) {
+                showFilePreview(fileId, file);
+            }
+        });
+    }
+});
+
+function showFilePreview(fileId, file) {
+    const fileInput = document.getElementById(fileId);
+    if (!fileInput) {
+        console.error(`❌ [DEBUG] Input file non trouvé: ${fileId}`);
+        return;
+    }
     
-    if (area) {
-      // Ajouter la prévisualisation SANS supprimer l'input original
-      area.innerHTML = `
-        <div class="file-preview-content">
-          <div class="file-icon">
-            ${getFileIcon(fileType, file.name)}
-          </div>
-          <div class="file-info">
-            <div class="file-name">${file.name}</div>
-            <div class="file-size">${formatFileSize(file.size)}</div>
-          </div>
-          <div class="file-actions">
-            <button type="button" class="btn btn-sm btn-outline-primary" onclick="document.getElementById('${input.id}').click()">
-              <i class="fas fa-edit"></i> Changer
-            </button>
-            <button type="button" class="btn btn-sm btn-outline-danger" onclick="clearFile('${input.id}')">
-              <i class="fas fa-times"></i> Supprimer
-            </button>
-          </div>
+    // Trouver la zone d'upload parente (l'input est directement dans .file-upload-area)
+    const uploadArea = fileInput.closest('.file-upload-area');
+    if (!uploadArea) {
+        console.error(`❌ [DEBUG] Zone d'upload non trouvée pour: ${fileId}`);
+        return;
+    }
+    
+    console.log(`✅ [DEBUG] Fichier sélectionné: ${file.name} (${(file.size / 1024 / 1024).toFixed(2)} MB)`);
+    
+    const fileSize = (file.size / 1024 / 1024).toFixed(2);
+    const config = fileUploadConfig[fileId] || { icon: 'fa-file', type: 'fichier' };
+    
+    // Sauvegarder le contenu original pour pouvoir le restaurer si nécessaire
+    if (!uploadArea.dataset.originalContent) {
+        uploadArea.dataset.originalContent = uploadArea.innerHTML;
+    }
+    
+    // Remplacer le contenu de la zone d'upload par la prévisualisation
+    // On garde l'input file dans le DOM mais on le cache
+    uploadArea.innerHTML = `
+        <input type="file" id="${fileId}" name="${fileInput.name}" accept="${fileInput.accept}" style="display: none;">
+        <div class="file-preview-content" style="display: flex; align-items: center; gap: 1rem; padding: 1rem; background: #f8f9fa; border-radius: 8px; border: 2px dashed #28a745;">
+            <div class="file-icon">
+                <i class="fas ${config.icon} fa-3x text-primary"></i>
+            </div>
+            <div class="file-info" style="flex-grow: 1;">
+                <div class="file-name" style="font-weight: 600; color: #333; margin-bottom: 0.25rem;">${file.name}</div>
+                <div class="file-size" style="font-size: 0.875rem; color: #666;">${fileSize} MB</div>
+            </div>
+            <div class="file-actions" style="display: flex; gap: 0.5rem;">
+                <button type="button" class="btn btn-sm btn-outline-danger" onclick="removeFilePreview('${fileId}')" title="Supprimer">
+                    <i class="fas fa-times"></i>
+                </button>
+                <button type="button" class="btn btn-sm btn-outline-secondary" onclick="document.getElementById('${fileId}').click()" title="Changer de fichier">
+                    <i class="fas fa-edit"></i>
+                </button>
+            </div>
         </div>
-      `;
-      
-      // Réattacher l'input original (caché) à la zone
-      area.appendChild(input);
-      
-      // Réattacher les événements de drag & drop
-      setupDragDrop(area, input);
+    `;
+    
+    // Réattacher l'événement change au nouvel input
+    const newFileInput = document.getElementById(fileId);
+    if (newFileInput) {
+        // Transférer le fichier sélectionné au nouvel input
+        const dataTransfer = new DataTransfer();
+        dataTransfer.items.add(file);
+        newFileInput.files = dataTransfer.files;
+        
+        // Réattacher l'événement change
+        newFileInput.addEventListener('change', function(e) {
+            const newFile = e.target.files[0];
+            if (newFile) {
+                showFilePreview(fileId, newFile);
+            }
+        });
     }
-  } else {
-    // Restaurer le contenu original de la zone
-    restoreOriginalArea(area, fileType);
-  }
+    
+    // Changer le style de la zone d'upload pour indiquer qu'un fichier est sélectionné
+    uploadArea.style.borderColor = '#28a745';
+    uploadArea.style.background = '#f0f9ff';
+    uploadArea.style.cursor = 'default';
+    
+    // Désactiver le clic sur toute la zone (seuls les boutons sont cliquables)
+    uploadArea.onclick = null;
 }
 
-function getFileIcon(fileType, fileName) {
-  const extension = fileName.split('.').pop().toLowerCase();
-  
-  if (fileType === 'video' || ['mp4', 'avi', 'mov', 'wmv', 'flv', 'webm'].includes(extension)) {
-    return '<i class="fas fa-video fa-3x text-primary"></i>';
-  } else if (fileType === 'audio' || ['mp3', 'wav', 'ogg', 'm4a', 'aac'].includes(extension)) {
-    return '<i class="fas fa-music fa-3x text-success"></i>';
-  } else if (fileType === 'document' || ['pdf', 'doc', 'docx', 'ppt', 'pptx', 'txt', 'rtf'].includes(extension)) {
-    if (extension === 'pdf') {
-      return '<i class="fas fa-file-pdf fa-3x text-danger"></i>';
-    } else if (['doc', 'docx'].includes(extension)) {
-      return '<i class="fas fa-file-word fa-3x text-primary"></i>';
-    } else if (['ppt', 'pptx'].includes(extension)) {
-      return '<i class="fas fa-file-powerpoint fa-3x text-warning"></i>';
-    } else {
-      return '<i class="fas fa-file-alt fa-3x text-info"></i>';
+function removeFilePreview(fileId) {
+    const fileInput = document.getElementById(fileId);
+    if (!fileInput) return;
+    
+    // Trouver la zone d'upload parente
+    const uploadArea = fileInput.closest('.file-upload-area');
+    if (!uploadArea) return;
+    
+    // Réinitialiser l'input file
+    fileInput.value = '';
+    
+    // Restaurer le contenu original
+    if (uploadArea.dataset.originalContent) {
+        uploadArea.innerHTML = uploadArea.dataset.originalContent;
+        
+        // Réattacher l'événement change au nouvel input
+        const newFileInput = document.getElementById(fileId);
+        if (newFileInput) {
+            newFileInput.addEventListener('change', function(e) {
+                const file = e.target.files[0];
+                if (file) {
+                    showFilePreview(fileId, file);
+                }
+            });
+        }
+        
+        // Réattacher le clic sur la zone
+        uploadArea.onclick = function() {
+            document.getElementById(fileId).click();
+        };
     }
-  }
-  
-  return '<i class="fas fa-file fa-3x text-muted"></i>';
+    
+    // Restaurer les styles
+    uploadArea.style.borderColor = '';
+    uploadArea.style.background = '';
+    uploadArea.style.cursor = 'pointer';
 }
 
-function restoreOriginalArea(area, fileType) {
-  if (!area) return;
-  
-  const icons = {
-    video: '<i class="fas fa-video fa-2x text-muted mb-2"></i>',
-    document: '<i class="fas fa-file-upload fa-2x text-muted mb-2"></i>',
-    audio: '<i class="fas fa-music fa-2x text-muted mb-2"></i>'
-  };
-  
-  const texts = {
-    video: 'Cliquez pour sélectionner une vidéo',
-    document: 'Cliquez pour sélectionner un document',
-    audio: 'Cliquez pour sélectionner un fichier audio'
-  };
-  
-  const accepts = {
-    video: 'video/*',
-    document: '.pdf,.doc,.docx,.ppt,.pptx,.txt,.rtf',
-    audio: 'audio/*'
-  };
-  
-  const descriptions = {
-    video: 'Formats supportés: MP4, AVI, MOV, WMV, FLV, WEBM (max 500 MB)',
-    document: 'Formats supportés: PDF, DOC, DOCX, PPT, PPTX, TXT, RTF (max 50 MB)',
-    audio: 'Formats supportés: MP3, WAV, OGG, M4A, AAC (max 100 MB)'
-  };
-  
-  area.innerHTML = `
-    ${icons[fileType]}
-    <p class="mb-0">${texts[fileType]}</p>
-    <small class="text-muted">${descriptions[fileType]}</small>
-    <input type="file" id="${fileType}File" name="fichier_${fileType}" accept="${accepts[fileType]}" style="display: none;">
-  `;
-  
-  // Réattacher les événements
-  const input = area.querySelector('input[type="file"]');
-  if (input) {
-    setupDragDrop(area, input);
-    input.addEventListener('change', function() {
-      updateFilePreview(this);
-      toggleUrlField(this);
+// Ajouter l'overlay global au formulaire de ressource
+const ressourceForm = document.getElementById('ressourceForm');
+const submitBtn = document.querySelector('button[type="submit"][form="ressourceForm"]');
+
+if (ressourceForm && submitBtn) {
+    ressourceForm.addEventListener('submit', function(e) {
+        // Validation basique
+        const titre = document.getElementById('titre');
+        if (titre && titre.value.trim().length < 3) {
+            e.preventDefault();
+            alert('Le titre de la ressource doit contenir au moins 3 caractères.');
+            return false;
+        }
+        
+        // Afficher l'overlay global
+        if (typeof showGlobalLoading === 'function') {
+            const actionText = ressourceForm.action.includes('edit') ? 'Modification' : 'Création';
+            showGlobalLoading(
+                `${actionText} de la ressource`,
+                'Traitement en cours, veuillez patienter...'
+            );
+        }
+        
+        // Désactiver le bouton et afficher un spinner
+        submitBtn.disabled = true;
+        const originalHtml = submitBtn.innerHTML;
+        submitBtn.innerHTML = '<i class="fas fa-spinner fa-spin me-2"></i>Traitement...';
+        
+        // Timeout de sécurité pour masquer l'overlay après 30 secondes (upload de fichiers peut prendre du temps)
+        setTimeout(function() {
+            if (typeof hideGlobalLoading === 'function') {
+                hideGlobalLoading();
+            }
+            submitBtn.disabled = false;
+            submitBtn.innerHTML = originalHtml;
+        }, 30000);
     });
-  }
 }
 
-function clearFile(inputId) {
-  const input = document.getElementById(inputId);
-  if (input) {
-    input.value = '';
-    updateFilePreview(input);
-    toggleUrlField(input);
-  }
-}
+// Ajouter l'overlay global aux liens de navigation e-learning
+const navLinks = document.querySelectorAll('a[href*="/elearning/"]');
+navLinks.forEach(function(link) {
+    const href = link.getAttribute('href');
+    // Ignorer les liens externes et les ancres
+    if (href && !href.startsWith('http') && !href.startsWith('#')) {
+        link.addEventListener('click', function(e) {
+            // Ne pas intercepter si Ctrl/Cmd est pressé (nouvel onglet)
+            if (e.ctrlKey || e.metaKey) return;
+            
+            // Afficher l'overlay global
+            if (typeof showGlobalLoading === 'function') {
+                showGlobalLoading('Chargement', 'Veuillez patienter...');
+            }
+        });
+    }
+});
 
-function formatFileSize(bytes) {
-  if (bytes === 0) return '0 Bytes';
-  const k = 1024;
-  const sizes = ['Bytes', 'KB', 'MB', 'GB'];
-  const i = Math.floor(Math.log(bytes) / Math.log(k));
-  return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + ' ' + sizes[i];
-}
-
+}); // Fermeture de document.addEventListener('DOMContentLoaded', function() {
 </script>
 {% endblock %}

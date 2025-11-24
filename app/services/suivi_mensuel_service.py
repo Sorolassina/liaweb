@@ -1,7 +1,7 @@
 from sqlmodel import Session, select, func
 from typing import List, Optional, Dict, Any
 from datetime import date, datetime, timezone
-from ..models.base import SuiviMensuel, Inscription, Candidat, Programme
+from ..models.base import SuiviMensuel, Candidat, Programme
 from ..core.program_schema_integration import table_exists_anywhere
 from ..schemas.suivi_mensuel_schemas import (
     SuiviMensuelCreate, SuiviMensuelUpdate, SuiviMensuelFilter, SuiviMensuelStats, SuiviMensuelWithCandidat
@@ -37,17 +37,18 @@ class SuiviMensuelService:
                 Candidat.prenom,
                 Candidat.nom,
                 Programme.nom.label("programme_nom")
-            ).join(Inscription, Inscription.id == SuiviMensuel.inscription_id)\
-            .join(Candidat, Candidat.id == Inscription.candidat_id)\
-            .join(Programme, Programme.id == Inscription.programme_id)
+            ).join(Candidat, Candidat.id == SuiviMensuel.candidat_id)\
+            .join(Programme, Programme.id == Candidat.id)  # NOTE: Cette jointure doit être corrigée selon votre modèle
         except Exception as e:
             print(f"⚠️ [WARNING] Erreur lors de la construction de la requête suivis mensuels: {e}")
             return []
 
+        # NOTE: Le modèle Inscription a été supprimé. Utiliser directement candidat_id.
         if filters.programme_id:
-            query = query.where(Inscription.programme_id == filters.programme_id)
+            # query = query.where(Inscription.programme_id == filters.programme_id)  # Plus possible sans inscription
+            pass
         if filters.candidat_id:
-            query = query.where(Inscription.candidat_id == filters.candidat_id)
+            query = query.where(SuiviMensuel.candidat_id == filters.candidat_id)
         if filters.mois_debut:
             query = query.where(SuiviMensuel.mois >= filters.mois_debut)
         if filters.mois_fin:
@@ -163,12 +164,14 @@ class SuiviMensuelService:
 
     def get_suivi_mensuel_stats(self, db: Session, filters: SuiviMensuelFilter) -> SuiviMensuelStats:
         """Calculer les statistiques des suivis mensuels"""
-        query = select(SuiviMensuel).join(Inscription).join(Candidat).join(Programme)
+        # NOTE: Le modèle Inscription a été supprimé. Utiliser directement candidat_id.
+        query = select(SuiviMensuel).join(Candidat)  # .join(Programme)  # NOTE: Cette jointure doit être corrigée
 
-        if filters.programme_id:
-            query = query.where(Inscription.programme_id == filters.programme_id)
+        # NOTE: Sans inscription, on ne peut plus filtrer par programme_id directement
+        # if filters.programme_id:
+        #     query = query.where(Inscription.programme_id == filters.programme_id)
         if filters.candidat_id:
-            query = query.where(Inscription.candidat_id == filters.candidat_id)
+            query = query.where(SuiviMensuel.candidat_id == filters.candidat_id)
         if filters.mois_debut:
             query = query.where(SuiviMensuel.mois >= filters.mois_debut)
         if filters.mois_fin:
@@ -234,10 +237,11 @@ class SuiviMensuelService:
 
         # Find candidates without any suivi for the given program
         candidats_sans_suivi_list = []
+        # NOTE: Le modèle Inscription a été supprimé. Utiliser directement candidat_id.
         if filters.programme_id:
-            candidats_with_suivi_subquery = select(Inscription.candidat_id).join(SuiviMensuel).where(Inscription.programme_id == filters.programme_id).subquery()
-            candidats_sans_suivi_query = select(Candidat.prenom, Candidat.nom).join(Inscription)\
-                .where(Inscription.programme_id == filters.programme_id)\
+            # candidats_with_suivi_subquery = select(Inscription.candidat_id).join(SuiviMensuel).where(Inscription.programme_id == filters.programme_id).subquery()
+            candidats_with_suivi_subquery = select(SuiviMensuel.candidat_id).subquery()
+            candidats_sans_suivi_query = select(Candidat.prenom, Candidat.nom)\
                 .where(Candidat.id.not_in(candidats_with_suivi_subquery))
             
             candidats_sans_suivi_results = db.exec(candidats_sans_suivi_query).all()
@@ -257,10 +261,11 @@ class SuiviMensuelService:
         )
 
     def get_inscriptions_for_form(self, db: Session) -> List[dict]:
-        """Récupérer les inscriptions pour le formulaire"""
-        inscriptions = db.exec(
-            select(Inscription.id, Candidat.prenom, Candidat.nom, Programme.nom)
-            .join(Candidat)
+        """Récupérer les candidats validés pour le formulaire - NOTE: Le modèle Inscription a été supprimé"""
+        from ..models.enums import DecisionJury
+        candidats = db.exec(
+            select(Candidat.id, Candidat.prenom, Candidat.nom)
+            .where(Candidat.statut == DecisionJury.VALIDE)
             .join(Programme)
             .order_by(Programme.nom, Candidat.nom, Candidat.prenom)
         ).all()

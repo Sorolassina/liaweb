@@ -9,7 +9,7 @@ from sqlmodel import SQLModel, Session, create_engine, text, Field
 from .database import get_session
 from ..models.base import (
     Programme, User, Partenaire, Groupe, PasswordRecoveryCode,
-    Candidat, Preinscription, Inscription, Entreprise, Document, 
+    Candidat, Preinscription, Entreprise, Document, 
     Eligibilite, EtapePipeline,
     AvancementEtape, ActionHandicap, RendezVous, SessionProgramme,
     SessionParticipant, SuiviMensuel,
@@ -44,19 +44,60 @@ class SchemaRoutingService:
     def __init__(self, session: Session):
         self.session = session
         self.current_schema: Optional[str] = None
+        self._model_cache: Dict[str, Dict[Type[SQLModel], Type[SQLModel]]] = {}  # Cache des modèles par schéma
     
     def set_schema(self, schema_name: str):
         """Définit le schéma actuel et configure le search_path PostgreSQL"""
-        self.current_schema = schema_name.lower()
-        logger.info(f"Schéma défini: {self.current_schema}")
+        schema_lower = schema_name.lower()
+        
+        # Ne reconfigurer que si le schéma a changé
+        if self.current_schema == schema_lower:
+            logger.debug(f"Schéma déjà configuré: {self.current_schema}")
+            return
+        
+        # Si le schéma change, on peut vider le cache des modèles de l'ancien schéma
+        # pour forcer la recréation avec le nouveau schéma
+        old_schema = self.current_schema
+        self.current_schema = schema_lower
+        logger.info(f"🔧 Schéma changé: {old_schema} -> {self.current_schema}")
+        
+        # IMPORTANT: Vérifier et nettoyer le cache du nouveau schéma si les modèles ont le mauvais schéma
+        # Cela peut arriver si un modèle a été mis en cache avec un schéma incorrect
+        if schema_lower in self._model_cache:
+            models_to_remove = []
+            for model_class, cached_model in self._model_cache[schema_lower].items():
+                if hasattr(cached_model, '__table__') and cached_model.__table__ is not None:
+                    cached_schema = getattr(cached_model.__table__, 'schema', None)
+                    if cached_schema != schema_lower:
+                        logger.warning(f"⚠️ Modèle en cache pour schéma {schema_lower} a le mauvais schéma ({cached_schema}), suppression du cache...")
+                        models_to_remove.append(model_class)
+            
+            # Supprimer les modèles avec le mauvais schéma du cache
+            for model_class in models_to_remove:
+                del self._model_cache[schema_lower][model_class]
+        
+        # Nettoyer le cache de l'ancien schéma si nécessaire (optionnel, le cache par schéma devrait suffire)
+        # Mais on garde le cache pour éviter de recréer les modèles inutilement
         
         # IMPORTANT: Configurer le search_path PostgreSQL pour que les requêtes
         # cherchent dans le bon schéma par défaut
+        # NOTE: Même si les modèles ont un schéma explicite, le search_path peut être utile
+        # pour les tables non qualifiées. Cependant, SQLAlchemy utilisera le schéma explicite
+        # des modèles s'il est défini, donc le search_path est principalement pour les requêtes SQL brutes.
         try:
-            self.session.execute(text(f"SET search_path TO {self.current_schema}, public"))
-            logger.debug(f"Search_path PostgreSQL configuré à: {self.current_schema}, public")
+            # Utiliser exec() pour SQLModel et commit pour persister le search_path
+            self.session.exec(text(f"SET search_path TO {self.current_schema}, public"))
+            self.session.commit()  # Commit pour s'assurer que le search_path est appliqué
+            
+            # Vérifier que le search_path est bien configuré
+            verify_result = self.session.exec(text("SHOW search_path")).first()
+            logger.info(f"✅ Search_path PostgreSQL configuré à: {self.current_schema}, public (vérifié: {verify_result})")
         except Exception as e:
-            logger.warning(f"Impossible de configurer le search_path: {e}")
+            logger.warning(f"⚠️ Impossible de configurer le search_path: {e}")
+            try:
+                self.session.rollback()
+            except:
+                pass
     
     def get_schema(self) -> Optional[str]:
         """Retourne le schéma actuel"""
@@ -129,6 +170,23 @@ class SchemaRoutingService:
     def get_model_for_schema(self, model_class: Type[SQLModel], schema: str = None) -> Type[SQLModel]:
         """Retourne une version du modèle configurée pour un schéma spécifique"""
         target_schema = schema or self.current_schema or "public"
+        
+        # Vérifier le cache pour éviter de recréer les modèles
+        if target_schema not in self._model_cache:
+            self._model_cache[target_schema] = {}
+        
+        if model_class in self._model_cache[target_schema]:
+            cached_model = self._model_cache[target_schema][model_class]
+            # Vérifier que le schéma est toujours correct
+            if hasattr(cached_model, '__table__') and cached_model.__table__ is not None:
+                cached_schema = getattr(cached_model.__table__, 'schema', None)
+                if cached_schema == target_schema:
+                    logger.debug(f"✅ Utilisation du modèle en cache: {model_class.__name__} pour schéma {target_schema}")
+                    return cached_model
+                else:
+                    logger.warning(f"⚠️ Modèle en cache a le mauvais schéma ({cached_schema} au lieu de {target_schema}), recréation...")
+                    # Retirer du cache pour forcer la recréation
+                    del self._model_cache[target_schema][model_class]
         
         # APPROCHE SIMPLE : Créer une classe qui hérite simplement avec le bon schéma dans __table_args__
         # SQLModel/SQLAlchemy gérera automatiquement le schéma dans les requêtes SQL (ex: SELECT * FROM acd.candidat)
@@ -282,9 +340,18 @@ class SchemaRoutingService:
                 
                 # Si le schéma n'est pas défini sur la table, le définir explicitement
                 if table_schema != target_schema:
-                    logger.warning(f"Le schéma de la table ({table_schema}) ne correspond pas au schéma cible ({target_schema}), correction...")
+                    logger.warning(f"⚠️ Le schéma de la table ({table_schema}) ne correspond pas au schéma cible ({target_schema}), correction...")
                     SchemaSpecificModel.__table__.schema = target_schema
-                    logger.debug(f"Schéma corrigé: {SchemaSpecificModel.__table__.schema}")
+                    # Forcer la mise à jour du mapper SQLAlchemy
+                    try:
+                        from sqlalchemy import inspect as sa_inspect
+                        mapper = sa_inspect(SchemaSpecificModel)
+                        if mapper and hasattr(mapper, 'local_table'):
+                            mapper.local_table.schema = target_schema
+                            logger.debug(f"✅ Schéma corrigé sur la table ET le mapper: {SchemaSpecificModel.__table__.schema}")
+                    except Exception as e:
+                        logger.debug(f"Note lors de la mise à jour du mapper: {e}")
+                    logger.debug(f"✅ Schéma corrigé: {SchemaSpecificModel.__table__.schema}")
                 
                 # IMPORTANT: Vérifier que SQLAlchemy va utiliser le schéma explicite
                 # en vérifiant le mapper SQLAlchemy
@@ -303,6 +370,13 @@ class SchemaRoutingService:
                     logger.debug(f"Note lors de l'inspection du mapper: {e}")
         except Exception as e:
             logger.warning(f"Erreur lors de la vérification de la table pour {target_schema}: {e}")
+        
+        # Mettre en cache le modèle pour éviter de le recréer
+        if target_schema not in self._model_cache:
+            self._model_cache[target_schema] = {}
+        self._model_cache[target_schema][model_class] = SchemaSpecificModel
+        
+        logger.debug(f"✅ Modèle {model_class.__name__} créé pour schéma {target_schema} (table schema: {getattr(SchemaSpecificModel.__table__, 'schema', None) if hasattr(SchemaSpecificModel, '__table__') else 'N/A'})")
         
         return SchemaSpecificModel
 
@@ -488,7 +562,7 @@ class ProgramSchemaManager:
         # Tous les modèles SQLModel (sauf ceux du public)
         self.program_models = [
             # Base models
-            Candidat, Preinscription, Inscription, Entreprise, Document,
+            Candidat, Preinscription, Entreprise, Document,
             Eligibilite, EtapePipeline,
             AvancementEtape, ActionHandicap, RendezVous, SessionProgramme,
             SessionParticipant, SuiviMensuel,
@@ -688,37 +762,72 @@ class ProgramSchemaManager:
 
 # ===== UTILITAIRES POUR LES ROUTES =====
 
-def get_schema_from_request(request: Request) -> Optional[str]:
-    """Extrait le schéma depuis la requête (fonction principale)"""
-    # Vérifier si le schéma est dans l'état de la requête (ajouté par le middleware)
+def get_schema_from_request(request: Request, programme: Optional[str] = None) -> Optional[str]:
+    """
+    Extrait le schéma depuis la requête (fonction principale).
+    
+    Ordre de priorité :
+    1. Paramètre programme fourni explicitement
+    2. request.state.program_schema (ajouté par le middleware)
+    3. Query param 'programme'
+    4. Form data 'programme' ou 'programme_code' (pour les requêtes POST)
+    5. Header Referer (extraction du paramètre programme de l'URL précédente)
+    """
+    # 1. Paramètre programme fourni explicitement (priorité la plus haute)
+    if programme:
+        return programme.lower()
+    
+    # 2. Vérifier si le schéma est dans l'état de la requête (ajouté par le middleware)
     if hasattr(request.state, 'program_schema'):
         return request.state.program_schema
     
-    # Vérifier les paramètres de query
+    # 3. Vérifier les paramètres de query
     programme = request.query_params.get('programme')
     if programme:
         return programme.lower()
     
-    # Vérifier les données de formulaire pour les requêtes POST
-    if request.method == 'POST':
-        try:
-            form_data = request.form()
-            programme = form_data.get('programme') or form_data.get('programme_code')
-            if programme:
-                return programme.lower()
-        except:
-            pass
+    # 4. Vérifier les données de formulaire pour les requêtes POST
+    # NOTE: request.form() est async, donc on ne peut pas l'utiliser ici de manière synchrone
+    # On se fie au Referer qui contient souvent le paramètre programme de l'URL précédente
+    # Les routes qui ont besoin du formulaire le liront elles-mêmes avec await request.form()
+    
+    # 5. Vérifier le header Referer (fallback supplémentaire)
+    referer = request.headers.get("referer", "")
+    if "programme=" in referer:
+        import re
+        match = re.search(r'programme=([^&]+)', referer)
+        if match:
+            return match.group(1).lower()
     
     return None
 
-def get_schema_routing_service(request: Request, session: Session = Depends(get_session)) -> SchemaRoutingService:
-    """Dependency pour obtenir le service de routage des schémas"""
+def get_schema_routing_service(
+    request: Request, 
+    session: Session = Depends(get_session),
+    programme: Optional[str] = None
+) -> SchemaRoutingService:
+    """
+    Dependency pour obtenir le service de routage des schémas.
+    
+    Args:
+        request: La requête FastAPI
+        session: La session de base de données
+        programme: Paramètre programme optionnel (priorité la plus haute)
+    
+    Returns:
+        SchemaRoutingService configuré avec le bon schéma
+    """
     routing_service = SchemaRoutingService(session)
     
-    # Définir le schéma depuis la requête
-    schema = get_schema_from_request(request)
-    if schema:
-        routing_service.set_schema(schema)
+    # Définir le schéma depuis la requête (avec priorité au paramètre programme si fourni)
+    schema = get_schema_from_request(request, programme=programme)
+    
+    # Si aucun schéma trouvé, utiliser 'acd' par défaut
+    if not schema:
+        schema = 'acd'
+    
+    # Configurer le schéma dans le service (qui configure aussi le search_path)
+    routing_service.set_schema(schema)
     
     return routing_service
 

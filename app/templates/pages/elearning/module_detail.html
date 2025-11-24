@@ -1,46 +1,76 @@
-{% extends "base.html" %}
+{% extends "layouts/base.html" %}
+{% from "components/page_header.html" import page_header %}
 
 {% block title %}Module {{ module.titre }} - E-learning{% endblock %}
 
 {% block head_extra %}
 <style>
   
-  .module-header {
-    background: var(--primary-color);
-    color: white;
-    padding: 1rem 0;
-    margin-bottom: 1.5rem;
+  
+  
+  .ressources-card {
+    background: white;
+    border-radius: 12px;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
+    overflow: hidden;
   }
   
-  .module-info {
-    background: white;
-    border-radius: 8px;
-    padding: 1rem;
-    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
-    margin-bottom: 1.5rem;
+  .card-header-section {
+    background: var(--secondary-color);
+    border: 2px solid var(--primary-color);
+    padding: 1.25rem 1.5rem;
+    border-radius: 12px 12px 0 0;
+    position: relative;
+  }
+  
+  .card-header-section::after {
+    content: '';
+    position: absolute;
+    bottom: 0;
+    left: 0;
+    right: 0;
+    height: 3px;
+    background: var(--primary-color);
+  }
+  
+  .card-header-section h3 {
+    margin: 0;
+    color: white;
+    font-size: 1.25rem;
+    font-weight: 700;
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+  }
+  
+  .card-header-section i {
+    color: var(--primary-color);
+  }
+  
+  .card-body-section {
+    padding: 1.5rem;
   }
   
   .ressource-card {
-    background: white;
-    border-radius: 6px;
-    padding: 0.75rem;
-    margin-bottom: 0.75rem;
-    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
-    transition: transform 0.2s ease;
+    background: #f8f9fa;
+    border: 1px solid #dee2e6;
+    border-radius: 8px;
+    padding: 1rem;
+    margin-bottom: 1rem;
+    transition: all 0.2s ease;
   }
   
   .ressource-card:hover {
-    transform: translateY(-2px);
-    box-shadow: 0 4px 8px rgba(0, 0, 0, 0.15);
+    border-color: var(--primary-color);
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
   }
   
   .ressource-type {
     display: inline-block;
-    padding: 0.25rem 0.75rem;
-    border-radius: 20px;
-    font-size: 0.8rem;
+    padding: 0.25rem 0.5rem;
+    border-radius: 0.25rem;
+    font-size: 0.75rem;
     font-weight: 600;
-    margin-bottom: 0.5rem;
   }
   
   .type-video { background: #e3f2fd; color: #1976d2; }
@@ -51,66 +81,43 @@
   
   /* Styles pour les icônes de ressources */
   .ressource-icon {
-    width: 45px;
-    height: 45px;
+    width: 40px;
+    height: 40px;
     border-radius: 8px;
     display: flex;
     align-items: center;
     justify-content: center;
-    position: relative;
-    overflow: hidden;
-  }
-  
-  .ressource-icon i {
-    font-size: 18px;
-    color: white;
-    z-index: 2;
+    font-size: 1.2rem;
   }
   
   .icon-video {
-    background: linear-gradient(135deg, #ff6b6b, #ee5a24);
-    box-shadow: 0 4px 15px rgba(255, 107, 107, 0.3);
+    background: #dc3545;
+    color: white;
   }
   
   .icon-document {
-    background: linear-gradient(135deg, #4834d4, #686de0);
-    box-shadow: 0 4px 15px rgba(72, 52, 212, 0.3);
+    background: #007bff;
+    color: white;
   }
   
   .icon-quiz {
-    background: linear-gradient(135deg, #00d2d3, #54a0ff);
-    box-shadow: 0 4px 15px rgba(0, 210, 211, 0.3);
+    background: #28a745;
+    color: white;
   }
   
   .icon-lien {
-    background: linear-gradient(135deg, #ff9ff3, #f368e0);
-    box-shadow: 0 4px 15px rgba(255, 159, 243, 0.3);
+    background: #ffc107;
+    color: #333;
   }
   
   .icon-audio {
-    background: linear-gradient(135deg, #feca57, #ff9ff3);
-    box-shadow: 0 4px 15px rgba(254, 202, 87, 0.3);
+    background: #17a2b8;
+    color: white;
   }
   
   .icon-default {
-    background: linear-gradient(135deg, #a4b0be, #747d8c);
-    box-shadow: 0 4px 15px rgba(164, 176, 190, 0.3);
-  }
-  
-  .ressource-icon::before {
-    content: '';
-    position: absolute;
-    top: -50%;
-    left: -50%;
-    width: 200%;
-    height: 200%;
-    background: radial-gradient(circle, rgba(255,255,255,0.1) 0%, transparent 70%);
-    animation: shimmer 3s infinite;
-  }
-  
-  @keyframes shimmer {
-    0% { transform: rotate(0deg); }
-    100% { transform: rotate(360deg); }
+    background: #6c757d;
+    color: white;
   }
   
   .progress-bar {
@@ -169,30 +176,31 @@
   .order-badge {
     background: var(--primary-color);
     color: white;
-    width: 30px;
-    height: 30px;
+    width: 28px;
+    height: 28px;
     border-radius: 50%;
     display: flex;
     align-items: center;
     justify-content: center;
     font-weight: bold;
-    font-size: 0.9rem;
+    font-size: 0.8rem;
+    flex-shrink: 0;
   }
-
+  
   .obligatoire-badge {
     background: #dc3545;
     color: white;
     padding: 0.25rem 0.5rem;
-    border-radius: 12px;
+    border-radius: 0.25rem;
     font-size: 0.7rem;
     font-weight: 600;
   }
-
+  
   .optionnel-badge {
     background: #6c757d;
     color: white;
     padding: 0.25rem 0.5rem;
-    border-radius: 12px;
+    border-radius: 0.25rem;
     font-size: 0.7rem;
     font-weight: 600;
   }
@@ -208,12 +216,24 @@
     border-radius: 8px;
     padding: 2rem;
     text-align: center;
-    margin-top: 2rem;
   }
-
+  
   .add-ressource-section:hover {
     border-color: var(--primary-color);
     background: #f0f4ff;
+  }
+  
+  .content-item {
+    background: white;
+    border: 1px solid #dee2e6;
+    border-radius: 6px;
+    padding: 0.5rem;
+    margin-bottom: 0.5rem;
+  }
+  
+  .content-item .btn-xs {
+    font-size: 0.75rem;
+    padding: 0.25rem 0.5rem;
   }
 
   .modal-content {
@@ -244,157 +264,86 @@
 {% endblock %}
 
 {% block content %}
-<div class="container-fluid">
-  <!-- En-tête du module -->
-  <div class="module-header">
-    <div class="container">
-      <!-- Bouton retour -->
-      <div class="row mb-2">
-        <div class="col-12">
-          <button href="{{ url_for('elearning_modules') }}" class="btn-retour" onclick="window.location.href='{{ url_for('elearning_modules') }}'">
-            <i class="fas fa-arrow-left me-2"></i>
-            Retour aux modules
-          </button>
-        </div>
-      </div>
-      
-      <div class="row align-items-center">
-        <div class="col-12">
-          <h2 class="mb-1">
-            <i class="fas fa-book-open me-2"></i>
-            {{ module.titre }}
-          </h2>
-        </div>
-      </div>
-    </div>
-  </div>
+{% set programme_param = request.query_params.get('programme') or (schema_name.upper() if schema_name and schema_name != 'public' else '') %}
+{% set modules_url = url_for('elearning_modules') ~ ('?programme=' ~ programme_param if programme_param else '') %}
+{% set dashboard_url = url_for('elearning_dashboard') ~ ('?programme=' ~ programme_param if programme_param else '') %}
 
-  <div class="container">
+{{ page_header(
+    title="<i class='fas fa-book-open me-2'></i>" ~ module.titre,
+    breadcrumbs=[
+        {"label": "E-Learning", "url": dashboard_url},
+        {"label": "Modules", "url": modules_url},
+        {"label": module.titre, "url": ""}
+    ],
+    actions=[
+        {
+            "label": "<i class='fas fa-arrow-left me-2'></i>Retour",
+            "url": modules_url,
+            "class": "btn-outline-light btn-sm",
+            "primary": false
+        }
+    ]
+) }}
+
+<div class="container-fluid p-4">
     <div class="row">
-      <!-- Informations du module -->
-      <div class="col-12">
-        <div class="module-info">
-          <h6 class="mb-2">
-            <i class="fas fa-info-circle me-1"></i>
-            Informations
-          </h6>
-          
-          <div class="row">
-            <div class="col-md-6">
-              <div class="mb-2">
-                <strong>Programme :</strong>
-                <span class="text-muted small">{{ module.programme.nom if module.programme else "Non spécifié" }}</span>
-              </div>
-              
-              <div class="mb-2">
-                <strong>Durée :</strong>
-                <span class="text-muted small">
-                  {% if module.duree_totale_minutes %}
-                    {{ module.duree_totale_minutes }} min
-                  {% else %}
-                    Non spécifiée
-                  {% endif %}
-                </span>
-              </div>
-            </div>
-            
-            <div class="col-md-6">
-              <div class="mb-2">
-                <strong>Difficulté :</strong>
-                <span class="badge bg-{{ 'success' if module.difficulte == 'facile' else 'warning' if module.difficulte == 'moyen' else 'danger' }} badge-sm">
-                  {{ module.difficulte | title }}
-                </span>
-              </div>
-              
-              <div class="mb-2">
-                <strong>Statut :</strong>
-                <span class="badge bg-{{ 'secondary' if module.statut == 'brouillon' else 'success' if module.statut == 'actif' else 'dark' }} badge-sm">
-                  {{ module.statut | title }}
-                </span>
-              </div>
-            </div>
-          </div>
-          
-          {% if module.objectifs %}
-          <div class="mb-2">
-            <strong>Objectifs :</strong>
-            <p class="text-muted small mb-0">{{ module.objectifs }}</p>
-          </div>
-          {% endif %}
-          
-          {% if module.prerequis %}
-          <div class="mb-0">
-            <strong>Prérequis :</strong>
-            <p class="text-muted small mb-0">{{ module.prerequis }}</p>
-          </div>
-          {% endif %}
-          
-        </div>
-      </div>
-      
       <!-- Ressources du module -->
-      <div class="col-12" style="cursor: pointer;">
-        <div class="d-flex justify-content-between align-items-center mb-3">
-          <h4>
-            <i class="fas fa-list me-2"></i>
-            Ressources ({{ ressources | length }})
-          </h4>
-          <div class="d-flex align-items-center gap-2">
-            <div class="text-muted">
-              <i class="fas fa-clock me-1"></i>
-              {{ module.duree_totale_minutes or 0 }} min
+      <div id="ressources">
+        <div class="ressources-card">
+          <div class="card-header-section">
+            <div class="d-flex justify-content-between align-items-center">
+              <h3>
+                <i class="fas fa-paperclip"></i>
+                Ressources ({{ ressources | length }})
+              </h3>
+              <div class="d-flex align-items-center gap-2">
+                <div class="text-white small">
+                  <i class="fas fa-clock me-1"></i>
+                  {{ module.duree_totale_minutes or 0 }} min
+                </div>
+                {% if utilisateur.role in ['administrateur', 'responsable_programme', 'formateur'] %}
+                {% set programme_param = request.query_params.get('programme') or (schema_name.upper() if schema_name and schema_name != 'public' else '') %}
+                <a href="{{ url_for('elearning_ressource_creer_form') }}?module_id={{ module.id }}&return_url={{ url_for('elearning_module_detail', module_id=module.id) ~ ('?programme=' ~ programme_param if programme_param else '') }}" 
+                   class="btn btn-sm btn-primary">
+                  <i class="fas fa-plus me-1"></i>
+                  Ajouter une ressource
+                </a>
+                {% endif %}
+              </div>
             </div>
-            {% if utilisateur.role in ['administrateur', 'responsable_programme', 'formateur'] %}
-            <button href="{{ url_for('elearning_ressource_creer_form') }}?module_id={{ module.id }}&return_url={{ url_for('elearning_module_detail', module_id=module.id) }}" class="btn btn-manage" style="background: var(--primary-color);color: black;" onclick="window.location.href='{{ url_for('elearning_ressource_creer_form') }}?module_id={{ module.id }}&return_url={{ url_for('elearning_module_detail', module_id=module.id) }}'">
-              <i class="fas fa-plus me-1"></i>
-              Ajouter une ressource
-            </button>
-            {% endif %}
           </div>
-        </div>
-        
-        {% if ressources %}
-          {% for ressource in ressources %}
-          <div class="ressource-card">
-            <div class="ressource-order">
-              <div class="order-badge">{{ loop.index }}</div>
-              <div class="flex-grow-1">
-                <div class="d-flex align-items-start">
-                  <div class="flex-shrink-0 me-3">
-                    <div class="ressource-icon">
-                      {% if ressource.type_ressource == 'video' %}
-                        <div class="icon-video">
-                          <i class="fas fa-play-circle"></i>
-                        </div>
-                      {% elif ressource.type_ressource == 'document' %}
-                        <div class="icon-document">
-                          <i class="fas fa-file-alt"></i>
-                        </div>
-                      {% elif ressource.type_ressource == 'quiz' %}
-                        <div class="icon-quiz">
-                          <i class="fas fa-question-circle"></i>
-                        </div>
-                      {% elif ressource.type_ressource == 'lien' %}
-                        <div class="icon-lien">
-                          <i class="fas fa-link"></i>
-                        </div>
-                      {% elif ressource.type_ressource == 'audio' %}
-                        <div class="icon-audio">
-                          <i class="fas fa-volume-up"></i>
-                        </div>
-                      {% else %}
-                        <div class="icon-default">
-                          <i class="fas fa-file"></i>
-                        </div>
-                      {% endif %}
-                    </div>
-                    
+          
+          <div class="card-body-section">
+            {% if ressources %}
+              {% for ressource in ressources %}
+              <div class="ressource-card">
+                <div class="d-flex align-items-start gap-3">
+                  <div class="order-badge">{{ loop.index }}</div>
+                  <div class="ressource-icon icon-{{ ressource.type_ressource }}">
+                    {% if ressource.type_ressource == 'video' %}
+                      <i class="fas fa-play-circle"></i>
+                    {% elif ressource.type_ressource == 'document' %}
+                      <i class="fas fa-file-alt"></i>
+                    {% elif ressource.type_ressource == 'quiz' %}
+                      <i class="fas fa-question-circle"></i>
+                    {% elif ressource.type_ressource == 'lien' %}
+                      <i class="fas fa-link"></i>
+                    {% elif ressource.type_ressource == 'audio' %}
+                      <i class="fas fa-volume-up"></i>
+                    {% else %}
+                      <i class="fas fa-file"></i>
+                    {% endif %}
                   </div>
                   
                   <div class="flex-grow-1">
                     <div class="d-flex justify-content-between align-items-start mb-2">
-                      <h6 class="mb-1">{{ ressource.titre }}</h6>
-                      <div class="d-flex gap-2">
+                      <div>
+                        <h6 class="mb-1">{{ ressource.titre }}</h6>
+                        {% if ressource.description %}
+                        <p class="text-muted small mb-0">{{ ressource.description[:100] }}{% if ressource.description|length > 100 %}...{% endif %}</p>
+                        {% endif %}
+                      </div>
+                      <div class="d-flex gap-2 align-items-center">
                         <span class="ressource-type type-{{ ressource.type_ressource }}">
                           {{ ressource.type_ressource | title }}
                         </span>
@@ -406,31 +355,28 @@
                       </div>
                     </div>
                     
-                    {% if ressource.description %}
-                    <p class="text-muted small mb-2">{{ ressource.description }}</p>
-                    {% endif %}
-                    
                     <!-- Affichage des contenus disponibles -->
-                    <div class="mb-3">
+                    {% if ressource.fichier_video_path or ressource.url_contenu_video or ressource.fichier_document_path or ressource.url_contenu_document or ressource.fichier_audio_path or ressource.url_contenu_audio or ressource.url_contenu_lien %}
+                    <div class="mb-2">
                       {% if ressource.fichier_video_path or ressource.url_contenu_video %}
-                      <div class="content-item mb-1">
-                        <div class="d-flex align-items-center justify-content-between p-1 border rounded" style="background: #fff5f5;">
+                      <div class="content-item">
+                        <div class="d-flex align-items-center justify-content-between">
                           <div class="d-flex align-items-center">
-                            <i class="fas fa-video text-danger me-1" style="font-size: 0.9rem;"></i>
-                            <span class="fw-bold" style="font-size: 0.9rem;">Vidéo</span>
+                            <i class="fas fa-video text-danger me-2"></i>
+                            <span class="fw-bold small">Vidéo</span>
                             {% if ressource.fichier_video_nom_original %}
-                            <small class="text-muted ms-1" style="font-size: 0.75rem;">({{ ressource.fichier_video_nom_original }})</small>
+                            <small class="text-muted ms-2">({{ ressource.fichier_video_nom_original }})</small>
                             {% endif %}
                           </div>
                           <div>
                             {% if ressource.fichier_video_path %}
-                            <button href="{{ url_for('serve_uploaded_file', file_path=ressource.fichier_video_path) }}" class="btn btn-xs btn-danger" onclick="window.open('{{ url_for('serve_uploaded_file', file_path=ressource.fichier_video_path) }}', '_blank')" style="font-size: 0.75rem; padding: 0.25rem 0.5rem;">
+                            <a href="{{ url_for('serve_uploaded_file', file_path=ressource.fichier_video_path) }}" target="_blank" class="btn btn-xs btn-danger">
                               <i class="fas fa-play me-1"></i>Lire
-                            </button>
+                            </a>
                             {% elif ressource.url_contenu_video %}
-                            <button href="{{ ressource.url_contenu_video }}" class="btn btn-xs btn-danger" onclick="window.open('{{ ressource.url_contenu_video }}', '_blank')" style="font-size: 0.75rem; padding: 0.25rem 0.5rem;">
+                            <a href="{{ ressource.url_contenu_video }}" target="_blank" class="btn btn-xs btn-danger">
                               <i class="fas fa-external-link-alt me-1"></i>Ouvrir
-                            </button>
+                            </a>
                             {% endif %}
                           </div>
                         </div>
@@ -438,24 +384,24 @@
                       {% endif %}
 
                       {% if ressource.fichier_document_path or ressource.url_contenu_document %}
-                      <div class="content-item mb-1">
-                        <div class="d-flex align-items-center justify-content-between p-1 border rounded" style="background: #f0f8ff;">
+                      <div class="content-item">
+                        <div class="d-flex align-items-center justify-content-between">
                           <div class="d-flex align-items-center">
-                            <i class="fas fa-file-alt text-primary me-1" style="font-size: 0.9rem;"></i>
-                            <span class="fw-bold" style="font-size: 0.9rem;">Document</span>
+                            <i class="fas fa-file-alt text-primary me-2"></i>
+                            <span class="fw-bold small">Document</span>
                             {% if ressource.fichier_document_nom_original %}
-                            <small class="text-muted ms-1" style="font-size: 0.75rem;">({{ ressource.fichier_document_nom_original }})</small>
+                            <small class="text-muted ms-2">({{ ressource.fichier_document_nom_original }})</small>
                             {% endif %}
                           </div>
                           <div>
                             {% if ressource.fichier_document_path %}
-                            <button href="{{ url_for('serve_uploaded_file', file_path=ressource.fichier_document_path) }}" class="btn btn-xs btn-primary" onclick="window.open('{{ url_for('serve_uploaded_file', file_path=ressource.fichier_document_path) }}', '_blank')" style="font-size: 0.75rem; padding: 0.25rem 0.5rem;">
+                            <a href="{{ url_for('serve_uploaded_file', file_path=ressource.fichier_document_path) }}" target="_blank" class="btn btn-xs btn-primary">
                               <i class="fas fa-file-pdf me-1"></i>Ouvrir
-                            </button>
+                            </a>
                             {% elif ressource.url_contenu_document %}
-                            <button href="{{ ressource.url_contenu_document }}" class="btn btn-xs btn-primary" onclick="window.open('{{ ressource.url_contenu_document }}', '_blank')" style="font-size: 0.75rem; padding: 0.25rem 0.5rem;">
+                            <a href="{{ ressource.url_contenu_document }}" target="_blank" class="btn btn-xs btn-primary">
                               <i class="fas fa-external-link-alt me-1"></i>Ouvrir
-                            </button>
+                            </a>
                             {% endif %}
                           </div>
                         </div>
@@ -463,24 +409,24 @@
                       {% endif %}
 
                       {% if ressource.fichier_audio_path or ressource.url_contenu_audio %}
-                      <div class="content-item mb-1">
-                        <div class="d-flex align-items-center justify-content-between p-1 border rounded" style="background: #f0fff0;">
+                      <div class="content-item">
+                        <div class="d-flex align-items-center justify-content-between">
                           <div class="d-flex align-items-center">
-                            <i class="fas fa-volume-up text-success me-1" style="font-size: 0.9rem;"></i>
-                            <span class="fw-bold" style="font-size: 0.9rem;">Audio</span>
+                            <i class="fas fa-volume-up text-success me-2"></i>
+                            <span class="fw-bold small">Audio</span>
                             {% if ressource.fichier_audio_nom_original %}
-                            <small class="text-muted ms-1" style="font-size: 0.75rem;">({{ ressource.fichier_audio_nom_original }})</small>
+                            <small class="text-muted ms-2">({{ ressource.fichier_audio_nom_original }})</small>
                             {% endif %}
                           </div>
                           <div>
                             {% if ressource.fichier_audio_path %}
-                            <button href="{{ url_for('serve_uploaded_file', file_path=ressource.fichier_audio_path) }}" class="btn btn-xs btn-success" onclick="window.open('{{ url_for('serve_uploaded_file', file_path=ressource.fichier_audio_path) }}', '_blank')" style="font-size: 0.75rem; padding: 0.25rem 0.5rem;">
+                            <a href="{{ url_for('serve_uploaded_file', file_path=ressource.fichier_audio_path) }}" target="_blank" class="btn btn-xs btn-success">
                               <i class="fas fa-play me-1"></i>Écouter
-                            </button>
+                            </a>
                             {% elif ressource.url_contenu_audio %}
-                            <button href="{{ ressource.url_contenu_audio }}" class="btn btn-xs btn-success" onclick="window.open('{{ ressource.url_contenu_audio }}', '_blank')" style="font-size: 0.75rem; padding: 0.25rem 0.5rem;">
+                            <a href="{{ ressource.url_contenu_audio }}" target="_blank" class="btn btn-xs btn-success">
                               <i class="fas fa-external-link-alt me-1"></i>Ouvrir
-                            </button>
+                            </a>
                             {% endif %}
                           </div>
                         </div>
@@ -488,21 +434,22 @@
                       {% endif %}
 
                       {% if ressource.url_contenu_lien %}
-                      <div class="content-item mb-1">
-                        <div class="d-flex align-items-center justify-content-between p-1 border rounded" style="background: #fffbf0;">
+                      <div class="content-item">
+                        <div class="d-flex align-items-center justify-content-between">
                           <div class="d-flex align-items-center">
-                            <i class="fas fa-link text-warning me-1" style="font-size: 0.9rem;"></i>
-                            <span class="fw-bold" style="font-size: 0.9rem;">Lien externe</span>
+                            <i class="fas fa-link text-warning me-2"></i>
+                            <span class="fw-bold small">Lien externe</span>
                           </div>
                           <div>
-                            <button href="{{ ressource.url_contenu_lien }}" class="btn btn-xs btn-warning" onclick="window.open('{{ ressource.url_contenu_lien }}', '_blank')" style="font-size: 0.75rem; padding: 0.25rem 0.5rem;">
+                            <a href="{{ ressource.url_contenu_lien }}" target="_blank" class="btn btn-xs btn-warning">
                               <i class="fas fa-external-link-alt me-1"></i>Ouvrir
-                            </button>
+                            </a>
                           </div>
                         </div>
                       </div>
                       {% endif %}
                     </div>
+                    {% endif %}
                     
                     <div class="d-flex justify-content-between align-items-center">
                       <div class="text-muted small">
@@ -520,36 +467,40 @@
                       
                       <div class="ressource-actions">
                         {% if utilisateur.role in ['administrateur', 'responsable_programme', 'formateur'] %}
-                        <button href="{{ url_for('elearning_ressource_edit_form', ressource_id=ressource.id) }}" class="btn btn-sm btn-outline-primary" onclick="window.location.href='{{ url_for('elearning_ressource_edit_form', ressource_id=ressource.id) }}'">
+                        {% set programme_param = request.query_params.get('programme') or (schema_name.upper() if schema_name and schema_name != 'public' else '') %}
+                        <a href="{{ url_for('elearning_ressource_edit_form', ressource_id=ressource.id) ~ ('?programme=' ~ programme_param if programme_param else '') }}" 
+                           class="btn btn-sm btn-outline-primary" 
+                           title="Modifier">
                           <i class="fas fa-edit"></i>
-                        </button>
-                        <button href="{{ url_for('remove_ressource_from_module', module_id=module.id, ressource_id=ressource.id) }}" 
+                        </a>
+                        <a href="{{ url_for('elearning_remove_ressource_from_module', module_id=module.id, ressource_id=ressource.id) ~ ('?programme=' ~ programme_param if programme_param else '') }}" 
                            class="btn btn-sm btn-outline-danger"
-                           onclick="if(confirm('Êtes-vous sûr de vouloir supprimer cette ressource du module ?')) { window.location.href='{{ url_for('remove_ressource_from_module', module_id=module.id, ressource_id=ressource.id) }}'; }">
+                           title="Supprimer"
+                           onclick="return confirm('Êtes-vous sûr de vouloir supprimer cette ressource du module ?');">
                           <i class="fas fa-trash"></i>
-                        </button>
+                        </a>
                         {% endif %}
                       </div>
                     </div>
                   </div>
                 </div>
               </div>
-            </div>
-          </div>
-          {% endfor %}
-        {% else %}
-          <div class="add-ressource-section">
-            <i class="fas fa-plus-circle text-muted mb-3" style="font-size: 3rem;"></i>
-            <h5 class="text-muted mb-2">Aucune ressource dans ce module</h5>
-            <p class="text-muted mb-3">Commencez par ajouter des ressources pédagogiques à ce module.</p>
-            {% if utilisateur.role in ['administrateur', 'responsable_programme', 'formateur'] %}
-            <button class="btn btn-primary" onclick="showAddRessourceModal()">
-              <i class="fas fa-plus me-2"></i>
-              Ajouter la première ressource
-            </button>
+              {% endfor %}
+            {% else %}
+              <div class="add-ressource-section">
+                <i class="fas fa-plus-circle text-muted mb-3" style="font-size: 3rem;"></i>
+                <h5 class="text-muted mb-2">Aucune ressource dans ce module</h5>
+                <p class="text-muted mb-3">Commencez par ajouter des ressources pédagogiques à ce module.</p>
+                {% if utilisateur.role in ['administrateur', 'responsable_programme', 'formateur'] %}
+                <button class="btn btn-primary" onclick="showAddRessourceModal()">
+                  <i class="fas fa-plus me-2"></i>
+                  Ajouter la première ressource
+                </button>
+                {% endif %}
+              </div>
             {% endif %}
           </div>
-        {% endif %}
+        </div>
       </div>
     </div>
   </div>
@@ -580,7 +531,7 @@ function showAddRessourceModal() {
 
 // Fonction pour démarrer une ressource spécifique
 function startRessource(ressourceId) {
-  const url = `{{ url_for('start_ressource', ressource_id=0) }}`.replace('0', ressourceId);
+    const url = `{{ url_for('elearning_start_ressource', ressource_id=0) }}`.replace('0', ressourceId);
   window.location.href = url;
 }
 
@@ -591,6 +542,40 @@ document.addEventListener('DOMContentLoaded', function() {
   if (startModuleBtn) {
     startModuleBtn.onclick = startModule;
   }
+  
+  // Ajouter l'overlay global aux liens de suppression de ressource
+  const removeLinks = document.querySelectorAll('a[href*="/remove-ressource"]');
+  removeLinks.forEach(function(link) {
+    link.addEventListener('click', function(e) {
+      if (!confirm('Êtes-vous sûr de vouloir supprimer cette ressource du module ?')) {
+        e.preventDefault();
+        return false;
+      }
+      
+      // Afficher l'overlay global
+      if (typeof showGlobalLoading === 'function') {
+        showGlobalLoading('Suppression de la ressource', 'Traitement en cours...');
+      }
+    });
+  });
+  
+  // Ajouter l'overlay global aux liens de navigation e-learning
+  const navLinks = document.querySelectorAll('a[href*="/elearning/"]');
+  navLinks.forEach(function(link) {
+    const href = link.getAttribute('href');
+    // Ignorer les liens externes et les ancres
+    if (href && !href.startsWith('http') && !href.startsWith('#')) {
+      link.addEventListener('click', function(e) {
+        // Ne pas intercepter si Ctrl/Cmd est pressé (nouvel onglet)
+        if (e.ctrlKey || e.metaKey) return;
+        
+        // Afficher l'overlay global
+        if (typeof showGlobalLoading === 'function') {
+          showGlobalLoading('Chargement', 'Veuillez patienter...');
+        }
+      });
+    }
+  });
 });
 </script>
 

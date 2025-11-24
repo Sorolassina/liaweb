@@ -1,4 +1,4 @@
-{% extends "base.html" %}
+{% extends "layouts/base.html" %}
 
 {% block title %}Créer un Rendez-vous{% endblock %}
 
@@ -263,7 +263,7 @@
                         {% endif %}
 
                         <div class="d-flex justify-content-between compact-page">
-                            <a href="{{ url_for('rendez_vous_list') }}" class="btn btn-secondary submenu-item">
+                            <a href="{{ url_for('rendez_vous_home') }}" class="btn btn-secondary submenu-item">
                                 <i class="fas fa-arrow-left me-1"></i>
                                 Retour à la liste
                             </a>

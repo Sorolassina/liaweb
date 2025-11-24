@@ -44,7 +44,7 @@ class JuryDecisionService:
         if not jury:
             raise ValueError("Jury introuvable")
         
-        # Vérifier qu'il n'y a pas déjà une décision
+        # Vérifier s'il existe déjà une décision pour ce candidat et ce jury
         existing = session.exec(
             select(DecisionJuryCandidat).where(
                 (DecisionJuryCandidat.candidat_id == candidat_id) &
@@ -53,7 +53,19 @@ class JuryDecisionService:
         ).first()
         
         if existing:
-            raise ValueError("Une décision existe déjà pour ce candidat et ce jury")
+            logger.info(f"Une décision existe déjà pour ce candidat et ce jury (ID: {existing.id}), suppression de l'ancienne décision")
+            # Supprimer les réorientations associées à l'ancienne décision
+            reorientations = session.exec(
+                select(ReorientationCandidat).where(
+                    ReorientationCandidat.decision_jury_id == existing.id
+                )
+            ).all()
+            for reo in reorientations:
+                logger.info(f"Suppression de la réorientation ID: {reo.id}")
+                session.delete(reo)
+            # Supprimer l'ancienne décision
+            session.delete(existing)
+            logger.info("Ancienne décision supprimée, création de la nouvelle")
         
         # Créer la décision
         decision_obj = DecisionJuryCandidat(
@@ -74,7 +86,9 @@ class JuryDecisionService:
         session.flush()
         
         # Mettre à jour le statut du candidat
-        candidat.statut = decision
+        candidat.statut = DecisionJury(decision)
+        # S'assurer que le candidat est dans la session pour que les modifications soient trackées
+        session.add(candidat)
         
         # Gérer la réorientation si nécessaire
         if decision == DecisionJury.REORIENTE.value and partenaire_id:
@@ -142,7 +156,9 @@ class JuryDecisionService:
         # Mettre à jour le statut du candidat
         candidat = session.get(Candidat, decision_obj.candidat_id)
         if candidat:
-            candidat.statut = decision
+            candidat.statut = DecisionJury(decision)
+            # S'assurer que le candidat est dans la session pour que les modifications soient trackées
+            session.add(candidat)
         
         session.commit()
         
@@ -183,7 +199,9 @@ class JuryDecisionService:
         # Remettre le candidat en attente
         candidat = session.get(Candidat, decision_obj.candidat_id)
         if candidat:
-            candidat.statut = DecisionJury.EN_ATTENTE.value
+            candidat.statut = DecisionJury.EN_ATTENTE
+            # S'assurer que le candidat est dans la session pour que les modifications soient trackées
+            session.add(candidat)
         
         # Supprimer les réorientations associées
         session.exec(

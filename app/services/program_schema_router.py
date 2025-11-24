@@ -4,7 +4,7 @@ Service de routage dynamique vers les schémas par programme
 from typing import Type, Any, Optional
 from sqlmodel import SQLModel, Session
 from ..models.base import (
-    Candidat, Preinscription, Inscription,
+    Candidat, Preinscription,
     Entreprise, Document, Eligibilite, DecisionJuryTable
 )
 import logging
@@ -18,7 +18,7 @@ class ProgramSchemaRouter:
     SCHEMA_MODELS = {
         'candidats': Candidat,
         'preinscriptions': Preinscription,
-        'inscriptions': Inscription,
+        # 'inscriptions': Inscription,  # NOTE: Modèle Inscription supprimé
         'entreprises': Entreprise,
         'documents': Document,
         'eligibilites': Eligibilite,

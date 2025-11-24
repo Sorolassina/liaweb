@@ -15,7 +15,6 @@ import logging
 from ..models.base import User, Programme, Candidat, Partenaire, ReorientationCandidat
 from ..models.jury import DecisionJuryCandidat
 from ..models.jury import Jury, MembreJury, DecisionJuryTable
-from ..models.inscription import Inscription
 from ..templates import templates
 from ..core.config import settings
 from ..models.enums import UserRole, DecisionJury

@@ -1,98 +1,262 @@
-{% extends "base.html" %}
+{% extends "layouts/base.html" %}
+{% from "components/page_header.html" import page_header %}
+{% set programme_param = request.query_params.get('programme') or (schema_name.upper() if schema_name and schema_name != 'public' else '') %}
 
 {% block title %}{{ cycle.nom }} - {{ super() }}{% endblock %}
 
 {% block head_extra %}
 <style>
   .cycle-detail-container {
-    max-width: 1200px;
-    margin: 0 auto;
-    padding: 20px;
-  }
-  
-  .cycle-header {
-    background: linear-gradient(135deg, var(--primary-color) 0%, #e6b800 100%);
-    color: white;
-    border-radius: 15px;
-    padding: 30px;
-    margin-bottom: 30px;
-  }
-  
-  .cycle-title {
-    font-size: 28px;
-    font-weight: 600;
-    margin: 0 0 10px 0;
-  }
-  
-  .cycle-subtitle {
-    font-size: 16px;
-    opacity: 0.9;
-    margin: 0;
+    width: 100%;
+    max-width: 100%;
   }
   
   .cycle-status {
     display: inline-block;
-    padding: 6px 16px;
+    padding: 0.5rem 1.25rem;
     border-radius: 20px;
-    font-size: 14px;
-    font-weight: 600;
+    font-size: 0.75rem;
+    font-weight: 700;
     text-transform: uppercase;
-    margin-top: 15px;
+    letter-spacing: 0.5px;
+    margin-top: 0.5rem;
   }
   
   .status-planifie {
-    background-color: rgba(255, 255, 255, 0.2);
-    color: white;
+    background-color: rgba(255, 193, 7, 0.2);
+    color: #ffc107;
+    border: 1px solid rgba(255, 193, 7, 0.4);
   }
   
   .status-en_cours {
-    background-color: rgba(76, 175, 80, 0.8);
-    color: white;
+    background-color: rgba(76, 175, 80, 0.2);
+    color: #4caf50;
+    border: 1px solid rgba(76, 175, 80, 0.4);
   }
   
   .status-termine {
-    background-color: rgba(156, 39, 176, 0.8);
-    color: white;
+    background-color: rgba(156, 39, 176, 0.2);
+    color: #9c27b0;
+    border: 1px solid rgba(156, 39, 176, 0.4);
   }
   
   .cycle-content {
     display: grid;
     grid-template-columns: 2fr 1fr;
-    gap: 30px;
+    gap: 2rem;
+  }
+  
+  @media (max-width: 992px) {
+    .cycle-content {
+      grid-template-columns: 1fr;
+    }
   }
   
   .cycle-main {
-    background: white;
-    border-radius: 15px;
-    box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
-    padding: 25px;
+    display: flex;
+    flex-direction: column;
+    gap: 2rem;
   }
   
   .cycle-sidebar {
     display: flex;
     flex-direction: column;
-    gap: 20px;
+    gap: 1.5rem;
   }
   
-  .stats-card {
+  .info-card, .groups-card {
     background: white;
-    border-radius: 15px;
-    box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
-    padding: 25px;
+    border-radius: 12px;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
+    overflow: hidden;
   }
   
-  .stats-title {
-    font-size: 18px;
-    font-weight: 600;
+  .card-header-section {
+    background: var(--secondary-color);
+    border: 2px solid var(--primary-color);
+    padding: 1.25rem 1.5rem;
+    border-radius: 12px 12px 0 0;
+    position: relative;
+  }
+  
+  .card-header-section::after {
+    content: '';
+    position: absolute;
+    bottom: 0;
+    left: 0;
+    right: 0;
+    height: 3px;
+    background: var(--primary-color);
+  }
+  
+  .card-header-section h2,
+  .card-header-section h3 {
+    margin: 0;
+    color: white;
+    font-size: 1.25rem;
+    font-weight: 700;
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+  }
+  
+  .card-header-section i {
     color: var(--primary-color);
-    margin-bottom: 20px;
+    font-size: 1.1em;
+  }
+  
+  .card-body-section {
+    padding: 1.5rem;
+  }
+  
+  .info-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+    gap: 1.25rem;
+  }
+  
+  .info-item {
+    display: flex;
+    flex-direction: column;
+    gap: 0.5rem;
+    padding: 1rem;
+    background: #f8f9fa;
+    border-radius: 8px;
+    border-left: 3px solid var(--primary-color);
+  }
+  
+  .info-label {
+    font-weight: 700;
+    color: #666;
+    font-size: 0.875rem;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+  }
+  
+  .info-value {
+    color: #333;
+    font-size: 1rem;
+    font-weight: 600;
+  }
+  
+  .groups-list {
+    display: flex;
+    flex-direction: column;
+    gap: 1rem;
+  }
+  
+  .group-card {
+    background: #f8f9fa;
+    border: 1px solid #e0e0e0;
+    border-radius: 10px;
+    padding: 1.25rem;
+    transition: all 0.3s ease;
+  }
+  
+  .group-card:hover {
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+    transform: translateY(-2px);
+  }
+  
+  .group-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 0.75rem;
+    flex-wrap: wrap;
+    gap: 0.75rem;
+  }
+  
+  .group-name {
+    font-size: 1.125rem;
+    font-weight: 700;
+    color: var(--secondary-color);
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+  }
+  
+  .group-name i {
+    color: var(--primary-color);
+  }
+  
+  .group-info {
+    font-size: 0.875rem;
+    color: #666;
+    margin-bottom: 1rem;
+    display: flex;
+    flex-wrap: wrap;
+    gap: 1rem;
+  }
+  
+  .group-info-item {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+  }
+  
+  .group-info-item i {
+    color: var(--primary-color);
+    font-size: 0.875rem;
+  }
+  
+  .group-actions {
+    display: flex;
+    gap: 0.75rem;
+    flex-wrap: wrap;
+  }
+  
+  .stats-card, .actions-card {
+    background: white;
+    border-radius: 12px;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
+    overflow: hidden;
+  }
+  
+  .stats-header, .actions-header {
+    background: var(--secondary-color);
+    border: 2px solid var(--primary-color);
+    padding: 1.25rem 1.5rem;
+    border-radius: 12px 12px 0 0;
+    position: relative;
+  }
+  
+  .stats-header::after,
+  .actions-header::after {
+    content: '';
+    position: absolute;
+    bottom: 0;
+    left: 0;
+    right: 0;
+    height: 3px;
+    background: var(--primary-color);
+  }
+  
+  .stats-header h3,
+  .actions-header h3 {
+    margin: 0;
+    color: white;
+    font-size: 1.125rem;
+    font-weight: 700;
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+  }
+  
+  .stats-header i,
+  .actions-header i {
+    color: var(--primary-color);
+  }
+  
+  .stats-body, .actions-body {
+    padding: 1.5rem;
   }
   
   .stat-item {
     display: flex;
     justify-content: space-between;
     align-items: center;
-    padding: 12px 0;
+    padding: 1rem 0;
     border-bottom: 1px solid #f0f0f0;
   }
   
@@ -101,294 +265,359 @@
   }
   
   .stat-label {
-    font-size: 14px;
+    font-size: 0.875rem;
     color: #666;
+    font-weight: 600;
   }
   
   .stat-value {
-    font-size: 16px;
-    font-weight: 600;
+    font-size: 1.25rem;
+    font-weight: 700;
     color: var(--primary-color);
   }
   
-  .section-title {
-    font-size: 20px;
-    font-weight: 600;
-    color: var(--primary-color);
-    margin-bottom: 20px;
+  .actions-list {
     display: flex;
-    align-items: center;
-    gap: 10px;
-  }
-  
-  .cycle-info {
-    margin-bottom: 30px;
-  }
-  
-  .info-item {
-    display: flex;
-    margin-bottom: 15px;
-    align-items: flex-start;
-  }
-  
-  .info-label {
-    font-weight: 600;
-    color: #666;
-    width: 150px;
-    flex-shrink: 0;
-  }
-  
-  .info-value {
-    color: #333;
-    flex: 1;
-  }
-  
-  .groups-section {
-    margin-top: 30px;
-  }
-  
-  .group-card {
-    background: #f8f9fa;
-    border-radius: 10px;
-    padding: 20px;
-    margin-bottom: 15px;
-  }
-  
-  .group-header {
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    margin-bottom: 10px;
-  }
-  
-  .group-name {
-    font-size: 16px;
-    font-weight: 600;
-    color: var(--primary-color);
-  }
-  
-  .group-info {
-    font-size: 14px;
-    color: #666;
+    flex-direction: column;
+    gap: 0.75rem;
   }
   
   .btn-action {
-    padding: 8px 16px;
+    padding: 0.75rem 1.25rem;
     border: none;
-    border-radius: 6px;
-    font-size: 12px;
+    border-radius: 8px;
+    font-size: 0.875rem;
     font-weight: 600;
     cursor: pointer;
     text-decoration: none;
     display: inline-flex;
     align-items: center;
-    gap: 4px;
-    margin-right: 10px;
+    justify-content: center;
+    gap: 0.5rem;
+    transition: all 0.3s ease;
+    width: 100%;
+    text-align: center;
   }
   
-  .btn-primary {
+  .btn-action:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 4px 8px rgba(0, 0, 0, 0.15);
+  }
+  
+  .btn-action.btn-primary {
     background-color: var(--primary-color);
     color: white;
   }
   
-  .btn-secondary {
+  .btn-action.btn-primary:hover {
+    background-color: #d4a600;
+  }
+  
+  .btn-action.btn-secondary {
     background-color: #6c757d;
     color: white;
   }
   
-  .btn-success {
+  .btn-action.btn-secondary:hover {
+    background-color: #5a6268;
+  }
+  
+  .btn-action.btn-success {
     background-color: #28a745;
     color: white;
   }
   
+  .btn-action.btn-success:hover {
+    background-color: #218838;
+  }
+  
   .empty-state {
     text-align: center;
-    padding: 40px 20px;
+    padding: 3rem 1.5rem;
     color: #666;
   }
   
   .empty-state i {
-    font-size: 48px;
-    margin-bottom: 20px;
+    font-size: 3rem;
+    margin-bottom: 1rem;
     color: #ccc;
+  }
+  
+  .empty-state h3 {
+    font-size: 1.25rem;
+    font-weight: 600;
+    margin-bottom: 0.5rem;
+    color: #333;
+  }
+  
+  .empty-state p {
+    margin-bottom: 1.5rem;
+    color: #666;
+  }
+  
+  .info-item-full {
+    grid-column: 1 / -1;
+    margin-top: 1rem;
+  }
+  
+  .info-value-multiline {
+    white-space: pre-wrap;
   }
 </style>
 {% endblock %}
 
 {% block content %}
-<div class="cycle-detail-container">
-  <div class="cycle-header">
-    <h1 class="cycle-title">{{ cycle.nom }}</h1>
-    <p class="cycle-subtitle">
-      {% if cycle.description %}{{ cycle.description }}{% endif %}
-    </p>
-    <span class="cycle-status status-{{ cycle.statut.value if cycle.statut else 'planifie' }}">
-      {{ cycle.statut.value if cycle.statut else 'planifie' }}
+<div class="container-fluid p-4">
+  <div class="cycle-detail-container">
+  {# En-tête de page avec breadcrumbs et actions #}
+  {% set cycle_status_html %}
+    <span class="cycle-status status-{{ cycle.statut | default('planifie') }}" style="display: inline-block; padding: 0.5rem 1.25rem; border-radius: 20px; font-size: 0.75rem; font-weight: 700; text-transform: uppercase; letter-spacing: 0.5px; margin-top: 0.5rem; {% if cycle.statut | default('planifie') == 'planifie' %}background-color: rgba(255, 193, 7, 0.2); color: #ffc107; border: 1px solid rgba(255, 193, 7, 0.4);{% elif cycle.statut | default('planifie') == 'en_cours' %}background-color: rgba(76, 175, 80, 0.2); color: #4caf50; border: 1px solid rgba(76, 175, 80, 0.4);{% else %}background-color: rgba(156, 39, 176, 0.2); color: #9c27b0; border: 1px solid rgba(156, 39, 176, 0.4);{% endif %}">
+      <i class="fas fa-{% if cycle.statut | default('planifie') == 'en_cours' %}play-circle{% elif cycle.statut | default('planifie') == 'termine' %}check-circle{% else %}clock{% endif %} me-1"></i>
+      {{ cycle.statut | default('planifie') }}
     </span>
-  </div>
+  {% endset %}
+  
+  {% set cycle_description_html %}
+    
+    {{ cycle_status_html }}
+  {% endset %}
+  
+  {{ page_header(
+    title="<i class='fas fa-sync-alt me-2'></i>" ~ cycle.nom,
+    breadcrumbs=[
+      {"name": "Codéveloppement", "url": url_for("codev_dashboard") ~ ("?programme=" ~ programme_param if programme_param else "")},
+      {"name": "Cycles", "url": url_for("codev_cycles") ~ ("?programme=" ~ programme_param if programme_param else "")},
+      {"name": cycle.nom}
+    ],
+    right_content=cycle_description_html,
+    actions=[
+      {
+        "label": "<i class='fas fa-edit me-2'></i>Modifier",
+        "url": url_for("codev_cycles_create_form") ~ "?cycle_id=" ~ cycle.id ~ (("&programme=" ~ programme_param) if programme_param else ""),
+        "class": "btn-outline-light btn-sm",
+        "primary": true
+      },
+      {
+        "label": "<i class='fas fa-arrow-left me-2'></i>Retour aux cycles",
+        "url": url_for("codev_cycles") ~ ("?programme=" ~ programme_param if programme_param else ""),
+        "class": "btn-outline-light btn-sm",
+        "primary": false
+      }
+    ]
+  ) }}
   
   <div class="cycle-content">
     <div class="cycle-main">
-      <div class="cycle-info">
-        <h2 class="section-title">
-          <i class="fas fa-info-circle"></i> Informations du cycle
-        </h2>
-        
-        <div class="info-item">
-          <div class="info-label">Programme :</div>
-          <div class="info-value">{{ cycle.programme.nom if cycle.programme else 'Non défini' }}</div>
+      {# Carte Informations du cycle #}
+      <div class="info-card">
+        <div class="card-header-section">
+          <h2><i class="fas fa-info-circle"></i> Informations du cycle</h2>
         </div>
-        
-        {% if cycle.promotion %}
-        <div class="info-item">
-          <div class="info-label">Promotion :</div>
-          <div class="info-value">{{ cycle.promotion.nom }}</div>
-        </div>
-        {% endif %}
-        
-        <div class="info-item">
-          <div class="info-label">Période :</div>
-          <div class="info-value">
-            {{ cycle.date_debut | format_date }} - {{ cycle.date_fin | format_date }}
+        <div class="card-body-section">
+          <div class="info-grid">
+            <div class="info-item">
+              <div class="info-label"><i class="fas fa-graduation-cap me-1"></i>Programme</div>
+              <div class="info-value">{{ cycle.programme_nom | default('Non défini') }}</div>
+            </div>
+            
+            {% if cycle.promotion_id | default(None) %}
+            <div class="info-item">
+              <div class="info-label"><i class="fas fa-users me-1"></i>Promotion</div>
+              <div class="info-value">{{ cycle.promotion_nom | default('Non définie') }}</div>
+            </div>
+            {% endif %}
+            
+            <div class="info-item">
+              <div class="info-label"><i class="fas fa-calendar-alt me-1"></i>Période</div>
+              <div class="info-value">
+                {% if cycle.date_debut %}
+                  {{ cycle.date_debut | format_date if cycle.date_debut else 'Non définie' }}
+                {% else %}
+                  Non définie
+                {% endif %}
+                {% if cycle.date_fin %}
+                  - {{ cycle.date_fin | format_date }}
+                {% endif %}
+              </div>
+            </div>
+            
+            <div class="info-item">
+              <div class="info-label"><i class="fas fa-calendar-check me-1"></i>Séances prévues</div>
+              <div class="info-value">{{ cycle.nombre_seances_prevues | default(0) }} séances</div>
+            </div>
+            
+            <div class="info-item">
+              <div class="info-label"><i class="fas fa-clock me-1"></i>Durée par séance</div>
+              <div class="info-value">{{ cycle.duree_seance_minutes | default(180) }} minutes</div>
+            </div>
+            
+            {% if cycle.animateur_principal_id | default(None) %}
+            <div class="info-item">
+              <div class="info-label"><i class="fas fa-user-tie me-1"></i>Animateur principal</div>
+              <div class="info-value">{{ cycle.animateur_principal.nom_complet | default('Non défini') if cycle.animateur_principal else 'Non défini' }}</div>
+            </div>
+            {% endif %}
+            
+            {% if cycle.cree_le %}
+            <div class="info-item">
+              <div class="info-label"><i class="fas fa-calendar-plus me-1"></i>Créé le</div>
+              <div class="info-value">
+                {{ cycle.cree_le | format_datetime if cycle.cree_le else '' }}
+              </div>
+            </div>
+            {% endif %}
           </div>
-        </div>
-        
-        <div class="info-item">
-          <div class="info-label">Séances prévues :</div>
-          <div class="info-value">{{ cycle.nombre_seances_prevues }} séances</div>
-        </div>
-        
-        <div class="info-item">
-          <div class="info-label">Durée par séance :</div>
-          <div class="info-value">{{ cycle.duree_seance_minutes }} minutes</div>
-        </div>
-        
-        {% if cycle.animateur_principal %}
-        <div class="info-item">
-          <div class="info-label">Animateur principal :</div>
-          <div class="info-value">{{ cycle.animateur_principal.nom_complet }}</div>
-        </div>
-        {% endif %}
-        
-        {% if cycle.objectifs_cycle %}
-        <div class="info-item">
-          <div class="info-label">Objectifs :</div>
-          <div class="info-value">{{ cycle.objectifs_cycle }}</div>
-        </div>
-        {% endif %}
-        
-        <div class="info-item">
-          <div class="info-label">Créé le :</div>
-          <div class="info-value">{{ cycle.cree_le | format_datetime }}</div>
+          
+          {% if cycle.objectifs_cycle %}
+          <div class="info-item info-item-full">
+            <div class="info-label"><i class="fas fa-target me-1"></i>Objectifs</div>
+            <div class="info-value info-value-multiline">{{ cycle.objectifs_cycle }}</div>
+          </div>
+          {% endif %}
         </div>
       </div>
       
-      <div class="groups-section">
-        <h2 class="section-title">
-          <i class="fas fa-users"></i> Groupes du cycle
-        </h2>
-        
-        {% if groupes %}
-          {% for groupe in groupes %}
-          <div class="group-card">
-            <div class="group-header">
-              <div class="group-name">{{ groupe.nom_groupe }}</div>
-              <span class="cycle-status status-{{ groupe.statut.value if groupe.statut else 'en_constitution' }}">
-                {{ groupe.statut.value if groupe.statut else 'en_constitution' }}
-              </span>
-            </div>
-            <div class="group-info">
-              Capacité : {{ groupe.capacite_max }} membres
-              {% if groupe.animateur %}
-                • Animateur : {{ groupe.animateur.nom_complet }}
-              {% endif %}
-            </div>
-            <div style="margin-top: 15px;">
-              <a href="{{ url_for('codev_groupes', cycle_id=cycle.id, groupe_id=groupe.id) }}" class="btn-action btn-primary submenu-item">
-                <i class="fas fa-eye"></i> Voir le groupe
-              </a>
-              <a href="{{ url_for('codev_groupes', cycle_id=cycle.id, groupe_id=groupe.id, edit=1) }}" class="btn-action btn-secondary submenu-item">
-                <i class="fas fa-edit"></i> Modifier
-              </a>
-            </div>
-          </div>
-          {% endfor %}
-        {% else %}
-        <div class="empty-state">
-          <i class="fas fa-users"></i>
-          <h3>Aucun groupe créé</h3>
-          <p>Ce cycle n'a pas encore de groupes de codéveloppement.</p>
-          <a href="{{ url_for('codev_groupes', cycle_id=cycle.id) }}" class="btn-action btn-success submenu-item">
-            <i class="fas fa-plus"></i> Créer un groupe
-          </a>
+      {# Carte Groupes du cycle #}
+      <div class="groups-card">
+        <div class="card-header-section">
+          <h2><i class="fas fa-users"></i> Groupes du cycle</h2>
         </div>
-        {% endif %}
+        <div class="card-body-section">
+          {% if groupes %}
+          <div class="groups-list">
+            {% for groupe in groupes %}
+            <div class="group-card">
+              <div class="group-header">
+                <div class="group-name">
+                  <i class="fas fa-users"></i>
+                  {{ groupe.nom_groupe | default('Groupe ' ~ groupe.id) }}
+                </div>
+                <span class="cycle-status status-{{ groupe.statut | default('en_constitution') }}">
+                  {{ groupe.statut | default('en_constitution') }}
+                </span>
+              </div>
+              <div class="group-info">
+                <div class="group-info-item">
+                  <i class="fas fa-user-friends"></i>
+                  <span>Capacité : {{ groupe.capacite_max | default(12) }} membres</span>
+                </div>
+                {% if groupe.animateur %}
+                <div class="group-info-item">
+                  <i class="fas fa-user-tie"></i>
+                  <span>Animateur : {{ groupe.animateur.nom_complet }}</span>
+                </div>
+                {% endif %}
+              </div>
+              <div class="group-actions">
+                <a href="{{ url_for('codev_groupes') }}?cycle_id={{ cycle.id }}&groupe_id={{ groupe.id }}{% if programme_param %}&programme={{ programme_param }}{% endif %}" class="btn-action btn-primary">
+                  <i class="fas fa-eye"></i> Voir le groupe
+                </a>
+                <a href="{{ url_for('codev_groupes') }}?cycle_id={{ cycle.id }}&groupe_id={{ groupe.id }}&edit=1{% if programme_param %}&programme={{ programme_param }}{% endif %}" class="btn-action btn-secondary">
+                  <i class="fas fa-edit"></i> Modifier
+                </a>
+              </div>
+            </div>
+            {% endfor %}
+          </div>
+          {% else %}
+          <div class="empty-state">
+            <i class="fas fa-users"></i>
+            <h3>Aucun groupe créé</h3>
+            <p>Ce cycle n'a pas encore de groupes de codéveloppement.</p>
+            <a href="{{ url_for('codev_groupes') }}?cycle_id={{ cycle.id }}{% if programme_param %}&programme={{ programme_param }}{% endif %}" class="btn-action btn-success">
+              <i class="fas fa-plus"></i> Créer un groupe
+            </a>
+          </div>
+          {% endif %}
+        </div>
       </div>
     </div>
     
     <div class="cycle-sidebar">
-      <div class="stats-card">
-        <h3 class="stats-title">
-          <i class="fas fa-chart-bar"></i> Statistiques
-        </h3>
-        
-        {% if stats %}
-        <div class="stat-item">
-          <span class="stat-label">Groupes créés</span>
-          <span class="stat-value">{{ stats.nb_groupes }}</span>
+      {# Carte Actions #}
+      <div class="actions-card">
+        <div class="actions-header">
+          <h3><i class="fas fa-cogs"></i> Actions</h3>
         </div>
-        
-        <div class="stat-item">
-          <span class="stat-label">Membres total</span>
-          <span class="stat-value">{{ stats.nb_membres }}</span>
+        <div class="actions-body">
+          <div class="actions-list">
+            <a href="{{ url_for('codev_groupes') }}?cycle_id={{ cycle.id }}{% if programme_param %}&programme={{ programme_param }}{% endif %}" class="btn-action btn-primary">
+              <i class="fas fa-users"></i> Gérer les groupes
+            </a>
+            
+            <a href="{{ url_for('codev_seances') }}{% if programme_param %}?programme={{ programme_param }}{% endif %}" class="btn-action btn-primary">
+              <i class="fas fa-calendar-alt"></i> Voir les séances
+            </a>
+            
+          </div>
         </div>
-        
-        <div class="stat-item">
-          <span class="stat-label">Séances réalisées</span>
-          <span class="stat-value">{{ stats.nb_seances }}</span>
-        </div>
-        
-        <div class="stat-item">
-          <span class="stat-label">Présentations terminées</span>
-          <span class="stat-value">{{ stats.nb_presentations }}</span>
-        </div>
-        
-        <div class="stat-item">
-          <span class="stat-label">Taux de réalisation</span>
-          <span class="stat-value">{{ "%.1f"|format(stats.taux_realisation) }}%</span>
-        </div>
-        {% else %}
-        <div class="empty-state">
-          <i class="fas fa-chart-bar"></i>
-          <p>Aucune donnée disponible</p>
-        </div>
-        {% endif %}
       </div>
       
+      {# Carte Statistiques #}
       <div class="stats-card">
-        <h3 class="stats-title">
-          <i class="fas fa-cogs"></i> Actions
-        </h3>
-        
-        <div style="display: flex; flex-direction: column; gap: 10px;">
-          <a href="{{ url_for('codev_groupes', cycle_id=cycle.id) }}" class="btn-action btn-primary submenu-item">
-            <i class="fas fa-users"></i> Gérer les groupes
-          </a>
+        <div class="stats-header">
+          <h3><i class="fas fa-chart-bar"></i> Statistiques</h3>
+        </div>
+        <div class="stats-body">
+          {% if stats %}
+          <div class="stat-item">
+            <span class="stat-label"><i class="fas fa-users me-1"></i>Groupes créés</span>
+            <span class="stat-value">{{ stats.nb_groupes }}</span>
+          </div>
           
-          <a href="{{ url_for('codev_seances', cycle_id=cycle.id) }}" class="btn-action btn-primary submenu-item">
-            <i class="fas fa-calendar-alt"></i> Voir les séances
-          </a>
+          <div class="stat-item">
+            <span class="stat-label"><i class="fas fa-user-friends me-1"></i>Membres total</span>
+            <span class="stat-value">{{ stats.nb_membres }}</span>
+          </div>
           
-          <a href="{{ url_for('codev_cycle_edit', cycle_id=cycle.id) }}" class="btn-action btn-secondary submenu-item">
-            <i class="fas fa-edit"></i> Modifier le cycle
-          </a>
+          <div class="stat-item">
+            <span class="stat-label"><i class="fas fa-calendar-check me-1"></i>Séances réalisées</span>
+            <span class="stat-value">{{ stats.nb_seances }}</span>
+          </div>
           
-          <a href="{{ url_for('codev_cycles') }}" class="btn-action btn-secondary submenu-item">
-            <i class="fas fa-arrow-left"></i> Retour aux cycles
-          </a>
+          <div class="stat-item">
+            <span class="stat-label"><i class="fas fa-presentation me-1"></i>Présentations terminées</span>
+            <span class="stat-value">{{ stats.nb_presentations }}</span>
+          </div>
+          
+          <div class="stat-item">
+            <span class="stat-label"><i class="fas fa-percentage me-1"></i>Taux de réalisation</span>
+            <span class="stat-value">{{ "%.1f"|format(stats.taux_realisation) }}%</span>
+          </div>
+          {% else %}
+          <div class="empty-state">
+            <i class="fas fa-chart-bar"></i>
+            <p>Aucune donnée disponible</p>
+          </div>
+          {% endif %}
         </div>
       </div>
+      
+      
     </div>
   </div>
+  </div>
 </div>
+
+<script>
+// Ajouter l'overlay global aux liens de navigation codev
+document.addEventListener('DOMContentLoaded', function() {
+    const navLinks = document.querySelectorAll('a[href*="/codev/"]');
+    navLinks.forEach(function(link) {
+        const href = link.getAttribute('href');
+        // Ignorer les liens externes et les ancres
+        if (href && !href.startsWith('http') && !href.startsWith('#')) {
+            link.addEventListener('click', function(e) {
+                // Ne pas intercepter si Ctrl/Cmd est pressé (nouvel onglet)
+                if (e.ctrlKey || e.metaKey) return;
+                
+                // Afficher l'overlay global
+                if (typeof showGlobalLoading === 'function') {
+                    showGlobalLoading('Chargement', 'Veuillez patienter...');
+                }
+            });
+        }
+    });
+});
+</script>
 {% endblock %}

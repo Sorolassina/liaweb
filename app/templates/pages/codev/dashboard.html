@@ -1,4 +1,4 @@
-{% extends "base.html" %}
+{% extends "layouts/base.html" %}
 {% from "components/page_header.html" import page_header %}
 
 {% block title %}Codéveloppement - {{ super() }}{% endblock %}
@@ -77,61 +77,267 @@
 {% endblock %}
 
 {% block content %}
-<!--<div class="container-fluid">-->
-  <!-- Entête -->
-  {{ page_header(
-      title="<i class='fas fa-users'></i> Codéveloppement",
-      breadcrumbs=[{"name": "Gestion des données des cycles de codéveloppement du programme"}]
-  ) }}
-  <div class="toolbar" style="margin-top: 1rem;">
-    <a href="{{ url_for('codev_cycles_create_form') }}" class="submenu-item">
-      <div class="icon"><i class="fas fa-users"></i></div><div>cycle</div>
-    </a>
-  </div>
+{% set programme_param = request.query_params.get('programme') or (schema_name.upper() if schema_name and schema_name != 'public' else '') %}
 
-  <!-- Statistiques rapides -->
-  <div class="row mb-0">
-    <div class="col-md-3">
-      <div class="codev-stat neumorphism-card" style="padding: 15px 20px;">
-        <span class="codev-stat-number" style="font-size: 1.5rem;">{{ cycles_actifs|length }}</span>
-        <span class="codev-stat-label" style="font-size: 0.8rem;">Cycles</span>
-      </div>
-    </div>
-    <div class="col-md-3">
-      <div class="codev-stat neumorphism-card" style="padding: 15px 20px;">
-        <span class="codev-stat-number" style="font-size: 1.5rem;">{{ prochaines_seances|length }}</span>
-        <span class="codev-stat-label" style="font-size: 0.8rem;">Séances</span>
-      </div>
-    </div>
-    <div class="col-md-3">
-      <div class="codev-stat neumorphism-card" style="padding: 15px 20px;">
-        <span class="codev-stat-number" style="font-size: 1.5rem;">{{ engagements_en_cours|length }}</span>
-        <span class="codev-stat-label" style="font-size: 0.8rem;">Engagements</span>
-      </div>
-    </div>
-    <div class="col-md-3">
-      <div class="codev-stat neumorphism-card" style="padding: 15px 20px;">
-        <span class="codev-stat-number" style="font-size: 1.5rem;">0</span>
-        <span class="codev-stat-label" style="font-size: 0.8rem;">Retours</span>
-      </div>
-    </div>
-  </div>
+<style>
+.page-header-right-content .codev-kpis {
+    display: flex;
+    gap: 1rem;
+    align-items: center;
+    flex-wrap: wrap;
+    flex-direction: row;
+}
 
-  <div class="row mb-0">
+.page-header-right-content .info-box-sm {
+    display: flex;
+    align-items: center;
+    padding: 0.4rem;
+    background: rgba(255, 255, 255, 0.15);
+    border-radius: 0.375rem;
+    margin-bottom: 0;
+}
+
+.page-header-right-content .info-box-sm .info-box-icon {
+    width: 2.5rem;
+    height: 2.5rem;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border-radius: 50%;
+    margin-right: 0.5rem;
+    font-size: 0.9rem;
+}
+
+.page-header-right-content .info-box-sm .info-box-content {
+    flex: 1;
+    padding-left: 0;
+}
+
+.page-header-right-content .info-box-sm .info-box-text {
+    display: block;
+    font-size: 0.7rem;
+    font-weight: 500;
+    color: rgba(255, 255, 255, 0.9);
+    margin-bottom: 0.25rem;
+}
+
+.page-header-right-content .info-box-sm .info-box-number {
+    display: block;
+    font-size: 0.9rem;
+    font-weight: 600;
+    color: white;
+}
+</style>
+
+{% set kpis_content %}
+<div class="codev-kpis">
+    <div class="info-box-sm">
+        <span class="info-box-icon bg-primary">
+            <i class="fas fa-sync-alt"></i>
+        </span>
+        <div class="info-box-content">
+            <span class="info-box-text">Total Cycles</span>
+            <span class="info-box-number">{{ stats.total_cycles or 0 }}</span>
+        </div>
+    </div>
+    <div class="info-box-sm">
+        <span class="info-box-icon bg-info">
+            <i class="fas fa-clock"></i>
+        </span>
+        <div class="info-box-content">
+            <span class="info-box-text">Planifiés</span>
+            <span class="info-box-number">{{ stats.cycles_planifies or 0 }}</span>
+        </div>
+    </div>
+    <div class="info-box-sm">
+        <span class="info-box-icon bg-warning">
+            <i class="fas fa-play"></i>
+        </span>
+        <div class="info-box-content">
+            <span class="info-box-text">En Cours</span>
+            <span class="info-box-number">{{ stats.cycles_en_cours or 0 }}</span>
+        </div>
+    </div>
+    <div class="info-box-sm">
+        <span class="info-box-icon bg-success">
+            <i class="fas fa-users"></i>
+        </span>
+        <div class="info-box-content">
+            <span class="info-box-text">Groupes</span>
+            <span class="info-box-number">{{ stats.total_groupes or 0 }}</span>
+        </div>
+    </div>
+    <div class="info-box-sm">
+        <span class="info-box-icon bg-secondary">
+            <i class="fas fa-calendar-alt"></i>
+        </span>
+        <div class="info-box-content">
+            <span class="info-box-text">Séances</span>
+            <span class="info-box-number">{{ stats.total_seances or 0 }}</span>
+        </div>
+    </div>
+</div>
+{% endset %}
+
+{% set title_with_help %}
+<i class='fas fa-users me-2'></i>Codéveloppement
+<button type="button" class="btn btn-outline-light btn-sm ms-2" onclick="showModal('codevHelpModal')" title="Aide - Comment fonctionne le Codéveloppement ?">
+    <i class="fas fa-question-circle me-1"></i>Aide
+</button>
+{% endset %}
+
+{{ page_header(
+    title=title_with_help,
+    breadcrumbs=[{"label": "Gestion des données des cycles de codéveloppement du programme", "url": ""}],
+    right_content=kpis_content
+) }}
+
+<style>
+/* Styles pour la sidebar codev */
+.codev-sidebar {
+    background-color: #2a2a2a;
+    border-left: 1px solid #dee2e6;
+    border-radius: 12px;
+    padding: 0.75rem;
+    height: calc(100vh - 300px);
+    max-height: calc(100vh - 300px);
+    position: sticky;
+    top: 0;
+    overflow-y: auto;
+    display: flex;
+    flex-direction: column;
+}
+
+.codev-sidebar::-webkit-scrollbar {
+    width: 6px;
+}
+
+.codev-sidebar::-webkit-scrollbar-track {
+    background: transparent;
+}
+
+.codev-sidebar::-webkit-scrollbar-thumb {
+    background: #dee2e6;
+    border-radius: 3px;
+}
+
+.codev-sidebar::-webkit-scrollbar-thumb:hover {
+    background: #adb5bd;
+}
+
+.codev-sidebar .sidebar-section {
+    margin-bottom: 1rem;
+}
+
+.codev-sidebar .sidebar-section:last-child {
+    margin-bottom: 0;
+}
+
+.codev-sidebar .sidebar-section-title {
+    font-size: 0.8rem;
+    font-weight: 600;
+    color: #ffffff;
+    margin-bottom: 0.5rem;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    border-bottom: 2px solid rgba(255, 255, 255, 0.2);
+    padding-bottom: 0.4rem;
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+}
+
+.codev-sidebar .btn-new-cycle {
+    width: 100%;
+    padding: 0.5rem 0.75rem;
+    font-weight: 600;
+    margin-bottom: 0.75rem;
+    font-size: 0.85rem;
+    box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+    transition: all 0.2s ease;
+}
+
+.codev-sidebar .btn-new-cycle:hover {
+    transform: translateY(-1px);
+    box-shadow: 0 4px 6px rgba(0,0,0,0.15);
+}
+
+.codev-sidebar .sidebar-link {
+    display: block;
+    padding: 0.5rem 0.75rem;
+    color: #ffffff;
+    text-decoration: none;
+    border-radius: 6px;
+    margin-bottom: 0.4rem;
+    transition: all 0.2s ease;
+    font-size: 0.85rem;
+}
+
+.codev-sidebar .sidebar-link:hover {
+    background-color: rgba(255, 255, 255, 0.1);
+    color: #ffffff;
+    transform: translateX(4px);
+}
+
+.codev-sidebar .sidebar-link i {
+    margin-right: 0.5rem;
+    width: 20px;
+    text-align: center;
+}
+
+.codev-main-content {
+    padding: 1rem;
+}
+</style>
+
+<div class="container-fluid p-4">
+  <div class="row g-0">
+    <!-- Sidebar avec actions rapides (à droite) -->
+    <div class="col-md-3 col-lg-2 codev-sidebar order-md-2">
+      <!-- Bouton Nouveau Cycle -->
+      <div class="sidebar-section">
+        <a href="{{ url_for('codev_cycles_create_form') }}{% if programme_param %}?programme={{ programme_param }}{% endif %}" class="btn btn-primary btn-new-cycle">
+          <i class="fas fa-plus me-2"></i>Nouveau Cycle
+        </a>
+      </div>
+
+      <!-- Actions Rapides -->
+      <div class="sidebar-section">
+        <div class="sidebar-section-title">
+          <i class="fas fa-bolt me-1"></i>Actions Rapides
+        </div>
+        <a href="{{ url_for('codev_cycles') }}{% if programme_param %}?programme={{ programme_param }}{% endif %}" class="sidebar-link">
+          <i class="fas fa-sync-alt"></i>Cycles
+        </a>
+        <a href="{{ url_for('codev_groupes') }}{% if programme_param %}?programme={{ programme_param }}{% endif %}" class="sidebar-link">
+          <i class="fas fa-users"></i>Groupes
+        </a>
+        <a href="{{ url_for('codev_seances') }}{% if programme_param %}?programme={{ programme_param }}{% endif %}" class="sidebar-link">
+          <i class="fas fa-calendar-alt"></i>Séances
+        </a>
+        <a href="{{ url_for('codev_statistiques') }}{% if programme_param %}?programme={{ programme_param }}{% endif %}" class="sidebar-link">
+          <i class="fas fa-chart-pie"></i>Statistiques
+        </a>
+      </div>
+    </div>
+
+    <!-- Contenu principal -->
+    <div class="col-md-9 col-lg-10 codev-main-content order-md-1">
+      <div class="row mb-0">
     <!-- Cycles actifs -->
-    <div class="col-md-6">
+    <div class="col-md-6" style="width: 100%;">
       <div class="card cycle-card" style="padding: 10px;">
         <div class="card-header d-flex justify-content-between align-items-center" style="padding: 8px 12px;">
           <h6 class="mb-0" style="font-size: 1rem;">
             <i class="fa fa-calendar-alt me-1"></i>Cycles
           </h6>
-          <a href="{{ url_for('codev_cycles') }}" class="btn btn-sm btn-outline-primary" style="padding: 2px 8px; font-size: 0.75rem;">
+          <a href="{{ url_for('codev_cycles') }}{% if programme_param %}?programme={{ programme_param }}{% endif %}" class="btn btn-sm btn-outline-primary" style="padding: 2px 8px; font-size: 0.75rem;">
             Tout
           </a>
         </div>
         <div class="card-body" style="padding: 8px 12px;">
           {% if cycles_actifs %}
-            {% for cycle in cycles_actifs[:2] %}
+            {% for cycle in cycles_actifs %}
             <div class="d-flex justify-content-between align-items-center mb-2">
               <div>
                 <h6 class="mb-0" style="font-size: 0.9rem;">{{ cycle.nom }}</h6>
@@ -140,12 +346,12 @@
                 </small>
               </div>
               <div class="text-end">
-                <span class="badge bg-primary" style="font-size: 0.65rem;">{{ cycle.statut.value }}</span>
-                <br>
-                <a href="{{ url_for('codev_cycle_detail', cycle_id=cycle.id) }}" class="btn btn-sm btn-outline-primary mt-1" style="padding: 2px 6px;">
-                  <i class="fa fa-eye" style="font-size: 0.7rem;"></i>
-                </a>
-              </div>
+                <span class="badge bg-primary" style="font-size: 0.65rem;">{{ cycle.statut if cycle.statut else 'N/A' }}</span>
+              
+              <a href="{{ url_for('codev_cycle_detail', cycle_id=cycle.id) }}{% if programme_param %}?programme={{ programme_param }}{% endif %}" class="btn btn-sm btn-outline-primary" title="Voir les détails">
+                <i class="fas fa-eye"></i>
+              </a>
+            </div>
             </div>
             {% if not loop.last %}<hr style="margin: 8px 0;">{% endif %}
             {% endfor %}
@@ -159,42 +365,7 @@
       </div>
     </div>
 
-    <!-- Prochaines séances -->
-    <div class="col-md-6">
-      <div class="card cycle-card" style="padding: 10px;">
-        <div class="card-header d-flex justify-content-between align-items-center" style="padding: 8px 12px;">
-          <h6 class="mb-0" style="font-size: 1rem;">
-            <i class="fa fa-clock me-1"></i>Séances
-          </h6>
-          <a href="{{ url_for('codev_seances') }}" class="btn btn-sm btn-outline-primary" style="padding: 2px 8px; font-size: 0.75rem;">
-            Tout
-          </a>
-        </div>
-        <div class="card-body" style="padding: 8px 12px;">
-          {% if prochaines_seances %}
-            {% for seance in prochaines_seances[:2] %}
-            <div class="seance-item">
-              <div class="d-flex justify-content-between align-items-center">
-                <div>
-                  <h6 class="mb-0" style="font-size: 0.9rem;">Séance {{ seance.numero_seance }}</h6>
-                  <small class="text-muted" style="font-size: 0.7rem;">
-                    {{ seance.date_seance.strftime('%d/%m %H:%M') }}
-                  </small>
-                </div>
-                <span class="badge bg-info" style="font-size: 0.65rem;">{{ seance.statut.value }}</span>
-              </div>
-            </div>
-            {% if not loop.last %}<hr style="margin: 8px 0;">{% endif %}
-            {% endfor %}
-          {% else %}
-            <div class="text-center text-muted py-2">
-              <i class="fa fa-clock fa-lg mb-1"></i>
-              <p style="font-size: 0.8rem; margin: 0;">Aucune séance</p>
-            </div>
-          {% endif %}
-        </div>
-      </div>
-    </div>
+    
   </div>
 
   <!-- Engagements en cours -->
@@ -219,9 +390,9 @@
                 </small>
               </div>
               <div class="col-md-4 text-end">
-                <span class="badge bg-warning">{{ presentation.statut.value }}</span>
+                <span class="badge bg-warning">{{ presentation.statut if presentation.statut else 'N/A' }}</span>
                 <br>
-                <a href="{{ url_for('codev_presentation_detail', presentation_id=presentation.id) }}" class="btn btn-sm btn-outline-primary mt-1">
+                <a href="{{ url_for('codev_presentation_detail', presentation_id=presentation.id) }}{% if programme_param %}?programme={{ programme_param }}{% endif %}" class="btn btn-sm btn-outline-primary mt-1">
                   <i class="fa fa-eye"></i>
                 </a>
               </div>
@@ -234,41 +405,406 @@
   </div>
   {% endif %}
 
-  <!-- Actions rapides -->
-  <div class="row mt-4">
-    <div class="col-12">
-      <div class="card">
-        <div class="card-header">
-          <h5 class="mb-0">
-            <i class="fa fa-bolt me-2"></i>Actions Rapides
-          </h5>
-        </div>
-        <div class="card-body">
-          <div class="row">
-            <div class="col-md-3">
-              <a href="{{ url_for('codev_cycles_create_form') }}" class="submenu-item">
-                <i class="fa fa-plus me-2"></i> Cycle
-              </a>
-            </div>
-            <div class="col-md-3">
-              <a href="{{ url_for('codev_groupes') }}" class="submenu-item">
-                <i class="fa fa-users me-2"></i> Gérer les Groupes
-              </a>
-            </div>
-            <div class="col-md-3">
-              <a href="{{ url_for('codev_seances') }}" class="submenu-item">
-                <i class="fa fa-calendar me-2"></i> Planifier Séances
-              </a>
-            </div>
-            <div class="col-md-3">
-              <a href="{{ url_for('codev_statistiques') }}" class="submenu-item">
-                <i class="fa fa-chart-pie"></i> Statistiques
-              </a>
-            </div>
-          </div>
-        </div>
       </div>
     </div>
   </div>
-<!--</div>-->
+</div>
+
+<!-- Modal d'aide Codev -->
+<div class="modal-lg" id="codevHelpModal">
+  <div class="modal-content">
+    <div class="modal-header">
+      <h3 class="modal-title" id="codevHelpModalLabel">
+        <i class="fas fa-question-circle me-2"></i>Guide du Codéveloppement
+      </h3>
+      <button type="button" class="modal-close" onclick="closeModal('codevHelpModal')" aria-label="Fermer">
+        <i class="fas fa-times"></i>
+      </button>
+    </div>
+    <div class="modal-body">
+        <!-- Introduction -->
+        <div class="mb-4">
+          <h4 class="text-primary mb-3">
+            <i class="fas fa-lightbulb me-2"></i>Qu'est-ce que le Codéveloppement ?
+          </h4>
+          <p class="lead">
+            Le <strong>Codéveloppement</strong> est une méthode d'apprentissage et de développement professionnel où un groupe de personnes se réunit régulièrement pour s'entraider à résoudre des problématiques réelles de leur activité.
+          </p>
+        </div>
+
+        <!-- Structure hiérarchique -->
+        <div class="mb-4">
+          <h5 class="text-primary mb-3">
+            <i class="fas fa-sitemap me-2"></i>Structure du Module
+          </h5>
+          <div class="card border-primary mb-3">
+            <div class="card-body">
+              <h6 class="card-title text-primary">
+                <i class="fas fa-sync-alt me-2"></i>1. Cycle de Codéveloppement
+              </h6>
+              <p class="card-text">
+                Un <strong>cycle</strong> est une série de séances organisées sur une période définie (ex: 6 mois). 
+                Il contient plusieurs groupes et définit les objectifs globaux.
+              </p>
+              <ul class="mb-0">
+                <li><strong>Dates</strong> : Période du cycle (début et fin)</li>
+                <li><strong>Nombre de séances</strong> : Généralement 6 séances de 3h chacune</li>
+                <li><strong>Statut</strong> : Planifié → En cours → Terminé</li>
+              </ul>
+            </div>
+          </div>
+
+          <div class="card border-info mb-3">
+            <div class="card-body">
+              <h6 class="card-title text-info">
+                <i class="fas fa-users me-2"></i>2. Groupe de Codéveloppement
+              </h6>
+              <p class="card-text">
+                Un <strong>groupe</strong> est composé de 8 à 12 membres qui se rencontrent régulièrement dans le cadre d'un cycle.
+              </p>
+              <ul class="mb-0">
+                <li><strong>Membres</strong> : Candidats participant au groupe</li>
+                <li><strong>Animateur</strong> : Personne qui facilite les séances</li>
+                <li><strong>Capacité</strong> : Maximum 12 membres par groupe</li>
+                <li><strong>Statut</strong> : En constitution → Actif → Terminé</li>
+              </ul>
+            </div>
+          </div>
+
+          <div class="card border-success mb-3">
+            <div class="card-body">
+              <h6 class="card-title text-success">
+                <i class="fas fa-calendar-alt me-2"></i>3. Séance de Codéveloppement
+              </h6>
+              <p class="card-text">
+                Une <strong>séance</strong> est une réunion de 3 heures où les membres du groupe se retrouvent pour travailler ensemble.
+              </p>
+              <ul class="mb-0">
+                <li><strong>Durée</strong> : Généralement 3 heures (180 minutes)</li>
+                <li><strong>Lieu</strong> : En présentiel ou en visioconférence</li>
+                <li><strong>Numéro</strong> : Ordre dans le cycle (1, 2, 3...)</li>
+                <li><strong>Présentations</strong> : Chaque séance contient plusieurs présentations de problématiques</li>
+              </ul>
+            </div>
+          </div>
+
+          <div class="card border-warning mb-3">
+            <div class="card-body">
+              <h6 class="card-title text-warning">
+                <i class="fas fa-presentation me-2"></i>4. Présentation
+              </h6>
+              <p class="card-text">
+                Une <strong>présentation</strong> est l'exposé d'une problématique réelle par un membre du groupe.
+              </p>
+              <ul class="mb-0">
+                <li><strong>Problématique</strong> : Situation concrète à résoudre</li>
+                <li><strong>Contexte</strong> : Informations complémentaires</li>
+                <li><strong>Solutions proposées</strong> : Suggestions du groupe</li>
+                <li><strong>Engagement</strong> : Action que le candidat s'engage à tester</li>
+                <li><strong>Délai</strong> : Date limite pour tester la solution</li>
+              </ul>
+            </div>
+          </div>
+
+          <div class="card border-secondary">
+            <div class="card-body">
+              <h6 class="card-title text-secondary">
+                <i class="fas fa-comments me-2"></i>5. Contribution
+              </h6>
+              <p class="card-text">
+                Une <strong>contribution</strong> est une suggestion ou un retour d'expérience apporté par un membre du groupe lors d'une présentation.
+              </p>
+            </div>
+          </div>
+        </div>
+
+        <!-- Processus -->
+        <div class="mb-4">
+          <h5 class="text-primary mb-3">
+            <i class="fas fa-route me-2"></i>Comment ça fonctionne ?
+          </h5>
+          <div class="timeline">
+            <div class="d-flex mb-3">
+              <div class="flex-shrink-0">
+                <div class="rounded-circle bg-primary text-white d-flex align-items-center justify-content-center" style="width: 40px; height: 40px; font-weight: bold;">1</div>
+              </div>
+              <div class="flex-grow-1 ms-3">
+                <h6 class="mb-1">Création d'un Cycle</h6>
+                <p class="mb-0 text-muted">Un administrateur crée un cycle avec des dates, un nombre de séances prévues et un animateur principal.</p>
+              </div>
+            </div>
+
+            <div class="d-flex mb-3">
+              <div class="flex-shrink-0">
+                <div class="rounded-circle bg-info text-white d-flex align-items-center justify-content-center" style="width: 40px; height: 40px; font-weight: bold;">2</div>
+              </div>
+              <div class="flex-grow-1 ms-3">
+                <h6 class="mb-1">Formation des Groupes</h6>
+                <p class="mb-0 text-muted">Des groupes de 8-12 membres sont créés dans le cycle. Les candidats sont ajoutés comme membres.</p>
+              </div>
+            </div>
+
+            <div class="d-flex mb-3">
+              <div class="flex-shrink-0">
+                <div class="rounded-circle bg-success text-white d-flex align-items-center justify-content-center" style="width: 40px; height: 40px; font-weight: bold;">3</div>
+              </div>
+              <div class="flex-grow-1 ms-3">
+                <h6 class="mb-1">Planification des Séances</h6>
+                <p class="mb-0 text-muted">Les séances sont planifiées avec une date, un lieu et un animateur. Chaque séance est numérotée dans l'ordre.</p>
+              </div>
+            </div>
+
+            <div class="d-flex mb-3">
+              <div class="flex-shrink-0">
+                <div class="rounded-circle bg-warning text-white d-flex align-items-center justify-content-center" style="width: 40px; height: 40px; font-weight: bold;">4</div>
+              </div>
+              <div class="flex-grow-1 ms-3">
+                <h6 class="mb-1">Déroulement d'une Séance</h6>
+                <p class="mb-0 text-muted">
+                  <strong>a)</strong> Un membre présente sa problématique (15-20 min)<br>
+                  <strong>b)</strong> Le groupe pose des questions de clarification (10 min)<br>
+                  <strong>c)</strong> Le groupe propose des solutions (30-40 min)<br>
+                  <strong>d)</strong> Le présentateur choisit une solution et s'engage à la tester (10 min)
+                </p>
+              </div>
+            </div>
+
+            <div class="d-flex mb-3">
+              <div class="flex-shrink-0">
+                <div class="rounded-circle bg-danger text-white d-flex align-items-center justify-content-center" style="width: 40px; height: 40px; font-weight: bold;">5</div>
+              </div>
+              <div class="flex-grow-1 ms-3">
+                <h6 class="mb-1">Suivi des Engagements</h6>
+                <p class="mb-0 text-muted">Le candidat teste la solution proposée et peut ajouter un retour d'expérience lors d'une séance ultérieure.</p>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Exemple concret -->
+        <div class="mb-4">
+          <h5 class="text-primary mb-3">
+            <i class="fas fa-book-open me-2"></i>Exemple Concret
+          </h5>
+          <div class="card border-primary">
+            <div class="card-header bg-primary text-white">
+              <strong>Cycle "Développement Commercial - ACD 2024"</strong>
+            </div>
+            <div class="card-body">
+              <div class="mb-3">
+                <h6 class="text-primary">
+                  <i class="fas fa-sync-alt me-2"></i>Cycle
+                </h6>
+                <ul>
+                  <li><strong>Période</strong> : 1er janvier - 30 juin 2024</li>
+                  <li><strong>Séances prévues</strong> : 6 séances de 3h</li>
+                  <li><strong>Animateur</strong> : Marie Dupont</li>
+                </ul>
+              </div>
+
+              <div class="mb-3">
+                <h6 class="text-info">
+                  <i class="fas fa-users me-2"></i>Groupe "Alpha"
+                </h6>
+                <ul>
+                  <li><strong>Membres</strong> : 10 entrepreneurs</li>
+                  <li><strong>Animateur</strong> : Jean Martin</li>
+                  <li><strong>Statut</strong> : Actif</li>
+                </ul>
+              </div>
+
+              <div class="mb-3">
+                <h6 class="text-success">
+                  <i class="fas fa-calendar-alt me-2"></i>Séance 1 - 15 janvier 2024
+                </h6>
+                <ul>
+                  <li><strong>Lieu</strong> : Salle de réunion ACD</li>
+                  <li><strong>Durée</strong> : 14h00 - 17h00</li>
+                  <li><strong>Présentations</strong> : 3 problématiques exposées</li>
+                </ul>
+              </div>
+
+              <div class="mb-0">
+                <h6 class="text-warning">
+                  <i class="fas fa-presentation me-2"></i>Présentation de Sophie
+                </h6>
+                <ul>
+                  <li><strong>Problématique</strong> : "Comment augmenter ma clientèle de 30% en 6 mois ?"</li>
+                  <li><strong>Solutions proposées</strong> :
+                    <ul>
+                      <li>Développer une stratégie de réseaux sociaux</li>
+                      <li>Participer à des événements de networking</li>
+                      <li>Mettre en place un programme de parrainage</li>
+                    </ul>
+                  </li>
+                  <li><strong>Engagement</strong> : Sophie s'engage à tester la stratégie réseaux sociaux</li>
+                  <li><strong>Délai</strong> : 1er mars 2024</li>
+                </ul>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Avantages -->
+        <div class="mb-4">
+          <h5 class="text-primary mb-3">
+            <i class="fas fa-star me-2"></i>Avantages du Codéveloppement
+          </h5>
+          <div class="row">
+            <div class="col-md-6 mb-3">
+              <div class="card h-100 border-success">
+                <div class="card-body">
+                  <h6 class="text-success">
+                    <i class="fas fa-lightbulb me-2"></i>Apprentissage par les pairs
+                  </h6>
+                  <p class="mb-0 small">Bénéficiez de l'expérience et des conseils d'autres entrepreneurs.</p>
+                </div>
+              </div>
+            </div>
+            <div class="col-md-6 mb-3">
+              <div class="card h-100 border-info">
+                <div class="card-body">
+                  <h6 class="text-info">
+                    <i class="fas fa-network-wired me-2"></i>Réseau professionnel
+                  </h6>
+                  <p class="mb-0 small">Développez votre réseau et créez des opportunités de collaboration.</p>
+                </div>
+              </div>
+            </div>
+            <div class="col-md-6 mb-3">
+              <div class="card h-100 border-warning">
+                <div class="card-body">
+                  <h6 class="text-warning">
+                    <i class="fas fa-tasks me-2"></i>Solutions concrètes
+                  </h6>
+                  <p class="mb-0 small">Obtenez des solutions pratiques et testables pour vos problématiques réelles.</p>
+                </div>
+              </div>
+            </div>
+            <div class="col-md-6 mb-3">
+              <div class="card h-100 border-primary">
+                <div class="card-body">
+                  <h6 class="text-primary">
+                    <i class="fas fa-chart-line me-2"></i>Développement continu
+                  </h6>
+                  <p class="mb-0 small">Progressez régulièrement grâce à un accompagnement structuré sur plusieurs mois.</p>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Conseils -->
+        <div class="alert alert-info">
+          <h6 class="alert-heading">
+            <i class="fas fa-info-circle me-2"></i>Conseils pour réussir
+          </h6>
+          <ul class="mb-0">
+            <li><strong>Soyez régulier</strong> : La participation à toutes les séances est essentielle</li>
+            <li><strong>Préparez vos présentations</strong> : Exposez des problématiques réelles et concrètes</li>
+            <li><strong>Participez activement</strong> : Contribuez aux présentations des autres membres</li>
+            <li><strong>Testez vos engagements</strong> : Mettez en pratique les solutions proposées</li>
+            <li><strong>Partagez vos retours</strong> : Faites bénéficier le groupe de votre expérience</li>
+          </ul>
+        </div>
+      </div>
+    <div class="modal-footer">
+      <button type="button" class="btn btn-secondary" onclick="closeModal('codevHelpModal')">
+        <i class="fas fa-times me-2"></i>Fermer
+      </button>
+      <button type="button" class="btn btn-primary" onclick="window.print()">
+        <i class="fas fa-print me-2"></i>Imprimer
+      </button>
+    </div>
+  </div>
+</div>
+
+<style>
+/* Styles pour le modal d'aide */
+#codevHelpModal .modal-body {
+  line-height: 1.8;
+  padding: 2rem;
+}
+
+#codevHelpModal .card {
+  transition: transform 0.2s;
+}
+
+#codevHelpModal .card:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 4px 8px rgba(0,0,0,0.1);
+}
+
+#codevHelpModal .timeline .rounded-circle {
+  font-size: 1rem;
+}
+
+@media print {
+  #codevHelpModal .modal-footer {
+    display: none;
+  }
+}
+</style>
+
+<script>
+// Gestion du modal d'aide avec les styles personnalisés
+document.addEventListener('DOMContentLoaded', function() {
+    const modal = document.getElementById('codevHelpModal');
+    
+    // Fermer le modal en cliquant sur l'overlay
+    if (modal) {
+        modal.addEventListener('click', function(e) {
+            if (e.target === modal) {
+                closeModal('codevHelpModal');
+            }
+        });
+        
+        // Ajouter/retirer la classe modal-open au body
+        const originalShowModal = window.showModal;
+        const originalCloseModal = window.closeModal;
+        
+        window.showModal = function(modalId) {
+            if (modalId === 'codevHelpModal') {
+                document.body.classList.add('modal-open');
+            }
+            if (originalShowModal) {
+                originalShowModal(modalId);
+            } else {
+                document.getElementById(modalId).classList.add('show');
+            }
+        };
+        
+        window.closeModal = function(modalId) {
+            if (modalId === 'codevHelpModal') {
+                document.body.classList.remove('modal-open');
+            }
+            if (originalCloseModal) {
+                originalCloseModal(modalId);
+            } else {
+                document.getElementById(modalId).classList.remove('show');
+            }
+        };
+    }
+});
+
+// Ajouter l'overlay global aux liens de navigation codev
+document.addEventListener('DOMContentLoaded', function() {
+    const navLinks = document.querySelectorAll('a[href*="/codev/"]');
+    navLinks.forEach(function(link) {
+        const href = link.getAttribute('href');
+        // Ignorer les liens externes et les ancres
+        if (href && !href.startsWith('http') && !href.startsWith('#')) {
+            link.addEventListener('click', function(e) {
+                // Ne pas intercepter si Ctrl/Cmd est pressé (nouvel onglet)
+                if (e.ctrlKey || e.metaKey) return;
+                
+                // Afficher l'overlay global
+                if (typeof showGlobalLoading === 'function') {
+                    showGlobalLoading('Chargement', 'Veuillez patienter...');
+                }
+            });
+        }
+    });
+});
+</script>
 {% endblock %}

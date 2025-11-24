@@ -20,9 +20,9 @@
 /* En-tête de Carte */
 .card-header {
     padding: 1.5rem 2rem;
-    background: linear-gradient(to right, var(--primary-color), color-mix(in srgb, var(--primary-color) 85%, var(--white-color)));
-    border-bottom: none;
-    border-top: none;
+    background: var(--secondary-color);
+    border: 2px solid var(--primary-color);
+    color: white;
     display: flex;
     justify-content: space-between;
     align-items: center;
@@ -44,9 +44,16 @@
 }
 
 .card-header h2,
-.card-header h3 {
+.card-header h3,
+.card-header h4,
+.card-header h5,
+.card-header h6,
+.card-header .mb-0,
+.card-header p,
+.card-header span,
+.card-header div {
     margin: 0;
-    color: var(--secondary-color);
+    color: white;
     font-weight: 800;
     letter-spacing: -0.01em;
     display: flex;
@@ -57,20 +64,31 @@
 .card-header h2 {
     font-size: 1.4rem;
     line-height: 1.4;
+    color: white;
 }
 
 .card-header h3 {
     font-size: 1.2rem;
     line-height: 1.4;
+    color: white;
+}
+
+.card-header h4,
+.card-header h5,
+.card-header h6 {
+    color: white;
 }
 
 /* Support pour les icônes dans les en-têtes */
 .card-header h2 i,
 .card-header h2 .icon,
 .card-header h3 i,
-.card-header h3 .icon {
+.card-header h3 .icon,
+.card-header i,
+.card-header .icon {
     font-size: 1.15em;
     opacity: 0.95;
+    color: white;
 }
 
 /* Actions dans l'en-tête (boutons, badges, etc.) */
@@ -86,72 +104,62 @@
     border-radius: 6px;
     font-size: 0.8rem;
     font-weight: 700;
-    background: rgba(0, 0, 0, 0.15);
-    color: var(--secondary-color);
-    border: 1px solid rgba(0, 0, 0, 0.1);
+    background: rgba(255, 255, 255, 0.15);
+    color: white;
+    border: 1px solid rgba(255, 255, 255, 0.2);
 }
 
 /* Sous-titre dans l'en-tête */
 .card-header .header-subtitle {
     font-size: 0.9rem;
-    color: rgba(0, 0, 0, 0.7);
+    color: rgba(255, 255, 255, 0.9);
     font-weight: 500;
     margin-top: 0.35rem;
 }
 
-/* Variantes d'en-têtes */
-.card-header.primary {
-    background: linear-gradient(to right, var(--primary-color), color-mix(in srgb, var(--primary-color) 85%, var(--white-color)));
-}
-
-.card-header.secondary {
-    background: linear-gradient(to right, var(--secondary-color), color-mix(in srgb, var(--secondary-color) 85%, var(--primary-color)));
-}
-
-.card-header.secondary h2,
-.card-header.secondary h3 {
-    color: var(--white-color);
-}
-
-.card-header.secondary::after {
-    background: var(--primary-color);
-}
-
-.card-header.success {
-    background: linear-gradient(to right, var(--success-color), color-mix(in srgb, var(--success-color) 85%, var(--white-color)));
-}
-
-.card-header.success h2,
-.card-header.success h3 {
-    color: var(--white-color);
-}
-
-.card-header.success::after {
-    background: var(--primary-color);
-}
-
-.card-header.info {
-    background: linear-gradient(to right, var(--info-color), color-mix(in srgb, var(--info-color) 85%, var(--white-color)));
-}
-
-.card-header.info h2,
-.card-header.info h3 {
-    color: var(--white-color);
-}
-
-.card-header.info::after {
-    background: var(--primary-color);
-}
-
+/* Variantes d'en-têtes - Toutes avec fond noir, texte blanc et bordure jaune */
+.card-header.primary,
+.card-header.secondary,
+.card-header.success,
+.card-header.info,
 .card-header.warning {
-    background: linear-gradient(to right, var(--warning-color), color-mix(in srgb, var(--warning-color) 85%, var(--white-color)));
+    background: var(--secondary-color);
+    border: 2px solid var(--primary-color);
+    color: white;
 }
 
+.card-header.primary h2,
+.card-header.primary h3,
+.card-header.primary h4,
+.card-header.primary h5,
+.card-header.primary h6,
+.card-header.secondary h2,
+.card-header.secondary h3,
+.card-header.secondary h4,
+.card-header.secondary h5,
+.card-header.secondary h6,
+.card-header.success h2,
+.card-header.success h3,
+.card-header.success h4,
+.card-header.success h5,
+.card-header.success h6,
+.card-header.info h2,
+.card-header.info h3,
+.card-header.info h4,
+.card-header.info h5,
+.card-header.info h6,
 .card-header.warning h2,
-.card-header.warning h3 {
-    color: var(--secondary-color);
+.card-header.warning h3,
+.card-header.warning h4,
+.card-header.warning h5,
+.card-header.warning h6 {
+    color: white;
 }
 
+.card-header.primary::after,
+.card-header.secondary::after,
+.card-header.success::after,
+.card-header.info::after,
 .card-header.warning::after {
     background: var(--primary-color);
 }

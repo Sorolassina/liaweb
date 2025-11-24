@@ -4,7 +4,9 @@
 
 /* Table Responsive Wrapper */
 .table-responsive {
+    width: 100%;
     overflow-x: auto;
+    overflow-y: auto;
     margin-bottom: 1rem;
 }
 
@@ -22,17 +24,22 @@
 
 /* En-tête de Table */
 .data-table thead {
-    background: var(--secondary-color);
-    color: var(--white-color);
+    background: #f8f9fa;
+    border-bottom: 2px solid #dee2e6;
 }
 
 .data-table th {
-    padding: 1rem;
+    padding: 0.5rem 0.75rem;
     text-align: left;
     font-weight: 600;
-    font-size: 0.9rem;
-    text-transform: uppercase;
-    letter-spacing: 0.5px;
+    font-size: 0.85rem;
+    color: #495057;
+    background: #f8f9fa !important;
+    position: -webkit-sticky;
+    position: sticky;
+    top: 0;
+    z-index: 102;
+    box-shadow: 0 2px 2px -1px rgba(0, 0, 0, 0.1);
 }
 
 /* Corps de Table */
@@ -265,5 +272,60 @@
 .data-table .actions-col {
     width: 120px;
     text-align: right;
+}
+
+/* ============================================
+   TABLE COMPACTE - RENDEZ-VOUS
+   ============================================ */
+
+.compact-page .table {
+    font-size: 0.75rem;
+}
+
+.compact-page .table th {
+    padding: 0.4rem 0.5rem;
+    font-size: 0.75rem;
+    font-weight: 600;
+    color: #495057;
+    background: #f8f9fa !important;
+    border-bottom: 1px solid #dee2e6;
+    position: -webkit-sticky;
+    position: sticky;
+    top: 0;
+    z-index: 102;
+    box-shadow: 0 2px 2px -1px rgba(0, 0, 0, 0.1);
+}
+
+.compact-page .table td {
+    padding: 0.3rem 0.4rem;
+    vertical-align: middle;
+    font-size: 0.75rem;
+}
+
+.compact-page .table strong {
+    font-size: 0.75rem;
+    font-weight: 600;
+}
+
+.compact-page .table small {
+    font-size: 0.65rem;
+}
+
+.compact-page .table .badge {
+    font-size: 0.65rem;
+    padding: 0.15rem 0.35rem;
+}
+
+.compact-page .table .badge i {
+    font-size: 0.6rem;
+}
+
+.compact-page .table .btn-sm {
+    padding: 0.2rem 0.35rem;
+    font-size: 0.65rem;
+}
+
+.compact-page .table .btn-sm i {
+    font-size: 0.7rem;
 }
 

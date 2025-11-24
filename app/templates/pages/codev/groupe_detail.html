@@ -1,0 +1,587 @@
+{% extends "layouts/base.html" %}
+{% from "components/page_header.html" import page_header %}
+{% set programme_param = request.query_params.get('programme') or (schema_name.upper() if schema_name and schema_name != 'public' else '') %}
+
+{% block title %}{{ groupe.nom_groupe }} - {{ super() }}{% endblock %}
+
+{% block head_extra %}
+<style>
+  .groupe-detail-container {
+    width: 100%;
+    max-width: 100%;
+  }
+  
+  .groupe-status {
+    display: inline-block;
+    padding: 0.5rem 1.25rem;
+    border-radius: 20px;
+    font-size: 0.75rem;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    margin-top: 0.5rem;
+  }
+  
+  .status-en_constitution {
+    background-color: rgba(23, 162, 184, 0.2);
+    color: #17a2b8;
+    border: 1px solid rgba(23, 162, 184, 0.4);
+  }
+  
+  .status-actif {
+    background-color: rgba(76, 175, 80, 0.2);
+    color: #4caf50;
+    border: 1px solid rgba(76, 175, 80, 0.4);
+  }
+  
+  .status-termine {
+    background-color: rgba(156, 39, 176, 0.2);
+    color: #9c27b0;
+    border: 1px solid rgba(156, 39, 176, 0.4);
+  }
+  
+  .groupe-content {
+    display: grid;
+    grid-template-columns: 2fr 1fr;
+    gap: 2rem;
+  }
+  
+  @media (max-width: 992px) {
+    .groupe-content {
+      grid-template-columns: 1fr;
+    }
+  }
+  
+  .groupe-main {
+    display: flex;
+    flex-direction: column;
+    gap: 2rem;
+  }
+  
+  .groupe-sidebar {
+    display: flex;
+    flex-direction: column;
+    gap: 1.5rem;
+  }
+  
+  .info-card, .membres-card {
+    background: white;
+    border-radius: 12px;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
+    overflow: hidden;
+  }
+  
+  .card-header-section {
+    background: var(--secondary-color);
+    border: 2px solid var(--primary-color);
+    padding: 1.25rem 1.5rem;
+    border-radius: 12px 12px 0 0;
+    position: relative;
+  }
+  
+  .card-header-section::after {
+    content: '';
+    position: absolute;
+    bottom: 0;
+    left: 0;
+    right: 0;
+    height: 3px;
+    background: var(--primary-color);
+  }
+  
+  .card-header-section h2,
+  .card-header-section h3 {
+    margin: 0;
+    color: white;
+    font-size: 1.25rem;
+    font-weight: 700;
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+  }
+  
+  .card-header-section i {
+    color: var(--primary-color);
+    font-size: 1.1em;
+  }
+  
+  .card-body-section {
+    padding: 1.5rem;
+  }
+  
+  .info-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+    gap: 1.25rem;
+  }
+  
+  .info-item {
+    display: flex;
+    flex-direction: column;
+    gap: 0.5rem;
+    padding: 1rem;
+    background: #f8f9fa;
+    border-radius: 8px;
+    border-left: 3px solid var(--primary-color);
+  }
+  
+  .info-label {
+    font-weight: 700;
+    color: #666;
+    font-size: 0.875rem;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+  }
+  
+  .info-value {
+    color: #333;
+    font-size: 1rem;
+    font-weight: 600;
+  }
+  
+  .membres-list {
+    display: flex;
+    flex-direction: column;
+    gap: 1rem;
+  }
+  
+  .membre-card {
+    background: #f8f9fa;
+    border: 1px solid #e0e0e0;
+    border-radius: 10px;
+    padding: 1.25rem;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    transition: all 0.3s ease;
+  }
+  
+  .membre-card:hover {
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+    transform: translateY(-2px);
+  }
+  
+  .membre-info {
+    display: flex;
+    align-items: center;
+    gap: 1rem;
+    flex: 1;
+  }
+  
+  .membre-avatar {
+    width: 48px;
+    height: 48px;
+    border-radius: 50%;
+    background: var(--primary-color);
+    color: white;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-weight: 700;
+    font-size: 1.125rem;
+  }
+  
+  .membre-details {
+    flex: 1;
+  }
+  
+  .membre-nom {
+    font-size: 1rem;
+    font-weight: 600;
+    color: #333;
+    margin-bottom: 0.25rem;
+  }
+  
+  .membre-email {
+    font-size: 0.875rem;
+    color: #666;
+  }
+  
+  .membre-actions {
+    display: flex;
+    gap: 0.5rem;
+  }
+  
+  .add-membre-form {
+    background: #f8f9fa;
+    border: 1px solid #e0e0e0;
+    border-radius: 10px;
+    padding: 1.5rem;
+    margin-top: 1rem;
+  }
+  
+  .add-membre-form h4 {
+    margin-bottom: 1rem;
+    color: #333;
+    font-size: 1.125rem;
+  }
+  
+  .actions-card {
+    background: white;
+    border-radius: 12px;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
+    overflow: hidden;
+  }
+  
+  .actions-header {
+    background: var(--secondary-color);
+    border: 2px solid var(--primary-color);
+    padding: 1.25rem 1.5rem;
+    border-radius: 12px 12px 0 0;
+    position: relative;
+  }
+  
+  .actions-header::after {
+    content: '';
+    position: absolute;
+    bottom: 0;
+    left: 0;
+    right: 0;
+    height: 3px;
+    background: var(--primary-color);
+  }
+  
+  .actions-header h3 {
+    margin: 0;
+    color: white;
+    font-size: 1.125rem;
+    font-weight: 700;
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+  }
+  
+  .actions-header i {
+    color: var(--primary-color);
+  }
+  
+  .actions-body {
+    padding: 1.5rem;
+  }
+  
+  .actions-list {
+    display: flex;
+    flex-direction: column;
+    gap: 0.75rem;
+  }
+  
+  .btn-action {
+    padding: 0.75rem 1.25rem;
+    border: none;
+    border-radius: 8px;
+    font-size: 0.875rem;
+    font-weight: 600;
+    cursor: pointer;
+    text-decoration: none;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 0.5rem;
+    transition: all 0.3s ease;
+    width: 100%;
+    text-align: center;
+  }
+  
+  .btn-action:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 4px 8px rgba(0, 0, 0, 0.15);
+  }
+  
+  .btn-action.btn-primary {
+    background-color: var(--primary-color);
+    color: white;
+  }
+  
+  .btn-action.btn-primary:hover {
+    background-color: #d4a600;
+  }
+  
+  .btn-action.btn-secondary {
+    background-color: #6c757d;
+    color: white;
+  }
+  
+  .btn-action.btn-secondary:hover {
+    background-color: #5a6268;
+  }
+  
+  .btn-action.btn-danger {
+    background-color: #dc3545;
+    color: white;
+  }
+  
+  .btn-action.btn-danger:hover {
+    background-color: #c82333;
+  }
+  
+  .empty-state {
+    text-align: center;
+    padding: 3rem 1.5rem;
+    color: #666;
+  }
+  
+  .empty-state i {
+    font-size: 3rem;
+    margin-bottom: 1rem;
+    color: #ccc;
+  }
+  
+  .empty-state h3 {
+    font-size: 1.25rem;
+    font-weight: 600;
+    margin-bottom: 0.5rem;
+    color: #333;
+  }
+  
+  .empty-state p {
+    margin-bottom: 1.5rem;
+    color: #666;
+  }
+  
+  .capacity-info {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    padding: 0.75rem;
+    background: #e7f3ff;
+    border-radius: 8px;
+    margin-bottom: 1rem;
+  }
+  
+  .capacity-info i {
+    color: #0066cc;
+  }
+  
+  .capacity-info strong {
+    color: #0066cc;
+  }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="container-fluid p-4">
+  <div class="groupe-detail-container">
+  {# En-tête de page avec breadcrumbs et actions #}
+  {% set groupe_status_html %}
+    <span class="groupe-status status-{{ groupe.statut | default('en_constitution') }}" style="display: inline-block; padding: 0.5rem 1.25rem; border-radius: 20px; font-size: 0.75rem; font-weight: 700; text-transform: uppercase; letter-spacing: 0.5px; margin-top: 0.5rem; {% if groupe.statut | default('en_constitution') == 'en_constitution' %}background-color: rgba(23, 162, 184, 0.2); color: #17a2b8; border: 1px solid rgba(23, 162, 184, 0.4);{% elif groupe.statut | default('en_constitution') == 'actif' %}background-color: rgba(76, 175, 80, 0.2); color: #4caf50; border: 1px solid rgba(76, 175, 80, 0.4);{% else %}background-color: rgba(156, 39, 176, 0.2); color: #9c27b0; border: 1px solid rgba(156, 39, 176, 0.4);{% endif %}">
+      <i class="fas fa-{% if groupe.statut | default('en_constitution') == 'actif' %}play-circle{% elif groupe.statut | default('en_constitution') == 'termine' %}check-circle{% else %}clock{% endif %} me-1"></i>
+      {{ groupe.statut | default('en_constitution') }}
+    </span>
+  {% endset %}
+  
+  {{ page_header(
+    title="<i class='fas fa-users me-2'></i>" ~ groupe.nom_groupe,
+    breadcrumbs=[
+      {"name": "Codéveloppement", "url": url_for("codev_dashboard") ~ ("?programme=" ~ programme_param if programme_param else "")},
+      {"name": "Groupes", "url": url_for("codev_groupes") ~ ("?programme=" ~ programme_param if programme_param else "")},
+      {"name": groupe.nom_groupe}
+    ],
+    right_content=groupe_status_html,
+    actions=[
+      {
+        "label": "<i class='fas fa-arrow-left me-2'></i>Retour aux groupes",
+        "url": url_for("codev_groupes") ~ ("?programme=" ~ programme_param if programme_param else ""),
+        "class": "btn-outline-light btn-sm",
+        "primary": false
+      }
+    ]
+  ) }}
+  
+  {% if request.query_params.get('success') %}
+  <div class="alert alert-success alert-dismissible fade show" role="alert">
+    <i class="fas fa-check-circle me-2"></i>
+    {% if request.query_params.get('action') == 'add_membre' %}
+      Membre ajouté avec succès !
+    {% elif request.query_params.get('action') == 'remove_membre' %}
+      Membre retiré avec succès !
+    {% else %}
+      Opération réussie !
+    {% endif %}
+    <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+  </div>
+  {% endif %}
+  
+  {% if request.query_params.get('error') %}
+  <div class="alert alert-danger alert-dismissible fade show" role="alert">
+    <i class="fas fa-exclamation-triangle me-2"></i>
+    {{ request.query_params.get('message', 'Une erreur est survenue') }}
+    <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+  </div>
+  {% endif %}
+  
+  <div class="groupe-content">
+    <div class="groupe-main">
+      {# Carte Informations du groupe #}
+      <div class="info-card">
+        <div class="card-header-section">
+          <h2><i class="fas fa-info-circle"></i> Informations du groupe</h2>
+        </div>
+        <div class="card-body-section">
+          <div class="info-grid">
+            {% if groupe.cycle_nom %}
+            <div class="info-item">
+              <div class="info-label"><i class="fas fa-sync-alt me-1"></i>Cycle</div>
+              <div class="info-value">{{ groupe.cycle_nom }}</div>
+            </div>
+            {% endif %}
+            
+            {% if groupe.animateur_nom_complet %}
+            <div class="info-item">
+              <div class="info-label"><i class="fas fa-user-tie me-1"></i>Animateur</div>
+              <div class="info-value">{{ groupe.animateur_nom_complet }}</div>
+            </div>
+            {% endif %}
+            
+            <div class="info-item">
+              <div class="info-label"><i class="fas fa-users me-1"></i>Capacité</div>
+              <div class="info-value">{{ membres|length }} / {{ groupe.capacite_max | default(12) }} membres</div>
+            </div>
+            
+            {% if groupe.cree_le %}
+            <div class="info-item">
+              <div class="info-label"><i class="fas fa-calendar-plus me-1"></i>Créé le</div>
+              <div class="info-value">
+                {{ groupe.cree_le | format_datetime if groupe.cree_le else '' }}
+              </div>
+            </div>
+            {% endif %}
+          </div>
+        </div>
+      </div>
+      
+      {# Carte Membres du groupe #}
+      <div class="membres-card">
+        <div class="card-header-section">
+          <h2><i class="fas fa-user-friends"></i> Membres du groupe</h2>
+        </div>
+        <div class="card-body-section">
+          <div class="capacity-info">
+            <i class="fas fa-info-circle"></i>
+            <span><strong>{{ membres|length }}</strong> membre(s) sur <strong>{{ groupe.capacite_max | default(12) }}</strong> places disponibles</span>
+          </div>
+          
+          {% if membres %}
+          <div class="membres-list">
+            {% for membre in membres %}
+            <div class="membre-card">
+              <div class="membre-info">
+                <div class="membre-avatar">
+                  {{ (membre.candidat_nom_complet | default('?') | first | upper) if membre.candidat_nom_complet else '?' }}
+                </div>
+                <div class="membre-details">
+                  <div class="membre-nom">{{ membre.candidat_nom_complet | default('Membre inconnu') }}</div>
+                  {% if membre.candidat_email %}
+                  <div class="membre-email">{{ membre.candidat_email }}</div>
+                  {% endif %}
+                </div>
+              </div>
+              <div class="membre-actions">
+                <form method="post" action="{{ url_for('codev_groupe_remove_membre', groupe_id=groupe.id, membre_id=membre.id) }}{% if programme_param %}?programme={{ programme_param }}{% endif %}" style="display: inline;" onsubmit="return confirm('Êtes-vous sûr de vouloir retirer ce membre du groupe ?');">
+                  <button type="submit" class="btn btn-sm btn-danger" title="Retirer du groupe">
+                    <i class="fas fa-user-minus"></i>
+                  </button>
+                </form>
+              </div>
+            </div>
+            {% endfor %}
+          </div>
+          {% else %}
+          <div class="empty-state">
+            <i class="fas fa-user-friends"></i>
+            <h3>Aucun membre</h3>
+            <p>Ce groupe n'a pas encore de membres.</p>
+          </div>
+          {% endif %}
+          
+          {# Formulaire pour ajouter un membre #}
+          {% if candidats_disponibles and membres|length < (groupe.capacite_max | default(12)) %}
+          <div class="add-membre-form">
+            <h4><i class="fas fa-user-plus me-2"></i>Ajouter un membre</h4>
+            <form method="post" action="{{ url_for('codev_groupe_add_membre', groupe_id=groupe.id) }}{% if programme_param %}?programme={{ programme_param }}{% endif %}">
+              <div class="mb-3">
+                <label for="candidat_id" class="form-label">Sélectionner un candidat</label>
+                <select class="form-select" id="candidat_id" name="candidat_id" required>
+                  <option value="">Choisir un candidat...</option>
+                  {% for candidat in candidats_disponibles %}
+                  <option value="{{ candidat.id }}">{{ candidat.nom_complet | default(candidat.prenom ~ ' ' ~ candidat.nom) }}</option>
+                  {% endfor %}
+                </select>
+              </div>
+              <button type="submit" class="btn btn-primary">
+                <i class="fas fa-user-plus me-2"></i>Ajouter au groupe
+              </button>
+            </form>
+          </div>
+          {% elif membres|length >= (groupe.capacite_max | default(12)) %}
+          <div class="alert alert-warning mt-3">
+            <i class="fas fa-exclamation-triangle me-2"></i>
+            Le groupe a atteint sa capacité maximale ({{ groupe.capacite_max | default(12) }} membres).
+          </div>
+          {% elif not candidats_disponibles %}
+          <div class="alert alert-info mt-3">
+            <i class="fas fa-info-circle me-2"></i>
+            Aucun candidat disponible à ajouter.
+          </div>
+          {% endif %}
+        </div>
+      </div>
+    </div>
+    
+    <div class="groupe-sidebar">
+      {# Carte Actions #}
+      <div class="actions-card">
+        <div class="actions-header">
+          <h3><i class="fas fa-cogs"></i> Actions</h3>
+        </div>
+        <div class="actions-body">
+          <div class="actions-list">
+            <a href="{{ url_for('codev_groupes') }}{% if programme_param %}?programme={{ programme_param }}{% endif %}" class="btn-action btn-secondary">
+              <i class="fas fa-arrow-left"></i> Retour aux groupes
+            </a>
+            
+            {% if groupe.cycle_id %}
+            <a href="{{ url_for('codev_cycle_detail', cycle_id=groupe.cycle_id) }}{% if programme_param %}?programme={{ programme_param }}{% endif %}" class="btn-action btn-primary">
+              <i class="fas fa-sync-alt"></i> Voir le cycle
+            </a>
+            {% endif %}
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+  </div>
+</div>
+
+<script>
+// Ajouter l'overlay global aux liens de navigation codev
+document.addEventListener('DOMContentLoaded', function() {
+    const navLinks = document.querySelectorAll('a[href*="/codev/"]');
+    navLinks.forEach(function(link) {
+        const href = link.getAttribute('href');
+        // Ignorer les liens externes et les ancres
+        if (href && !href.startsWith('http') && !href.startsWith('#')) {
+            link.addEventListener('click', function(e) {
+                // Ne pas intercepter si Ctrl/Cmd est pressé (nouvel onglet)
+                if (e.ctrlKey || e.metaKey) return;
+                
+                // Afficher l'overlay global
+                if (typeof showGlobalLoading === 'function') {
+                    showGlobalLoading('Chargement', 'Veuillez patienter...');
+                }
+            });
+        }
+    });
+    
+    // Ajouter l'overlay aux formulaires
+    const forms = document.querySelectorAll('form[method="post"]');
+    forms.forEach(function(form) {
+        form.addEventListener('submit', function(e) {
+            if (typeof showGlobalLoading === 'function') {
+                showGlobalLoading('Traitement', 'Veuillez patienter...');
+            }
+        });
+    });
+});
+</script>
+{% endblock %}
+

@@ -1,4 +1,4 @@
-{% extends "base.html" %}
+{% extends "layouts/base.html" %}
 {% from "components/page_header.html" import page_header %}
 {% from "components/modal.html" import modal, modal_with_footer %}
 
@@ -18,21 +18,6 @@
 
 .compact-page .card-body {
     padding: 0.75rem;
-}
-
-.compact-page .table {
-    font-size: 0.8rem;
-}
-
-.compact-page .table th {
-    padding: 0.4rem 0.5rem;
-    font-size: 0.75rem;
-    font-weight: 600;
-}
-
-.compact-page .table td {
-    padding: 0.4rem 0.5rem;
-    vertical-align: middle;
 }
 
 .compact-page .btn-group-sm .btn {
@@ -131,157 +116,301 @@
     font-weight: 600;
 }
 
-.compact-page .table strong {
-    font-size: 0.8rem;
-    font-weight: 600;
-}
-
-.compact-page .table small {
-    font-size: 0.7rem;
-}
-
 .compact-page .form-label {
     font-size: 0.75rem;
     font-weight: 500;
     margin-bottom: 0.25rem;
 }
+
+/* Styles pour les KPIs dans le page_header */
+.page-header-right-content .rdv-kpis {
+    display: flex;
+    gap: 1rem;
+    align-items: center;
+    flex-wrap: wrap;
+    flex-direction: row;
+}
+
+.page-header-right-content .info-box-sm {
+    display: flex;
+    align-items: center;
+    padding: 0.4rem;
+    background: rgba(255, 255, 255, 0.15);
+    border-radius: 0.375rem;
+    margin-bottom: 0;
+}
+
+.page-header-right-content .info-box-sm .info-box-icon {
+    width: 2.5rem;
+    height: 2.5rem;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border-radius: 50%;
+    margin-right: 0.5rem;
+    font-size: 0.9rem;
+}
+
+.page-header-right-content .info-box-sm .info-box-content {
+    flex: 1;
+    padding-left: 0;
+}
+
+.page-header-right-content .info-box-sm .info-box-text {
+    display: block;
+    font-size: 0.7rem;
+    font-weight: 500;
+    color: rgba(255, 255, 255, 0.9);
+    margin-bottom: 0.25rem;
+}
+
+.page-header-right-content .info-box-sm .info-box-number {
+    display: block;
+    font-size: 0.9rem;
+    font-weight: 600;
+    color: white;
+}
+
+/* Styles pour la sidebar */
+.rdv-sidebar {
+    background-color: #2a2a2a;
+    border-left: 1px solid #dee2e6;
+    border-radius: 12px;
+    padding: 0.75rem;
+    height: calc(100vh - 300px);
+    max-height: calc(100vh - 300px);
+    position: sticky;
+    top: 0;
+    overflow-y: auto;
+    display: flex;
+    flex-direction: column;
+}
+
+.rdv-sidebar::-webkit-scrollbar {
+    width: 6px;
+}
+
+.rdv-sidebar::-webkit-scrollbar-track {
+    background: transparent;
+}
+
+.rdv-sidebar::-webkit-scrollbar-thumb {
+    background: #dee2e6;
+    border-radius: 3px;
+}
+
+.rdv-sidebar::-webkit-scrollbar-thumb:hover {
+    background: #adb5bd;
+}
+
+.rdv-sidebar .sidebar-section {
+    margin-bottom: 1rem;
+}
+
+.rdv-sidebar .sidebar-section:last-child {
+    margin-bottom: 0;
+}
+
+.rdv-sidebar .sidebar-section-title {
+    font-size: 0.8rem;
+    font-weight: 600;
+    color: #ffffff;
+    margin-bottom: 0.5rem;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    border-bottom: 2px solid rgba(255, 255, 255, 0.2);
+    padding-bottom: 0.4rem;
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+}
+
+.rdv-sidebar .btn-new-rdv {
+    width: 100%;
+    padding: 0.5rem 0.75rem;
+    font-weight: 600;
+    margin-bottom: 0.75rem;
+    font-size: 0.85rem;
+    box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+    transition: all 0.2s ease;
+}
+
+.rdv-sidebar .btn-new-rdv:hover {
+    transform: translateY(-1px);
+    box-shadow: 0 4px 6px rgba(0,0,0,0.15);
+}
+
+.rdv-sidebar .form-label {
+    font-size: 0.75rem;
+    font-weight: 500;
+    margin-bottom: 0.4rem;
+    color: #ffffff;
+}
+
+.rdv-main-content {
+    padding: 1rem;
+    height: calc(100vh - 250px);
+    display: flex;
+    flex-direction: column;
+}
+
+.rdv-main-content .card {
+    height: 100%;
+    display: flex;
+    flex-direction: column;
+}
+
+.rdv-main-content .card-body {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    min-height: 0;
+    /* Pas d'overflow hidden pour permettre sticky sur les enfants */
+}
+
+.rdv-main-content .table-responsive {
+    flex: 1;
+    overflow-y: auto;
+    overflow-x: auto;
+    min-height: 0;
+    position: relative;
+    /* Ce conteneur scroll, donc sticky fonctionne ici */
+}
+
+/* Responsive */
+@media (max-width: 768px) {
+    .rdv-sidebar {
+        position: relative;
+        min-height: auto;
+        max-height: none;
+        border-left: none;
+        border-top: 1px solid #dee2e6;
+        margin-top: 1rem;
+    }
+    
+    .rdv-main-content {
+        padding: 0.5rem;
+    }
+}
 </style>
 
 <!-- Entête -->
-{{ page_header(
-    title="<i class='fas fa-calendar-alt me-2'></i>Rendez-vous",
-    breadcrumbs=[{"name": "Gestion des données des rendez-vous du programme"}]
-) }}
-<div class="toolbar" style="margin-top: 1rem;">
-  <a href="{{ url_for('rendez_vous_create_form') }}" class="submenu-item {% if request.url.path == url_for('rendez_vous_create_form') %}active{% endif %}">
-    <div class="icon"><i class="fas fa-calendar-plus"></i></div><div>+ Rendez-vous</div>
-  </a>
+{% set kpis_content %}
+<div class="rdv-kpis">
+    <div class="info-box-sm">
+        <span class="info-box-icon bg-info">
+            <i class="fas fa-calendar-check"></i>
+        </span>
+        <div class="info-box-content">
+            <span class="info-box-text">Total</span>
+            <span class="info-box-number">{{ stats.total }}</span>
+        </div>
+    </div>
+    <div class="info-box-sm">
+        <span class="info-box-icon bg-warning">
+            <i class="fas fa-clock"></i>
+        </span>
+        <div class="info-box-content">
+            <span class="info-box-text">Planifiés</span>
+            <span class="info-box-number">{{ stats.planifies }}</span>
+        </div>
+    </div>
+    <div class="info-box-sm">
+        <span class="info-box-icon bg-success">
+            <i class="fas fa-check-circle"></i>
+        </span>
+        <div class="info-box-content">
+            <span class="info-box-text">Terminés</span>
+            <span class="info-box-number">{{ stats.termines }}</span>
+        </div>
+    </div>
+    <div class="info-box-sm">
+        <span class="info-box-icon bg-danger">
+            <i class="fas fa-times-circle"></i>
+        </span>
+        <div class="info-box-content">
+            <span class="info-box-text">Annulés</span>
+            <span class="info-box-number">{{ stats.annules }}</span>
+        </div>
+    </div>
 </div>
+{% endset %}
+{% set title_with_help %}
+<i class='fas fa-calendar-alt me-2'></i>Rendez-vous
+<button type="button" class="btn btn-outline-light btn-sm ms-2" onclick="showModal('rdvHelpModal')" title="Aide - Comment fonctionnent les Rendez-vous ?">
+    <i class="fas fa-question-circle me-1"></i>Aide
+</button>
+{% endset %}
 
-<div class="container-fluid h-100 d-flex flex-column compact-page" style="overflow-y: auto;">
-    <!-- Contenu principal avec défilement -->
-    <div class="row flex-grow-1 overflow-hidden">
-        <div class="col-12 h-100">
+{{ page_header(
+    title=title_with_help,
+    breadcrumbs=[{"name": "Gestion des données des rendez-vous du programme"}],
+    right_content=kpis_content
+) }}
+
+<div class="container-fluid compact-page px-0">
+    <div class="row g-0">
+        <!-- Contenu principal avec table -->
+        <div class="col-md-9 col-lg-10 rdv-main-content">
             <div class="card h-100 d-flex flex-column">
-                
-                <!-- Statistiques compactes -->
-                <div class="card-body border-bottom flex-shrink-0 compact-page">
-                    <div class="row">
-                        <div class="col-md-3">
-                            <div class="info-box-sm">
-                                <span class="info-box-icon bg-info">
-                                    <i class="fas fa-calendar-check"></i>
-                                </span>
-                                <div class="info-box-content">
-                                    <span class="info-box-text">Total</span>
-                                    <span class="info-box-number">{{ stats.total }}</span>
-                                </div>
-                            </div>
-                        </div>
-                        <div class="col-md-3">
-                            <div class="info-box-sm">
-                                <span class="info-box-icon bg-warning">
-                                    <i class="fas fa-clock"></i>
-                                </span>
-                                <div class="info-box-content">
-                                    <span class="info-box-text">Planifiés</span>
-                                    <span class="info-box-number">{{ stats.planifies }}</span>
-                                </div>
-                            </div>
-                        </div>
-                        <div class="col-md-3">
-                            <div class="info-box-sm">
-                                <span class="info-box-icon bg-success">
-                                    <i class="fas fa-check-circle"></i>
-                                </span>
-                                <div class="info-box-content">
-                                    <span class="info-box-text">Terminés</span>
-                                    <span class="info-box-number">{{ stats.termines }}</span>
-                                </div>
-                            </div>
-                        </div>
-                        <div class="col-md-3">
-                            <div class="info-box-sm">
-                                <span class="info-box-icon bg-danger">
-                                    <i class="fas fa-times-circle"></i>
-                                </span>
-                                <div class="info-box-content">
-                                    <span class="info-box-text">Annulés</span>
-                                    <span class="info-box-number">{{ stats.annules }}</span>
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-
-                <!-- Filtres simplifiés -->
-                <div class="card-body flex-shrink-0 compact-page">
-                    <form method="get" class="mb-3">
-                        <div class="row">
-                            <div class="col-md-6">
-                                <label class="form-label">Nom du candidat</label>
-                                <input type="text" name="candidat_nom" class="form-control" value="{{ filters.candidat_nom or '' }}" placeholder="Rechercher par nom du candidat...">
-                            </div>
-                            <div class="col-md-3">
-                                <label class="form-label">Statut</label>
-                                <select name="statut" class="form-select">
-                                    <option value="">Tous les statuts</option>
-                                    <option value="planifie" {% if filters.statut == 'planifie' %}selected{% endif %}>Planifié</option>
-                                    <option value="en_cours" {% if filters.statut == 'en_cours' %}selected{% endif %}>En cours</option>
-                                    <option value="termine" {% if filters.statut == 'termine' %}selected{% endif %}>Terminé</option>
-                                    <option value="annule" {% if filters.statut == 'annule' %}selected{% endif %}>Annulé</option>
-                                </select>
-                            </div>
-                            <div class="col-md-3">
-                                <label class="form-label">&nbsp;</label>
-                                <div class="d-grid">
-                                    <button type="submit" class="submenu-item">
-                                        <i class="fas fa-search me-0"></i>Rechercher
-                                    </button>
-                                </div>
-                            </div>
-                        </div>
-                    </form>
-
-                    <!-- Tableau des rendez-vous avec bande déroulante -->
-                    <div class="table-responsive flex-grow-1 compact-page" style="max-height: calc(100vh - 450px); overflow-y: auto; border: 1px solid #dee2e6; border-radius: 0.375rem;">
-                        <table class="table table-striped table-hover mb-0" style="table-layout: fixed; width: 100%;">
-                            <thead class="sticky-top bg-light" style="position: sticky; top: 0; z-index: 10;">
+                <!-- Tableau des rendez-vous avec bande déroulante -->
+                <div class="card-body flex-grow-1 d-flex flex-column p-0">
+                    <div class="table-responsive">
+                        <table class="data-table table-striped">
+                            <thead>
                                 <tr>
-                                    <th style="width: 12%;">Date/Heure</th>
-                                    <th style="width: 15%;">Candidat</th>
-                                    <th style="width: 8%;">Type</th>
-                                    <th style="width: 8%;">Statut</th>
-                                    <th style="width: 13%;">Actions</th>
+                                    <th>Date/Heure</th>
+                                    <th>Candidat</th>
+                                    <th>Type</th>
+                                    <th>Statut</th>
+                                    <th class="actions-col">Actions</th>
                                 </tr>
                             </thead>
                             <tbody>
                                 {% for rdv in rendez_vous %}
                                 <tr>
                                     <td>
-                                        <strong>{{ rdv.debut | format_date }}</strong><br>
-                                        <small class="text-muted">{{ rdv.debut | format_time }}{% if rdv.fin %} - {{ rdv.fin | format_time }}{% endif %}</small>
+                                        <div>
+                                            <div>
+                                                <i class="fas fa-calendar-alt text-primary me-1"></i>
+                                                <strong>{{ rdv.debut | format_date }}</strong>
+                                            </div>
+                                            <div>
+                                                <i class="fas fa-clock text-muted me-1"></i>
+                                                <small class="text-muted">{{ rdv.debut | format_time }}{% if rdv.fin %} - {{ rdv.fin | format_time }}{% endif %}</small>
+                                            </div>
+                                        </div>
                                     </td>
                                     <td>
-                                        <strong>{{ rdv.candidat_prenom }} {{ rdv.candidat_nom }}</strong><br>
-                                        <small class="text-muted">{{ rdv.candidat_email }}</small>
+                                        <div>
+                                            <div>
+                                                <i class="fas fa-user text-info me-1"></i>
+                                                <strong>{{ rdv.candidat_nom }}</strong>
+                                            </div>
+                                        </div>
                                     </td>
                                     <td>
-                                        <span class="badge bg-info">
-                                            {% if rdv.type_rdv == 'entretien' %}
+                                        {% if rdv.type_rdv == 'entretien' %}
+                                            <span class="badge bg-info">
                                                 <i class="fas fa-comments me-1"></i>Entretien
-                                            {% elif rdv.type_rdv == 'suivi' %}
+                                            </span>
+                                        {% elif rdv.type_rdv == 'suivi' %}
+                                            <span class="badge bg-primary">
                                                 <i class="fas fa-chart-line me-1"></i>Suivi
-                                            {% elif rdv.type_rdv == 'coaching' %}
+                                            </span>
+                                        {% elif rdv.type_rdv == 'coaching' %}
+                                            <span class="badge bg-secondary">
                                                 <i class="fas fa-user-tie me-1"></i>Coaching
-                                            {% else %}
+                                            </span>
+                                        {% else %}
+                                            <span class="badge bg-dark">
                                                 <i class="fas fa-question me-1"></i>Autre
-                                            {% endif %}
-                                        </span>
+                                            </span>
+                                        {% endif %}
                                     </td>
                                     <td>
                                         {% if rdv.statut == 'planifie' %}
-                                            <span class="badge bg-warning">
+                                            <span class="badge bg-warning text-dark">
                                                 <i class="fas fa-clock me-1"></i>Planifié
                                             </span>
                                         {% elif rdv.statut == 'en_cours' %}
@@ -298,87 +427,134 @@
                                             </span>
                                         {% endif %}
                                     </td>
-                                    <td>
-                                        <div class="btn-group btn-group-sm">
-                                            <a href="{{ url_for('rendez_vous_detail', rdv_id=rdv.id) }}" class="btn btn-outline-primary submenu-item" title="Voir">
+                                    <td class="actions-col">
+                                        <div class="table-actions">
+                                            <button type="button" class="btn btn-sm btn-outline-primary" title="Voir les détails" data-rdv-id="{{ rdv.id }}" data-action="voir-details">
                                                 <i class="fas fa-eye"></i>
-                                            </a>
+                                            </button>
+                                            
+                                            <button type="button" class="btn btn-sm btn-outline-info" title="Modifier" data-rdv-id="{{ rdv.id }}" data-action="modifier">
+                                                <i class="fas fa-edit"></i>
+                                            </button>
                                             
                                             {% if rdv.statut == 'planifie' %}
-                                                <a href="{{ url_for('emargement_rdv', rdv_id=rdv.id) }}" class="submenu-item" title="Émargement" data-rdv-id="{{ rdv.id }}">
+                                                {% set programme_param = request.query_params.get('programme') or (schema_name.upper() if schema_name and schema_name != 'public' else '') %}
+                                                <a href="{{ url_for('emargement_rdv', rdv_id=rdv.id) }}{% if programme_param %}?programme={{ programme_param }}{% endif %}" class="btn btn-sm btn-outline-warning" title="Émargement" data-rdv-id="{{ rdv.id }}">
                                                     <i class="fas fa-signature"></i>
-                                                    <span class="badge bg-secondary ms-1 signature-status" style="font-size: 0.6rem;">...</span>
+                                                    <span class="badge bg-secondary ms-1 signature-status">...</span>
                                                 </a>
-                                                <a href="{{ url_for('video_rdv_start', rdv_id=rdv.id) }}" class="submenu-item" title="Commencer RDV vidéo" target="_blank" data-rdv-id="{{ rdv.id }}" style="display: none;">
-                                                    <i class="fas fa-video"></i>
+                                                <a href="{{ url_for('video_rdv_start', rdv_id=rdv.id) }}{% if programme_param %}?programme={{ programme_param }}{% endif %}" class="btn btn-sm btn-success btn-commencer-rdv" title="Réunion" target="_blank" data-rdv-id="{{ rdv.id }}">
+                                                    <i class="fas fa-video"></i> Réunion
                                                 </a>
-                                                <a href="{{ url_for('video_rdv_candidate_link', rdv_id=rdv.id, token='candidat') }}" class="submenu-item" title="Lien candidat" target="_blank" data-rdv-id="{{ rdv.id }}" style="display: none;">
+                                                <a href="{{ url_for('video_rdv_candidate_link', rdv_id=rdv.id, token='candidat') }}{% if programme_param %}?programme={{ programme_param }}{% endif %}" class="btn btn-sm btn-info" title="Lien candidat" target="_blank" data-rdv-id="{{ rdv.id }}" style="display: none;">
                                                     <i class="fas fa-link"></i>
                                                 </a>
-                                                <button type="button" class="btn btn-primary btn-envoyer-email" title="Envoyer invitation par email" onclick="envoyerInvitationEmail({{ rdv.id }})" data-rdv-id="{{ rdv.id }}" style="display: none;">
+                                                <button type="button" class="btn btn-sm btn-primary" title="Envoyer invitation par email" data-rdv-id="{{ rdv.id }}" data-action="envoyer-email">
                                                     <i class="fas fa-envelope"></i>
                                                 </button>
                                             {% elif rdv.statut == 'en_cours' %}
-                                                <a href="{{ url_for('video_rdv_join', rdv_id=rdv.id) }}" class="submenu-item" title="Continuer le rendez-vous vidéo en cours" target="_blank">
+                                                {% set programme_param_en_cours = request.query_params.get('programme') or (schema_name.upper() if schema_name and schema_name != 'public' else '') %}
+                                                <a href="{{ url_for('video_rdv_join', rdv_id=rdv.id) }}{% if programme_param_en_cours %}?programme={{ programme_param_en_cours }}{% endif %}" class="btn btn-sm btn-success" title="Continuer le rendez-vous vidéo" target="_blank">
                                                     <i class="fas fa-video"></i>
                                                 </a>
-                                                <a href="{{ url_for('video_rdv_candidate_link', rdv_id=rdv.id, token='candidat') }}" class="submenu-item" title="Lien candidat" target="_blank">
+                                                <a href="{{ url_for('video_rdv_candidate_link', rdv_id=rdv.id, token='candidat') }}{% if programme_param_en_cours %}?programme={{ programme_param_en_cours }}{% endif %}" class="btn btn-sm btn-info" title="Lien candidat" target="_blank">
                                                     <i class="fas fa-link"></i>
                                                 </a>
-                                                <a class="submenu-item" title="Envoyer invitation par email" onclick="envoyerInvitationEmail({{ rdv.id }})">
+                                                <button type="button" class="btn btn-sm btn-primary" title="Envoyer invitation par email" data-rdv-id="{{ rdv.id }}" data-action="envoyer-email">
                                                     <i class="fas fa-envelope"></i>
-                                                </a>
-                                                <a class="submenu-item" title="Terminer RDV" onclick="terminerRDV({{ rdv.id }})">
+                                                </button>
+                                                <button type="button" class="btn btn-sm btn-danger" title="Terminer RDV" data-rdv-id="{{ rdv.id }}" data-action="terminer">
                                                     <i class="fas fa-stop"></i>
-                                                </a>
+                                                </button>
                                             {% elif rdv.statut == 'termine' %}
-                                                <a href="#" class="submenu-item" title="Voir les notes" onclick="voirNotes({{ rdv.id }})">
+                                                <button type="button" class="btn btn-sm btn-outline-info" title="Voir les notes" data-rdv-id="{{ rdv.id }}" data-action="voir-notes">
                                                     <i class="fas fa-sticky-note"></i>
                                                     {% if rdv.notes and rdv.notes.strip() %}
-                                                        <span class="badge bg-success ms-1" style="font-size: 0.6rem;">✓</span>
+                                                        <span class="badge bg-success ms-1">✓</span>
                                                     {% endif %}
-                                                </a>
+                                                </button>
                                             {% endif %}
                                             
-                                            <a href="#" class="submenu-item" title="Supprimer" onclick="supprimerRDV({{ rdv.id }})">
-                                                <i class="fas fa-trash" style="color: red;"></i>
-                                            </a>
+                                            <button type="button" class="btn btn-sm btn-outline-danger" title="Supprimer" data-rdv-id="{{ rdv.id }}" data-action="supprimer">
+                                                <i class="fas fa-trash"></i>
+                                            </button>
                                         </div>
                                     </td>
                                 </tr>
                             {% else %}
                                 <tr>
-                                    <td colspan="9" class="text-center text-muted py-4">
-                                        <i class="fas fa-calendar-times fa-2x mb-2"></i><br>
-                                        Aucun rendez-vous trouvé
+                                    <td colspan="5" class="empty-message">
+                                        <i class="fas fa-calendar-times fa-3x mb-3"></i>
+                                        <p class="mb-0">Aucun rendez-vous trouvé</p>
                                     </td>
                                 </tr>
                             {% endfor %}
-                        </tbody>
-                    </table>
+                            </tbody>
+                        </table>
+                    </div>
                 </div>
 
-                <!-- Pagination -->
-                {% if has_next or has_prev %}
-                    <nav aria-label="Pagination des rendez-vous">
-                        <ul class="pagination justify-content-center">
-                            {% if has_prev %}
-                                <li class="page-item">
-                                    <a class="page-link" href="?page={{ page - 1 }}{% for key, value in filters.items() %}{% if value %}&{{ key }}={{ value }}{% endif %}{% endfor %}">Précédent</a>
-                                </li>
-                            {% endif %}
-                            <li class="page-item active">
-                                <span class="page-link">{{ page }}</span>
-                            </li>
-                            {% if has_next %}
-                                <li class="page-item">
-                                    <a class="page-link" href="?page={{ page + 1 }}{% for key, value in filters.items() %}{% if value %}&{{ key }}={{ value }}{% endif %}{% endfor %}">Suivant</a>
-                                </li>
-                            {% endif %}
-                        </ul>
-                    </nav>
+                <!-- Informations sur les résultats -->
+                {% if rendez_vous %}
+                    <div class="card-footer flex-shrink-0">
+                        <div class="d-flex justify-content-between align-items-center">
+                            <small class="text-muted">
+                                Affichage de <strong>{{ rendez_vous|length }}</strong> rendez-vous{% if rendez_vous|length > 1 %}s{% endif %}
+                                {% if stats.total > rendez_vous|length %}
+                                    sur <strong>{{ stats.total }}</strong> au total
+                                {% endif %}
+                            </small>
+                        </div>
+                    </div>
                 {% endif %}
+            </div>
+        </div>
+
+        <!-- Sidebar avec filtres -->
+        <div class="col-md-3 col-lg-2 rdv-sidebar">
+            <!-- Bouton Nouveau RDV -->
+            <div class="sidebar-section">
+                <button type="button" class="btn btn-primary btn-new-rdv" onclick="openModal('createRendezVousModal'); return false;">
+                    <i class="fas fa-calendar-plus me-2"></i>Nouveau RDV
+                </button>
+            </div>
+
+            <!-- Filtres -->
+            <div class="sidebar-section">
+                <div class="sidebar-section-title">
+                    <i class="fas fa-filter me-1"></i>Filtres
                 </div>
+                <form method="get" class="mb-0">
+                    <!-- Préserver le paramètre programme -->
+                    {% if request.query_params.get('programme') %}
+                        <input type="hidden" name="programme" value="{{ request.query_params.get('programme') }}">
+                    {% endif %}
+                    
+                    <div class="mb-2">
+                        <label class="form-label">Nom du candidat</label>
+                        <input type="text" name="candidat_nom" id="filter_candidat_nom" class="form-control form-control-sm" value="{{ filters.candidat_nom or '' }}" placeholder="Rechercher..." autocomplete="off">
+                    </div>
+                    
+                    <div class="mb-2">
+                        <label class="form-label">Statut</label>
+                        <select name="statut" class="form-select form-select-sm" aria-label="Filtrer par statut">
+                            <option value="">Tous les statuts</option>
+                            <option value="planifie" {% if filters.statut == 'planifie' %}selected{% endif %}>Planifié</option>
+                            <option value="en_cours" {% if filters.statut == 'en_cours' %}selected{% endif %}>En cours</option>
+                            <option value="termine" {% if filters.statut == 'termine' %}selected{% endif %}>Terminé</option>
+                            <option value="annule" {% if filters.statut == 'annule' %}selected{% endif %}>Annulé</option>
+                        </select>
+                    </div>
+                    
+                    <div class="d-grid gap-2">
+                        <button type="submit" class="btn btn-primary btn-sm">
+                            <i class="fas fa-search me-1"></i>Rechercher
+                        </button>
+                        <a href="{{ url_for('rendez_vous_home') }}{% if request.query_params.get('programme') %}?programme={{ request.query_params.get('programme') }}{% endif %}" class="btn btn-outline-secondary btn-sm">
+                            <i class="fas fa-times me-1"></i>Réinitialiser
+                        </a>
+                    </div>
+                </form>
             </div>
         </div>
     </div>
@@ -396,6 +572,365 @@
     </div>
 {% endcall %}
 
+<!-- Modal pour créer un nouveau rendez-vous -->
+<div class="modal-xl" id="createRendezVousModal">
+    <div class="modal-content modal-xl">
+        <div class="modal-header">
+            <h3 class="modal-title">
+                <i class="fas fa-calendar-plus me-2"></i>Créer un Nouveau Rendez-vous
+            </h3>
+            <button class="modal-close" onclick="closeModals()" title="Fermer">&times;</button>
+        </div>
+        <div class="modal-body">
+            <form id="createRendezVousForm" method="post" action="{{ url_for('rendez_vous_create') }}">
+                <!-- Champ caché pour le programme -->
+                <input type="hidden" name="programme" id="modal_programme" value="">
+                <div id="createRendezVousLoading" class="text-center py-5">
+                    <div class="spinner-border text-primary" role="status">
+                        <span class="visually-hidden">Chargement...</span>
+                    </div>
+                    <p class="mt-2">Chargement du formulaire...</p>
+                </div>
+                <div id="createRendezVousContent" style="display: none;">
+                    <div class="row g-3">
+                        <div class="col-md-6">
+                            <div class="mb-3">
+                                <label for="modal_candidat_id" class="form-label">Candidat *</label>
+                                <select name="candidat_id" id="modal_candidat_id" class="form-select" required>
+                                    <option value="">Sélectionner un candidat</option>
+                                </select>
+                                <div class="form-text">
+                                    <i class="fas fa-info-circle me-1"></i>
+                                    <span id="candidats_count">0</span> candidat(s) validé(s) disponible(s)
+                                </div>
+                            </div>
+                        </div>
+                        <div class="col-md-6">
+                            <div class="mb-3">
+                                <label for="modal_conseiller_id" class="form-label">Conseiller</label>
+                                <select name="conseiller_id" id="modal_conseiller_id" class="form-select">
+                                    <option value="">Aucun conseiller assigné</option>
+                                </select>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="row g-3">
+                        <div class="col-md-4">
+                            <div class="mb-3">
+                                <label for="modal_type_rdv" class="form-label">Type de rendez-vous *</label>
+                                <select name="type_rdv" id="modal_type_rdv" class="form-select" required>
+                                </select>
+                            </div>
+                        </div>
+                        <div class="col-md-4">
+                            <div class="mb-3">
+                                <label for="modal_statut" class="form-label">Statut *</label>
+                                <select name="statut" id="modal_statut" class="form-select" required>
+                                </select>
+                            </div>
+                        </div>
+                        <div class="col-md-4">
+                            <div class="mb-3">
+                                <label for="modal_lieu" class="form-label">Lieu</label>
+                                <input type="text" name="lieu" id="modal_lieu" class="form-control" placeholder="Ex: Bureau 101, Salle de réunion...">
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="row g-3">
+                        <div class="col-md-6">
+                            <div class="mb-3">
+                                <label for="modal_debut" class="form-label">Date et heure de début *</label>
+                                <input type="datetime-local" name="debut" id="modal_debut" class="form-control" required>
+                            </div>
+                        </div>
+                        <div class="col-md-6">
+                            <div class="mb-3">
+                                <label for="modal_fin" class="form-label">Date et heure de fin</label>
+                                <input type="datetime-local" name="fin" id="modal_fin" class="form-control">
+                                <div class="form-text">Laisser vide pour une durée par défaut</div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="row g-3">
+                        <div class="col-12">
+                            <div class="mb-3">
+                                <label for="modal_notes" class="form-label">Notes</label>
+                                <textarea name="notes" id="modal_notes" class="form-control" rows="4" placeholder="Notes sur le rendez-vous, objectifs, points à aborder..."></textarea>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Informations du candidat sélectionné -->
+                    <div class="alert alert-info" id="modal_candidat_info" style="display: none;">
+                        <h6><i class="fas fa-user me-2"></i>Informations du candidat</h6>
+                        <div class="row">
+                            <div class="col-md-6">
+                                <strong>Nom complet:</strong> <span id="modal_candidat_nom">-</span><br>
+                                <strong>Email:</strong> <span id="modal_candidat_email">-</span>
+                            </div>
+                            <div class="col-md-6">
+                                <strong>Programme:</strong> <span id="modal_candidat_programme">-</span><br>
+                                <strong>Entreprise:</strong> <span id="modal_candidat_entreprise">-</span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </form>
+        </div>
+        <div class="modal-footer">
+            <button type="button" class="btn btn-secondary" onclick="closeModals()">Annuler</button>
+            <button type="submit" form="createRendezVousForm" class="btn btn-primary">
+                <i class="fas fa-save me-1"></i>Créer le rendez-vous
+            </button>
+        </div>
+    </div>
+</div>
+
+<!-- Modal pour voir les détails d'un rendez-vous -->
+<div class="modal-xl" id="detailRendezVousModal">
+    <div class="modal-content modal-xl">
+        <div class="modal-header ">
+            <h3 class="modal-title mb-0">
+                <i class="fas fa-calendar-alt me-2"></i>Détails du Rendez-vous
+            </h3>
+            <button class="modal-close text-white" onclick="closeModals()" title="Fermer" style="opacity: 0.8;">&times;</button>
+        </div>
+        <div class="modal-body p-4">
+            <div id="detailRendezVousLoading" class="text-center py-5">
+                <div class="spinner-border text-primary" role="status">
+                    <span class="visually-hidden">Chargement...</span>
+                </div>
+                <p class="mt-3 text-muted">Chargement des détails...</p>
+            </div>
+            <div id="detailRendezVousContent" style="display: none;">
+                <!-- En-tête avec informations principales -->
+                <div class="row mb-4">
+                    <div class="col-12">
+                        <div class="d-flex align-items-center justify-content-between flex-wrap gap-3 p-3 bg-light rounded">
+                            <div class="d-flex align-items-center gap-3">
+                                <div class="detail-icon-box bg-primary text-white rounded-circle d-flex align-items-center justify-content-center" style="width: 60px; height: 60px;">
+                                    <i class="fas fa-calendar-alt fa-lg"></i>
+                                </div>
+                                <div>
+                                    <h4 class="mb-1" id="detail_candidat_nom" style="font-weight: 600; color: #2c3e50;"></h4>
+                                    <p class="mb-0 text-muted small" id="detail_date_summary"></p>
+                                    <p class="mb-0 mt-1">
+                                        <i class="fas fa-envelope text-primary me-1"></i>
+                                        <a href="#" id="detail_candidat_email_link_header" class="text-decoration-none text-muted small">
+                                            <span id="detail_candidat_email_header"></span>
+                                        </a>
+                                    </p>
+                                    <p class="mb-0 mt-1" id="detail_conseiller_header_container" style="display: none;">
+                                        <i class="fas fa-user-tie text-primary me-1"></i>
+                                        <span class="text-muted small">Conseiller: <strong id="detail_conseiller_nom_header"></strong></span>
+                                    </p>
+                                </div>
+                            </div>
+                            <div class="d-flex align-items-center gap-2">
+                                <span id="detail_statut_header"></span>
+                                <span id="detail_type_rdv_header"></span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+
+                <!-- Formulaire de modification (caché par défaut) -->
+                <div class="card border-0 shadow-sm mt-4" id="editFormContainer" style="display: none;">
+                    <div class="card-header bg-warning bg-opacity-10 border-bottom">
+                        <h5 class="card-title mb-0 fw-semibold">
+                            <i class="fas fa-edit text-warning me-2"></i>
+                            Modifier le rendez-vous
+                        </h5>
+                    </div>
+                    <div class="card-body p-4">
+                        <form id="editRendezVousForm" method="post" action="">
+                            <input type="hidden" name="programme" id="edit_modal_programme" value="">
+                            <div class="row g-3">
+                                <div class="col-md-6">
+                                    <label for="edit_conseiller_id" class="form-label fw-semibold">Conseiller</label>
+                                    <select name="conseiller_id" id="edit_conseiller_id" class="form-select">
+                                        <option value="">Aucun conseiller assigné</option>
+                                    </select>
+                                </div>
+                                <div class="col-md-6">
+                                    <label for="edit_type_rdv" class="form-label fw-semibold">Type de rendez-vous</label>
+                                    <select name="type_rdv" id="edit_type_rdv" class="form-select">
+                                    </select>
+                                </div>
+                                <div class="col-md-6">
+                                    <label for="edit_statut" class="form-label fw-semibold">Statut</label>
+                                    <select name="statut" id="edit_statut" class="form-select">
+                                    </select>
+                                </div>
+                                <div class="col-md-6">
+                                    <label for="edit_lieu" class="form-label fw-semibold">Lieu</label>
+                                    <input type="text" name="lieu" id="edit_lieu" class="form-control" placeholder="Ex: Bureau 101">
+                                </div>
+                                <div class="col-md-6">
+                                    <label for="edit_debut" class="form-label fw-semibold">Date et heure de début</label>
+                                    <input type="datetime-local" name="debut" id="edit_debut" class="form-control" required>
+                                </div>
+                                <div class="col-md-6">
+                                    <label for="edit_fin" class="form-label fw-semibold">Date et heure de fin</label>
+                                    <input type="datetime-local" name="fin" id="edit_fin" class="form-control">
+                                </div>
+                                <div class="col-12">
+                                    <label for="edit_notes" class="form-label fw-semibold">Notes</label>
+                                    <textarea name="notes" id="edit_notes" class="form-control" rows="4" placeholder="Notes sur le rendez-vous..."></textarea>
+                                </div>
+                            </div>
+                        </form>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <div class="modal-footer bg-light border-top">
+            <button type="button" class="btn btn-secondary" onclick="closeModals()">
+                <i class="fas fa-times me-1"></i>Fermer
+            </button>
+            <button type="button" class="btn btn-outline-primary" id="btnToggleEdit" onclick="toggleEditForm()">
+                <i class="fas fa-edit me-1"></i>Modifier
+            </button>
+            <button type="submit" form="editRendezVousForm" class="btn btn-primary" id="btnSaveEdit" style="display: none;">
+                <i class="fas fa-save me-1"></i>Sauvegarder
+            </button>
+        </div>
+    </div>
+</div>
+
+<!-- Modal pour modifier un rendez-vous -->
+<div class="modal-xl" id="editRendezVousModal">
+    <div class="modal-content modal-xl">
+        <div class="modal-header">
+            <h3 class="modal-title">
+                <i class="fas fa-edit me-2"></i>Modifier le Rendez-vous
+            </h3>
+            <button class="modal-close text-white" onclick="closeModals()" title="Fermer">&times;</button>
+        </div>
+        <div class="modal-body p-4">
+            <div id="editRendezVousLoading" class="text-center py-5">
+                <div class="spinner-border text-primary" role="status">
+                    <span class="visually-hidden">Chargement...</span>
+                </div>
+                <p class="mt-3 text-muted">Chargement des données...</p>
+            </div>
+            <div id="editRendezVousContent" style="display: none;">
+                <form id="editRendezVousFormModal" method="post" action="">
+                    <input type="hidden" name="programme" id="edit_modal_programme_modal" value="">
+                    <div class="row g-3">
+                        <div class="col-md-6">
+                            <label for="edit_conseiller_id_modal" class="form-label fw-semibold">Conseiller</label>
+                            <select name="conseiller_id" id="edit_conseiller_id_modal" class="form-select">
+                                <option value="">Aucun conseiller assigné</option>
+                            </select>
+                        </div>
+                        <div class="col-md-6">
+                            <label for="edit_type_rdv_modal" class="form-label fw-semibold">Type de rendez-vous</label>
+                            <select name="type_rdv" id="edit_type_rdv_modal" class="form-select" required>
+                            </select>
+                        </div>
+                        <div class="col-md-6">
+                            <label for="edit_statut_modal" class="form-label fw-semibold">Statut</label>
+                            <select name="statut" id="edit_statut_modal" class="form-select" required>
+                            </select>
+                        </div>
+                        <div class="col-md-6">
+                            <label for="edit_lieu_modal" class="form-label fw-semibold">Lieu</label>
+                            <input type="text" name="lieu" id="edit_lieu_modal" class="form-control" placeholder="Ex: Bureau 101">
+                        </div>
+                        <div class="col-md-6">
+                            <label for="edit_debut_modal" class="form-label fw-semibold">Date et heure de début</label>
+                            <input type="datetime-local" name="debut" id="edit_debut_modal" class="form-control" required>
+                        </div>
+                        <div class="col-md-6">
+                            <label for="edit_fin_modal" class="form-label fw-semibold">Date et heure de fin</label>
+                            <input type="datetime-local" name="fin" id="edit_fin_modal" class="form-control">
+                        </div>
+                        <div class="col-12">
+                            <label for="edit_notes_modal" class="form-label fw-semibold">Notes</label>
+                            <textarea name="notes" id="edit_notes_modal" class="form-control" rows="4" placeholder="Notes sur le rendez-vous..."></textarea>
+                        </div>
+                    </div>
+                </form>
+            </div>
+        </div>
+        <div class="modal-footer bg-light border-top">
+            <button type="button" class="btn btn-secondary" onclick="closeModals()">
+                <i class="fas fa-times me-1"></i>Annuler
+            </button>
+            <button type="submit" form="editRendezVousFormModal" class="btn btn-primary">
+                <i class="fas fa-save me-1"></i>Sauvegarder
+            </button>
+        </div>
+    </div>
+</div>
+
+<style>
+/* Styles pour la modal de détail */
+.detail-icon-box {
+    box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+}
+
+.detail-info-item {
+    padding: 0.75rem 0;
+}
+
+.detail-label {
+    font-size: 0.85rem;
+    font-weight: 600;
+    color: #6c757d;
+    margin-bottom: 0.5rem;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+}
+
+.detail-value {
+    font-size: 1rem;
+    color: #2c3e50;
+    line-height: 1.5;
+}
+
+.detail-notes-box {
+    min-height: 100px;
+    max-height: 300px;
+    overflow-y: auto;
+}
+
+.detail-notes-content {
+    white-space: pre-wrap;
+    font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+    line-height: 1.6;
+    color: #495057;
+}
+
+.detail-contact-item {
+    padding-bottom: 1rem;
+    border-bottom: 1px solid #e9ecef;
+}
+
+.detail-contact-item:last-child {
+    border-bottom: none;
+    padding-bottom: 0;
+}
+
+#detailRendezVousModal .card {
+    transition: all 0.3s ease;
+}
+
+#detailRendezVousModal .card:hover {
+    box-shadow: 0 4px 12px rgba(0,0,0,0.1) !important;
+}
+
+#detailRendezVousModal .detail-value a:hover {
+    color: #0d6efd !important;
+    text-decoration: underline !important;
+}
+</style>
+
 {% endblock %}
 
 {% block scripts %}
@@ -410,29 +945,56 @@
 
 
 
-/* Fix pour les rows avec flex-shrink-0 */
-.row.flex-shrink-0 {
-    flex-shrink: 0 !important;
-    min-height: auto;
+/* Conteneur principal de la carte */
+.card.h-100.d-flex.flex-column {
+    display: flex;
+    flex-direction: column;
+    height: auto;
+    min-height: 0;
+    width: 100%;
 }
 
-/* Réduction de la hauteur des statistiques */
-.card-body.border-bottom.flex-shrink-0 {
-    padding: 0.5rem !important; /* Réduit le padding */
-    min-height: auto !important;
-    height: auto !important;
+/* Conteneur fluid sans padding */
+.container-fluid.compact-page.px-0 {
+    padding-left: 0;
+    padding-right: 0;
+    width: 100%;
 }
 
-/* Conteneur principal */
-.card.h-100 {
-    overflow: hidden; /* Empêche le débordement de la carte */
+/* Sections fixes (statistiques et filtres) */
+.card-body.flex-shrink-0 {
+    flex-shrink: 0;
+    flex-grow: 0;
 }
 
-/* Conteneur du tableau */
+/* Section du tableau qui prend l'espace restant */
+.card-body.flex-grow-1 {
+    flex: 1 1 auto;
+    min-height: 0;
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+}
+
+/* Conteneur du tableau avec scroll */
 .table-responsive.flex-grow-1 {
-    min-height: 0; /* Permet au flexbox de réduire la taille */
-    /* overflow: hidden; supprimé pour permettre le scroll */
-    flex: 1 1 0; /* Force le flexbox à utiliser l'espace disponible */
+    flex: 1 1 auto;
+    min-height: 0;
+    overflow-y: auto;
+    overflow-x: auto;
+}
+
+/* Footer de pagination */
+.card-footer.flex-shrink-0 {
+    flex-shrink: 0;
+    flex-grow: 0;
+}
+
+/* Correction pour Firefox - utiliser 0 au lieu de auto */
+.card.h-100.d-flex.flex-column,
+.card-body.flex-grow-1,
+.table-responsive.flex-grow-1 {
+    min-height: 0;
 }
 
 /* En-tête fixe */
@@ -484,43 +1046,233 @@
     color: #495057;
 }
 
-/* Styles pour le tableau avec bande déroulante */
-.table-responsive {
+/* Styles pour le tableau des rendez-vous */
+.rdv-table-container {
+    max-height: calc(100vh - 450px);
+    overflow-y: auto;
+    overflow-x: auto;
+    border: 1px solid #dee2e6;
+    border-radius: 0.375rem;
     box-shadow: 0 0.125rem 0.25rem rgba(0, 0, 0, 0.075);
+    width: 100%;
 }
 
-.table-responsive::-webkit-scrollbar {
+.rdv-table-container::-webkit-scrollbar {
     width: 8px;
     height: 8px;
 }
 
-.table-responsive::-webkit-scrollbar-track {
+.rdv-table-container::-webkit-scrollbar-track {
     background: #f1f1f1;
     border-radius: 4px;
 }
 
-.table-responsive::-webkit-scrollbar-thumb {
+.rdv-table-container::-webkit-scrollbar-thumb {
     background: #c1c1c1;
     border-radius: 4px;
 }
 
-.table-responsive::-webkit-scrollbar-thumb:hover {
+.rdv-table-container::-webkit-scrollbar-thumb:hover {
     background: #a8a8a8;
 }
 
-/* Amélioration des cellules du tableau */
-.table td {
-    padding: 0.75rem 0.5rem;
-    vertical-align: middle;
-    word-wrap: break-word;
-    overflow: hidden;
-    text-overflow: ellipsis;
+/* Table principale */
+.rdv-table {
+    margin-bottom: 0;
+    width: 100%;
+    min-width: 100%;
+    border-collapse: separate;
+    border-spacing: 0;
+    table-layout: auto;
 }
 
-.table th {
-    padding: 0.75rem 0.5rem;
-    font-weight: 600;
+/* En-tête du tableau */
+.rdv-table-header {
+    position: sticky;
+    top: 0;
+    z-index: 10;
+    background: linear-gradient(135deg, #f8f9fa 0%, #e9ecef 100%);
     border-bottom: 2px solid #dee2e6;
+}
+
+.rdv-table-header th {
+    padding: 0.875rem 0.75rem;
+    font-weight: 600;
+    font-size: 0.875rem;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    color: #495057;
+    white-space: nowrap;
+    border-bottom: 2px solid #dee2e6;
+}
+
+.rdv-th-date { width: 18%; min-width: 140px; }
+.rdv-th-candidat { width: 30%; min-width: 200px; }
+.rdv-th-type { width: 12%; min-width: 100px; }
+.rdv-th-statut { width: 15%; min-width: 100px; }
+.rdv-th-actions { width: 25%; min-width: 180px; }
+
+/* Lignes du tableau */
+.rdv-table-row {
+    transition: all 0.2s ease;
+    border-bottom: 1px solid #f0f0f0;
+}
+
+.rdv-table-row:hover {
+    background-color: #f8f9fa;
+    transform: scale(1.001);
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.05);
+}
+
+.rdv-table-row:last-child {
+    border-bottom: none;
+}
+
+/* Cellules du tableau */
+.rdv-table td {
+    padding: 1rem 0.75rem;
+    vertical-align: middle;
+    word-wrap: break-word;
+}
+
+.rdv-td-date {
+    font-size: 0.875rem;
+}
+
+.rdv-td-candidat {
+    font-size: 0.875rem;
+}
+
+.rdv-td-type,
+.rdv-td-statut {
+    text-align: center;
+}
+
+.rdv-td-actions {
+    text-align: center;
+}
+
+/* Wrappers pour les données */
+.rdv-date-wrapper {
+    display: flex;
+    flex-direction: column;
+    gap: 0.25rem;
+}
+
+.rdv-date-main {
+    display: flex;
+    align-items: center;
+    font-weight: 600;
+    color: #212529;
+}
+
+.rdv-time {
+    display: flex;
+    align-items: center;
+    font-size: 0.8rem;
+    color: #6c757d;
+}
+
+.rdv-candidat-wrapper {
+    display: flex;
+    flex-direction: column;
+    gap: 0.25rem;
+}
+
+.rdv-candidat-name {
+    display: flex;
+    align-items: center;
+    font-weight: 600;
+    color: #212529;
+}
+
+.rdv-candidat-email {
+    display: flex;
+    align-items: center;
+    font-size: 0.8rem;
+    color: #6c757d;
+}
+
+/* Badges */
+.rdv-badge-type,
+.rdv-badge-statut {
+    font-size: 0.75rem;
+    padding: 0.4rem 0.6rem;
+    font-weight: 500;
+    white-space: nowrap;
+}
+
+.rdv-signature-badge {
+    font-size: 0.6rem;
+    padding: 0.2rem 0.4rem;
+}
+
+.rdv-notes-badge {
+    font-size: 0.6rem;
+    padding: 0.2rem 0.4rem;
+}
+
+/* Groupe d'actions */
+.rdv-actions-group {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.25rem;
+    justify-content: center;
+    align-items: center;
+}
+
+.rdv-action-btn {
+    padding: 0.375rem 0.5rem;
+    font-size: 0.75rem;
+    border-radius: 0.25rem;
+    transition: all 0.2s ease;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    min-width: 32px;
+    height: 32px;
+}
+
+.rdv-action-btn:hover {
+    transform: translateY(-1px);
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.15);
+}
+
+.rdv-action-btn i {
+    font-size: 0.875rem;
+}
+
+/* État vide */
+.rdv-empty-state {
+    background-color: #f8f9fa;
+    border-radius: 0.375rem;
+}
+
+.rdv-empty-state i {
+    opacity: 0.5;
+}
+
+/* Responsive */
+@media (max-width: 768px) {
+    .rdv-table-header th {
+        font-size: 0.75rem;
+        padding: 0.5rem 0.4rem;
+    }
+    
+    .rdv-table td {
+        padding: 0.75rem 0.5rem;
+        font-size: 0.8rem;
+    }
+    
+    .rdv-actions-group {
+        flex-direction: column;
+        gap: 0.15rem;
+    }
+    
+    .rdv-action-btn {
+        width: 100%;
+        justify-content: flex-start;
+    }
 }
 
 /* Style pour les badges */
@@ -723,10 +1475,35 @@ function verifierStatutSignatures() {
         rdvIds.add(btn.getAttribute('data-rdv-id'));
     });
     
+    // Récupérer le code du programme depuis l'URL ou window.currentProgramme
+    const urlParams = new URLSearchParams(window.location.search);
+    const programmeCode = window.currentProgramme || urlParams.get('programme') || 'ACD';
+    
     // Vérifier le statut de chaque RDV
     rdvIds.forEach(rdvId => {
-        fetch(`/emargement/${rdvId}/statut`)
-            .then(response => response.json())
+        // Inclure le paramètre programme dans l'URL
+        // Le router est enregistré avec le préfixe /rendez_vous, donc l'URL complète est /rendez_vous/emargement/{rdv_id}/statut
+        const statutUrl = `/rendez_vous/emargement/${rdvId}/statut?programme=${encodeURIComponent(programmeCode)}`;
+        fetch(statutUrl)
+            .then(response => {
+                // Vérifier si la réponse est OK et si c'est du JSON
+                const contentType = response.headers.get("content-type");
+                if (!response.ok) {
+                    // Si ce n'est pas OK, essayer de parser le JSON d'erreur
+                    if (contentType && contentType.includes("application/json")) {
+                        return response.json().then(data => {
+                            throw new Error(data.message || `Erreur ${response.status}`);
+                        });
+                    } else {
+                        // Si ce n'est pas du JSON, c'est probablement une page HTML d'erreur
+                        throw new Error(`Erreur ${response.status}: La route n'a pas retourné de JSON`);
+                    }
+                }
+                if (!contentType || !contentType.includes("application/json")) {
+                    throw new Error("La réponse n'est pas du JSON");
+                }
+                return response.json();
+            })
             .then(data => {
                 if (data.status === 'found') {
                     const commencerBtn = document.querySelector(`.btn-commencer-rdv[data-rdv-id="${rdvId}"]`);
@@ -778,6 +1555,8 @@ function verifierStatutSignatures() {
             })
             .catch(error => {
                 console.error(`Erreur lors de la vérification du statut pour RDV ${rdvId}:`, error);
+                // En cas d'erreur, ne rien faire (les boutons restent dans leur état par défaut)
+                // Cela évite d'afficher des erreurs répétées dans la console
             });
     });
 }
@@ -804,9 +1583,734 @@ function adjustContainerPosition() {
     }
 }
 
-// Vérifier le statut des signatures au chargement de la page
+// Charger les données pour le modal de création
+function loadCreateRendezVousData() {
+    const loadingDiv = document.getElementById('createRendezVousLoading');
+    const contentDiv = document.getElementById('createRendezVousContent');
+    
+    // Construire l'URL de l'API - le router est monté avec le préfixe /rendez_vous
+    // et la route dans le router est /rendez-vous/api/candidats-valides
+    // Récupérer le programme depuis la variable globale ou l'URL
+    let apiUrl = '/rendez_vous/rendez-vous/api/candidats-valides';
+    
+    // Utiliser window.currentProgramme si disponible (défini par base.html)
+    let programmeCode = window.currentProgramme;
+    
+    // Si pas disponible, récupérer depuis l'URL (paramètre programme ou programme_id)
+    if (!programmeCode) {
+        const urlParams = new URLSearchParams(window.location.search);
+        programmeCode = urlParams.get('programme');
+        
+        // Si pas de paramètre programme, essayer de récupérer depuis programme_id
+        if (!programmeCode) {
+            const programmeId = urlParams.get('programme_id');
+            if (programmeId) {
+                // Chercher le code du programme depuis le select
+                const programmeSelect = document.querySelector('select[name="programme_id"]');
+                if (programmeSelect) {
+                    const option = programmeSelect.querySelector(`option[value="${programmeId}"]`);
+                    if (option && option.dataset.code) {
+                        programmeCode = option.dataset.code;
+                    }
+                }
+            }
+        }
+    }
+    
+    // Si toujours pas de programme, utiliser ACD par défaut (comme dans inscriptions)
+    if (!programmeCode) {
+        programmeCode = 'ACD';
+    }
+    
+    apiUrl += `?programme=${programmeCode}`;
+    
+    fetch(apiUrl)
+        .then(response => {
+            if (!response.ok) {
+                return response.json().then(err => {
+                    throw new Error(err.message || `Erreur HTTP ${response.status}`);
+                });
+            }
+            return response.json();
+        })
+        .then(data => {
+            // Vérifier si c'est une réponse d'erreur
+            if (data.error) {
+                throw new Error(data.message || 'Erreur lors du chargement des données');
+            }
+            // Remplir le select des candidats
+            const candidatSelect = document.getElementById('modal_candidat_id');
+            candidatSelect.innerHTML = '<option value="">Sélectionner un candidat</option>';
+            data.candidats.forEach(candidat => {
+                const option = document.createElement('option');
+                option.value = candidat.candidat_id;
+                option.textContent = `${candidat.nom_complet} - ${candidat.programme_nom}`;
+                option.dataset.candidatId = candidat.candidat_id;
+                option.dataset.programmeNom = candidat.programme_nom;
+                option.dataset.programmeId = candidat.programme_id;
+                option.dataset.programmeCode = candidat.programme_code || candidat.programme_nom.toUpperCase();
+                option.dataset.entrepriseNom = candidat.entreprise_nom;
+                option.dataset.email = candidat.email;
+                candidatSelect.appendChild(option);
+            });
+            document.getElementById('candidats_count').textContent = data.candidats.length;
+            
+            // Remplir le select des conseillers
+            const conseillerSelect = document.getElementById('modal_conseiller_id');
+            conseillerSelect.innerHTML = '<option value="">Aucun conseiller assigné</option>';
+            data.conseillers.forEach(conseiller => {
+                const option = document.createElement('option');
+                option.value = conseiller.id;
+                option.textContent = conseiller.nom_complet;
+                conseillerSelect.appendChild(option);
+            });
+            
+            // Remplir le select des types de RDV
+            const typeSelect = document.getElementById('modal_type_rdv');
+            typeSelect.innerHTML = '';
+            data.types_rdv.forEach(type => {
+                const option = document.createElement('option');
+                option.value = type;
+                let label = type;
+                if (type === 'entretien') label = 'Entretien';
+                else if (type === 'suivi') label = 'Suivi';
+                else if (type === 'coaching') label = 'Coaching';
+                else label = 'Autre';
+                option.textContent = label;
+                typeSelect.appendChild(option);
+            });
+            
+            // Remplir le select des statuts
+            const statutSelect = document.getElementById('modal_statut');
+            statutSelect.innerHTML = '';
+            data.statuts_rdv.forEach(statut => {
+                const option = document.createElement('option');
+                option.value = statut;
+                let label = statut;
+                if (statut === 'planifie') {
+                    label = 'Planifié';
+                    option.selected = true;
+                } else if (statut === 'en_cours') label = 'En cours';
+                else if (statut === 'termine') label = 'Terminé';
+                else if (statut === 'annule') label = 'Annulé';
+                option.textContent = label;
+                statutSelect.appendChild(option);
+            });
+            
+            // Afficher le contenu
+            loadingDiv.style.display = 'none';
+            contentDiv.style.display = 'block';
+            
+            // Initialiser les événements après le chargement
+            setupModalCandidatSelection();
+        })
+        .catch(error => {
+            console.error('Erreur lors du chargement des données:', error);
+            loadingDiv.innerHTML = `
+                <div class="alert alert-danger">
+                    <i class="fas fa-exclamation-circle me-2"></i>
+                    <strong>Erreur lors du chargement des données</strong><br>
+                    <small>${error.message || 'Une erreur est survenue. Veuillez réessayer.'}</small>
+                </div>
+                <div class="mt-3 text-center">
+                    <button class="btn btn-primary" onclick="loadCreateRendezVousData()">
+                        <i class="fas fa-redo me-1"></i>Réessayer
+                    </button>
+                    <button class="btn btn-secondary ms-2" onclick="closeModals()">
+                        <i class="fas fa-times me-1"></i>Fermer
+                    </button>
+                </div>
+            `;
+        });
+}
+
+// Gestion de la sélection du candidat dans le modal
+function setupModalCandidatSelection() {
+    const candidatSelect = document.getElementById('modal_candidat_id');
+    const candidatInfo = document.getElementById('modal_candidat_info');
+    
+    if (candidatSelect) {
+        candidatSelect.addEventListener('change', function() {
+            const selectedOption = this.options[this.selectedIndex];
+            
+            if (selectedOption.value && selectedOption.dataset.programmeNom) {
+                document.getElementById('modal_candidat_nom').textContent = selectedOption.textContent.split(' - ')[0];
+                document.getElementById('modal_candidat_email').textContent = selectedOption.dataset.email || '-';
+                document.getElementById('modal_candidat_programme').textContent = selectedOption.dataset.programmeNom;
+                document.getElementById('modal_candidat_entreprise').textContent = selectedOption.dataset.entrepriseNom || 'Non renseignée';
+                // Mettre à jour le champ caché programme avec le code du programme
+                // Utiliser window.currentProgramme si disponible, sinon utiliser celui du candidat
+                const programmeCode = window.currentProgramme || selectedOption.dataset.programmeCode || selectedOption.dataset.programmeNom.toUpperCase();
+                document.getElementById('modal_programme').value = programmeCode;
+                candidatInfo.style.display = 'block';
+            } else {
+                candidatInfo.style.display = 'none';
+                document.getElementById('modal_programme').value = '';
+            }
+        });
+    }
+    
+    // Calcul automatique de l'heure de fin
+    const debutInput = document.getElementById('modal_debut');
+    const finInput = document.getElementById('modal_fin');
+    
+    if (debutInput && finInput) {
+        debutInput.addEventListener('change', function() {
+            if (this.value && !finInput.value) {
+                const debut = new Date(this.value);
+                const fin = new Date(debut.getTime() + 60 * 60 * 1000); // +1 heure par défaut
+                finInput.value = fin.toISOString().slice(0, 16);
+            }
+        });
+    }
+}
+
+// Fonction pour voir les détails d'un RDV
+function voirDetailsRDV(rdvId) {
+    // Afficher l'overlay global
+    if (typeof showGlobalLoading === 'function') {
+        showGlobalLoading('Chargement des détails', 'Récupération des informations...');
+    }
+    
+    const modal = document.getElementById('detailRendezVousModal');
+    const loading = document.getElementById('detailRendezVousLoading');
+    const content = document.getElementById('detailRendezVousContent');
+    const editFormContainer = document.getElementById('editFormContainer');
+    const btnToggleEdit = document.getElementById('btnToggleEdit');
+    const btnSaveEdit = document.getElementById('btnSaveEdit');
+    
+    // Réinitialiser l'affichage
+    loading.style.display = 'block';
+    content.style.display = 'none';
+    editFormContainer.style.display = 'none';
+    btnToggleEdit.style.display = 'inline-block';
+    btnSaveEdit.style.display = 'none';
+    
+    // Ouvrir la modal
+    openModal('detailRendezVousModal');
+    
+    // Charger les détails et activer le mode édition après chargement
+    loadRendezVousDetails(rdvId, false);
+}
+
+// Fonction pour modifier un RDV (ouvre le modal de modification)
+function modifierRDV(rdvId) {
+    // Afficher l'overlay global
+    if (typeof showGlobalLoading === 'function') {
+        showGlobalLoading('Chargement des données', 'Préparation du formulaire...');
+    }
+    
+    const modal = document.getElementById('editRendezVousModal');
+    const loading = document.getElementById('editRendezVousLoading');
+    const content = document.getElementById('editRendezVousContent');
+    
+    if (!modal || !loading || !content) {
+        console.error('Éléments du modal de modification non trouvés');
+        if (typeof hideGlobalLoading === 'function') {
+            hideGlobalLoading();
+        }
+        return;
+    }
+    
+    // Réinitialiser l'affichage
+    loading.style.display = 'block';
+    content.style.display = 'none';
+    
+    // Ouvrir la modal
+    openModal('editRendezVousModal');
+    
+    // Charger les données pour le formulaire d'édition
+    loadEditRendezVousData(rdvId);
+}
+
+// Fonction pour charger les données dans le modal de modification
+function loadEditRendezVousData(rdvId) {
+    const loading = document.getElementById('editRendezVousLoading');
+    const content = document.getElementById('editRendezVousContent');
+    
+    // Récupérer le programme depuis l'URL
+    const programme = window.currentProgramme || new URLSearchParams(window.location.search).get('programme') || 'ACD';
+    
+    console.log('Chargement des données pour modification du RDV', rdvId);
+    
+    // Construire l'URL de l'API
+    let apiUrl = '/rendez_vous/rendez-vous/' + rdvId + '/api';
+    if (programme) {
+        apiUrl += '?programme=' + encodeURIComponent(programme);
+    }
+    
+    fetch(apiUrl)
+        .then(response => {
+            if (!response.ok) {
+                return response.text().then(text => {
+                    throw new Error(`Erreur ${response.status}: ${text}`);
+                });
+            }
+            return response.json();
+        })
+        .then(data => {
+            console.log('Données reçues pour modification:', data);
+            
+            // Préparer le formulaire d'édition
+            const editForm = document.getElementById('editRendezVousFormModal');
+            if (!editForm) {
+                console.error('Formulaire d\'édition non trouvé');
+                if (loading) {
+                    loading.innerHTML = '<div class="alert alert-danger">Erreur: Formulaire d\'édition non trouvé</div>';
+                }
+                return;
+            }
+            
+            editForm.action = `/rendez_vous/rendez-vous/${rdvId}/modifier`;
+            const programmeInput = document.getElementById('edit_modal_programme_modal');
+            if (programmeInput) {
+                programmeInput.value = programme;
+            }
+            
+            // Remplir les champs du formulaire d'édition
+            if (data.conseillers) {
+                const conseillerSelect = document.getElementById('edit_conseiller_id_modal');
+                if (conseillerSelect) {
+                    conseillerSelect.innerHTML = '<option value="">Aucun conseiller assigné</option>';
+                    data.conseillers.forEach(c => {
+                        const option = document.createElement('option');
+                        option.value = c.id;
+                        option.textContent = c.nom_complet;
+                        if (data.conseiller_id === c.id) {
+                            option.selected = true;
+                        }
+                        conseillerSelect.appendChild(option);
+                    });
+                }
+            }
+            
+            if (data.types_rdv) {
+                const typeSelect = document.getElementById('edit_type_rdv_modal');
+                if (typeSelect) {
+                    typeSelect.innerHTML = '';
+                    const typeLabels = {
+                        'entretien': 'Entretien',
+                        'suivi': 'Suivi',
+                        'coaching': 'Coaching'
+                    };
+                    data.types_rdv.forEach(t => {
+                        const option = document.createElement('option');
+                        option.value = t;
+                        option.textContent = typeLabels[t] || t;
+                        if (data.type_rdv === t) {
+                            option.selected = true;
+                        }
+                        typeSelect.appendChild(option);
+                    });
+                }
+            }
+            
+            if (data.statuts_rdv) {
+                const statutSelect = document.getElementById('edit_statut_modal');
+                if (statutSelect) {
+                    statutSelect.innerHTML = '';
+                    const statutLabels = {
+                        'planifie': 'Planifié',
+                        'en_cours': 'En cours',
+                        'termine': 'Terminé',
+                        'annule': 'Annulé'
+                    };
+                    data.statuts_rdv.forEach(s => {
+                        const option = document.createElement('option');
+                        option.value = s;
+                        option.textContent = statutLabels[s] || s;
+                        if (data.statut === s) {
+                            option.selected = true;
+                        }
+                        statutSelect.appendChild(option);
+                    });
+                }
+            }
+            
+            const lieuInput = document.getElementById('edit_lieu_modal');
+            if (lieuInput) {
+                lieuInput.value = data.lieu || '';
+            }
+            
+            const debutInput = document.getElementById('edit_debut_modal');
+            if (debutInput) {
+                debutInput.value = data.debut ? new Date(data.debut).toISOString().slice(0, 16) : '';
+            }
+            
+            const finInput = document.getElementById('edit_fin_modal');
+            if (finInput) {
+                finInput.value = data.fin ? new Date(data.fin).toISOString().slice(0, 16) : '';
+            }
+            
+            const notesInput = document.getElementById('edit_notes_modal');
+            if (notesInput) {
+                notesInput.value = data.notes || '';
+            }
+            
+            // Calcul automatique de l'heure de fin
+            if (debutInput && finInput) {
+                debutInput.addEventListener('change', function() {
+                    if (this.value && !finInput.value) {
+                        const debut = new Date(this.value);
+                        const fin = new Date(debut.getTime() + 60 * 60 * 1000); // +1 heure par défaut
+                        finInput.value = fin.toISOString().slice(0, 16);
+                    }
+                });
+            }
+            
+            // Afficher le contenu
+            if (loading) loading.style.display = 'none';
+            if (content) content.style.display = 'block';
+            
+            // Masquer l'overlay global
+            if (typeof hideGlobalLoading === 'function') {
+                hideGlobalLoading();
+            }
+        })
+        .catch(error => {
+            console.error('Erreur:', error);
+            if (loading) {
+                loading.innerHTML = '<div class="alert alert-danger">Erreur lors du chargement des données: ' + error.message + '</div>';
+            }
+            // Masquer l'overlay global en cas d'erreur
+            if (typeof hideGlobalLoading === 'function') {
+                hideGlobalLoading();
+            }
+        });
+}
+
+// Fonction helper pour charger les détails d'un RDV
+function loadRendezVousDetails(rdvId, openInEditMode = false) {
+    const loading = document.getElementById('detailRendezVousLoading');
+    const content = document.getElementById('detailRendezVousContent');
+    const editFormContainer = document.getElementById('editFormContainer');
+    const btnToggleEdit = document.getElementById('btnToggleEdit');
+    const btnSaveEdit = document.getElementById('btnSaveEdit');
+    
+    // Vérifier que tous les éléments existent
+    if (!loading || !editFormContainer || !btnToggleEdit || !btnSaveEdit) {
+        console.error('Éléments du modal non trouvés:', {
+            loading: !!loading,
+            editFormContainer: !!editFormContainer,
+            btnToggleEdit: !!btnToggleEdit,
+            btnSaveEdit: !!btnSaveEdit
+        });
+        if (loading) {
+            loading.innerHTML = '<div class="alert alert-danger">Erreur: Éléments du modal non trouvés</div>';
+        }
+        return;
+    }
+    
+    // Récupérer le programme depuis l'URL
+    const programme = window.currentProgramme || new URLSearchParams(window.location.search).get('programme') || 'ACD';
+    
+    console.log('Chargement des détails du RDV', rdvId, 'en mode édition:', openInEditMode);
+    
+    // Charger les détails
+    // Construire l'URL de l'API - le router est monté avec le préfixe /rendez_vous
+    // et la route dans le router est /rendez-vous/{rdv_id}/api
+    // Utiliser la même approche que pour l'API de création
+    let apiUrl = '/rendez_vous/rendez-vous/' + rdvId + '/api';
+    if (programme) {
+        apiUrl += '?programme=' + encodeURIComponent(programme);
+    }
+    fetch(apiUrl)
+        .then(response => {
+            if (!response.ok) {
+                // Si la réponse n'est pas OK, essayer de lire le message d'erreur
+                return response.text().then(text => {
+                    throw new Error(`Erreur ${response.status}: ${text}`);
+                });
+            }
+            return response.json();
+        })
+        .then(data => {
+            // Afficher les informations principales
+            const debut = new Date(data.debut);
+            const fin = data.fin ? new Date(data.fin) : null;
+            
+            // Format date complète pour l'en-tête
+            let dateSummary = debut.toLocaleDateString('fr-FR', {
+                weekday: 'long',
+                year: 'numeric',
+                month: 'long',
+                day: 'numeric'
+            }) + ' à ' + debut.toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' });
+            if (fin) {
+                dateSummary += ' - ' + fin.toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' });
+            }
+            document.getElementById('detail_date_summary').textContent = dateSummary;
+            
+            // Type - pour l'en-tête
+            const typeLabels = {
+                'entretien': '<span class="badge bg-info"><i class="fas fa-comments me-1"></i>Entretien</span>',
+                'suivi': '<span class="badge bg-primary"><i class="fas fa-chart-line me-1"></i>Suivi</span>',
+                'coaching': '<span class="badge bg-secondary"><i class="fas fa-user-tie me-1"></i>Coaching</span>'
+            };
+            const typeHtml = typeLabels[data.type_rdv] || '<span class="badge bg-dark">Autre</span>';
+            document.getElementById('detail_type_rdv_header').innerHTML = typeHtml;
+            
+            // Statut - pour l'en-tête
+            const statutLabels = {
+                'planifie': '<span class="badge bg-warning text-dark"><i class="fas fa-clock me-1"></i>Planifié</span>',
+                'en_cours': '<span class="badge bg-info"><i class="fas fa-video me-1"></i>En cours</span>',
+                'termine': '<span class="badge bg-success"><i class="fas fa-check me-1"></i>Terminé</span>',
+                'annule': '<span class="badge bg-danger"><i class="fas fa-times me-1"></i>Annulé</span>'
+            };
+            const statutHtml = statutLabels[data.statut] || '<span class="badge bg-secondary">' + data.statut + '</span>';
+            document.getElementById('detail_statut_header').innerHTML = statutHtml;
+            
+            // Informations candidat - pour l'en-tête
+            const candidatNom = (data.candidat_prenom || '') + ' ' + (data.candidat_nom || '');
+            document.getElementById('detail_candidat_nom').textContent = candidatNom;
+            
+            if (data.candidat_email) {
+                const emailLinkHeader = document.getElementById('detail_candidat_email_link_header');
+                emailLinkHeader.href = 'mailto:' + data.candidat_email;
+                document.getElementById('detail_candidat_email_header').textContent = data.candidat_email;
+            }
+            
+            if (data.conseiller_nom) {
+                document.getElementById('detail_conseiller_nom_header').textContent = data.conseiller_nom;
+                document.getElementById('detail_conseiller_header_container').style.display = 'block';
+            } else {
+                document.getElementById('detail_conseiller_header_container').style.display = 'none';
+            }
+            
+            // Préparer le formulaire d'édition
+            const editForm = document.getElementById('editRendezVousForm');
+            if (!editForm) {
+                console.error('Formulaire d\'édition non trouvé');
+                loading.innerHTML = '<div class="alert alert-danger">Erreur: Formulaire d\'édition non trouvé</div>';
+                return;
+            }
+            
+            editForm.action = `/rendez_vous/rendez-vous/${rdvId}/modifier`;
+            const programmeInput = document.getElementById('edit_modal_programme');
+            if (programmeInput) {
+                programmeInput.value = programme;
+            }
+            
+            // Gérer la soumission du formulaire d'édition
+            editForm.onsubmit = function(e) {
+                // Le formulaire sera soumis normalement avec le paramètre programme inclus
+                // La redirection sera gérée par le serveur
+            };
+            
+            // Remplir les champs du formulaire d'édition
+            if (data.conseillers) {
+                const conseillerSelect = document.getElementById('edit_conseiller_id');
+                if (conseillerSelect) {
+                    conseillerSelect.innerHTML = '<option value="">Aucun conseiller assigné</option>';
+                    data.conseillers.forEach(c => {
+                        const option = document.createElement('option');
+                        option.value = c.id;
+                        option.textContent = c.nom_complet;
+                        if (data.conseiller_id === c.id) {
+                            option.selected = true;
+                        }
+                        conseillerSelect.appendChild(option);
+                    });
+                }
+            }
+            
+            if (data.types_rdv) {
+                const typeSelect = document.getElementById('edit_type_rdv');
+                if (typeSelect) {
+                    typeSelect.innerHTML = '';
+                    const typeLabels = {
+                        'entretien': 'Entretien',
+                        'suivi': 'Suivi',
+                        'coaching': 'Coaching'
+                    };
+                    data.types_rdv.forEach(t => {
+                        const option = document.createElement('option');
+                        option.value = t;
+                        option.textContent = typeLabels[t] || t;
+                        if (data.type_rdv === t) {
+                            option.selected = true;
+                        }
+                        typeSelect.appendChild(option);
+                    });
+                }
+            }
+            
+            if (data.statuts_rdv) {
+                const statutSelect = document.getElementById('edit_statut');
+                if (statutSelect) {
+                    statutSelect.innerHTML = '';
+                    const statutLabels = {
+                        'planifie': 'Planifié',
+                        'en_cours': 'En cours',
+                        'termine': 'Terminé',
+                        'annule': 'Annulé'
+                    };
+                    data.statuts_rdv.forEach(s => {
+                        const option = document.createElement('option');
+                        option.value = s;
+                        option.textContent = statutLabels[s] || s;
+                        if (data.statut === s) {
+                            option.selected = true;
+                        }
+                        statutSelect.appendChild(option);
+                    });
+                }
+            }
+            
+            const lieuInput = document.getElementById('edit_lieu');
+            if (lieuInput) {
+                lieuInput.value = data.lieu || '';
+            }
+            
+            const debutInput = document.getElementById('edit_debut');
+            if (debutInput) {
+                debutInput.value = data.debut ? new Date(data.debut).toISOString().slice(0, 16) : '';
+            }
+            
+            const finInput = document.getElementById('edit_fin');
+            if (finInput) {
+                finInput.value = data.fin ? new Date(data.fin).toISOString().slice(0, 16) : '';
+            }
+            
+            const notesInput = document.getElementById('edit_notes');
+            if (notesInput) {
+                notesInput.value = data.notes || '';
+            }
+            
+            // Calcul automatique de l'heure de fin
+            const editDebutInput = document.getElementById('edit_debut');
+            const editFinInput = document.getElementById('edit_fin');
+            if (editDebutInput && editFinInput) {
+                // Retirer les anciens listeners pour éviter les doublons
+                const newDebutInput = editDebutInput.cloneNode(true);
+                editDebutInput.parentNode.replaceChild(newDebutInput, editDebutInput);
+                
+                newDebutInput.addEventListener('change', function() {
+                    if (this.value && !editFinInput.value) {
+                        const debut = new Date(this.value);
+                        const fin = new Date(debut.getTime() + 60 * 60 * 1000); // +1 heure par défaut
+                        editFinInput.value = fin.toISOString().slice(0, 16);
+                    }
+                });
+            }
+            
+            // Afficher le contenu
+            loading.style.display = 'none';
+            
+            // Si on doit ouvrir en mode édition, activer le formulaire d'édition
+            if (openInEditMode) {
+                console.log('Mode édition activé');
+                if (content) content.style.display = 'none';
+                if (editFormContainer) {
+                    editFormContainer.style.display = 'block';
+                    console.log('Formulaire d\'édition affiché');
+                } else {
+                    console.error('editFormContainer non trouvé');
+                }
+                if (btnToggleEdit) btnToggleEdit.style.display = 'none';
+                if (btnSaveEdit) btnSaveEdit.style.display = 'inline-block';
+            } else {
+                if (content) content.style.display = 'block';
+                if (editFormContainer) editFormContainer.style.display = 'none';
+                if (btnToggleEdit) btnToggleEdit.style.display = 'inline-block';
+                if (btnSaveEdit) btnSaveEdit.style.display = 'none';
+            }
+            
+            // Masquer l'overlay global
+            if (typeof hideGlobalLoading === 'function') {
+                hideGlobalLoading();
+            }
+        })
+        .catch(error => {
+            console.error('Erreur:', error);
+            loading.innerHTML = '<div class="alert alert-danger">Erreur lors du chargement des détails: ' + error.message + '</div>';
+            // Masquer l'overlay global en cas d'erreur
+            if (typeof hideGlobalLoading === 'function') {
+                hideGlobalLoading();
+            }
+        });
+}
+
+// Fonction pour basculer l'affichage du formulaire d'édition
+function toggleEditForm() {
+    const editFormContainer = document.getElementById('editFormContainer');
+    const btnToggleEdit = document.getElementById('btnToggleEdit');
+    const btnSaveEdit = document.getElementById('btnSaveEdit');
+    
+    if (editFormContainer.style.display === 'none') {
+        editFormContainer.style.display = 'block';
+        btnToggleEdit.style.display = 'none';
+        btnSaveEdit.style.display = 'inline-block';
+    } else {
+        editFormContainer.style.display = 'none';
+        btnToggleEdit.style.display = 'inline-block';
+        btnSaveEdit.style.display = 'none';
+    }
+}
+
+// Ouvrir le modal de création
+const originalOpenModal = window.openModal;
+window.openModal = function(modalId) {
+    if (modalId === 'createRendezVousModal') {
+        // Réinitialiser le formulaire
+        const form = document.getElementById('createRendezVousForm');
+        if (form) {
+            form.reset();
+            document.getElementById('modal_candidat_info').style.display = 'none';
+            document.getElementById('createRendezVousLoading').style.display = 'block';
+            document.getElementById('createRendezVousContent').style.display = 'none';
+            loadCreateRendezVousData();
+        }
+    }
+    if (originalOpenModal) {
+        originalOpenModal(modalId);
+    } else {
+        const modal = document.getElementById(modalId);
+        if (modal) {
+            modal.classList.add('show');
+            document.body.classList.add('modal-open');
+        }
+    }
+};
+
+// Gestion des actions des boutons via data-attributes
 document.addEventListener('DOMContentLoaded', function() {
     verifierStatutSignatures();
+    
+    // Initialiser la sélection du candidat dans le modal
+    setupModalCandidatSelection();
+    
+    // Gérer les clics sur les boutons d'action
+    document.querySelectorAll('.table-actions button[data-action], .table-actions a[data-action]').forEach(btn => {
+        btn.addEventListener('click', function(e) {
+            e.preventDefault();
+            const action = this.getAttribute('data-action');
+            const rdvId = this.getAttribute('data-rdv-id');
+            
+            if (!rdvId) return;
+            
+            switch(action) {
+                case 'envoyer-email':
+                    envoyerInvitationEmail(rdvId);
+                    break;
+                case 'terminer':
+                    terminerRDV(rdvId);
+                    break;
+                case 'voir-notes':
+                    voirNotes(rdvId);
+                    break;
+                case 'voir-details':
+                    voirDetailsRDV(rdvId);
+                    break;
+                case 'modifier':
+                    modifierRDV(rdvId);
+                    break;
+                case 'supprimer':
+                    supprimerRDV(rdvId);
+                    break;
+            }
+        });
+    });
     
     // Ajuster la position du conteneur au chargement initial
     adjustContainerPosition();
@@ -889,15 +2393,230 @@ function envoyerInvitationEmail(rdvId) {
 // Fonction pour supprimer un RDV (définie globalement)
 function supprimerRDV(rdvId) {
     if (confirm('Êtes-vous sûr de vouloir supprimer ce rendez-vous ?')) {
+        // Afficher l'overlay global
+        if (typeof showGlobalLoading === 'function') {
+            showGlobalLoading('Suppression en cours', 'Suppression du rendez-vous...');
+        }
+        
+        // Récupérer le programme depuis l'URL actuelle ou la variable globale
+        const programme = window.currentProgramme || new URLSearchParams(window.location.search).get('programme') || '';
+        
         // Créer un formulaire temporaire pour la soumission POST
         const form = document.createElement('form');
         form.method = 'POST';
-        form.action = '/rendez-vous/' + rdvId + '/supprimer';
+        form.action = '/rendez_vous/rendez-vous/' + rdvId + '/supprimer';
+        
+        // Ajouter le paramètre programme si présent
+        if (programme) {
+            const programmeInput = document.createElement('input');
+            programmeInput.type = 'hidden';
+            programmeInput.name = 'programme';
+            programmeInput.value = programme;
+            form.appendChild(programmeInput);
+        }
         
         // Ajouter le formulaire au DOM et le soumettre
         document.body.appendChild(form);
         form.submit();
     }
 }
+
+// Gestion de la soumission des formulaires CRUD
+document.addEventListener('DOMContentLoaded', function() {
+    // Forcer la valeur du champ candidat_nom à vide si le paramètre n'est pas dans l'URL
+    const candidatNomInput = document.getElementById('filter_candidat_nom');
+    if (candidatNomInput) {
+        const urlParams = new URLSearchParams(window.location.search);
+        const candidatNomParam = urlParams.get('candidat_nom');
+        if (!candidatNomParam) {
+            candidatNomInput.value = '';
+        } else {
+            candidatNomInput.value = candidatNomParam;
+        }
+    }
+    
+    // Formulaire de création
+    const createForm = document.getElementById('createRendezVousForm');
+    if (createForm) {
+        createForm.addEventListener('submit', function(e) {
+            // Afficher l'overlay global lors de la création
+            if (typeof showGlobalLoading === 'function') {
+                showGlobalLoading('Création en cours', 'Création du rendez-vous...');
+            }
+            
+            // Le formulaire sera soumis normalement, mais on peut ajouter une validation ici si nécessaire
+            const candidatId = document.getElementById('modal_candidat_id').value;
+            if (!candidatId) {
+                e.preventDefault();
+                if (typeof hideGlobalLoading === 'function') {
+                    hideGlobalLoading();
+                }
+                alert('Veuillez sélectionner un candidat');
+                return false;
+            }
+        });
+    }
+    
+    // Formulaire de modification
+    const editForm = document.getElementById('editRendezVousFormModal');
+    if (editForm) {
+        editForm.addEventListener('submit', function(e) {
+            // Afficher l'overlay global lors de la modification
+            if (typeof showGlobalLoading === 'function') {
+                showGlobalLoading('Modification en cours', 'Mise à jour du rendez-vous...');
+            }
+        });
+    }
+});
+</script>
+
+<!-- Modal d'aide Rendez-vous -->
+<div class="modal-lg" id="rdvHelpModal">
+  <div class="modal-content">
+    <div class="modal-header">
+      <h3 class="modal-title">
+        <i class="fas fa-question-circle me-2"></i>Guide des Rendez-vous
+      </h3>
+      <button type="button" class="modal-close" onclick="closeModal('rdvHelpModal')" aria-label="Fermer">
+        <i class="fas fa-times"></i>
+      </button>
+    </div>
+    <div class="modal-body">
+      <div class="mb-4">
+        <h4 class="text-primary mb-3">
+          <i class="fas fa-lightbulb me-2"></i>Qu'est-ce qu'un Rendez-vous ?
+        </h4>
+        <p class="lead">
+          Un <strong>Rendez-vous</strong> est une rencontre individuelle ou en petit groupe entre un conseiller et un ou plusieurs candidats, permettant un suivi personnalisé et un accompagnement ciblé.
+        </p>
+      </div>
+
+      <div class="mb-4">
+        <h5 class="text-primary mb-3">
+          <i class="fas fa-sitemap me-2"></i>Types de Rendez-vous
+        </h5>
+        <div class="card border-primary mb-3">
+          <div class="card-body">
+            <h6 class="card-title text-primary">
+              <i class="fas fa-user me-2"></i>Individuel
+            </h6>
+            <p class="card-text">
+              Rendez-vous entre un <strong>conseiller</strong> et un <strong>candidat</strong> pour un suivi personnalisé.
+            </p>
+          </div>
+        </div>
+
+        <div class="card border-info mb-3">
+          <div class="card-body">
+            <h6 class="card-title text-info">
+              <i class="fas fa-users me-2"></i>Collectif
+            </h6>
+            <p class="card-text">
+              Rendez-vous avec <strong>plusieurs candidats</strong> pour un atelier ou une session de groupe.
+            </p>
+          </div>
+        </div>
+
+        <div class="card border-success mb-3">
+          <div class="card-body">
+            <h6 class="card-title text-success">
+              <i class="fas fa-video me-2"></i>Visioconférence
+            </h6>
+            <p class="card-text">
+              Rendez-vous à distance via <strong>Jitsi</strong> ou une autre plateforme de visioconférence.
+            </p>
+          </div>
+        </div>
+
+        <div class="card border-warning">
+          <div class="card-body">
+            <h6 class="card-title text-warning">
+              <i class="fas fa-map-marker-alt me-2"></i>Présentiel
+            </h6>
+            <p class="card-text">
+              Rendez-vous en <strong>lieu physique</strong> (bureau, salle de réunion, etc.).
+            </p>
+          </div>
+        </div>
+      </div>
+
+      <div class="mb-4">
+        <h5 class="text-primary mb-3">
+          <i class="fas fa-route me-2"></i>Processus
+        </h5>
+        <div class="timeline">
+          <div class="d-flex mb-3">
+            <div class="flex-shrink-0">
+              <div class="rounded-circle bg-primary text-white d-flex align-items-center justify-content-center" style="width: 40px; height: 40px; font-weight: bold;">1</div>
+            </div>
+            <div class="flex-grow-1 ms-3">
+              <h6 class="mb-1">Création du Rendez-vous</h6>
+              <p class="mb-0 text-muted">Définir la date, l'heure, le type, le lieu et les participants.</p>
+            </div>
+          </div>
+
+          <div class="d-flex mb-3">
+            <div class="flex-shrink-0">
+              <div class="rounded-circle bg-info text-white d-flex align-items-center justify-content-center" style="width: 40px; height: 40px; font-weight: bold;">2</div>
+            </div>
+            <div class="flex-grow-1 ms-3">
+              <h6 class="mb-1">Planification</h6>
+              <p class="mb-0 text-muted">Le rendez-vous apparaît dans le calendrier du conseiller et des candidats.</p>
+            </div>
+          </div>
+
+          <div class="d-flex mb-3">
+            <div class="flex-shrink-0">
+              <div class="rounded-circle bg-success text-white d-flex align-items-center justify-content-center" style="width: 40px; height: 40px; font-weight: bold;">3</div>
+            </div>
+            <div class="flex-grow-1 ms-3">
+              <h6 class="mb-1">Réalisation</h6>
+              <p class="mb-0 text-muted">Le rendez-vous se déroule en présentiel ou en visioconférence.</p>
+            </div>
+          </div>
+
+          <div class="d-flex mb-3">
+            <div class="flex-shrink-0">
+              <div class="rounded-circle bg-warning text-white d-flex align-items-center justify-content-center" style="width: 40px; height: 40px; font-weight: bold;">4</div>
+            </div>
+            <div class="flex-grow-1 ms-3">
+              <h6 class="mb-1">Suivi</h6>
+              <p class="mb-0 text-muted">Ajouter des notes et suivre les actions à réaliser suite au rendez-vous.</p>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div class="alert alert-info">
+        <h6 class="alert-heading">
+          <i class="fas fa-info-circle me-2"></i>Conseils
+        </h6>
+        <ul class="mb-0">
+          <li><strong>Planifiez à l'avance</strong> : Créez les rendez-vous avec suffisamment de délai</li>
+          <li><strong>Respectez les créneaux</strong> : Vérifiez la disponibilité avant de planifier</li>
+          <li><strong>Préparez la visioconférence</strong> : Testez le lien Jitsi avant le rendez-vous</li>
+          <li><strong>Notez les points importants</strong> : Utilisez les notes pour le suivi</li>
+        </ul>
+      </div>
+    </div>
+    <div class="modal-footer">
+      <button type="button" class="btn btn-secondary" onclick="closeModal('rdvHelpModal')">
+        <i class="fas fa-times me-2"></i>Fermer
+      </button>
+    </div>
+  </div>
+</div>
+
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    const modal = document.getElementById('rdvHelpModal');
+    if (modal) {
+        modal.addEventListener('click', function(e) {
+            if (e.target === modal) {
+                closeModal('rdvHelpModal');
+            }
+        });
+    }
+});
 </script>
 {% endblock %}

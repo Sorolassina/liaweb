@@ -5,7 +5,6 @@ from sqlmodel import Session, select
 import logging
 from ..models.base import Programme
 from ..models.preinscription import Preinscription
-from ..models.inscription import Inscription
 from ..models.jury import Jury
 from ..models.enums import StatutDossier
 from ..schemas import StatistiquesResponse

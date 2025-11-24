@@ -1,6 +1,22 @@
-{% extends "admin/base_admin.html" %}
+{% extends "layouts/base.html" %}
 {% from "components/modal.html" import modal_with_footer %}
-{% block admin_content %}
+{% from "components/page_header.html" import page_header %}
+{% block content %}
+
+{# Le current_programme est passé depuis la route #}
+{% set programme_code = current_programme.code if current_programme else request.query_params.get('programme', 'ACD') %}
+
+{# Page header avec bouton de retour #}
+{{ page_header(
+    title="<i class='fa fa-graduation-cap me-2'></i>Gestion des promotions",
+    breadcrumbs=[{"name": "Gestion des promotions"}],
+    actions=[{
+        "label": "<i class='fa fa-arrow-left me-2'></i>Retour aux inscriptions",
+        "url": url_for("form_inscriptions_display") ~ "?programme=" ~ programme_code,
+        "class": "btn-outline-light btn-sm",
+        "primary": false
+    }]
+) }}
 
 {# Messages toast #}
 {% set success_flag = request.query_params.get('success') %}
@@ -23,9 +39,7 @@
 {% endif %}
 
 <div class="d-flex justify-content-between align-items-center mb-3">
-  <h5 class="m-0">
-    <i class="fa fa-graduation-cap me-2"></i>Gestion des promotions
-  </h5>
+  <div></div>
   <a href="#" class="submenu-item" data-modal-target="addPromotionModal" role="button">
     <i class="fa fa-plus me-2"></i>Nouvelle promotion
   </a>
@@ -33,37 +47,48 @@
 
 <!-- Modal d'ajout de promotion -->
 {% call modal_with_footer('addPromotionModal', '<i class="fa fa-plus me-2"></i>Nouvelle promotion', 'xl', '<i class="fa fa-save me-2"></i>Créer la promotion') %}
-  <form id="addPromotionModal-form" method="post" action="{{ url_for('admin_promotions_add') }}">
-    <div class="row g-3">
-      <div class="col-12">
-        <label class="form-label" for="programme_id_create">Programme <span class="text-danger">*</span></label>
-        <select id="programme_id_create" name="programme_id" class="form-select" required>
-          <option value="">— Sélectionnez un programme —</option>
-          {% for prog in programmes %}
-            <option value="{{ prog.id }}">{{ prog.code }} - {{ prog.nom }}</option>
-          {% endfor %}
-        </select>
-      </div>
-      <div class="col-12">
-        <label class="form-label" for="libelle_create">Libellé de la promotion <span class="text-danger">*</span></label>
-        <input id="libelle_create" type="text" name="libelle" class="form-control" required placeholder="Ex: Promotion 2024 A">
-      </div>
-      <div class="col-md-6">
+  <form id="addPromotionModal-form" method="post" action="{{ url_for('admin_promotions_add') }}{% if request.query_params.get('programme') %}?programme={{ request.query_params.get('programme') }}{% endif %}">
+    {% if current_programme %}
+    <div class="form-group">
+      <label class="form-label" for="programme_id_create">Programme <span class="text-danger">*</span></label>
+      <input type="hidden" name="programme_id" value="{{ current_programme.id }}">
+      <input type="text" class="form-control" value="{{ current_programme.code }} - {{ current_programme.nom }}" readonly disabled style="background-color: #e9ecef; cursor: not-allowed;">
+      <small class="text-muted">Le programme est déterminé par le schéma actuel</small>
+    </div>
+    {% else %}
+    <div class="form-group">
+      <label class="form-label" for="programme_id_create">Programme <span class="text-danger">*</span></label>
+      <select id="programme_id_create" name="programme_id" class="form-select" required>
+        <option value="">— Sélectionnez un programme —</option>
+        {% for prog in programmes %}
+          <option value="{{ prog.id }}">{{ prog.code }} - {{ prog.nom }}</option>
+        {% endfor %}
+      </select>
+    </div>
+    {% endif %}
+    <div class="form-group">
+      <label class="form-label" for="libelle_create">Libellé de la promotion <span class="text-danger">*</span></label>
+      <input id="libelle_create" type="text" name="libelle" class="form-control" required placeholder="Ex: Promotion 2024 A">
+    </div>
+    <div class="form-row">
+      <div class="form-group">
         <label class="form-label" for="capacite_create">Capacité</label>
         <input id="capacite_create" type="number" name="capacite" class="form-control" placeholder="Ex: 20" min="1">
       </div>
-      <div class="col-md-6">
+      <div class="form-group">
         <label class="form-label" for="actif_create">Statut</label>
         <select id="actif_create" name="actif" class="form-select">
           <option value="on" selected>Active</option>
           <option value="off">Inactive</option>
         </select>
       </div>
-      <div class="col-md-6">
+    </div>
+    <div class="form-row">
+      <div class="form-group">
         <label class="form-label" for="date_debut_create">Date de début</label>
         <input id="date_debut_create" type="date" name="date_debut" class="form-control">
       </div>
-      <div class="col-md-6">
+      <div class="form-group">
         <label class="form-label" for="date_fin_create">Date de fin</label>
         <input id="date_fin_create" type="date" name="date_fin" class="form-control">
       </div>
@@ -166,36 +191,47 @@
 {% for promo in promotions %}
 {% set modal_id = 'editPromotionModal' ~ promo.id %}
 {% call modal_with_footer(modal_id, '<i class="fa fa-edit me-2"></i>Modifier la promotion', 'xl', '<i class="fa fa-save me-2"></i>Enregistrer') %}
-  <form id="{{ modal_id }}-form" method="post" action="{{ url_for('admin_promotions_update', promotion_id=promo.id) }}">
-    <div class="row g-3">
-      <div class="col-12">
-        <label class="form-label" for="programme_id_edit_{{ promo.id }}">Programme <span class="text-danger">*</span></label>
-        <select id="programme_id_edit_{{ promo.id }}" name="programme_id" class="form-select" required>
-          {% for prog in programmes %}
-            <option value="{{ prog.id }}" {% if promo.programme_id == prog.id %}selected{% endif %}>{{ prog.code }} - {{ prog.nom }}</option>
-          {% endfor %}
-        </select>
-      </div>
-      <div class="col-12">
-        <label class="form-label" for="libelle_edit_{{ promo.id }}">Libellé de la promotion <span class="text-danger">*</span></label>
-        <input id="libelle_edit_{{ promo.id }}" type="text" name="libelle" class="form-control" value="{{ promo.libelle }}" required>
-      </div>
-      <div class="col-md-6">
+  <form id="{{ modal_id }}-form" method="post" action="{{ url_for('admin_promotions_update', promotion_id=promo.id) }}{% if request.query_params.get('programme') %}?programme={{ request.query_params.get('programme') }}{% endif %}">
+    {% if current_programme %}
+    <div class="form-group">
+      <label class="form-label" for="programme_id_edit_{{ promo.id }}">Programme <span class="text-danger">*</span></label>
+      <input type="hidden" name="programme_id" value="{{ current_programme.id }}">
+      <input type="text" class="form-control" value="{{ current_programme.code }} - {{ current_programme.nom }}" readonly disabled style="background-color: #e9ecef; cursor: not-allowed;">
+      <small class="text-muted">Le programme est déterminé par le schéma actuel</small>
+    </div>
+    {% else %}
+    <div class="form-group">
+      <label class="form-label" for="programme_id_edit_{{ promo.id }}">Programme <span class="text-danger">*</span></label>
+      <select id="programme_id_edit_{{ promo.id }}" name="programme_id" class="form-select" required>
+        {% for prog in programmes %}
+          <option value="{{ prog.id }}" {% if promo.programme_id == prog.id %}selected{% endif %}>{{ prog.code }} - {{ prog.nom }}</option>
+        {% endfor %}
+      </select>
+    </div>
+    {% endif %}
+    <div class="form-group">
+      <label class="form-label" for="libelle_edit_{{ promo.id }}">Libellé de la promotion <span class="text-danger">*</span></label>
+      <input id="libelle_edit_{{ promo.id }}" type="text" name="libelle" class="form-control" value="{{ promo.libelle }}" required>
+    </div>
+    <div class="form-row">
+      <div class="form-group">
         <label class="form-label" for="capacite_edit_{{ promo.id }}">Capacité</label>
         <input id="capacite_edit_{{ promo.id }}" type="number" name="capacite" class="form-control" value="{{ promo.capacite or '' }}" min="1">
       </div>
-      <div class="col-md-6">
+      <div class="form-group">
         <label class="form-label" for="actif_edit_{{ promo.id }}">Statut</label>
         <select id="actif_edit_{{ promo.id }}" name="actif" class="form-select">
           <option value="on" {% if promo.actif %}selected{% endif %}>Active</option>
           <option value="off" {% if not promo.actif %}selected{% endif %}>Inactive</option>
         </select>
       </div>
-      <div class="col-md-6">
+    </div>
+    <div class="form-row">
+      <div class="form-group">
         <label class="form-label" for="date_debut_edit_{{ promo.id }}">Date de début</label>
         <input id="date_debut_edit_{{ promo.id }}" type="date" name="date_debut" class="form-control" value="{{ promo.date_debut | format_date_input if promo.date_debut else '' }}">
       </div>
-      <div class="col-md-6">
+      <div class="form-group">
         <label class="form-label" for="date_fin_edit_{{ promo.id }}">Date de fin</label>
         <input id="date_fin_edit_{{ promo.id }}" type="date" name="date_fin" class="form-control" value="{{ promo.date_fin | format_date_input if promo.date_fin else '' }}">
       </div>
@@ -242,6 +278,27 @@ document.addEventListener('DOMContentLoaded', function() {
     });
   });
 
+  // Ajouter overlay aux formulaires de création et modification
+  const addForm = document.getElementById('addPromotionModal-form');
+  if (addForm) {
+    addForm.addEventListener('submit', function() {
+      if (typeof showGlobalLoading === 'function') {
+        showGlobalLoading('Création de la promotion...', 'Veuillez patienter');
+      }
+    });
+  }
+
+  // Ajouter overlay aux formulaires d'édition
+  document.querySelectorAll('[id$="-form"]').forEach(function(form) {
+    if (form.id.startsWith('editPromotionModal')) {
+      form.addEventListener('submit', function() {
+        if (typeof showGlobalLoading === 'function') {
+          showGlobalLoading('Modification de la promotion...', 'Veuillez patienter');
+        }
+      });
+    }
+  });
+
   document.querySelectorAll('.js-toggle-promotion').forEach(function(btn) {
     btn.addEventListener('click', function() {
       const promotionId = btn.getAttribute('data-promo-id');
@@ -264,9 +321,15 @@ document.addEventListener('DOMContentLoaded', function() {
 
 function togglePromotion(promotionId) {
   if (confirm('Êtes-vous sûr de vouloir changer le statut de cette promotion ?')) {
+    // Afficher l'overlay
+    if (typeof showGlobalLoading === 'function') {
+      showGlobalLoading('Modification du statut...', 'Veuillez patienter');
+    }
+    
     const form = document.createElement('form');
     form.method = 'POST';
-    form.action = `/admin/promotions/${promotionId}/toggle`;
+    const programme = new URLSearchParams(window.location.search).get('programme');
+    form.action = `/inscriptions/promotions/${promotionId}/toggle${programme ? '?programme=' + programme : ''}`;
     document.body.appendChild(form);
     form.submit();
   }
@@ -274,9 +337,15 @@ function togglePromotion(promotionId) {
 
 function deletePromotion(promotionId, promotionLibelle) {
   if (confirm(`Êtes-vous sûr de vouloir supprimer la promotion "${promotionLibelle}" ?\n\nCette action est irréversible.`)) {
+    // Afficher l'overlay
+    if (typeof showGlobalLoading === 'function') {
+      showGlobalLoading('Suppression de la promotion...', 'Veuillez patienter');
+    }
+    
     const form = document.createElement('form');
     form.method = 'POST';
-    form.action = `/admin/promotions/${promotionId}/delete`;
+    const programme = new URLSearchParams(window.location.search).get('programme');
+    form.action = `/inscriptions/promotions/${promotionId}/delete${programme ? '?programme=' + programme : ''}`;
     document.body.appendChild(form);
     form.submit();
   }

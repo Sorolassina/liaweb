@@ -22,7 +22,6 @@ from ..models.base import (
     SuiviMensuel, DecisionJuryCandidat
 )
 from ..models.preinscription import Preinscription, Eligibilite
-from ..models.inscription import Inscription
 from ..models.jury import Jury
 from ..models.enums import UserRole, TypeSession, StatutPresence
 from ..schemas import ProgrammeCreate, ProgrammeUpdate, ProgrammeResponse

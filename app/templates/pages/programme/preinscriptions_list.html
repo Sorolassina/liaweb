@@ -138,8 +138,15 @@ Préinscriptions {% if programme %}{{ programme.code }}{% else %}{{ current_prog
 
 
 <!-- Entête -->
+{% set title_with_help %}
+<i class='fa fa-users-cog me-2'></i>Préinscriptions({{ get_current_programme_title(request) }})
+<button type="button" class="btn btn-outline-light btn-sm ms-2" onclick="showModal('preinscriptionHelpModal')" title="Aide - Comment fonctionnent les Préinscriptions ?">
+    <i class="fas fa-question-circle me-1"></i>Aide
+</button>
+{% endset %}
+
 {{ page_header(
-    title="<i class='fa fa-users-cog me-2'></i>Préinscriptions(" ~ get_current_programme_title(request) ~ ")",
+    title=title_with_help,
     breadcrumbs=[{"name": "Visualisation des données des préinscriptions du programme"}]
 ) }}
 <div class="toolbar" style="margin-top: 1rem;">
@@ -883,5 +890,120 @@ Préinscriptions {% if programme %}{{ programme.code }}{% else %}{{ current_prog
     
     initChart();
   });
+</script>
+
+<!-- Modal d'aide Préinscriptions -->
+<div class="modal-lg" id="preinscriptionHelpModal">
+  <div class="modal-content">
+    <div class="modal-header">
+      <h3 class="modal-title">
+        <i class="fas fa-question-circle me-2"></i>Guide des Préinscriptions
+      </h3>
+      <button type="button" class="modal-close" onclick="closeModal('preinscriptionHelpModal')" aria-label="Fermer">
+        <i class="fas fa-times"></i>
+      </button>
+    </div>
+    <div class="modal-body">
+      <div class="mb-4">
+        <h4 class="text-primary mb-3">
+          <i class="fas fa-lightbulb me-2"></i>Qu'est-ce qu'une Préinscription ?
+        </h4>
+        <p class="lead">
+          Une <strong>Préinscription</strong> est une demande d'inscription initiale effectuée par un candidat via un formulaire public, avant la validation et l'inscription définitive dans le programme.
+        </p>
+      </div>
+
+      <div class="mb-4">
+        <h5 class="text-primary mb-3">
+          <i class="fas fa-sitemap me-2"></i>Processus de Préinscription
+        </h5>
+        <div class="card border-primary mb-3">
+          <div class="card-body">
+            <h6 class="card-title text-primary">
+              <i class="fas fa-file-alt me-2"></i>1. Formulaire Public
+            </h6>
+            <p class="card-text">
+              Le candidat remplit un <strong>formulaire en ligne</strong> avec ses informations personnelles et professionnelles.
+            </p>
+          </div>
+        </div>
+
+        <div class="card border-info mb-3">
+          <div class="card-body">
+            <h6 class="card-title text-info">
+              <i class="fas fa-check-circle me-2"></i>2. Validation
+            </h6>
+            <p class="card-text">
+              L'équipe du programme <strong>examine la préinscription</strong> et vérifie l'éligibilité du candidat.
+            </p>
+          </div>
+        </div>
+
+        <div class="card border-success mb-3">
+          <div class="card-body">
+            <h6 class="card-title text-success">
+              <i class="fas fa-user-check me-2"></i>3. Inscription
+            </h6>
+            <p class="card-text">
+              Si validée, la préinscription devient une <strong>inscription définitive</strong> et le candidat intègre le programme.
+            </p>
+          </div>
+        </div>
+
+        <div class="card border-warning">
+          <div class="card-body">
+            <h6 class="card-title text-warning">
+              <i class="fas fa-chart-bar me-2"></i>4. Suivi
+            </h6>
+            <p class="card-text">
+              Les statistiques permettent de suivre le <strong>nombre de préinscriptions</strong> par statut et par période.
+            </p>
+          </div>
+        </div>
+      </div>
+
+      <div class="mb-4">
+        <h5 class="text-primary mb-3">
+          <i class="fas fa-info-circle me-2"></i>Informations Collectées
+        </h5>
+        <ul>
+          <li><strong>Données personnelles</strong> : Nom, prénom, email, téléphone</li>
+          <li><strong>Informations professionnelles</strong> : Entreprise, secteur d'activité, fonction</li>
+          <li><strong>Localisation</strong> : Adresse, ville, code postal</li>
+          <li><strong>Motivation</strong> : Raisons de l'intérêt pour le programme</li>
+        </ul>
+      </div>
+
+      <div class="alert alert-info">
+        <h6 class="alert-heading">
+          <i class="fas fa-info-circle me-2"></i>Conseils
+        </h6>
+        <ul class="mb-0">
+          <li><strong>Vérifiez régulièrement</strong> : Consultez les nouvelles préinscriptions fréquemment</li>
+          <li><strong>Validez rapidement</strong> : Traitez les demandes dans les meilleurs délais</li>
+          <li><strong>Suivez les statistiques</strong> : Analysez les tendances pour améliorer le recrutement</li>
+          <li><strong>Contactez les candidats</strong> : Prenez contact avec les préinscrits pour confirmer leur intérêt</li>
+        </ul>
+      </div>
+    </div>
+    <div class="modal-footer">
+      <button type="button" class="btn btn-secondary" onclick="closeModal('preinscriptionHelpModal')">
+        <i class="fas fa-times me-2"></i>Fermer
+      </button>
+    </div>
+  </div>
+</div>
+
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    const modal = document.getElementById('preinscriptionHelpModal');
+    if (modal) {
+        modal.addEventListener('click', function(e) {
+            if (e.target === modal) {
+                closeModal('preinscriptionHelpModal');
+            }
+        });
+    }
+});
 </script>
 {% endblock %}

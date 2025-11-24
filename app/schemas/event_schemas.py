@@ -49,7 +49,7 @@ class InvitationEventBase(BaseModel):
     date_envoi: Optional[datetime] = None
     date_reponse: Optional[datetime] = None
     event_id: int
-    inscription_id: int
+    candidat_id: int
 
 class InvitationEventCreate(InvitationEventBase):
     pass
@@ -69,7 +69,7 @@ class InvitationEvent(InvitationEventBase):
 # === SCHÉMAS PRESENCE EVENT ===
 
 class PresenceEventBase(BaseModel):
-    presence: str = "absent"
+    presence: str = "en_attente"
     methode_signature: Optional[MethodeSignatureEvent] = None
     signature_manuelle: Optional[str] = None
     signature_digitale: Optional[str] = None
@@ -78,7 +78,7 @@ class PresenceEventBase(BaseModel):
     commentaire: Optional[str] = None
     ip_signature: Optional[str] = None
     event_id: int
-    inscription_id: int
+    candidat_id: int
 
 class PresenceEventCreate(PresenceEventBase):
     pass

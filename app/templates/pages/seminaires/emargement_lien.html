@@ -1,6 +1,7 @@
-{% extends "base_public.html" %}
+{% extends "layouts/base_public.html" %}
+{% set programme_param = request.query_params.get('programme') or (schema_name.upper() if schema_name and schema_name != 'public' else '') %}
 
-{% block title %}Émargement - {{ session.titre }}{% endblock %}
+{% block title %}Émargement{% if session %} - {{ session.titre }}{% endif %}{% endblock %}
 
 {% block content %}
 <div class="container mt-5">
@@ -13,6 +14,7 @@
                         <i class="fas fa-signature text-primary" style="font-size: 3rem;"></i>
                         <h2 class="mt-3 mb-1">Émargement</h2>
                         <p class="text-muted">{{ seminaire.titre }}</p>
+                        {% if session %}
                         <h4 class="text-primary">{{ session.titre }}</h4>
                         <p class="text-muted">
                             <i class="fas fa-calendar-alt me-1"></i>
@@ -21,6 +23,7 @@
                             à {{ session.heure_debut.strftime('%H:%M') }}
                             {% endif %}
                         </p>
+                        {% endif %}
                     </div>
                     
                     <!-- Informations candidat -->
@@ -32,7 +35,37 @@
                         <p class="mb-0">{{ invitation.inscription.candidat.email }}</p>
                     </div>
                     
-                    {% if presence and presence.presence == 'present' %}
+                    {% if accepted or (invitation.statut and invitation.statut.lower() == 'acceptee') %}
+                    <!-- Invitation acceptée -->
+                    <div class="alert alert-success text-center">
+                        <i class="fas fa-check-circle me-2" style="font-size: 2rem;"></i>
+                        <h4 class="alert-heading">Invitation acceptée</h4>
+                        <p class="mb-2">
+                            Merci d'avoir accepté cette invitation. Nous avons bien pris note de votre participation.
+                        </p>
+                        <p class="mb-0">
+                            <small class="text-muted">
+                                Vous recevrez prochainement les informations pratiques pour le séminaire. 
+                                À bientôt !
+                            </small>
+                        </p>
+                    </div>
+                    {% elif refused or (invitation.statut and invitation.statut.lower() == 'refusee') %}
+                    <!-- Invitation refusée -->
+                    <div class="alert alert-info text-center">
+                        <i class="fas fa-info-circle me-2" style="font-size: 2rem;"></i>
+                        <h4 class="alert-heading">Invitation déclinée</h4>
+                        <p class="mb-2">
+                            Nous avons bien pris note que vous ne pourrez pas participer à ce séminaire.
+                        </p>
+                        <p class="mb-0">
+                            <small class="text-muted">
+                                Si votre situation change et que vous souhaitez finalement participer, n'hésitez pas à nous contacter. 
+                                Nous serons ravis de vous accueillir.
+                            </small>
+                        </p>
+                    </div>
+                    {% elif session and presence and presence.presence == 'present' %}
                     <!-- Déjà présent -->
                     <div class="alert alert-success text-center">
                         <i class="fas fa-check-circle me-2" style="font-size: 2rem;"></i>
@@ -47,7 +80,7 @@
                         </small>
                         {% endif %}
                     </div>
-                    {% else %}
+                    {% elif session %}
                     <!-- Zone d'affichage des messages -->
                     <div id="message-container" class="mb-4" style="display: none;">
                         <div id="message-alert" class="alert" role="alert">
@@ -59,7 +92,7 @@
                     </div>
                     
                     <!-- Formulaire de signature -->
-                    <form method="POST" action="{{ url_for('signer_emargement_lien', seminaire_id=seminaire.id, session_id=session.id, token=invitation.token_invitation) }}">
+                    <form method="POST" action="{{ url_for('signer_emargement_lien', seminaire_id=seminaire.id, session_id=session.id, token=invitation.token_invitation) }}{% if programme_param %}?programme={{ programme_param }}{% endif %}">
                         <div class="mb-4">
                             <label for="methode_signature" class="form-label">
                                 <i class="fas fa-pen me-1"></i>

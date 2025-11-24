@@ -63,13 +63,41 @@ Inscriptions {{ programme.code }}
     padding: 10px;
   }
   
+  /* Par défaut, seule la liste est visible */
+  .content-with-fixed-kpi:not(.has-selected) {
+    gap: 0;
+  }
+  
+  /* Quand un candidat est sélectionné, seul le détail est visible */
+  .content-with-fixed-kpi.has-selected {
+    gap: 0;
+  }
+  
+  /* Liste des candidats - visible par défaut, cachée quand un candidat est sélectionné */
+  .candidate-list-container {
+    display: flex; 
+    flex-direction: column; 
+    gap: 0;
+    height: 100%;
+    overflow: hidden;
+    width: 100%;
+    transition: all 0.3s ease;
+  }
+  
   .content-with-fixed-kpi > .card:first-child {
     display: flex; 
     flex-direction: column; 
     gap: 0;
     height: 100%;
     overflow: hidden;
-    flex-shrink: 0;
+    width: 100%;
+    transition: all 0.3s ease;
+  }
+  
+  /* Cacher la liste quand un candidat est sélectionné */
+  .content-with-fixed-kpi.has-selected .candidate-list-container,
+  .content-with-fixed-kpi.has-selected > .card:first-child {
+    display: none;
   }
   
   
@@ -130,11 +158,12 @@ Inscriptions {{ programme.code }}
     margin: 0;
   }
   
+  /* Panneau des détails - caché par défaut */
   .pane-right {
-    display: flex; 
+    display: none !important;
     flex-direction: column; 
     gap: 16px;
-    width: 70%;
+    width: 100%;
     height: 100%;
     overflow-y: hidden;
     overflow-x: hidden;
@@ -145,6 +174,75 @@ Inscriptions {{ programme.code }}
     border: 1px solid #dee2e6;
     border-color: var(--primary-color) !important;
     background: var(--secondary-color);
+    transition: all 0.3s ease;
+  }
+  
+  /* Afficher les détails quand un candidat est sélectionné */
+  .content-with-fixed-kpi.has-selected .pane-right {
+    display: flex !important;
+  }
+  
+  /* S'assurer que la liste est visible par défaut */
+  .content-with-fixed-kpi:not(.has-selected) .candidate-list-container,
+  .content-with-fixed-kpi:not(.has-selected) > .card:first-child {
+    display: flex !important;
+  }
+  
+  /* Cacher la liste quand un candidat est sélectionné */
+  .content-with-fixed-kpi.has-selected .candidate-list-container,
+  .content-with-fixed-kpi.has-selected > .card:first-child {
+    display: none !important;
+  }
+  
+  /* Styles pour la sidebar droite - Style comme le menu admin */
+  .sidebar-right {
+    overflow-y: auto;
+    overflow-x: hidden;
+  }
+  
+  .sidebar-right::-webkit-scrollbar {
+    width: 6px;
+  }
+  
+  .sidebar-right::-webkit-scrollbar-track {
+    background: transparent;
+  }
+  
+  .sidebar-right::-webkit-scrollbar-thumb {
+    background: var(--primary-color);
+    border-radius: 3px;
+  }
+  
+  .sidebar-right .sidebar-btn {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    width: 100%;
+    padding: 8px 14px;
+    margin-bottom: 6px;
+    border: 1px solid rgba(255,255,255,0.12);
+    border-radius: 10px;
+    box-shadow: var(--shadow-sm);
+    transition: all 0.2s ease;
+    font-size: 0.95rem;
+    text-align: left;
+    cursor: pointer;
+    background: rgba(255,255,255,0.08);
+    color: var(--white-color);
+  }
+  
+  .sidebar-right .sidebar-btn:hover {
+    background: rgba(255,255,255,0.18);
+    transform: translateY(-1px);
+    color: var(--white-color);
+  }
+  
+  .sidebar-right .sidebar-btn.active {
+    background: var(--white-color);
+    color: var(--secondary-color);
+    box-shadow: var(--shadow);
+    border: 1px solid var(--white-color);
+    font-weight: 600;
   }
   
   /* Personnalisation des accordéons - Hauteur réduite */
@@ -398,15 +496,16 @@ Inscriptions {{ programme.code }}
     padding: 5px;
     flex: 1;
     min-height: 0;
-    max-height: 100%;
+    height: 100%;
   }
   .tab-pane.active{ 
     display:flex !important;
     flex-direction: column;
     overflow-y: auto;
     overflow-x: hidden;
-    max-height: calc(100vh - 300px);
+    height: 100%;;
     min-height: 0;
+    margin-top: 0;
     flex: 1;
   }
   
@@ -618,11 +717,20 @@ Inscriptions {{ programme.code }}
     margin-bottom: 0.75rem !important;
   }
   
-  /* Styles pour l'accordéon de la section Jury */
+  /* Styles pour l'accordéon de la section Jury - comportement similaire à tab-infos */
+  #tab-jury {
+    display: flex;
+    flex-direction: column;
+    min-height: 0;
+    position: relative;
+    height: 100%;
+  }
+  
   #tab-jury .accordion {
     --bs-accordion-border-color: #dee2e6;
     --bs-accordion-border-radius: 0.375rem;
-    max-height: calc(100vh - 500px);
+    height: 90%;
+    max-height: 90%;
     overflow-y: auto;
     overflow-x: hidden;
   }
@@ -654,7 +762,7 @@ Inscriptions {{ programme.code }}
   #tab-jury .accordion-body {
     padding: 0.75rem;
     font-size: 0.85rem;
-    max-height: calc(100vh - 500px);
+    max-height: calc(90vh - 400px);
     overflow-y: auto;
     overflow-x: hidden;
   }
@@ -696,19 +804,50 @@ Inscriptions {{ programme.code }}
 {% block content %}
 <!-- ========== Bandeau KPI fixe tout en haut ========== -->
 <!-- Entête -->
-{{ page_header(
-    title="<i class='fa fa-users-cog me-2'></i>Inscriptions(" ~ current_programme ~ ")",
-    breadcrumbs=[{"name": "Gestion des données des inscriptions du programme"}]
-) }}
+{% if selected and cand %}
+  {% set candidate_info = '<div class="candidate-name">' ~ cand.prenom ~ ' ' ~ cand.nom ~ ' — ' ~ programme.code ~ '</div><div class="candidate-email">' ~ cand.email ~ ((' · ' ~ cand.telephone) if cand.telephone else '') ~ '</div>' %}
+  {% set title_with_help %}
+  <i class='fa fa-users-cog me-2'></i>Inscriptions({{ current_programme }})
+  <button type="button" class="btn btn-outline-light btn-sm ms-2" onclick="showModal('inscriptionHelpModal')" title="Aide - Comment fonctionnent les Inscriptions ?">
+      <i class="fas fa-question-circle me-1"></i>Aide
+  </button>
+  {% endset %}
+  {{ page_header(
+      title=title_with_help,
+      breadcrumbs=[{"name": "Gestion des données des inscriptions du programme"}],
+      right_content=candidate_info,
+      actions=[{
+        "label": "<i class='fa fa-graduation-cap me-2'></i>Gérer les promotions",
+        "url": url_for("admin_promotions") ~ "?programme=" ~ (current_programme or "ACD"),
+        "class": "btn-outline-light btn-sm",
+        "primary": false
+      }]
+  ) }}
+{% else %}
+  {% set title_with_help %}
+  <i class='fa fa-users-cog me-2'></i>Inscriptions({{ current_programme }})
+  <button type="button" class="btn btn-outline-light btn-sm ms-2" onclick="showModal('inscriptionHelpModal')" title="Aide - Comment fonctionnent les Inscriptions ?">
+      <i class="fas fa-question-circle me-1"></i>Aide
+  </button>
+  {% endset %}
+  {{ page_header(
+      title=title_with_help,
+      breadcrumbs=[{"name": "Gestion des données des inscriptions du programme"}],
+      actions=[{
+        "label": "<i class='fa fa-graduation-cap me-2'></i>Gérer les promotions",
+        "url": url_for("admin_promotions") ~ "?programme=" ~ (current_programme or "ACD"),
+        "class": "btn-outline-light btn-sm",
+        "primary": false
+      }]
+  ) }}
+{% endif %}
 
-
-
-<div class="content-with-fixed-kpi" style="padding:10px 10px 10px 10px;">
+<div class="content-with-fixed-kpi {% if selected %}has-selected{% endif %}" style="padding:10px 10px 10px 10px;" id="mainContentContainer">
 <!--<div class="board" style="background: transparent;">-->
   <!-- ========== Liste gauche ========== -->
-  <div class="card" style="width: 30%; border: 1px solid var(--primary-color); background: var(--secondary-color); height: 100%; display: flex; flex-direction: column;">
+  <div class="card candidate-list-container" style="border: 1px solid var(--primary-color); background: var(--secondary-color); height: 100%; display: flex; flex-direction: column;" id="candidateListContainer">
     <div class="candidate-search-box" style="height: auto !important; min-height: 0 !important; max-height: none !important;">
-      <form method="get" action="{{ url_for('form_inscriptions_display') }}" class="d-flex" style="gap: 4px; height: auto !important; margin: 0 !important; padding: 0 !important;">
+      <form method="get" action="/inscriptions/form" class="d-flex" style="gap: 4px; height: auto !important; margin: 0 !important; padding: 0 !important;">
         <input type="hidden" name="programme" value="{{ current_programme or 'ACD' }}">
         <input name="q" class="form-control" value="{{ q or '' }}" placeholder="Rechercher un préinscrit (nom, email)"/>
         <button type="submit" class="btn btn-outline" title="Rechercher"><i class="fa fa-search"></i></button>
@@ -717,7 +856,7 @@ Inscriptions {{ programme.code }}
     <div class="list-container">
       {% for row in pre_rows %}
       {% set p, c, e, elig = row %}
-        <a class="text-decoration-none d-block mb-2" href="{{ url_for('form_inscriptions_display') }}?programme={{ current_programme }}&pre_id={{ p.id }}&t={{ timestamp }}">
+        <a class="text-decoration-none d-block mb-2" href="/inscriptions/form?programme={{ current_programme }}&pre_id={{ p.id }}&t={{ timestamp }}">
         <div class="pre-card {% if selected and selected.id==p.id %}active{% endif %}">
           <div class="avatar" style="background-image:url('{% if c.photo_profil %}/media/{{ c.photo_profil.replace('\\', '/') }}{% else %}/static/images/utilisateur.png{% endif %}')"></div>
           <div class="flex-grow-1">
@@ -758,52 +897,17 @@ Inscriptions {{ programme.code }}
   </div>
 
   <!-- ========== Panneau droit ========== -->
-  <div class="pane-right">
-    {% if not selected %}
-      <div class="card-neumo p-4 text-center" style="color: var(--white-color) !important;">
-        Sélectionnez un préinscrit dans la liste de gauche pour ouvrir le pipeline d'inscription.
-      </div>
-    {% else %}
+  <div class="pane-right" id="candidateDetailsContainer">
+    {% if selected %}
 
-    <div class="card-neumo">
-      <div class="d-flex align-items-center justify-content-between p-3" >
-        <div>
-          <div class="fw-bold fs-5" style="font-size: 14px; color: var(--white-color) !important;">{{ cand.prenom }} {{ cand.nom }} — {{ programme.code }}</div>
-          <div class="text-muted small" style="font-size: 12px; color: var(--white-color) !important;">{{ cand.email }} · {{ cand.telephone or '—' }}</div>
-        </div>
-        <div class="d-flex gap-2">
-          <!-- Boutons QPV et SIRET -->
-          <div class="btn-group" role="group">
-            <button type="button" class="btn btn-outline-info btn-sm" onclick="checkQPV({{ cand.id }})" title="Vérifier le statut QPV">
-              <i class="fas fa-map-marker-alt"></i> QPV
-            </button>
-            <button type="button" class="btn btn-outline-success btn-sm" onclick="checkSIRET({{ cand.id }})" title="Vérifier les informations SIRET">
-              <i class="fas fa-building"></i> SIRET
-            </button>
-          </div>
-        </div>
-      </div>
-
-      <div class="tab-head" >
-        <!--<button class="tab-btn active" data-tab="#tab-pipeline">Pipeline</button>-->
-        <button class="tab-btn active" data-tab="#tab-infos">
-          <i class="fas fa-user-edit me-1"></i>Informations
-        </button>
-        <button class="tab-btn" data-tab="#tab-elig">
-          <i class="fas fa-check-circle me-1"></i>Éligibilité
-        </button>
-        <button class="tab-btn" data-tab="#tab-docs">
-          <i class="fas fa-file-alt me-1"></i>Documents
-        </button>
-        <button class="tab-btn" data-tab="#tab-jury">
-          <i class="fas fa-gavel me-1"></i>Jury
-        </button>
-      </div>
-
-      <div class="p-3" style="min-height: 0; flex: 1; display: flex; flex-direction: column">
+    <div class="card-neumo" style="height: 100%;">
+      <!-- Layout avec contenu principal et sidebar droite -->
+      <div class="d-flex" style="min-height: 0; flex: 1; gap: 0; height: 100%; ">
+        <!-- Contenu principal (gauche) -->
+        <div class="flex-grow-1" style="overflow-y: auto; padding: 15px; min-height: 0;">
         <!-- ========== Informations ========== -->
         <div id="tab-infos" class="tab-pane active" >
-          <form method="post" action="{{ url_for('update_infos_inscription') }}" class="needs-validation" novalidate enctype="multipart/form-data">
+          <form method="post" action="/inscriptions/update-infos" class="needs-validation" novalidate enctype="multipart/form-data">
             <input type="hidden" name="pre_id" value="{{ selected.id }}">
             <input type="hidden" name="programme" value="{{ programme.code }}">
             
@@ -1041,14 +1145,7 @@ Inscriptions {{ programme.code }}
 
           <!-- Boutons d'action pour l'onglet Informations -->
           <div id="tab-infos-buttons" class="tab-buttons-container">
-          <div class="d-flex justify-content-between mt-3 p-3" style="background: black;  box-shadow: 0 -2px 8px rgba(0, 0, 0, 0.1);">
-            <button type="button" class="submenu-item" onclick="resetForm()">
-              <i class="fas fa-undo me-1"></i>Réinitialiser
-            </button>
-            <button type="button" class="submenu-item" onclick="saveForm()">
-              <i class="fas fa-save me-1"></i>Enregistrer les modifications
-            </button>
-          </div>
+          
         </div>
       </div>
         
@@ -1127,7 +1224,7 @@ Inscriptions {{ programme.code }}
               <h6 class="mb-0" style="font-size: 0.9rem; font-weight: 600;"><i class="fas fa-cog me-2"></i>Actions</h6>
             </div>
             <div class="card-body p-2">
-              <form method="post" action="{{ url_for('eligibilite_recalc') }}" id="recalc-eligibilite-form">
+              <form method="post" action="/inscriptions/eligibilite/recalc" id="recalc-eligibilite-form">
                 <input type="hidden" name="pre_id" value="{{ selected.id }}">
                 <input type="hidden" name="programme" value="{{ programme.code }}">
                 <button type="submit" class="btn btn-primary btn-sm" style="font-size: 0.85rem; padding: 0.375rem 0.75rem;">
@@ -1173,10 +1270,10 @@ Inscriptions {{ programme.code }}
                     </td>
                     <td>
                       <div class="btn-group btn-group-sm">
-                        <a href="{{ url_for('inscriptions_document_view', document_id=doc.id) }}?programme={{ programme.code }}" target="_blank" class="btn btn-outline-primary" title="Voir">
+                        <a href="/inscriptions/document/{{ doc.id }}/view?programme={{ programme.code }}" target="_blank" class="btn btn-outline-primary" title="Voir">
                           <i class="fas fa-eye"></i>
                         </a>
-                        <a href="{{ url_for('inscriptions_document_download', document_id=doc.id) }}?programme={{ programme.code }}" class="btn btn-outline-success" title="Télécharger" onclick="if(typeof showGlobalLoading === 'function') { showGlobalLoading('Téléchargement en cours...', 'Veuillez patienter'); setTimeout(() => { if(typeof hideGlobalLoading === 'function') hideGlobalLoading(); }, 2000); }">
+                        <a href="/inscriptions/document/{{ doc.id }}/download?programme={{ programme.code }}" class="btn btn-outline-success" title="Télécharger" onclick="if(typeof showGlobalLoading === 'function') { showGlobalLoading('Téléchargement en cours...', 'Veuillez patienter'); setTimeout(() => { if(typeof hideGlobalLoading === 'function') hideGlobalLoading(); }, 2000); }">
                           <i class="fas fa-download"></i>
                         </a>
                         <button type="button" class="btn btn-outline-danger" onclick="deleteDocument({{ doc.id }})" title="Supprimer">
@@ -1238,46 +1335,46 @@ Inscriptions {{ programme.code }}
             <!-- Décision du jury -->
             <div class="accordion-item">
               <h2 class="accordion-header" id="headingDecision">
-                <button class="accordion-button" type="button" data-bs-toggle="collapse" data-bs-target="#collapseDecision" aria-expanded="true" aria-controls="collapseDecision" style="font-size: 0.9rem; padding: 0.5rem 0.75rem;">
+                <button class="accordion-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#collapseDecision" aria-expanded="false" aria-controls="collapseDecision" style="font-size: 0.9rem; padding: 0.5rem 0.75rem;">
                   <i class="fas fa-gavel me-2"></i>Décision du jury
                 </button>
               </h2>
-              <div id="collapseDecision" class="accordion-collapse collapse show" aria-labelledby="headingDecision" data-bs-parent="#juryAccordion">
+              <div id="collapseDecision" class="accordion-collapse collapse" aria-labelledby="headingDecision" data-bs-parent="#juryAccordion">
                 <div class="accordion-body p-2">
-                  <form method="post" action="{{ url_for('create_jury_decision_inscription') }}" class="needs-validation" novalidate>
+                  <form method="post" action="/inscriptions/jury/decision" class="needs-validation" novalidate>
                     <input type="hidden" name="candidat_id" value="{{ cand.id }}">
                     <input type="hidden" name="programme" value="{{ programme.code }}">
                     
                     <div class="row g-2">
                       <!-- Session jury -->
                       <div class="col-md-6">
-                      <label class="form-label" style="font-size: 0.85rem; margin-bottom: 0.25rem;">Session jury</label>
+                        <label class="form-label" style="font-size: 0.85rem; margin-bottom: 0.25rem;">Session jury</label>
                         <select class="form-select" name="jury_id" required style="font-size: 0.85rem; padding: 0.375rem 0.5rem; min-height: 32px;">
-                          <option value="">— Sélectionner une session —</option>
-                        {% for j in jurys %}
-                          <option value="{{ j.id }}">{{ j.session_le | format_datetime }} — {{ j.lieu or '—' }}</option>
-                        {% endfor %}
-                      </select>
-                    </div>
+                            <option value="">— Sélectionner une session —</option>
+                          {% for j in jurys %}
+                            <option value="{{ j.id }}">{{ j.session_le | format_datetime }} — {{ j.lieu or '—' }}</option>
+                          {% endfor %}
+                        </select>
+                      </div>
                       
                       <!-- Décision -->
                       <div class="col-md-6">
-                      <label class="form-label" style="font-size: 0.85rem; margin-bottom: 0.25rem;">Décision</label>
-                        <select class="form-select" name="decision" id="decisionSelect" required onchange="toggleDecisionFields()" style="font-size: 0.85rem; padding: 0.375rem 0.5rem; min-height: 32px;">
-                          <option value="">— Sélectionner une décision —</option>
-                          <option value="EN_ATTENTE">En attente</option>
-                          <option value="VALIDE">Validé</option>
-                          <option value="REORIENTE">Réorienté</option>
-                          <option value="REJETE">Rejeté</option>
-                      </select>
-                    </div>
+                        <label class="form-label" style="font-size: 0.85rem; margin-bottom: 0.25rem;">Décision</label>
+                          <select class="form-select" name="decision" id="decisionSelect" required onchange="toggleDecisionFields()" style="font-size: 0.85rem; padding: 0.375rem 0.5rem; min-height: 32px;">
+                            <option value="">— Sélectionner une décision —</option>
+                            <option value="EN_ATTENTE">En attente</option>
+                            <option value="VALIDE">Validé</option>
+                            <option value="REORIENTE">Réorienté</option>
+                            <option value="REJETE">Rejeté</option>
+                        </select>
+                      </div>
                       
                       <!-- Commentaires -->
                       <div class="col-12">
-                      <label class="form-label" style="font-size: 0.85rem; margin-bottom: 0.25rem;">Commentaires</label>
+                        <label class="form-label" style="font-size: 0.85rem; margin-bottom: 0.25rem;">Commentaires</label>
                         <textarea class="form-control" name="commentaires" rows="2" placeholder="Notes, conditions, observations du jury..." style="font-size: 0.85rem; padding: 0.375rem 0.5rem; min-height: 60px;"></textarea>
+                      </div>
                     </div>
-                  </div>
 
                     <!-- Champs conditionnels pour VALIDÉ -->
                     <div id="valideFields" class="mt-2" style="display: none;">
@@ -1363,86 +1460,122 @@ Inscriptions {{ programme.code }}
                       <button type="button" class="btn btn-outline-secondary" onclick="resetJuryForm()" style="font-size: 0.85rem; padding: 0.375rem 0.75rem; min-height: 32px;">
                         <i class="fas fa-undo me-1"></i>Réinitialiser
                       </button>
-                      <button type="submit" class="btn btn-primary" style="font-size: 0.85rem; padding: 0.375rem 0.75rem; min-height: 32px;">
+                      <button type="button" class="btn btn-primary" onclick="saveJuryDecisionForm()" style="font-size: 0.85rem; padding: 0.375rem 0.75rem; min-height: 32px;">
                         <i class="fas fa-gavel me-1"></i>Enregistrer la décision
                       </button>
-                  </div>
-                </form>
+                    </div>
+                  </form>
+                </div>
               </div>
             </div>
-          </div>
 
-          <!-- Historique des décisions -->
-          <div class="accordion-item">
-            <h2 class="accordion-header" id="headingHistory">
-              <button class="accordion-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#collapseHistory" aria-expanded="false" aria-controls="collapseHistory" style="font-size: 0.9rem; padding: 0.5rem 0.75rem;">
-                <i class="fas fa-history me-2"></i>Historique des décisions
-              </button>
-            </h2>
-            <div id="collapseHistory" class="accordion-collapse collapse" aria-labelledby="headingHistory" data-bs-parent="#juryAccordion">
-              <div class="accordion-body p-2">
-                {% if decisions_jury %}
-                  <div class="table-responsive">
-                    <table class="table table-sm">
-                      <thead>
-                        <tr>
-                          <th>Date</th>
-                          <th>Jury</th>
-                          <th>Décision</th>
-                          <th>Conseiller</th>
-                          <th>Groupe</th>
-                          <th>Promotion</th>
-                          <th>Partenaire</th>
-                          <th>Actions</th>
-                        </tr>
-                      </thead>
-                      <tbody>
-                        {% for decision in decisions_jury %}
-                        <tr>
-                          <td>{{ decision.date_decision | format_datetime }}</td>
-                          <td>{{ decision.jury.session_le | format_date }}</td>
-                          <td>
-                            {% if decision.decision == "VALIDE" %}
-                              <span class="badge bg-success">Validé</span>
-                            {% elif decision.decision == "REORIENTE" %}
-                              <span class="badge bg-info">Réorienté</span>
-                            {% elif decision.decision == "REJETE" %}
-                              <span class="badge bg-danger">Rejeté</span>
-                            {% else %}
-                              <span class="badge bg-warning">En attente</span>
-            {% endif %}
-                          </td>
-                          <td>{{ decision.conseiller.nom_complet if decision.conseiller else '—' }}</td>
-                          <td>{{ decision.groupe.nom if decision.groupe else '—' }}</td>
-                          <td>{{ decision.promotion.libelle if decision.promotion else '—' }}</td>
-                          <td>{{ decision.partenaire.nom if decision.partenaire else '—' }}</td>
-                          <td>
-                            <div class="btn-group btn-group-sm">
-                              <button class="btn btn-outline-primary" onclick="editDecision({{ decision.id }})">
-                                <i class="fas fa-edit"></i>
-                              </button>
-                              <button class="btn btn-outline-danger" onclick="deleteDecision({{ decision.id }})">
-                                <i class="fas fa-trash"></i>
-                              </button>
-            </div>
-                          </td>
-                        </tr>
-                        {% endfor %}
-                      </tbody>
-                    </table>
-    </div>
-                {% else %}
-                  <div class="text-muted text-center py-3">
-                    <i class="fas fa-inbox fa-2x mb-2"></i><br>
-                    Aucune décision du jury enregistrée pour ce candidat.
-    </div>
-    {% endif %}
+            <!-- Historique des décisions -->
+            <div class="accordion-item">
+              <h2 class="accordion-header" id="headingHistory">
+                <button class="accordion-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#collapseHistory" aria-expanded="false" aria-controls="collapseHistory" style="font-size: 0.9rem; padding: 0.5rem 0.75rem;">
+                  <i class="fas fa-history me-2"></i>Historique des décisions
+                </button>
+              </h2>
+              <div id="collapseHistory" class="accordion-collapse collapse" aria-labelledby="headingHistory" data-bs-parent="#juryAccordion">
+                <div class="accordion-body p-2">
+                  {% if decisions_jury %}
+                    <div class="table-responsive">
+                      <table class="table table-sm">
+                        <thead>
+                          <tr>
+                            <th>Date</th>
+                            <th>Jury</th>
+                            <th>Décision</th>
+                            <th>Conseiller</th>
+                            <th>Groupe</th>
+                            <th>Promotion</th>
+                            <th>Partenaire</th>
+                            <th>Actions</th>
+                          </tr>
+                        </thead>
+                        <tbody>
+                          {% for decision in decisions_jury %}
+                          <tr>
+                            <td>{{ decision.date_decision | format_datetime }}</td>
+                            <td>{{ decision.jury.session_le | format_date }}</td>
+                            <td>
+                              {% if decision.decision == "VALIDE" %}
+                                <span class="badge bg-success">Validé</span>
+                              {% elif decision.decision == "REORIENTE" %}
+                                <span class="badge bg-info">Réorienté</span>
+                              {% elif decision.decision == "REJETE" %}
+                                <span class="badge bg-danger">Rejeté</span>
+                              {% else %}
+                                <span class="badge bg-warning">En attente</span>
+                              {% endif %}
+                            </td>
+                            <td>{{ decision.conseiller.nom_complet if decision.conseiller else '—' }}</td>
+                            <td>{{ decision.groupe.nom if decision.groupe else '—' }}</td>
+                            <td>{{ decision.promotion.libelle if decision.promotion else '—' }}</td>
+                            <td>{{ decision.partenaire.nom if decision.partenaire else '—' }}</td>
+                            <td>
+                              <div class="btn-group btn-group-sm">
+                                <button class="btn btn-outline-primary" onclick="editDecision({{ decision.id }})">
+                                  <i class="fas fa-edit"></i>
+                                </button>
+                                <button class="btn btn-outline-danger" onclick="deleteDecision({{ decision.id }})">
+                                  <i class="fas fa-trash"></i>
+                                </button>
+                              </div>
+                            </td>
+                          </tr>
+                          {% endfor %}
+                        </tbody>
+                      </table>
+                    </div>
+                  {% else %}
+                    <div class="text-muted text-center py-3">
+                      <i class="fas fa-inbox fa-2x mb-2"></i><br>
+                      Aucune décision du jury enregistrée pour ce candidat.
+                    </div>
+                  {% endif %}
+                </div>
               </div>
             </div>
           </div>
-        </div>
           
           {% endif %}
+        </div>
+      </div>
+        
+        <!-- Sidebar droite avec les boutons en colonne -->
+        <div class="sidebar-right admin-sidebar" style="width: 260px; flex-shrink: 0;">
+          <button class="sidebar-btn admin-link active" data-tab="#tab-infos">
+            <i class="fas fa-user-edit"></i> Informations
+          </button>
+          <button class="sidebar-btn admin-link" data-tab="#tab-elig">
+            <i class="fas fa-check-circle"></i> Éligibilité
+          </button>
+          <button class="sidebar-btn admin-link" data-tab="#tab-docs">
+            <i class="fas fa-file-alt"></i> Documents
+          </button>
+          <button class="sidebar-btn admin-link" data-tab="#tab-jury">
+            <i class="fas fa-gavel"></i> Jury
+          </button>
+          
+          <!-- Boutons QPV et SIRET -->
+          <div style="margin-top: 15px; padding-top: 15px; border-top: 1px solid rgba(255,255,255,0.12);">
+            <button type="button" class="admin-link w-100 mb-2" onclick="checkQPV({{ cand.id }})" style="background: rgba(23, 162, 184, 0.2); border-color: rgba(23, 162, 184, 0.4); color: var(--white-color); justify-content: center; font-weight: 600;">
+              <i class="fas fa-map-marker-alt"></i> Vérifier QPV
+            </button>
+            <button type="button" class="admin-link w-100" onclick="checkSIRET({{ cand.id }})" style="background: rgba(40, 167, 69, 0.2); border-color: rgba(40, 167, 69, 0.4); color: var(--white-color); justify-content: center; font-weight: 600;">
+              <i class="fas fa-building"></i> Vérifier SIRET
+            </button>
+          </div>
+          
+          <div style="margin-top: auto; padding-top: 15px; border-top: 1px solid rgba(255,255,255,0.12);">
+            <button type="button" class="admin-link w-100" onclick="saveForm()" style="background: rgba(40, 167, 69, 0.2); border-color: rgba(40, 167, 69, 0.4); color: var(--white-color); justify-content: center; font-weight: 600;">
+              <i class="fas fa-save"></i> Enregistrer
+            </button>
+            <button type="button" class="admin-link w-100 mt-2" onclick="returnToList()" style="background: rgba(108, 117, 125, 0.2); border-color: rgba(108, 117, 125, 0.4); color: var(--white-color); justify-content: center; font-weight: 600;">
+              <i class="fas fa-arrow-left"></i> Retour à la liste
+            </button>
+          </div>
         </div>
       </div>
     </div>
@@ -1455,26 +1588,83 @@ Inscriptions {{ programme.code }}
 
 {% block scripts %}
 <script>
-  // Tabs
-  document.querySelectorAll('.tab-btn').forEach(btn=>{
+  // Fonction pour retourner à la liste des candidats
+  function returnToList() {
+    // Retirer le paramètre pre_id de l'URL pour revenir à la liste
+    const url = new URL(window.location.href);
+    url.searchParams.delete('pre_id');
+    url.searchParams.delete('t'); // Retirer aussi le timestamp
+    window.location.href = url.toString();
+  }
+  
+  // Forcer l'affichage correct au chargement de la page
+  document.addEventListener('DOMContentLoaded', function() {
+    const mainContainer = document.getElementById('mainContentContainer');
+    const candidateList = document.getElementById('candidateListContainer');
+    const candidateDetails = document.getElementById('candidateDetailsContainer');
+    const urlParams = new URLSearchParams(window.location.search);
+    const hasPreId = urlParams.has('pre_id');
+    
+    // Vérifier si un candidat est sélectionné (via la classe ou l'URL)
+    const hasSelected = (mainContainer && mainContainer.classList.contains('has-selected')) || hasPreId;
+    
+    if (hasSelected) {
+      // Un candidat est sélectionné : afficher les détails, cacher la liste
+      if (candidateList) {
+        candidateList.style.display = 'none';
+      }
+      if (candidateDetails) {
+        candidateDetails.style.display = 'flex';
+      }
+      // S'assurer que la classe est présente
+      if (mainContainer && !mainContainer.classList.contains('has-selected')) {
+        mainContainer.classList.add('has-selected');
+      }
+    } else {
+      // Aucun candidat sélectionné : afficher la liste, cacher les détails
+      if (candidateList) {
+        candidateList.style.display = 'flex';
+      }
+      if (candidateDetails) {
+        candidateDetails.style.display = 'none';
+      }
+      // Retirer la classe si elle est présente
+      if (mainContainer && mainContainer.classList.contains('has-selected')) {
+        mainContainer.classList.remove('has-selected');
+      }
+    }
+  });
+  
+  // Gestion des boutons de la sidebar
+  document.querySelectorAll('.sidebar-btn').forEach(btn=>{
     btn.addEventListener('click', ()=>{
-      document.querySelectorAll('.tab-btn').forEach(b=>b.classList.remove('active'));
-      document.querySelectorAll('.tab-pane').forEach(p=>p.classList.remove('active'));
-      // Masquer tous les conteneurs de boutons
-      document.querySelectorAll('.tab-buttons-container').forEach(c=>c.style.display='none');
+      // Retirer l'état actif de tous les boutons
+      document.querySelectorAll('.sidebar-btn').forEach(b=>{
+        b.classList.remove('active');
+      });
       
+      // Masquer tous les panneaux
+      document.querySelectorAll('.tab-pane').forEach(p=>p.classList.remove('active'));
+      
+      // Activer le bouton cliqué
       btn.classList.add('active');
+      
+      // Afficher le panneau correspondant
       const tgt = document.querySelector(btn.dataset.tab);
       if (tgt) {
         tgt.classList.add('active');
-        // Afficher les boutons si c'est l'onglet Informations
-        if (tgt.id === 'tab-infos') {
-          const buttonsContainer = document.getElementById('tab-infos-buttons');
-          if (buttonsContainer) buttonsContainer.style.display = 'block';
-        }
       }
     });
   });
+  
+  // Initialiser l'état actif au chargement
+  const activeTab = document.querySelector('.tab-pane.active');
+  if (activeTab) {
+    const activeBtn = document.querySelector(`.sidebar-btn[data-tab="#${activeTab.id}"]`);
+    if (activeBtn) {
+      activeBtn.classList.add('active');
+    }
+  }
   
   // Afficher les boutons au chargement si l'onglet Informations est actif
   if (document.getElementById('tab-infos') && document.getElementById('tab-infos').classList.contains('active')) {
@@ -1549,7 +1739,7 @@ Inscriptions {{ programme.code }}
   // Fonction pour réinitialiser le formulaire jury
   function resetJuryForm() {
     if (confirm('Êtes-vous sûr de vouloir réinitialiser le formulaire ? Toutes les modifications non sauvegardées seront perdues.')) {
-      document.querySelector('form[action="{{ url_for('create_jury_decision_inscription') }}"]').reset();
+      document.querySelector('form[action="/inscriptions/jury/decision"]').reset();
       toggleDecisionFields(); // Masquer les champs conditionnels
     }
   }
@@ -1566,7 +1756,7 @@ Inscriptions {{ programme.code }}
       // Créer un formulaire de suppression
       const form = document.createElement('form');
       form.method = 'POST';
-      form.action = `{{ url_for('delete_jury_decision_inscription', decision_id='PLACEHOLDER') }}`.replace('PLACEHOLDER', decisionId);
+      form.action = `/inscriptions/jury/decision/${decisionId}/delete`;
       
       // Ajouter un token CSRF si nécessaire
       const csrfToken = document.querySelector('meta[name="csrf-token"]');
@@ -1611,7 +1801,7 @@ Inscriptions {{ programme.code }}
       // Afficher le modal
       openModal('qpvResultModal');
       
-      const response = await fetch('{{ url_for('check_qpv_candidate_inscription') }}', {
+      const response = await fetch('/inscriptions/qpv-check', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/x-www-form-urlencoded',
@@ -1702,7 +1892,7 @@ Inscriptions {{ programme.code }}
       // Afficher le modal
       openModal('siretResultModal');
       
-      const response = await fetch('{{ url_for('check_siret_candidate_inscription') }}', {
+      const response = await fetch('/inscriptions/siret-check', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/x-www-form-urlencoded',
@@ -1939,7 +2129,7 @@ Inscriptions {{ programme.code }}
             button.innerHTML = '<i class="fas fa-spinner fa-spin me-1"></i>Téléchargement...';
             button.disabled = true;
             
-            const response = await fetch('{{ url_for('download_siret_document_inscription') }}', {
+            const response = await fetch('/inscriptions/download-siret-document', {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json',
@@ -2349,7 +2539,7 @@ Inscriptions {{ programme.code }}
       formData.append('document_id', documentId);
       formData.append('programme', '{{ programme.code }}');
       
-      const response = await fetch('{{ url_for('delete_document_inscription') }}', {
+      const response = await fetch('/inscriptions/delete-document', {
         method: 'POST',
         body: formData
       });
@@ -2395,13 +2585,42 @@ Inscriptions {{ programme.code }}
     const form = document.querySelector('#tab-infos form');
     if (!form) return;
     
-    // Afficher l'overlay global
+    // Afficher l'overlay global immédiatement
     if (typeof showGlobalLoading === 'function') {
       showGlobalLoading('Enregistrement en cours...', 'Veuillez patienter');
     }
     
-    // Soumettre le formulaire
-    form.submit();
+    // Utiliser requestAnimationFrame pour s'assurer que l'overlay est rendu avant la soumission
+    requestAnimationFrame(() => {
+      requestAnimationFrame(() => {
+        // Soumettre le formulaire après que l'overlay soit affiché
+        form.submit();
+      });
+    });
+  }
+  
+  function saveJuryDecisionForm() {
+    const form = document.querySelector('form[action="/inscriptions/jury/decision"]');
+    if (!form) return;
+    
+    // Valider le formulaire
+    if (!form.checkValidity()) {
+      form.reportValidity();
+      return;
+    }
+    
+    // Afficher l'overlay global immédiatement
+    if (typeof showGlobalLoading === 'function') {
+      showGlobalLoading('Enregistrement de la décision en cours...', 'Veuillez patienter');
+    }
+    
+    // Utiliser requestAnimationFrame pour s'assurer que l'overlay est rendu avant la soumission
+    requestAnimationFrame(() => {
+      requestAnimationFrame(() => {
+        // Soumettre le formulaire après que l'overlay soit affiché
+        form.submit();
+      });
+    });
   }
 
   // Fonction pour attendre que les toasts disparaissent avant de recharger
@@ -2613,7 +2832,7 @@ Inscriptions {{ programme.code }}
 
 <!-- Modal pour ajouter un document -->
 {% call modal_with_footer('addDocumentModal', '<i class="fas fa-file-upload me-2"></i>Ajouter un document', 'md', '<i class="fas fa-upload me-1"></i>Ajouter le document') %}
-    <form method="post" action="{{ url_for('add_document_inscription') }}" enctype="multipart/form-data" id="addDocumentModal-form">
+    <form method="post" action="/inscriptions/add-document" enctype="multipart/form-data" id="addDocumentModal-form">
         <input type="hidden" name="candidat_id" value="{{ cand.id if cand else '' }}">
         <input type="hidden" name="programme" value="{{ programme.code }}">
         
@@ -2645,4 +2864,159 @@ Inscriptions {{ programme.code }}
 <!-- Modal pour changer l'email -->
 {# {% include 'candidats/changer_email_modal.html' %} #}
 
+<!-- Modal d'aide Inscriptions -->
+<div class="modal-lg" id="inscriptionHelpModal">
+  <div class="modal-content">
+    <div class="modal-header">
+      <h3 class="modal-title">
+        <i class="fas fa-question-circle me-2"></i>Guide des Inscriptions
+      </h3>
+      <button type="button" class="modal-close" onclick="closeModal('inscriptionHelpModal')" aria-label="Fermer">
+        <i class="fas fa-times"></i>
+      </button>
+    </div>
+    <div class="modal-body">
+      <div class="mb-4">
+        <h4 class="text-primary mb-3">
+          <i class="fas fa-lightbulb me-2"></i>Qu'est-ce qu'une Inscription ?
+        </h4>
+        <p class="lead">
+          Une <strong>Inscription</strong> est l'enregistrement définitif d'un candidat dans un programme d'accompagnement, après validation de sa préinscription ou création directe par l'équipe.
+        </p>
+      </div>
+
+      <div class="mb-4">
+        <h5 class="text-primary mb-3">
+          <i class="fas fa-sitemap me-2"></i>Types d'Inscription
+        </h5>
+        <div class="card border-primary mb-3">
+          <div class="card-body">
+            <h6 class="card-title text-primary">
+              <i class="fas fa-check-circle me-2"></i>Validation de Préinscription
+            </h6>
+            <p class="card-text">
+              Une préinscription validée devient automatiquement une <strong>inscription définitive</strong>.
+            </p>
+          </div>
+        </div>
+
+        <div class="card border-info mb-3">
+          <div class="card-body">
+            <h6 class="card-title text-info">
+              <i class="fas fa-user-plus me-2"></i>Création Directe
+            </h6>
+            <p class="card-text">
+              L'équipe peut créer directement une inscription sans passer par la préinscription.
+            </p>
+          </div>
+        </div>
+
+        <div class="card border-success mb-3">
+          <div class="card-body">
+            <h6 class="card-title text-success">
+              <i class="fas fa-clipboard-check me-2"></i>Statuts
+            </h6>
+            <p class="card-text">
+              Une inscription peut avoir différents statuts :
+            </p>
+            <ul class="mb-0">
+              <li><strong>Validée</strong> : Inscription confirmée et active</li>
+              <li><strong>En cours</strong> : Inscription en cours de traitement</li>
+              <li><strong>Rejetée</strong> : Inscription refusée</li>
+            </ul>
+          </div>
+        </div>
+      </div>
+
+      <div class="mb-4">
+        <h5 class="text-primary mb-3">
+          <i class="fas fa-route me-2"></i>Processus
+        </h5>
+        <div class="timeline">
+          <div class="d-flex mb-3">
+            <div class="flex-shrink-0">
+              <div class="rounded-circle bg-primary text-white d-flex align-items-center justify-content-center" style="width: 40px; height: 40px; font-weight: bold;">1</div>
+            </div>
+            <div class="flex-grow-1 ms-3">
+              <h6 class="mb-1">Création ou Validation</h6>
+              <p class="mb-0 text-muted">Créer une nouvelle inscription ou valider une préinscription existante.</p>
+            </div>
+          </div>
+
+          <div class="d-flex mb-3">
+            <div class="flex-shrink-0">
+              <div class="rounded-circle bg-info text-white d-flex align-items-center justify-content-center" style="width: 40px; height: 40px; font-weight: bold;">2</div>
+            </div>
+            <div class="flex-grow-1 ms-3">
+              <h6 class="mb-1">Enregistrement des Données</h6>
+              <p class="mb-0 text-muted">Saisir ou vérifier les informations du candidat (nom, email, entreprise, etc.).</p>
+            </div>
+          </div>
+
+          <div class="d-flex mb-3">
+            <div class="flex-shrink-0">
+              <div class="rounded-circle bg-success text-white d-flex align-items-center justify-content-center" style="width: 40px; height: 40px; font-weight: bold;">3</div>
+            </div>
+            <div class="flex-grow-1 ms-3">
+              <h6 class="mb-1">Attribution du Programme</h6>
+              <p class="mb-0 text-muted">Associer le candidat au programme approprié.</p>
+            </div>
+          </div>
+
+          <div class="d-flex mb-3">
+            <div class="flex-shrink-0">
+              <div class="rounded-circle bg-warning text-white d-flex align-items-center justify-content-center" style="width: 40px; height: 40px; font-weight: bold;">4</div>
+            </div>
+            <div class="flex-grow-1 ms-3">
+              <h6 class="mb-1">Suivi et Accompagnement</h6>
+              <p class="mb-0 text-muted">Le candidat peut maintenant participer aux activités du programme (séminaires, événements, rendez-vous, etc.).</p>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div class="mb-4">
+        <h5 class="text-primary mb-3">
+          <i class="fas fa-info-circle me-2"></i>Informations Gérées
+        </h5>
+        <ul>
+          <li><strong>Données du candidat</strong> : Informations personnelles et professionnelles complètes</li>
+          <li><strong>Programme</strong> : Programme d'accompagnement auquel le candidat est inscrit</li>
+          <li><strong>Statut</strong> : État actuel de l'inscription</li>
+          <li><strong>Historique</strong> : Dates de création et de modification</li>
+        </ul>
+      </div>
+
+      <div class="alert alert-info">
+        <h6 class="alert-heading">
+          <i class="fas fa-info-circle me-2"></i>Conseils
+        </h6>
+        <ul class="mb-0">
+          <li><strong>Vérifiez les données</strong> : Assurez-vous que toutes les informations sont correctes</li>
+          <li><strong>Validez rapidement</strong> : Traitez les inscriptions dans les meilleurs délais</li>
+          <li><strong>Suivez les statuts</strong> : Utilisez les filtres pour suivre les inscriptions par statut</li>
+          <li><strong>Mettez à jour régulièrement</strong> : Maintenez les informations à jour pour un suivi efficace</li>
+        </ul>
+      </div>
+    </div>
+    <div class="modal-footer">
+      <button type="button" class="btn btn-secondary" onclick="closeModal('inscriptionHelpModal')">
+        <i class="fas fa-times me-2"></i>Fermer
+      </button>
+    </div>
+  </div>
+</div>
+
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    const modal = document.getElementById('inscriptionHelpModal');
+    if (modal) {
+        modal.addEventListener('click', function(e) {
+            if (e.target === modal) {
+                closeModal('inscriptionHelpModal');
+            }
+        });
+    }
+});
+</script>
 {% endblock %}

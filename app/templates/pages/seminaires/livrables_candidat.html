@@ -1,16 +1,17 @@
-{% extends "base.html" %}
+{% extends "layouts/base.html" %}
 
 {% block title %}Livrables à Rendre - {{ seminaire.titre }}{% endblock %}
 
 {% block content %}
+{% set programme_param = request.query_params.get('programme') or (schema_name.upper() if schema_name and schema_name != 'public' else '') %}
 <div class="container-fluid">
     <!-- En-tête -->
     <div class="row mb-4">
         <div class="col-12">
             <nav aria-label="breadcrumb">
                 <ol class="breadcrumb">
-                    <li class="breadcrumb-item"><a href="{{ url_for('liste_seminaires') }}">Séminaires</a></li>
-                    <li class="breadcrumb-item"><a href="{{ url_for('detail_seminaire', seminaire_id=seminaire.id) }}">{{ seminaire.titre }}</a></li>
+                    <li class="breadcrumb-item"><a href="{{ url_for('liste_seminaires') }}{% if programme_param %}?programme={{ programme_param }}{% endif %}">Séminaires</a></li>
+                    <li class="breadcrumb-item"><a href="{{ url_for('detail_seminaire', seminaire_id=seminaire.id) }}{% if programme_param %}?programme={{ programme_param }}{% endif %}">{{ seminaire.titre }}</a></li>
                     <li class="breadcrumb-item active">Mes Livrables</li>
                 </ol>
             </nav>
@@ -136,8 +137,8 @@
                         </div>
                         {% else %}
                         <!-- Formulaire de rendu -->
-                        <form method="POST" action="{{ url_for('rendre_livrable_seminaire', seminaire_id=seminaire.id, livrable_id=livrable.id) }}" 
-                              enctype="multipart/form-data" class="rendre-form">
+                        <form method="POST" action="{{ url_for('rendre_livrable_seminaire', seminaire_id=seminaire.id, livrable_id=livrable.id) }}{% if programme_param %}?programme={{ programme_param }}{% endif %}" 
+                              enctype="multipart/form-data" class="rendre-form" data-livrable-id="{{ livrable.id }}">
                             <input type="hidden" name="inscription_id" value="{{ inscription.id }}">
                             
                             <div class="mb-3">
@@ -171,7 +172,7 @@
                             </div>
                             
                             <div class="d-grid">
-                                <button type="submit" class="btn btn-primary">
+                                <button type="submit" class="btn btn-primary submit-livrable-btn">
                                     <i class="fas fa-upload me-2"></i>
                                     Rendre le livrable
                                 </button>
@@ -272,6 +273,39 @@ document.addEventListener('DOMContentLoaded', function() {
                 }
                 
                 this.parentElement.appendChild(fileName);
+            }
+        });
+    });
+    
+    // Gestion de l'overlay pour la soumission de livrables
+    document.querySelectorAll('.rendre-form').forEach(form => {
+        form.addEventListener('submit', function(e) {
+            const submitBtn = this.querySelector('.submit-livrable-btn');
+            
+            // Afficher l'overlay global
+            if (typeof showGlobalLoading === 'function') {
+                showGlobalLoading(
+                    'Soumission du livrable',
+                    'Téléchargement et traitement en cours, veuillez patienter...'
+                );
+            }
+            
+            // Désactiver le bouton et afficher un spinner
+            if (submitBtn) {
+                submitBtn.disabled = true;
+                const originalHtml = submitBtn.innerHTML;
+                submitBtn.innerHTML = '<i class="fas fa-spinner fa-spin me-2"></i>Traitement...';
+                
+                // Timeout de sécurité
+                setTimeout(function() {
+                    if (typeof hideGlobalLoading === 'function') {
+                        hideGlobalLoading();
+                    }
+                    if (submitBtn) {
+                        submitBtn.disabled = false;
+                        submitBtn.innerHTML = originalHtml;
+                    }
+                }, 30000); // 30 secondes pour l'upload de fichiers
             }
         });
     });

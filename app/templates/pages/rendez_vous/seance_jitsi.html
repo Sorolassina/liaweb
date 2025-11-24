@@ -1,163 +1,85 @@
-<!doctype html>
-<html lang="fr">
-<head>
-  <meta charset="utf-8"/>
-  <meta name="viewport" content="width=device-width,initial-scale=1"/>
-  <title>{{ app_name }} — RDV #{{ rdv.id }}</title>
+{% extends "layouts/base.html" %}
+
+{% block title %}RDV #{{ rdv.id }} — {{ app_name }}{% endblock %}
+
+{% block head_extra %}
   <style>
     :root{ --bg:#0b0b0b }
     html,body{height:100%}
     body{margin:0;background:var(--bg);}
-    #meet{height:100vh; width:100vw; overflow:hidden}
-    .topbar{
-      position:fixed; inset:16px auto auto 16px; z-index:10; background:rgba(17,17,17,.6);
-      color:#fff; padding:8px 12px; border-radius:10px; backdrop-filter: blur(8px); font-family:Inter,system-ui,Arial;
-    }
-    .topbar a{color:#ffd300; text-decoration:none}
-    .terminer-btn{
-      background:#dc3545 !important;
-      color:white !important;
-      border:none !important;
-      padding:6px 12px !important;
-      border-radius:6px !important;
-      margin-left:15px !important;
-      cursor:pointer !important;
-      font-size:12px !important;
-      font-weight:bold !important;
-      transition:background 0.3s !important;
-    }
-    .terminer-btn:hover{
-      background:#c82333 !important;
-    }
-    
-    /* Styles pour la fenêtre de notes */
-    .notes-panel{
-      position:fixed;
-      top:80px;
-      right:20px;
-      width:300px;
-      height:400px;
-      background:rgba(17,17,17,.9);
-      border:1px solid #333;
-      border-radius:10px;
-      backdrop-filter:blur(10px);
-      z-index:1000;
-      display:none;
-      flex-direction:column;
-    }
-    .notes-header{
-      background:rgba(255,211,0,.2);
-      padding:8px 12px;
-      border-radius:10px 10px 0 0;
-      display:flex;
-      justify-content:space-between;
-      align-items:center;
-    }
-    .notes-title{
-      color:#ffd300;
-      font-weight:bold;
-      font-size:14px;
-    }
-    .notes-close{
-      background:none;
-      border:none;
-      color:#fff;
-      cursor:pointer;
-      font-size:16px;
-      padding:0;
-      width:20px;
-      height:20px;
-    }
-    .notes-content{
-      flex:1;
-      padding:12px;
-      display:flex;
-      flex-direction:column;
-    }
-    .notes-textarea{
-      flex:1;
-      background:rgba(255,255,255,.1);
-      border:1px solid #444;
-      border-radius:6px;
-      color:#fff;
-      padding:8px;
-      font-size:12px;
-      resize:none;
-      font-family:inherit;
-    }
-    .notes-textarea:focus{
-      outline:none;
-      border-color:#ffd300;
-    }
-    .notes-footer{
-      padding:8px 12px;
-      display:flex;
-      justify-content:space-between;
-      align-items:center;
-    }
-    .notes-save{
-      background:#28a745;
-      color:white;
-      border:none;
-      padding:4px 8px;
-      border-radius:4px;
-      cursor:pointer;
-      font-size:11px;
-    }
-    .notes-status{
-      font-size:10px;
-      color:#888;
-    }
-    .notes-toggle{
-      background:#ffd300;
-      color:#000;
-      border:none;
-      padding:6px 10px;
-      border-radius:6px;
-      margin-left:10px;
-      cursor:pointer;
-      font-size:11px;
-      font-weight:bold;
-    }
-  </style>
-</head>
-<body>
-  <div class="topbar">
-    RDV #{{ rdv.id }} · {{ candidat_prenom }} {{ candidat_nom }} · {{ programme_nom }} · <strong>{% if is_host %}{{ display_name }}{% else %}{{ conseiller_nom }}{% endif %}</strong>
-    {% if is_host %}
-    · <a href="{{ url_for('accueil') }}" class="submenu-item">Accueil</a>
-    <button onclick="toggleNotes()" class="notes-toggle">
-      📝 Notes
-    </button>
-    <button onclick="terminerRDV()" class="terminer-btn">
-      🛑 Terminer RDV
-    </button>
-    {% endif %}
-  </div>
-  <div id="meet"></div>
+  
+  /* Masquer tous les éléments de navigation pour Jitsi plein écran */
+  #sidebar,
+  .header-neumorphism,
+  .footer-neumorphism,
+  .messagerie-floating-container,
+  #globalLoadingOverlay {
+    display: none !important;
+    visibility: hidden !important;
+    opacity: 0 !important;
+  }
+  
+  /* S'assurer que le body n'a pas de restrictions */
+  body {
+    overflow: visible !important;
+  }
+  
+  /* Conteneur principal sans padding */
+  #content {
+    padding: 0 !important;
+    margin: 0 !important;
+    height: 100vh !important;
+    width: 100vw !important;
+    overflow: hidden !important;
+  }
+  
+  #content .container-fluid {
+    padding: 0 !important;
+    margin: 0 !important;
+    height: 100% !important;
+    width: 100% !important;
+  }
+  
+  #meet {
+    height: 100vh;
+    width: 100vw;
+    overflow: hidden;
+    position: fixed;
+    top: 0;
+    left: 0;
+    z-index: 9999;
+  }
+</style>
+{% endblock %}
 
-  <!-- Fenêtre de notes (pour l'hôte uniquement) -->
-  {% if is_host %}
-  <div id="notesPanel" class="notes-panel">
-    <div class="notes-header">
-      <span class="notes-title">📝 Notes du RDV</span>
-      <button onclick="toggleNotes()" class="notes-close">×</button>
-    </div>
-    <div class="notes-content">
-      <textarea id="notesTextarea" class="notes-textarea" placeholder="Prenez vos notes pendant l'entretien..."></textarea>
-    </div>
-    <div class="notes-footer">
-      <button onclick="sauvegarderNotes()" class="notes-save">💾 Sauvegarder</button>
-      <span id="notesStatus" class="notes-status"></span>
-    </div>
-  </div>
-  {% endif %}
+{% block content %}
+<div id="meet"></div>
+{% endblock %}
 
-  <script src="https://meet.jit.si/external_api.js"></script>
-  <script>
+{% block scripts %}
+<script>
+  // Désactiver l'overlay de chargement global immédiatement
+  document.addEventListener('DOMContentLoaded', function() {
+    if (typeof hideGlobalLoading === 'function') {
+      hideGlobalLoading();
+    }
+    const overlay = document.getElementById('globalLoadingOverlay');
+    if (overlay) {
+      overlay.style.display = 'none';
+      overlay.classList.remove('show');
+    }
+  });
+  
     // Configuration Jitsi avec rôles
+  const jitsiUrl = "{{ settings.JITSI_URL_ACTIVE }}";
+    const jitsiDomain = "{{ settings.JITSI_DOMAIN_ACTIVE }}";
+  const roomName = "{{ room_name }}";
+  
+  // Fonction pour charger et initialiser Jitsi
+  function initJitsi() {
+    try {
     const options = {
-      roomName: "{{ room_name }}", // Nom de la salle Jitsi
+        roomName: roomName,
       parentNode: document.getElementById("meet"),
       width: "100%",
       height: "100%",
@@ -166,198 +88,269 @@
       },
       configOverwrite: { 
         disableDeepLinking: true,
+          useStunTurn: true,
+          p2p: { enabled: false },
+          enableLayerSuspension: true,
+          enableNoAudioDetection: false,
         {% if is_host %}
-        // Configuration pour l'hôte (conseiller)
         startWithAudioMuted: false,
         startWithVideoMuted: false,
         enableLobby: true,
         enableClosePage: false,
         enableWelcomePage: false,
         enablePrejoinPage: false,
-        // Notifications pour les invités
         enableInsecureRoomNameWarning: false,
         enableNoisyMicDetection: true,
-        // Configuration de la salle d'attente
-        enableLayerSuspension: true,
         channelLastN: -1
         {% else %}
-        // Configuration pour l'invité (candidat)
         startWithAudioMuted: true,
         startWithVideoMuted: true,
         enableLobby: false,
         enableClosePage: true,
         enableWelcomePage: false,
         enablePrejoinPage: false,
-        // Désactiver complètement les options de rôle pour le candidat
         disableModeratorIndicator: true,
         enableLayerSuspension: false,
-        // Forcer le rôle invité
         enableInsecureRoomNameWarning: false,
         enableNoisyMicDetection: false,
-        // Masquer les contrôles d'hôte
         hideDisplayName: false,
-        hideEmailInSettings: true,
-        // Désactiver les fonctionnalités d'hôte
-        enableWelcomePage: false,
-        enablePrejoinPage: false,
-        enableClosePage: true
+          hideEmailInSettings: true
         {% endif %}
       }
     };
-    const api = new JitsiMeetExternalAPI("meet.jit.si", options);
+    
+      if (typeof JitsiMeetExternalAPI === 'undefined') {
+        throw new Error("JitsiMeetExternalAPI n'est pas défini. Le script Jitsi n'a pas été chargé correctement.");
+      }
+      
+      // Extraire host:port de l'URL
+      let apiDomain = jitsiDomain;
+      const urlMatch = jitsiUrl.match(/\/\/([^\/]+)/);
+      if (urlMatch) {
+        apiDomain = urlMatch[1];
+      }
 
-    // Gestion des événements selon le rôle
-    const role = "{{ role }}";
-    const isHost = {{ is_host|lower }};
-    
-    {% if is_host %}
-    // Événements pour l'hôte (conseiller)
-    api.addEventListener("videoConferenceJoined", () => {
-      console.log("Conseiller rejoint la conférence");
+      console.log("🔧 Création de l'API Jitsi avec le domaine:", apiDomain);
       
-      // Auto-sauvegarde des notes toutes les 30 secondes
-      setInterval(sauvegarderNotes, 30000);
-    });
-    
-    // Gestion des participants qui rejoignent
-    api.addEventListener("participantJoined", (participant) => {
-      console.log("Participant rejoint:", participant.displayName);
-      // Optionnel : notification visuelle
-    });
-    
-    // Gestion des demandes d'admission
-    api.addEventListener("lobbyUserJoined", (participant) => {
-      console.log("Utilisateur en attente:", participant.displayName);
-      // Accepter automatiquement ou demander confirmation
-      api.executeCommand("admitEveryone");
-    });
-    
-    {% else %}
-    // Événements pour l'invité (candidat)
-    api.addEventListener("videoConferenceJoined", () => {
-      console.log("Candidat rejoint la conférence");
-      // Micro et caméra désactivés par défaut
-        api.executeCommand("toggleAudio");
-      api.executeCommand("toggleVideo");
+      const api = new JitsiMeetExternalAPI(apiDomain, options);
       
-      // S'assurer que le candidat reste invité
+      // Corriger HTTP/HTTPS pour l'iframe en mode DEBUG uniquement
+      {% if settings.DEBUG %}
+      if (jitsiUrl.startsWith('http://')) {
+        const fixIframeProtocol = () => {
+          const iframe = document.querySelector('#meet iframe');
+          if (iframe && iframe.src.startsWith('https://') && jitsiUrl.startsWith('http://')) {
+            iframe.src = iframe.src.replace('https://', 'http://');
+          }
+        };
+        setTimeout(fixIframeProtocol, 100);
+        setTimeout(fixIframeProtocol, 500);
+        setTimeout(fixIframeProtocol, 1000);
+      }
+      {% endif %}
+      
+      // Ajouter des gestionnaires d'événements immédiats pour déboguer
+      api.addEventListener("readyToClose", () => {
+        console.log("⚠️ Jitsi readyToClose - la conférence va se fermer");
+        if (typeof hideGlobalLoading === 'function') {
+          hideGlobalLoading();
+        }
+      });
+      
+      api.addEventListener("videoConferenceLeft", () => {
+        console.log("⚠️ Jitsi videoConferenceLeft - déconnexion");
+        if (typeof hideGlobalLoading === 'function') {
+          hideGlobalLoading();
+        }
+      });
+      
+      console.log("✅ API Jitsi créée avec succès");
+      return api;
+    } catch (error) {
+      console.error("❌ Erreur lors de l'initialisation de Jitsi:", error);
+      throw error;
+    }
+  }
+  
+  // Charger le script Jitsi avec fallback
+  let scriptUrl = `${jitsiUrl}/external_api.js`;
+  let useProxy = false;
+  // Utiliser le proxy uniquement pour les serveurs locaux (localhost ou IP locale)
+  // Ne pas utiliser le proxy pour les serveurs publics (meet.jit.si, etc.)
+  {% if settings.DEBUG %}
+  const isLocalServer = jitsiUrl.includes('localhost') || 
+                        jitsiUrl.match(/http:\/\/\d+\.\d+\.\d+\.\d+/) ||
+                        jitsiUrl.includes('127.0.0.1');
+  if (isLocalServer) {
+    scriptUrl = `/rendez_vous/jitsi-proxy/external_api.js`;
+    useProxy = true;
+  }
+  {% endif %}
+  
+  const directScriptUrl = `${jitsiUrl}/external_api.js`;
+  
+  function loadJitsiScript(url, isRetry = false) {
+    const script = document.createElement('script');
+    script.src = url;
+    script.async = true;
+    script.onload = function() {
       try {
-        // Désactiver les contrôles d'hôte si jamais ils apparaissent
-        api.executeCommand("toggleLobby");
-      } catch(e) {
-        // Ignorer les erreurs si la commande n'est pas disponible
+        console.log("✅ Script Jitsi chargé, initialisation...");
+        window.jitsiApi = initJitsi();
+        console.log("✅ API Jitsi créée, configuration des événements...");
+        
+        // Désactiver l'overlay immédiatement après le chargement
+        if (typeof hideGlobalLoading === 'function') {
+          hideGlobalLoading();
+        }
+        const overlay = document.getElementById('globalLoadingOverlay');
+        if (overlay) {
+          overlay.style.display = 'none';
+          overlay.classList.remove('show');
+        }
+        
+        // Configurer les événements après un court délai pour s'assurer que l'API est prête
+        setTimeout(() => {
+          setupJitsiEvents();
+        }, 500);
+      } catch (error) {
+        console.error("❌ Erreur lors de l'initialisation Jitsi:", error);
+        if (typeof hideGlobalLoading === 'function') {
+          hideGlobalLoading();
+        }
+        const errorMsg = `
+          <div style="display: flex; align-items: center; justify-content: center; height: 100vh; flex-direction: column; color: white; font-family: Arial; background: #0b0b0b;">
+            <h2 style="color: #ffd300;">⚠️ Erreur de chargement Jitsi</h2>
+            <p style="margin: 20px 0;">${error.message}</p>
+            <button onclick="location.reload()" style="padding: 10px 20px; background: #ffd300; color: #000; border: none; border-radius: 5px; cursor: pointer; margin-top: 20px;">
+              Recharger la page
+            </button>
+          </div>
+        `;
+        document.getElementById("meet").innerHTML = errorMsg;
       }
-    });
-    
-    api.addEventListener("lobbyJoined", () => {
-      console.log("Candidat en salle d'attente");
-    });
-    
-    // Empêcher le candidat de prendre le contrôle
-    api.addEventListener("participantRoleChanged", (participant) => {
-      if (participant.id === api.getMyUserId()) {
-        console.log("Tentative de changement de rôle détectée - maintenir le rôle invité");
-      }
-    });
-    
-    {% endif %}
-
-    // Gestion de la fin de réunion
-    api.addEventListener("videoConferenceLeft", () => {
-      console.log("Quitté la conférence");
-    });
-
-    // Fonction pour terminer le RDV (pour l'hôte uniquement)
-    {% if is_host %}
-    window.terminerRDV = async function() {
-      if (!confirm('Êtes-vous sûr de vouloir terminer ce rendez-vous ?')) {
+    };
+    script.onerror = function() {
+      console.error("❌ Impossible de charger le script Jitsi depuis:", url);
+      
+      // Si on utilisait le proxy et que ce n'est pas un retry, essayer l'URL directe
+      if (useProxy && !isRetry && url.includes('jitsi-proxy')) {
+        console.log("🔄 Le proxy a échoué, tentative de chargement direct depuis Jitsi...");
+        loadJitsiScript(directScriptUrl, true);
         return;
       }
       
-      try {
-        // Sauvegarder les notes si nécessaire
-        await sauvegarderNotes();
-        
-        // Terminer la réunion côté serveur
-        const response = await fetch(`/video-rdv/{{ rdv.id }}/terminer`, {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-          }
-        });
-        
-           if (response.ok) {
-             // Quitter la réunion Jitsi
-             api.executeCommand('hangup');
-             alert('Rendez-vous terminé avec succès !');
-             // Rediriger vers la page liste des RDV
-             window.location.href = '/rendez-vous';
-           } else {
-             throw new Error('Erreur lors de la finalisation');
-           }
-      } catch (error) {
-        console.error('Erreur:', error);
-        alert('Erreur lors de la finalisation du rendez-vous');
-      }
-    };
-
-    // Fonction pour sauvegarder les notes
-    window.sauvegarderNotes = async function() {
-      const notes = document.getElementById('notesTextarea').value;
-      const status = document.getElementById('notesStatus');
-      
-      try {
-        const response = await fetch(`/video-rdv/{{ rdv.id }}/notes`, {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-          },
-          body: JSON.stringify({ notes: notes })
-        });
-        
-        if (response.ok) {
-          status.textContent = '✅ Sauvegardé';
-          status.style.color = '#28a745';
-        } else {
-          throw new Error('Erreur lors de la sauvegarde');
-        }
-      } catch (error) {
-        console.error('Erreur:', error);
-        status.textContent = '❌ Erreur';
-        status.style.color = '#dc3545';
+      // Afficher l'erreur avec des informations utiles
+      if (typeof hideGlobalLoading === 'function') {
+        hideGlobalLoading();
       }
       
-      // Reset du statut après 3 secondes
-      setTimeout(() => {
-        status.textContent = '';
-        status.style.color = '#888';
-      }, 3000);
-    };
-
-    // Fonction pour charger les notes existantes
-    window.chargerNotes = async function() {
-      try {
-        const response = await fetch(`/video-rdv/{{ rdv.id }}/notes`);
-        if (response.ok) {
-          const data = await response.json();
-          document.getElementById('notesTextarea').value = data.notes || '';
-        }
-      } catch (error) {
-        console.error('Erreur lors du chargement des notes:', error);
-      }
-    };
-
-    // Fonction pour basculer l'affichage des notes
-    window.toggleNotes = function() {
-      const panel = document.getElementById('notesPanel');
-      if (panel.style.display === 'none' || panel.style.display === '') {
-        panel.style.display = 'flex';
-        chargerNotes(); // Charger les notes existantes
+      let errorDetails = "";
+      if (useProxy) {
+        errorDetails = `
+          <p style="font-size: 12px; color: #888; margin: 10px 0;">Le proxy a échoué. Tentative directe effectuée.</p>
+          <p style="font-size: 12px; color: #888; margin: 10px 0;">URL proxy: ${url}</p>
+          <p style="font-size: 12px; color: #888; margin: 10px 0;">URL directe: ${directScriptUrl}</p>
+          <p style="font-size: 12px; color: #888; margin: 10px 0;">Vérifiez que le serveur Jitsi est démarré et accessible à: ${jitsiUrl}</p>
+        `;
       } else {
-        panel.style.display = 'none';
+        errorDetails = `
+          <p style="font-size: 12px; color: #888; margin: 10px 0;">URL: ${url}</p>
+          <p style="font-size: 12px; color: #888; margin: 10px 0;">Vérifiez que votre serveur Jitsi est démarré et accessible.</p>
+        `;
       }
+      
+      document.getElementById("meet").innerHTML = `
+        <div style="display: flex; align-items: center; justify-content: center; height: 100vh; flex-direction: column; color: white; font-family: Arial; background: #0b0b0b;">
+          <h2 style="color: #ffd300;">⚠️ Impossible de charger Jitsi</h2>
+          <p style="margin: 20px 0;">Le script Jitsi n'a pas pu être chargé.</p>
+          ${errorDetails}
+          <button onclick="location.reload()" style="padding: 10px 20px; background: #ffd300; color: #000; border: none; border-radius: 5px; cursor: pointer; margin-top: 20px;">
+            Recharger la page
+          </button>
+        </div>
+      `;
     };
+    
+    document.head.appendChild(script);
+  }
+  
+  // Charger le script
+  loadJitsiScript(scriptUrl);
+  
+  // Configuration des événements Jitsi
+  function setupJitsiEvents() {
+    if (!window.jitsiApi) {
+      setTimeout(setupJitsiEvents, 500);
+      return;
+    }
+    
+    const api = window.jitsiApi;
+    
+    // Désactiver l'overlay de chargement une fois que Jitsi est prêt
+    if (typeof hideGlobalLoading === 'function') {
+      hideGlobalLoading();
+    }
+    const overlay = document.getElementById('globalLoadingOverlay');
+    if (overlay) {
+      overlay.style.display = 'none';
+      overlay.classList.remove('show');
+    }
+    
+    // Gestionnaire d'événements de connexion réussie
+    api.addEventListener("videoConferenceJoined", () => {
+      console.log("✅ Connecté à la conférence Jitsi");
+      if (typeof hideGlobalLoading === 'function') {
+        hideGlobalLoading();
+      }
+      {% if not is_host %}
+      // Pour les candidats, activer audio/vidéo automatiquement
+      api.executeCommand("toggleAudio");
+      api.executeCommand("toggleVideo");
+      {% endif %}
+    });
+    
+    // Gestionnaire d'événements de déconnexion
+    api.addEventListener("videoConferenceLeft", () => {
+      console.log("⚠️ Déconnexion de la conférence Jitsi");
+    });
+    
+    // Gestionnaire d'erreurs de connexion
+    api.addEventListener("readyToClose", () => {
+      console.log("⚠️ Jitsi prêt à fermer");
+    });
+    
+    // Gestionnaire d'erreurs
+    api.addEventListener("error", (error) => {
+      console.error("❌ Erreur Jitsi:", error);
+      if (typeof hideGlobalLoading === 'function') {
+        hideGlobalLoading();
+      }
+    });
+    
+    {% if is_host %}
+    // Événements pour l'hôte (conseiller)
+    api.addEventListener("participantJoined", (participant) => {
+      console.log("✅ Participant rejoint:", participant.displayName);
+    });
+    
+    api.addEventListener("lobbyUserJoined", () => {
+      console.log("✅ Utilisateur dans le lobby, admission automatique");
+      api.executeCommand("admitEveryone");
+    });
     {% endif %}
+  }
+  
+  // Désactiver l'overlay au chargement de la page
+  window.addEventListener('load', function() {
+    if (typeof hideGlobalLoading === 'function') {
+      hideGlobalLoading();
+    }
+    const overlay = document.getElementById('globalLoadingOverlay');
+    if (overlay) {
+      overlay.style.display = 'none';
+      overlay.classList.remove('show');
+    }
+  });
   </script>
-</body>
-</html>
+{% endblock %}

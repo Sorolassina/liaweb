@@ -1,22 +1,24 @@
-{% extends "base.html" %}
+{% extends "layouts/base.html" %}
+{% from "components/page_header.html" import page_header %}
 
 {% block title %}Invitations - {{ event.titre }}{% endblock %}
 
 {% block content %}
+{% set programme_param = request.query_params.get('programme') or (schema_name.upper() if schema_name and schema_name != 'public' else '') %}
+
+{{ page_header(
+    title="<i class='fas fa-envelope me-2'></i>Gestion des Invitations",
+    breadcrumbs=[
+        {"label": "Événements", "url": url_for('liste_events') ~ ('?programme=' ~ programme_param if programme_param else '')},
+        {"label": event.titre, "url": url_for('detail_event', event_id=event.id) ~ ('?programme=' ~ programme_param if programme_param else '')},
+        {"label": "Invitations", "url": ""}
+    ]
+) }}
+
 <div class="container-fluid p-4">
-    <div class="row mb-4 sticky-main-header">
+    <div class="row mb-3">
         <div class="col-12">
-            <nav aria-label="breadcrumb">
-                <ol class="breadcrumb">
-                    <li class="breadcrumb-item"><a href="{{ url_for('liste_events') }}">Événements</a></li>
-                    <li class="breadcrumb-item"><a href="{{ url_for('detail_event', event_id=event.id) }}">{{ event.titre }}</a></li>
-                    <li class="breadcrumb-item active">Invitations</li>
-                </ol>
-            </nav>
-            <h2 class="mb-1" style="font-size: 1.4rem;">
-                <i class="fas fa-envelope me-2"></i>Gestion des Invitations
-            </h2>
-            <p class="text-muted small mb-0">Inviter des candidats à l'événement "{{ event.titre }}"</p>
+            <p class="text-muted mb-0">Inviter des candidats à l'événement "{{ event.titre }}"</p>
         </div>
     </div>
 
@@ -24,18 +26,22 @@
         <div class="col-lg-8">
             <!-- Candidats disponibles pour invitation -->
             <div class="card mb-4">
-                <div class="card-header sticky-header">
+                <div class="card-header">
                     <h5 class="mb-0">Candidats Disponibles</h5>
-                    <small class="text-muted">Candidats du programme {{ event.programme.nom }} pouvant être invités</small>
+                    <small class="text-muted">Candidats du programme {{ event.programme.code if event.programme else event.programme_nom }} pouvant être invités</small>
                 </div>
-                <div class="card-body p-0">
+                <div class="card-body">
                     {% if inscriptions %}
-                        <form method="POST" action="{{ url_for('envoyer_invitations_event', event_id=event.id) }}">
+                        <form id="invitations-form" method="POST" action="{{ url_for('envoyer_invitations_event', event_id=event.id) }}{% if programme_param %}?programme={{ programme_param }}{% endif %}" enctype="application/x-www-form-urlencoded">
                             <!-- Champ caché pour le type d'invitation -->
-                            <input type="hidden" name="type_invitation" value="individuelle">
+                            <input type="hidden" name="type_invitation" value="individuelle" id="type_invitation_field">
+                            <!-- Champ caché pour le programme -->
+                            {% if programme_param %}
+                            <input type="hidden" name="programme" value="{{ programme_param }}">
+                            {% endif %}
                             
-                            <!-- En-tête avec sélection - FIXÉ -->
-                            <div class="d-flex justify-content-between align-items-center p-3 sticky-header">
+                            <!-- En-tête avec sélection -->
+                            <div class="d-flex justify-content-between align-items-center mb-3">
                                 <div class="d-flex align-items-center gap-3">
                                     <div class="form-check">
                                         <input type="checkbox" id="selectAll" class="form-check-input">
@@ -55,43 +61,35 @@
                                 <span class="text-muted small" id="selectionCount">0 candidat(s) sélectionné(s)</span>
                             </div>
                             
-                            <!-- Liste des candidats en style carte - AVEC SCROLL -->
-                            <div class="p-3 candidates-scroll-area">
-                                <div class="row g-2">
+                            <!-- Liste des candidats en style carte -->
+                            <div class="row g-3">
                                 {% for inscription in inscriptions %}
                                 <div class="col-md-6 col-lg-6">
-                                    <div class="card candidat-card" style="cursor: pointer;" onclick="toggleCandidat({{ inscription.candidat.id }})">
-                                        <div class="card-body d-flex align-items-center p-2">
+                                    <div class="card h-100 candidat-card" style="cursor: pointer;" onclick="toggleCandidat({{ inscription.id }})">
+                                        <div class="card-body d-flex align-items-center p-3">
                                             <div class="form-check me-3">
                                                 <input type="checkbox" name="candidats_ids" value="{{ inscription.id }}" 
-                                                       class="form-check-input candidat-checkbox" id="candidat_{{ inscription.candidat.id }}">
+                                                       class="form-check-input candidat-checkbox" id="candidat_{{ inscription.id }}">
                                             </div>
                                             
-                                            <div class="avatar me-2" style="background-image:url('{% if inscription.candidat.photo_profil %}/media/{{ inscription.candidat.photo_profil.replace('\\', '/') }}{% else %}/static/images/utilisateur.png{% endif %}'); width: 32px; height: 32px;"></div>
+                                            <div class="avatar me-3" style="background-image:url('{% if inscription.photo_profil %}/media/{{ inscription.photo_profil.replace('\\', '/') }}{% else %}/static/images/utilisateur.png{% endif %}')"></div>
                                             
                                             <div class="flex-grow-1">
-                                                <div class="fw-bold text-dark" style="font-size: 13px; line-height: 1.2;">
-                                                    {{ inscription.candidat.prenom }} {{ inscription.candidat.nom }}
+                                                <div class="fw-bold text-dark" style="font-size: 14px;">
+                                                    {{ format_candidat_name(inscription.nom, inscription.prenom) }}
                                                 </div>
-                                                <div class="small text-muted" style="font-size: 11px; line-height: 1.1;">
-                                                    {{ inscription.candidat.email }}
+                                                <div class="small text-muted" style="font-size: 12px;">
+                                                    {{ format_email(inscription.email) }}
                                                 </div>
-                                                {% if inscription.promotion %}
-                                                <div class="small text-muted" style="font-size: 10px; line-height: 1.1;">
-                                                    <i class="fas fa-graduation-cap me-1"></i>{{ inscription.promotion.libelle }}
-                                                </div>
-                                                {% endif %}
                                             </div>
                                         </div>
                                     </div>
                                 </div>
                                 {% endfor %}
-                                </div>
                             </div>
                             
-                            <!-- Boutons - EN DEHORS DU SCROLL -->
-                            <div class="d-flex justify-content-between p-3 border-top bg-light">
-                                <a href="{{ url_for('detail_event', event_id=event.id) }}" class="btn btn-secondary">
+                            <div class="d-flex justify-content-between mt-3">
+                                <a href="{{ url_for('detail_event', event_id=event.id) }}{% if programme_param %}?programme={{ programme_param }}{% endif %}" class="btn btn-secondary">
                                     <i class="fas fa-arrow-left me-2"></i>Retour
                                 </a>
                                 <button type="submit" class="btn btn-primary" id="sendInvitationsBtn" disabled>
@@ -103,8 +101,8 @@
                         <div class="text-center py-4">
                             <i class="fas fa-users fa-3x text-muted mb-3"></i>
                             <h5 class="text-muted">Aucun candidat disponible</h5>
-                            <p class="text-muted">Aucun candidat du programme {{ event.programme.nom }} n'est disponible pour invitation.</p>
-                            <a href="{{ url_for('detail_event', event_id=event.id) }}" class="btn btn-secondary">
+                            <p class="text-muted">Aucun candidat du programme {{ event.programme.code if event.programme else event.programme_nom }} n'est disponible pour invitation.</p>
+                            <a href="{{ url_for('detail_event', event_id=event.id) }}{% if programme_param %}?programme={{ programme_param }}{% endif %}" class="btn btn-secondary">
                                 <i class="fas fa-arrow-left me-2"></i>Retour
                             </a>
                         </div>
@@ -114,73 +112,77 @@
         </div>
 
         <div class="col-lg-4">
-            <!-- Accordéon pour Informations et Invitations -->
-            <div class="accordion" id="infoAccordion">
-                <!-- Informations de l'événement -->
-                <div class="accordion-item">
-                    <h2 class="accordion-header" id="headingInfo">
-                        <button class="accordion-button" type="button" data-bs-toggle="collapse" data-bs-target="#collapseInfo" aria-expanded="true" aria-controls="collapseInfo">
-                            <i class="fas fa-info-circle me-2"></i>Informations de l'Événement
-                        </button>
-                    </h2>
-                    <div id="collapseInfo" class="accordion-collapse collapse show" aria-labelledby="headingInfo" data-bs-parent="#infoAccordion">
-                        <div class="accordion-body info-scroll-area">
-                            <h6>{{ event.titre }}</h6>
-                            <p class="text-muted small">{{ event.description[:100] }}{% if event.description|length > 100 %}...{% endif %}</p>
-                            
-                            <div class="mb-2">
-                                <strong>Programme:</strong> {{ event.programme.nom }}
-                            </div>
-                            
-                            {% if event.lieu %}
-                            <div class="mb-2">
-                                <strong>Lieu:</strong> {{ event.lieu }}
-                            </div>
-                            {% endif %}
-                            
-                            <div class="mb-2">
-                                <strong>Organisateur:</strong> {{ event.organisateur.nom_complet }}
-                            </div>
-                            
-                            <div class="mb-2">
-                                <strong>Date:</strong> {{ event.date_debut.strftime('%d/%m/%Y') }} au {{ event.date_fin.strftime('%d/%m/%Y') }}
-                            </div>
-                        </div>
+            <!-- Informations de l'événement -->
+            <div class="card mb-3">
+                <div class="card-header">
+                    <h5 class="mb-0">Informations de l'Événement</h5>
+                </div>
+                <div class="card-body">
+                    <h6>{{ event.titre }}</h6>
+                    <p class="text-muted small">{{ event.description[:100] if event.description else '' }}{% if event.description and event.description|length > 100 %}...{% endif %}</p>
+                    
+                    <div class="mb-2">
+                        <strong>Programme:</strong> {{ event.programme.code if event.programme else event.programme_nom }}
+                    </div>
+                    
+                    {% if event.lieu %}
+                    <div class="mb-2">
+                        <strong>Lieu:</strong> {{ event.lieu }}
+                    </div>
+                    {% endif %}
+                    
+                    <div class="mb-2">
+                        <strong>Organisateur:</strong> {{ event.organisateur_nom }}
+                    </div>
+                    
+                    <div class="mb-2">
+                        <strong>Date:</strong> {{ event.date_debut.strftime('%d/%m/%Y') }} au {{ event.date_fin.strftime('%d/%m/%Y') }}
+                    </div>
+                    
+                    <div class="mb-2">
+                        <strong>Statut:</strong> 
+                        <span class="badge bg-{% if event.statut == 'planifie' or event.statut == 'PLANIFIE' %}primary{% elif event.statut == 'en_cours' or event.statut == 'EN_COURS' %}success{% elif event.statut == 'termine' or event.statut == 'TERMINE' %}secondary{% else %}warning{% endif %}">
+                            {{ event.statut|title }}
+                        </span>
                     </div>
                 </div>
-
-                <!-- Invitations déjà envoyées -->
-                {% if invitations %}
-                <div class="accordion-item">
-                    <h2 class="accordion-header" id="headingInvitations">
-                        <button class="accordion-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#collapseInvitations" aria-expanded="false" aria-controls="collapseInvitations">
-                            <i class="fas fa-envelope me-2"></i>Invitations Envoyées ({{ invitations|length }})
-                        </button>
-                    </h2>
-                    <div id="collapseInvitations" class="accordion-collapse collapse" aria-labelledby="headingInvitations" data-bs-parent="#infoAccordion">
-                        <div class="accordion-body invitations-scroll-area">
-                            <div class="list-group list-group-flush">
-                                {% for invitation in invitations %}
-                                <div class="list-group-item d-flex justify-content-between align-items-center">
-                                    <div>
-                                        <strong>{{ invitation.inscription.candidat.nom }} {{ invitation.inscription.candidat.prenom }}</strong>
-                                        <br>
-                                        <small class="text-muted">{{ invitation.inscription.candidat.email }}</small>
-                                    </div>
-                                    <div>
-                                        <span class="badge invitation-status invitation-status-{{ invitation.statut.value.lower() }}">
-                                            <i class="fas fa-{% if invitation.statut == 'EN_ATTENTE' %}clock{% elif invitation.statut == 'ACCEPTEE' %}check-circle{% elif invitation.statut == 'REFUSEE' %}times-circle{% else %}question-circle{% endif %} me-1"></i>
-                                            {{ invitation.statut.value }}
-                                        </span>
-                                    </div>
-                                </div>
-                                {% endfor %}
-                            </div>
-                        </div>
-                    </div>
-                </div>
-                {% endif %}
             </div>
+
+            <!-- Invitations déjà envoyées -->
+            {% if invitations %}
+            <div class="card">
+                <div class="card-header">
+                    <h5 class="mb-0">Invitations Envoyées</h5>
+                    <small class="text-muted">{{ invitations|length }} invitation(s)</small>
+                </div>
+                <div class="card-body">
+                    <div class="list-group list-group-flush">
+                        {% for invitation in invitations %}
+                        <div class="list-group-item d-flex justify-content-between align-items-center">
+                            <div>
+                                {% if invitation.candidat %}
+                                    <strong>{{ invitation.candidat.nom }} {{ invitation.candidat.prenom }}</strong>
+                                    <br>
+                                    <small class="text-muted">{{ invitation.candidat.email }}</small>
+                                {% elif invitation.candidat_nom %}
+                                    <strong>{{ invitation.candidat_nom }} {{ invitation.candidat_prenom }}</strong>
+                                    <br>
+                                    <small class="text-muted">{{ invitation.candidat_email }}</small>
+                                {% else %}
+                                    <strong>Candidat non trouvé</strong>
+                                {% endif %}
+                            </div>
+                            <div>
+                                <span class="badge bg-{% if invitation.statut == 'ENVOYEE' or invitation.statut == 'envoyee' %}info{% elif invitation.statut == 'ACCEPTEE' or invitation.statut == 'acceptee' %}success{% elif invitation.statut == 'REFUSEE' or invitation.statut == 'refusee' %}danger{% else %}secondary{% endif %}">
+                                    {{ invitation.statut }}
+                                </span>
+                            </div>
+                        </div>
+                        {% endfor %}
+                    </div>
+                </div>
+            </div>
+            {% endif %}
         </div>
     </div>
 </div>
@@ -230,7 +232,6 @@ function showAllPromotions() {
     // Cette fonction peut être utilisée pour afficher toutes les promotions si nécessaire
     generatePromotionList();
 }
-
 document.getElementById('selectAll').addEventListener('change', function() {
     const checkboxes = document.querySelectorAll('.candidat-checkbox');
     checkboxes.forEach(checkbox => {
@@ -286,9 +287,11 @@ function updateCardStyles() {
     document.querySelectorAll('.candidat-card').forEach(card => {
         const checkbox = card.querySelector('.candidat-checkbox');
         if (checkbox.checked) {
-            card.classList.add('selected');
+            card.style.borderColor = '#0d6efd';
+            card.style.backgroundColor = '#f8f9ff';
         } else {
-            card.classList.remove('selected');
+            card.style.borderColor = '';
+            card.style.backgroundColor = '';
         }
     });
 }
@@ -325,177 +328,65 @@ function filterByPromotion(promotionCode) {
     updateSelectionCount();
     updateSelectAll();
 }
+
+// Gestion de l'overlay pour l'envoi d'invitations
+document.addEventListener('DOMContentLoaded', function() {
+    const form = document.getElementById('invitations-form');
+    const sendBtn = document.getElementById('sendInvitationsBtn');
+    
+    if (form && sendBtn) {
+        form.addEventListener('submit', function(e) {
+            const checkedBoxes = document.querySelectorAll('.candidat-checkbox:checked');
+            console.log('📋 Checkboxes cochées:', checkedBoxes.length);
+            
+            if (checkedBoxes.length === 0) {
+                e.preventDefault();
+                alert('Veuillez sélectionner au moins un candidat.');
+                return false;
+            }
+            
+            // Vérifier que les checkboxes sont bien dans le formulaire
+            const formData = new FormData(form);
+            console.log('📋 FormData keys:', Array.from(formData.keys()));
+            console.log('📋 FormData candidats_ids:', formData.getAll('candidats_ids'));
+            console.log('📋 FormData type_invitation:', formData.get('type_invitation'));
+            console.log('📋 FormData programme:', formData.get('programme'));
+            
+            // Vérifier que les checkboxes cochées sont bien dans le FormData
+            checkedBoxes.forEach(function(checkbox) {
+                console.log('📋 Checkbox:', checkbox.id, 'value:', checkbox.value, 'checked:', checkbox.checked);
+                if (!formData.has('candidats_ids', checkbox.value)) {
+                    console.warn('⚠️ Checkbox', checkbox.id, 'non trouvée dans FormData');
+                }
+            });
+            
+            // Afficher l'overlay global
+            if (typeof showGlobalLoading === 'function') {
+                showGlobalLoading(
+                    'Envoi des invitations',
+                    `Envoi de ${checkedBoxes.length} invitation(s), veuillez patienter...`
+                );
+            }
+            
+            // Désactiver le bouton et afficher un spinner
+            sendBtn.disabled = true;
+            const originalHtml = sendBtn.innerHTML;
+            sendBtn.innerHTML = `<i class="fas fa-spinner fa-spin me-2"></i>Envoi en cours...`;
+            
+            // Timeout de sécurité
+            setTimeout(function() {
+                if (typeof hideGlobalLoading === 'function') {
+                    hideGlobalLoading();
+                }
+                sendBtn.disabled = false;
+                sendBtn.innerHTML = originalHtml;
+            }, 30000); // 30 secondes pour l'envoi d'emails
+            
+            // IMPORTANT: Ne pas empêcher la soumission - laisser le formulaire se soumettre normalement
+            // Le formulaire doit se soumettre avec les données
+            return true;
+        });
+    }
+});
 </script>
-
-<style>
-/* Styles pour les cartes de candidats compactes */
-.candidat-card {
-    transition: all 0.2s ease;
-    border: 1px solid #dee2e6;
-}
-
-.candidat-card:hover {
-    border-color: #0d6efd;
-    box-shadow: 0 2px 4px rgba(0,0,0,0.1);
-}
-
-.candidat-card.selected {
-    border-color: #0d6efd;
-    background-color: #f8f9ff;
-}
-
-/* En-tête principal fixe */
-.sticky-main-header {
-    position: sticky;
-    top: 0;
-    z-index: 15;
-    background-color: white;
-    border-bottom: 1px solid #dee2e6;
-    margin-bottom: 0.5rem !important;
-    padding-bottom: 0.5rem;
-}
-
-.sticky-main-header .breadcrumb {
-    margin-bottom: 0.25rem;
-    font-size: 0.85rem;
-}
-
-.sticky-main-header h2 {
-    line-height: 1.2;
-}
-
-.sticky-main-header p {
-    line-height: 1.1;
-}
-
-/* En-tête fixe */
-.sticky-header {
-    position: sticky;
-    top: 0;
-    z-index: 10;
-    background-color: #f8f9fa;
-    border-bottom: 1px solid #dee2e6;
-}
-
-/* Zone de scroll avec hauteur fixe */
-.candidates-scroll-area {
-    max-height: 60vh;
-    overflow-y: auto;
-    scrollbar-width: thin;
-}
-
-.candidates-scroll-area::-webkit-scrollbar {
-    width: 6px;
-}
-
-.candidates-scroll-area::-webkit-scrollbar-track {
-    background: #f1f1f1;
-}
-
-.candidates-scroll-area::-webkit-scrollbar-thumb {
-    background: #c1c1c1;
-    border-radius: 3px;
-}
-
-.candidates-scroll-area::-webkit-scrollbar-thumb:hover {
-    background: #a8a8a8;
-}
-
-/* Zones de scroll pour l'accordéon */
-.info-scroll-area {
-    max-height: 40vh;
-    overflow-y: auto;
-    scrollbar-width: thin;
-}
-
-.info-scroll-area::-webkit-scrollbar {
-    width: 6px;
-}
-
-.info-scroll-area::-webkit-scrollbar-track {
-    background: #f1f1f1;
-}
-
-.info-scroll-area::-webkit-scrollbar-thumb {
-    background: #c1c1c1;
-    border-radius: 3px;
-}
-
-.info-scroll-area::-webkit-scrollbar-thumb:hover {
-    background: #a8a8a8;
-}
-
-.invitations-scroll-area {
-    max-height: 50vh;
-    overflow-y: auto;
-    scrollbar-width: thin;
-}
-
-.invitations-scroll-area::-webkit-scrollbar {
-    width: 6px;
-}
-
-.invitations-scroll-area::-webkit-scrollbar-track {
-    background: #f1f1f1;
-}
-
-.invitations-scroll-area::-webkit-scrollbar-thumb {
-    background: #c1c1c1;
-    border-radius: 3px;
-}
-
-.invitations-scroll-area::-webkit-scrollbar-thumb:hover {
-    background: #a8a8a8;
-}
-
-/* Accordéon personnalisé */
-.accordion-button {
-    font-size: 0.9rem;
-    padding: 0.75rem 1rem;
-}
-
-.accordion-button:not(.collapsed) {
-    background-color: #f8f9fa;
-    border-color: #dee2e6;
-}
-
-.accordion-body {
-    padding: 1rem;
-}
-
-/* Styles pour les statuts d'invitation */
-.invitation-status {
-    font-size: 0.55rem;
-    font-weight: 500;
-    padding: 0.2rem 0.35rem;
-    border-radius: 0.2rem;
-    text-transform: uppercase;
-    letter-spacing: 0.2px;
-    line-height: 1;
-}
-
-.invitation-status-en_attente {
-    background-color: #ffd300 !important;
-    color: #000000 !important;
-    border: 1px solid #e6c200;
-}
-
-.invitation-status-acceptee {
-    background-color: #1cc88a !important;
-    color: #ffffff !important;
-    border: 1px solid #17a673;
-}
-
-.invitation-status-refusee {
-    background-color: #e74a3b !important;
-    color: #ffffff !important;
-    border: 1px solid #d63031;
-}
-
-/* Animation au survol */
-.invitation-status:hover {
-    transform: scale(1.05);
-    transition: transform 0.2s ease;
-}
-</style>
 {% endblock %}

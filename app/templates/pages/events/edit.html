@@ -1,130 +1,431 @@
-{% extends "base.html" %}
+{% extends "layouts/base.html" %}
+{% from "components/page_header.html" import page_header %}
 
 {% block title %}Modifier l'Événement{% endblock %}
 
 {% block content %}
-<!--<div class="container-fluid p-4">-->
-    <!-- En-tête -->
-    <div class="row mb-0">
-        <div class="col-12">
-            <nav aria-label="breadcrumb">
-                <ol class="breadcrumb">
-                    <li class="breadcrumb-item"><a href="{{ url_for('liste_events') }}">Événements</a></li>
-                    <li class="breadcrumb-item"><a href="{{ url_for('detail_event', event_id=event.id) }}">{{ event.titre }}</a></li>
-                    <li class="breadcrumb-item active">Modifier</li>
-                </ol>
-            </nav>
-            <h4 class="mb-0">Modifier l'Événement</h4>
-        </div>
-    </div>
+{% set programme_param = request.query_params.get('programme') or (schema_name.upper() if schema_name and schema_name != 'public' else '') %}
 
-    <!-- Formulaire -->
-    <div class="row justify-content-center" >
-        <div class="col-lg-10 col-xl-8" style=" width: 100%;">
-            <div class="card" >
-                <div class="card-body p-3" >
-                    <form action="{{ url_for('update_event', event_id=event.id) }}" method="post">
+{{ page_header(
+    title="<i class='fas fa-edit me-2'></i>Modifier l'Événement",
+    breadcrumbs=[
+        {"label": "Événements", "url": url_for('liste_events') ~ ('?programme=' ~ programme_param if programme_param else '')},
+        {"label": "Modifier l'Événement", "url": ""}
+    ]
+) }}
+
+<div class="container-fluid p-4 page-content-wrapper">
+
+    <div class="row">
+        <div class="col-lg-12">
+            <div class="card modal-style-card">
+                <div class="card-header modal-style-header">
+                    <h5 class="mb-0 modal-style-title">
+                        <i class="fas fa-calendar-alt me-2"></i>Informations Générales
+                    </h5>
+                </div>
+                <div class="card-body modal-style-body">
+                    <form id="event-form" method="POST" action="{{ url_for('update_event', event_id=event.id) }}{% if programme_param %}?programme={{ programme_param }}{% endif %}">
                         <div class="row">
-                            <!-- Colonne gauche -->
                             <div class="col-md-6">
-                                <!-- Titre -->
-                                <div class="mb-2">
-                                    <label for="titre" class="form-label">Titre de l'événement *</label>
-                                    <input type="text" class="form-control" id="titre" name="titre" value="{{ event.titre }}" required>
+                                <div class="mb-3">
+                                    <label for="titre" class="form-label">Titre de l'Événement *</label>
+                                    <input type="text" class="form-control form-control-sm" id="titre" name="titre" value="{{ event.titre }}" required>
                                 </div>
-
-                                <!-- Programme -->
-                                <div class="mb-2">
+                            </div>
+                            <div class="col-md-6">
+                                <div class="mb-3">
                                     <label for="programme_id" class="form-label">Programme *</label>
-                                    <select class="form-select" id="programme_id" name="programme_id" required>
-                                        <option value="">Sélectionnez un programme</option>
-                                        {% for programme in programmes %}
-                                        <option value="{{ programme.id }}" {% if programme.id == event.programme_id %}selected{% endif %}>{{ programme.nom }}</option>
-                                        {% endfor %}
-                                    </select>
-                                </div>
-
-                                <!-- Dates -->
-                                <div class="mb-2">
-                                    <label for="date_debut" class="form-label">Date de début *</label>
-                                    <input type="date" class="form-control" id="date_debut" name="date_debut" value="{{ event.date_debut.strftime('%Y-%m-%d') }}" required>
-                                </div>
-                                <div class="mb-2">
-                                    <label for="date_fin" class="form-label">Date de fin *</label>
-                                    <input type="date" class="form-control" id="date_fin" name="date_fin" value="{{ event.date_fin.strftime('%Y-%m-%d') }}" required>
-                                </div>
-
-                                <!-- Lieu -->
-                                <div class="mb-2">
-                                    <label for="lieu" class="form-label">Lieu</label>
-                                    <input type="text" class="form-control" id="lieu" name="lieu" value="{{ event.lieu or '' }}" placeholder="Salle, adresse...">
+                                    {% if selected_programme %}
+                                        {# Champ caché pour envoyer la valeur (car disabled n'envoie pas la valeur) #}
+                                        <input type="hidden" name="programme_id" value="{{ selected_programme.id }}">
+                                        <input type="text" class="form-control form-control-sm" id="programme_id_display" 
+                                               value="{{ selected_programme.code }} - {{ selected_programme.nom }}" 
+                                               disabled readonly
+                                               aria-label="Programme (déterminé automatiquement)"
+                                               style="background-color: #e9ecef; cursor: not-allowed;">
+                                        <small class="form-text text-muted">Le programme est déterminé automatiquement selon le contexte</small>
+                                    {% else %}
+                                        {# Fallback si aucun programme n'est trouvé #}
+                                        <select class="form-select form-select-sm" id="programme_id" name="programme_id" required>
+                                            <option value="">Sélectionner un programme</option>
+                                            {% for programme in programmes %}
+                                                <option value="{{ programme.id }}" {% if event.programme_id == programme.id %}selected{% endif %}>{{ programme.code }} - {{ programme.nom }}</option>
+                                            {% endfor %}
+                                        </select>
+                                    {% endif %}
                                 </div>
                             </div>
+                        </div>
 
-                            <!-- Colonne droite -->
+                        <div class="mb-3">
+                            <label for="description" class="form-label">Description</label>
+                            <textarea class="form-control form-control-sm" id="description" name="description" rows="3" 
+                                      placeholder="Décrivez le contenu et les objectifs de l'événement...">{{ event.description or '' }}</textarea>
+                        </div>
+
+                        <div class="row">
                             <div class="col-md-6">
-                                <!-- Description -->
-                                <div class="mb-2">
-                                    <label for="description" class="form-label">Description</label>
-                                    <textarea class="form-control" id="description" name="description" rows="3" placeholder="Décrivez l'événement...">{{ event.description or '' }}</textarea>
+                                <div class="mb-3">
+                                    <label for="date_debut" class="form-label">Date de Début *</label>
+                                    <input type="date" class="form-control form-control-sm" id="date_debut" name="date_debut" value="{{ event.date_debut.strftime('%Y-%m-%d') }}" required>
                                 </div>
-
-                                <!-- Heures -->
-                                <div class="mb-2">
-                                    <label for="heure_debut" class="form-label">Heure de début</label>
-                                    <input type="time" class="form-control" id="heure_debut" name="heure_debut" 
-                                           value="{% if event.heure_debut %}{{ event.heure_debut.strftime('%H:%M') }}{% endif %}">
-                                </div>
-                                <div class="mb-2">
-                                    <label for="heure_fin" class="form-label">Heure de fin</label>
-                                    <input type="time" class="form-control" id="heure_fin" name="heure_fin" 
-                                           value="{% if event.heure_fin %}{{ event.heure_fin.strftime('%H:%M') }}{% endif %}">
-                                </div>
-
-                                <!-- Statut -->
-                                <div class="mb-2">
-                                    <label for="statut" class="form-label">Statut</label>
-                                    <select class="form-select" id="statut" name="statut">
-                                        <option value="planifie" {% if event.statut == 'planifie' %}selected{% endif %}>Planifié</option>
-                                        <option value="en_cours" {% if event.statut == 'en_cours' %}selected{% endif %}>En cours</option>
-                                        <option value="termine" {% if event.statut == 'termine' %}selected{% endif %}>Terminé</option>
-                                        <option value="annule" {% if event.statut == 'annule' %}selected{% endif %}>Annulé</option>
-                                    </select>
+                            </div>
+                            <div class="col-md-6">
+                                <div class="mb-3">
+                                    <label for="date_fin" class="form-label">Date de Fin *</label>
+                                    <input type="date" class="form-control form-control-sm" id="date_fin" name="date_fin" value="{{ event.date_fin.strftime('%Y-%m-%d') }}" required>
                                 </div>
                             </div>
                         </div>
 
-                        <!-- Boutons -->
-                        <div class="d-flex justify-content-between mt-3 pt-2 border-top">
-                            <a href="{{ url_for('detail_event', event_id=event.id) }}" class="btn btn-outline-secondary">
-                                <i class="fas fa-arrow-left me-2"></i>Annuler
-                            </a>
-                            <button type="submit" class="btn btn-primary">
-                                <i class="fas fa-save me-2"></i>Enregistrer les Modifications
-                            </button>
+                        <div class="row">
+                            <div class="col-md-6">
+                                <div class="mb-3">
+                                    <label for="heure_debut" class="form-label">Heure de Début</label>
+                                    <input type="time" class="form-control form-control-sm" id="heure_debut" name="heure_debut" 
+                                           value="{% if event.heure_debut %}{{ event.heure_debut.strftime('%H:%M') }}{% endif %}"
+                                           placeholder="HH:MM">
+                                </div>
+                            </div>
+                            <div class="col-md-6">
+                                <div class="mb-3">
+                                    <label for="heure_fin" class="form-label">Heure de Fin</label>
+                                    <input type="time" class="form-control form-control-sm" id="heure_fin" name="heure_fin" 
+                                           value="{% if event.heure_fin %}{{ event.heure_fin.strftime('%H:%M') }}{% endif %}"
+                                           placeholder="HH:MM">
+                                </div>
+                            </div>
                         </div>
+
+                        <div class="mb-3">
+                            <label for="lieu" class="form-label">Lieu</label>
+                            <input type="text" class="form-control form-control-sm" id="lieu" name="lieu" 
+                                   value="{{ event.lieu or '' }}"
+                                   placeholder="Ex: Salle de conférence, Centre de formation...">
+                        </div>
+
+                        <div class="mb-3">
+                            <label for="statut" class="form-label">Statut</label>
+                            <select class="form-select form-select-sm" id="statut" name="statut">
+                                <option value="planifie" {% if event.statut == 'planifie' %}selected{% endif %}>Planifié</option>
+                                <option value="en_cours" {% if event.statut == 'en_cours' %}selected{% endif %}>En cours</option>
+                                <option value="termine" {% if event.statut == 'termine' %}selected{% endif %}>Terminé</option>
+                                <option value="annule" {% if event.statut == 'annule' %}selected{% endif %}>Annulé</option>
+                            </select>
+                        </div>
+
                     </form>
+                </div>
+                <div class="card-footer modal-style-footer">
+                    <div class="d-flex justify-content-between w-100">
+                        <a href="{{ url_for('liste_events') }}{% if programme_param %}?programme={{ programme_param }}{% endif %}" class="btn btn-secondary">
+                            <i class="fas fa-arrow-left me-2"></i>Annuler
+                        </a>
+                        <button type="submit" form="event-form" id="submit-event-btn" class="btn btn-primary">
+                            <i class="fas fa-save me-2"></i>Modifier l'Événement
+                        </button>
+                    </div>
                 </div>
             </div>
         </div>
     </div>
-<!--</div>-->
+</div>
 
 <script>
-// Validation des dates
-document.getElementById('date_debut').addEventListener('change', function() {
-    const dateFin = document.getElementById('date_fin');
-    if (dateFin.value && this.value > dateFin.value) {
-        dateFin.value = this.value;
-    }
-});
-
-document.getElementById('date_fin').addEventListener('change', function() {
+document.addEventListener('DOMContentLoaded', function() {
     const dateDebut = document.getElementById('date_debut');
-    if (dateDebut.value && this.value < dateDebut.value) {
-        alert('La date de fin ne peut pas être antérieure à la date de début');
-        this.value = dateDebut.value;
+    const dateFin = document.getElementById('date_fin');
+    
+    // Mettre à jour la date de fin minimale quand la date de début change
+    if (dateDebut && dateFin) {
+        dateDebut.addEventListener('change', function() {
+            dateFin.min = this.value;
+            if (dateFin.value && dateFin.value < this.value) {
+                dateFin.value = this.value;
+            }
+        });
     }
+    
+    // Validation côté client et gestion de l'overlay
+    const form = document.getElementById('event-form');
+    const submitBtn = document.getElementById('submit-event-btn');
+    
+    if (form && submitBtn) {
+        form.addEventListener('submit', function(e) {
+            const titre = document.getElementById('titre').value.trim();
+            const programme = document.getElementById('programme_id') ? document.getElementById('programme_id').value : 
+                            (document.querySelector('input[name="programme_id"]') ? document.querySelector('input[name="programme_id"]').value : '');
+            const dateDebut = document.getElementById('date_debut').value;
+            const dateFin = document.getElementById('date_fin').value;
+            
+            if (!titre || !programme || !dateDebut || !dateFin) {
+                e.preventDefault();
+                alert('Veuillez remplir tous les champs obligatoires.');
+                return;
+            }
+            
+            if (dateFin < dateDebut) {
+                e.preventDefault();
+                alert('La date de fin doit être postérieure à la date de début.');
+                return;
+            }
+            
+            // Afficher l'overlay global
+            if (typeof showGlobalLoading === 'function') {
+                showGlobalLoading(
+                    'Modification de l\'événement',
+                    'Traitement en cours, veuillez patienter...'
+                );
+            }
+            
+            // Désactiver le bouton et afficher un spinner
+            submitBtn.disabled = true;
+            const originalHtml = submitBtn.innerHTML;
+            submitBtn.innerHTML = '<i class="fas fa-spinner fa-spin me-2"></i>Traitement...';
+            
+            // Timeout de sécurité pour masquer l'overlay après 10 secondes
+            setTimeout(function() {
+                if (typeof hideGlobalLoading === 'function') {
+                    hideGlobalLoading();
+                }
+                submitBtn.disabled = false;
+                submitBtn.innerHTML = originalHtml;
+            }, 10000);
+        });
+    }
+    
+    // Ajouter l'overlay global aux liens de navigation
+    const navLinks = document.querySelectorAll('a[href*="/events/"]');
+    navLinks.forEach(function(link) {
+        const href = link.getAttribute('href');
+        // Ignorer les liens externes
+        if (href && !href.startsWith('http') && !href.startsWith('#')) {
+            link.addEventListener('click', function(e) {
+                // Ne pas intercepter si Ctrl/Cmd est pressé (nouvel onglet)
+                if (e.ctrlKey || e.metaKey) return;
+                
+                // Afficher l'overlay global
+                if (typeof showGlobalLoading === 'function') {
+                    showGlobalLoading('Chargement', 'Veuillez patienter...');
+                }
+            });
+        }
+    });
 });
 </script>
+
+<style>
+/* Limiter la hauteur de la page pour éviter le scroll */
+.page-content-wrapper {
+    height: calc(100vh - 120px);
+    max-height: calc(100vh - 120px);
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+}
+
+.page-content-wrapper .row:first-child {
+    flex-shrink: 0;
+}
+
+.page-content-wrapper .row:last-child {
+    flex: 1;
+    min-height: 0;
+    overflow: hidden;
+    display: flex;
+    height: 100%;
+}
+
+.page-content-wrapper .row:last-child .col-lg-12 {
+    display: flex;
+    flex-direction: column;
+    min-height: 0;
+    max-height: 100%;
+    height: 95%;
+    margin: 1rem 0;
+    padding: 0 1rem;
+    overflow: hidden;
+}
+
+/* Style modal pour la card */
+.modal-style-card {
+    box-shadow: 0 10px 40px rgba(0, 0, 0, 0.2);
+    border-radius: 5px;
+    border: none;
+    display: flex;
+    flex-direction: column;
+    max-width: 1000px;
+    margin: 0 auto;
+    width: 100%;
+    height: 100%;
+    min-height: 0;
+}
+
+.modal-style-card > .card-header {
+    flex: 0 0 auto;
+}
+
+.modal-style-card > .card-body {
+    flex: 1 1 auto;
+    min-height: 0;
+}
+
+.modal-style-card > .card-footer {
+    flex: 0 0 auto;
+}
+
+.modal-style-header {
+    padding: 1.5rem;
+    border: 2px solid var(--primary-color);
+    background: var(--secondary-color);
+    flex-shrink: 0;
+    z-index: 10;
+    border-radius: 5px 5px 0 0;
+    border-bottom: 2px solid var(--primary-color);
+}
+
+.modal-style-title {
+    margin: 0;
+    color: var(--white-color);
+    font-size: 1.3rem;
+    font-weight: 700;
+}
+
+.modal-style-body {
+    padding: 1.5rem;
+    margin: 0;
+    flex: 1;
+    overflow-y: auto;
+    overflow-x: hidden;
+    min-height: 0;
+    border-left: 1px solid var(--primary-color);
+    border-right: 1px solid var(--primary-color);
+}
+
+.modal-style-footer {
+    padding: 1rem 1.5rem;
+    border: 2px solid var(--primary-color);
+    background: var(--gray-50);
+    display: flex !important;
+    gap: 1rem;
+    justify-content: flex-end;
+    flex-shrink: 0;
+    flex-grow: 0;
+    z-index: 10;
+    border-radius: 0 0 5px 5px;
+    border-top: 2px solid var(--primary-color);
+    visibility: visible !important;
+    opacity: 1 !important;
+    height: auto !important;
+    min-height: 60px;
+}
+
+/* Scroll personnalisé dans le body */
+.modal-style-body::-webkit-scrollbar {
+    width: 8px;
+}
+
+.modal-style-body::-webkit-scrollbar-track {
+    background: var(--gray-100);
+    border-radius: 4px;
+}
+
+.modal-style-body::-webkit-scrollbar-thumb {
+    background: var(--gray-400);
+    border-radius: 4px;
+}
+
+.modal-style-body::-webkit-scrollbar-thumb:hover {
+    background: var(--gray-500);
+}
+
+/* Styles des formulaires */
+.form-label {
+    font-weight: 600;
+    color: #495057;
+    font-size: 0.875rem;
+    margin-bottom: 0.4rem;
+}
+
+.form-control-sm, .form-select-sm {
+    height: 32px;
+    padding: 0.375rem 0.5rem;
+    font-size: 0.875rem;
+    line-height: 1.4;
+    border: 1px solid var(--gray-300);
+    border-radius: 4px;
+}
+
+.form-control-sm:focus, .form-select-sm:focus {
+    border-color: var(--primary-color);
+    box-shadow: 0 0 0 0.2rem rgba(var(--primary-color-rgb), 0.25);
+}
+
+.form-control-sm[type="date"] {
+    padding: 0.375rem 0.5rem;
+}
+
+.form-control-sm[type="time"] {
+    padding: 0.375rem 0.5rem;
+}
+
+.form-control-sm[type="number"] {
+    padding: 0.375rem 0.5rem;
+}
+
+textarea.form-control-sm {
+    height: auto;
+    padding: 0.375rem 0.5rem;
+    line-height: 1.4;
+    min-height: 80px;
+}
+
+.form-check-label {
+    font-size: 0.875rem;
+    color: #495057;
+}
+
+.breadcrumb {
+    background-color: transparent;
+    padding: 0;
+}
+
+.breadcrumb-item + .breadcrumb-item::before {
+    content: ">";
+}
+
+.mb-3 {
+    margin-bottom: 0.75rem !important;
+}
+
+/* Responsive */
+@media (max-width: 768px) {
+    .page-content-wrapper {
+        height: calc(100vh - 150px);
+        max-height: calc(100vh - 150px);
+    }
+    
+    .modal-style-header {
+        padding: 1rem;
+    }
+    
+    .modal-style-title {
+        font-size: 1.1rem;
+    }
+    
+    .modal-style-body {
+        padding: 1rem;
+    }
+    
+    .modal-style-footer {
+        padding: 1rem;
+        flex-direction: column-reverse;
+    }
+    
+    .modal-style-footer .btn {
+        width: 100%;
+    }
+}
+</style>
 {% endblock %}

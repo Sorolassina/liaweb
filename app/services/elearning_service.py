@@ -1,5 +1,5 @@
 # app/services/elearning_service.py
-from sqlmodel import Session, select, and_, or_, func
+from sqlmodel import Session, select, and_, or_, func, text
 from typing import List, Optional, Dict, Any
 from datetime import datetime, timezone
 import json
@@ -11,7 +11,7 @@ from ..models.elearning import (
     ObjectifElearning, QuizElearning, ReponseQuiz, CertificatElearning,
     ModuleRessource
 )
-from ..models.base import Inscription, User, Programme
+from ..models.base import User, Programme, Candidat
 from ..schemas.elearning import (
     RessourceElearningCreate, RessourceElearningUpdate,
     ModuleElearningCreate, ModuleElearningUpdate,
@@ -27,179 +27,359 @@ class ElearningService:
     # === GESTION DES RESSOURCES ===
     
     @staticmethod
-    def create_ressource(session: Session, ressource_data: RessourceElearningCreate, createur_id: int) -> RessourceElearning:
-        """Créer une nouvelle ressource e-learning"""
-        ressource = RessourceElearning(
-            **ressource_data.dict(),
-            cree_par_id=createur_id
-        )
-        session.add(ressource)
-        session.commit()
-        session.refresh(ressource)
-        return ressource
+    def create_ressource(session: Session, ressource_data: RessourceElearningCreate, createur_id: int, schema_name: str = 'acd') -> RessourceElearning:
+        """Créer une nouvelle ressource e-learning - SQL direct"""
+        try:
+            # S'assurer que schema_name est valide
+            if not schema_name or schema_name == 'public':
+                schema_name = 'acd'
+                logging.warning(f"⚠️ [create_ressource] Schéma invalide, utilisation de 'acd' par défaut")
+            
+            # Note: Le search_path est déjà configuré dans le router, et on utilise {schema_name}.table_name explicitement
+            ressource_dict = ressource_data.dict()
+            
+            # Construire la liste des colonnes et valeurs
+            columns = ['titre', 'type_ressource', 'cree_par_id', 'cree_le']
+            params = {
+                'titre': ressource_dict.get('titre'),
+                'type_ressource': ressource_dict.get('type_ressource'),
+                'cree_par_id': createur_id
+            }
+            
+            # Ajouter les champs optionnels
+            optional_fields = [
+                'description', 'url_contenu_video', 'url_contenu_document', 'url_contenu_audio', 'url_contenu_lien',
+                'fichier_video_path', 'fichier_video_nom_original', 'fichier_document_path', 'fichier_document_nom_original',
+                'fichier_audio_path', 'fichier_audio_nom_original', 'url_contenu', 'fichier_path', 'nom_fichier_original',
+                'duree_minutes', 'difficulte', 'tags', 'ordre', 'actif'
+            ]
+            
+            for field in optional_fields:
+                if field in ressource_dict and ressource_dict[field] is not None:
+                    columns.append(field)
+                    params[field] = ressource_dict[field]
+            
+            # Construire les placeholders pour les valeurs (sauf cree_le qui utilise CURRENT_TIMESTAMP)
+            # Utiliser :name pour les paramètres nommés SQLAlchemy
+            values_list = []
+            for col in columns:
+                if col == 'cree_le':
+                    values_list.append('CURRENT_TIMESTAMP')
+                else:
+                    values_list.append(f':{col}')
+            
+            # Construire la requête SQL avec le schéma explicitement dans le nom de la table
+            insert_query_str = f"""
+                INSERT INTO {schema_name}.ressource_elearning
+                ({', '.join(columns)})
+                VALUES ({', '.join(values_list)})
+                RETURNING *
+            """
+            
+            insert_query = text(insert_query_str)
+            
+            logging.info(f"🔍 [create_ressource] Schéma: {schema_name}, Colonnes: {columns}, Params: {list(params.keys())}")
+            logging.info(f"🔍 [create_ressource] Requête SQL: {insert_query_str}")
+            
+            # Utiliser bindparams() avec les paramètres (syntaxe :name pour SQLAlchemy)
+            ressource_result = session.exec(insert_query.bindparams(**params)).first()
+            
+            if not ressource_result:
+                logging.error(f"❌ [create_ressource] Aucun résultat retourné par l'INSERT")
+                session.rollback()
+                raise Exception("L'insertion de la ressource n'a retourné aucun résultat")
+            
+            session.commit()
+            logging.info(f"✅ [create_ressource] Ressource créée et commitée avec succès")
+            
+            if hasattr(ressource_result, '_mapping'):
+                ressource_obj = type('RessourceElearning', (), dict(ressource_result._mapping))()
+            else:
+                ressource_obj = type('RessourceElearning', (), dict(ressource_result))()
+            
+            # Vérifier que l'ID existe
+            if not hasattr(ressource_obj, 'id') or ressource_obj.id is None:
+                logging.error(f"❌ [create_ressource] La ressource créée n'a pas d'ID")
+                raise Exception("La ressource créée n'a pas d'ID")
+            
+            logging.info(f"✅ [create_ressource] Ressource créée avec ID: {ressource_obj.id}")
+            return ressource_obj
+            
+        except Exception as e:
+            logging.error(f"❌ [create_ressource] Erreur lors de la création: {str(e)}", exc_info=True)
+            session.rollback()
+            raise
     
     @staticmethod
-    def get_ressources(session: Session, programme_id: Optional[int] = None, actif_only: bool = True) -> List[RessourceElearning]:
-        """Récupérer les ressources e-learning"""
-        
+    def get_ressources(session: Session, programme_id: Optional[int] = None, actif_only: bool = True, schema_name: str = 'acd') -> List[RessourceElearning]:
+        """Récupérer les ressources e-learning - SQL direct"""
         # Vérifier l'existence de la table ressource_elearning
-        if not table_exists_anywhere("ressource_elearning", session):
-            print(f"⚠️ [WARNING] Table 'ressource_elearning' manquante")
+        if not table_exists_anywhere("ressource_elearning", session, schema_name):
+            logging.warning(f"Table 'ressource_elearning' manquante dans le schéma {schema_name}")
             return []
         
-        try:
-            query = select(RessourceElearning)
-        except Exception as e:
-            print(f"⚠️ [WARNING] Erreur lors de la construction de la requête ressources e-learning: {e}")
-            return []
+        # Construire la requête SQL
+        where_clauses = []
+        params = {}
         
         if actif_only:
-            query = query.where(RessourceElearning.actif == True)
+            where_clauses.append("actif = true")
         
         if programme_id:
             # Filtrer par programme via les modules
-            query = query.join(ModuleRessource).join(ModuleElearning).where(
-                ModuleElearning.programme_id == programme_id
-            )
+            where_clauses.append(f"""
+                id IN (
+                    SELECT mr.ressource_id
+                    FROM {schema_name}.module_ressource mr
+                    INNER JOIN {schema_name}.module_elearning m ON mr.module_id = m.id
+                    WHERE m.programme_id = :programme_id
+                )
+            """)
+            params['programme_id'] = programme_id
         
-        query = query.order_by(RessourceElearning.ordre, RessourceElearning.titre)
+        where_sql = " AND ".join(where_clauses) if where_clauses else "1=1"
+        
+        query = text(f"""
+            SELECT * FROM {schema_name}.ressource_elearning
+            WHERE {where_sql}
+            ORDER BY ordre, titre
+        """)
         
         try:
-            return session.exec(query).all()
+            results = session.exec(query.bindparams(**params) if params else query).all()
+            ressources = []
+            for row in results:
+                if hasattr(row, '_mapping'):
+                    ressource = type('RessourceElearning', (), dict(row._mapping))()
+                else:
+                    ressource = type('RessourceElearning', (), dict(row))()
+                ressources.append(ressource)
+            return ressources
         except Exception as e:
-            print(f"⚠️ [WARNING] Erreur lors de l'exécution de la requête ressources e-learning: {e}")
+            logging.warning(f"Erreur lors de la récupération des ressources e-learning: {e}")
             return []
     
     @staticmethod
-    def update_ressource(session: Session, ressource_id: int, ressource_data: RessourceElearningUpdate) -> Optional[RessourceElearning]:
-        """Mettre à jour une ressource"""
-        ressource = session.get(RessourceElearning, ressource_id)
-        if not ressource:
+    def update_ressource(session: Session, ressource_id: int, ressource_data: RessourceElearningUpdate, schema_name: str = 'acd') -> Optional[RessourceElearning]:
+        """Mettre à jour une ressource - SQL direct"""
+        # Vérifier que la ressource existe
+        check_query = text(f"SELECT id FROM {schema_name}.ressource_elearning WHERE id = :ressource_id")
+        check_result = session.exec(check_query.bindparams(ressource_id=ressource_id)).first()
+        
+        if not check_result:
             return None
         
-        for key, value in ressource_data.dict(exclude_unset=True).items():
-            setattr(ressource, key, value)
+        # Construire la requête UPDATE dynamiquement
+        ressource_dict = ressource_data.dict(exclude_unset=True)
+        if not ressource_dict:
+            # Rien à mettre à jour
+            select_query = text(f"SELECT * FROM {schema_name}.ressource_elearning WHERE id = :ressource_id")
+            ressource_result = session.exec(select_query.bindparams(ressource_id=ressource_id)).first()
+            if hasattr(ressource_result, '_mapping'):
+                return type('RessourceElearning', (), dict(ressource_result._mapping))()
+            else:
+                return type('RessourceElearning', (), dict(ressource_result))()
         
-        session.add(ressource)
+        set_clauses = []
+        params = {'ressource_id': ressource_id}
+        
+        for key, value in ressource_dict.items():
+            set_clauses.append(f"{key} = :{key}")
+            params[key] = value
+        
+        update_query = text(f"""
+            UPDATE {schema_name}.ressource_elearning
+            SET {', '.join(set_clauses)}
+            WHERE id = :ressource_id
+            RETURNING *
+        """)
+        
+        ressource_result = session.exec(update_query.bindparams(**params)).first()
         session.commit()
-        session.refresh(ressource)
-        return ressource
+        
+        if hasattr(ressource_result, '_mapping'):
+            return type('RessourceElearning', (), dict(ressource_result._mapping))()
+        else:
+            return type('RessourceElearning', (), dict(ressource_result))()
     
     # === GESTION DES MODULES ===
     
     @staticmethod
-    def create_module(session: Session, module_data: ModuleElearningCreate, createur_id: int) -> ModuleElearning:
-        """Créer un nouveau module e-learning"""
-        module = ModuleElearning(
-            **module_data.dict(),
+    def create_module(session: Session, module_data: ModuleElearningCreate, createur_id: int, schema_name: str = 'acd') -> ModuleElearning:
+        """Créer un nouveau module e-learning - SQL direct"""
+        insert_query = text(f"""
+            INSERT INTO {schema_name}.module_elearning
+            (titre, description, programme_id, objectifs, prerequis, duree_totale_minutes,
+             difficulte, statut, ordre, actif, cree_par_id, cree_le)
+            VALUES (:titre, :description, :programme_id, :objectifs, :prerequis, :duree_totale_minutes,
+                    :difficulte, :statut, :ordre, :actif, :cree_par_id, CURRENT_TIMESTAMP)
+            RETURNING *
+        """)
+        
+        module_dict = module_data.dict()
+        module_result = session.exec(insert_query.bindparams(
+            titre=module_dict.get('titre'),
+            description=module_dict.get('description'),
+            programme_id=module_dict.get('programme_id'),
+            objectifs=module_dict.get('objectifs'),
+            prerequis=module_dict.get('prerequis'),
+            duree_totale_minutes=module_dict.get('duree_totale_minutes'),
+            difficulte=module_dict.get('difficulte', 'facile'),
+            statut=module_dict.get('statut', 'brouillon'),
+            ordre=module_dict.get('ordre', 0),
+            actif=module_dict.get('actif', True),
             cree_par_id=createur_id
-        )
-        session.add(module)
+        )).first()
+        
         session.commit()
-        session.refresh(module)
-        return module
+        
+        if hasattr(module_result, '_mapping'):
+            return type('ModuleElearning', (), dict(module_result._mapping))()
+        else:
+            return type('ModuleElearning', (), dict(module_result))()
     
     @staticmethod
-    def update_module(session: Session, module_id: int, module_data: ModuleElearningUpdate) -> ModuleElearning:
-        """Mettre à jour un module e-learning"""
-        module = session.get(ModuleElearning, module_id)
-        if not module:
+    def update_module(session: Session, module_id: int, module_data: ModuleElearningUpdate, schema_name: str = 'acd') -> Optional[ModuleElearning]:
+        """Mettre à jour un module e-learning - SQL direct"""
+        # Vérifier que le module existe
+        check_query = text(f"SELECT id FROM {schema_name}.module_elearning WHERE id = :module_id")
+        check_result = session.exec(check_query.bindparams(module_id=module_id)).first()
+        
+        if not check_result:
             return None
         
-        # Mettre à jour les champs
-        for field, value in module_data.dict(exclude_unset=True).items():
-            setattr(module, field, value)
+        # Construire la requête UPDATE dynamiquement
+        module_dict = module_data.dict(exclude_unset=True)
+        if not module_dict:
+            # Rien à mettre à jour
+            select_query = text(f"SELECT * FROM {schema_name}.module_elearning WHERE id = :module_id")
+            module_result = session.exec(select_query.bindparams(module_id=module_id)).first()
+            if hasattr(module_result, '_mapping'):
+                return type('ModuleElearning', (), dict(module_result._mapping))()
+            else:
+                return type('ModuleElearning', (), dict(module_result))()
         
+        set_clauses = []
+        params = {'module_id': module_id}
+        
+        for key, value in module_dict.items():
+            set_clauses.append(f"{key} = :{key}")
+            params[key] = value
+        
+        update_query = text(f"""
+            UPDATE {schema_name}.module_elearning
+            SET {', '.join(set_clauses)}
+            WHERE id = :module_id
+            RETURNING *
+        """)
+        
+        module_result = session.exec(update_query.bindparams(**params)).first()
         session.commit()
-        session.refresh(module)
-        return module
+        
+        if hasattr(module_result, '_mapping'):
+            return type('ModuleElearning', (), dict(module_result._mapping))()
+        else:
+            return type('ModuleElearning', (), dict(module_result))()
     
     @staticmethod
-    def get_modules(session: Session, programme_id: Optional[int] = None, statut: Optional[str] = None, actif_only: bool = True, difficulte: Optional[str] = None) -> List[ModuleElearning]:
-        """Récupérer les modules e-learning"""
-        print(f"🔍 SERVICE get_modules: programme_id={programme_id}, statut={statut}, actif_only={actif_only}, difficulte={difficulte}")
-        
-        # Pas de rollback - la session partagée gère les transactions
-        
+    def get_modules(session: Session, programme_id: Optional[int] = None, statut: Optional[str] = None, actif_only: bool = True, difficulte: Optional[str] = None, schema_name: str = 'acd') -> List[ModuleElearning]:
+        """Récupérer les modules e-learning - SQL direct"""
         # Vérifier l'existence de la table module_elearning
-        if not table_exists_anywhere("module_elearning", session):
-            print(f"⚠️ [WARNING] Table 'module_elearning' manquante")
+        if not table_exists_anywhere("module_elearning", session, schema_name):
+            logging.warning(f"Table 'module_elearning' manquante dans le schéma {schema_name}")
             return []
         
-        try:
-            query = select(ModuleElearning)
-        except Exception as e:
-            print(f"⚠️ [WARNING] Erreur lors de la construction de la requête modules e-learning: {e}")
-            return []
+        # Construire la requête SQL
+        where_clauses = []
+        params = {}
         
         if programme_id:
-            query = query.where(ModuleElearning.programme_id == programme_id)
-            print(f"🔍 SERVICE: Filtre programme_id={programme_id} appliqué")
+            where_clauses.append("programme_id = :programme_id")
+            params['programme_id'] = programme_id
         
         if statut:
-            query = query.where(ModuleElearning.statut == statut)
-            print(f"🔍 SERVICE: Filtre statut={statut} appliqué")
+            where_clauses.append("statut = :statut")
+            params['statut'] = statut
         
         if difficulte:
-            query = query.where(ModuleElearning.difficulte == difficulte)
-            print(f"🔍 SERVICE: Filtre difficulte={difficulte} appliqué")
+            where_clauses.append("difficulte = :difficulte")
+            params['difficulte'] = difficulte
         
-        # Filtrer par actif seulement si actif_only est True
         if actif_only:
-            query = query.where(ModuleElearning.actif == True)
-            print(f"🔍 SERVICE: Filtre actif=True appliqué")
-        else:
-            print(f"🔍 SERVICE: Pas de filtre actif - tous les modules")
+            where_clauses.append("actif = true")
         
-        query = query.order_by(ModuleElearning.ordre, ModuleElearning.titre)
+        where_sql = " AND ".join(where_clauses) if where_clauses else "1=1"
+        
+        query = text(f"""
+            SELECT * FROM {schema_name}.module_elearning
+            WHERE {where_sql}
+            ORDER BY ordre, titre
+        """)
         
         try:
-            result = session.exec(query).all()
+            results = session.exec(query.bindparams(**params) if params else query).all()
+            modules = []
+            for row in results:
+                if hasattr(row, '_mapping'):
+                    module = type('ModuleElearning', (), dict(row._mapping))()
+                else:
+                    module = type('ModuleElearning', (), dict(row))()
+                modules.append(module)
+            return modules
         except Exception as e:
-            print(f"⚠️ [WARNING] Erreur lors de l'exécution de la requête modules e-learning: {e}")
+            logging.warning(f"Erreur lors de la récupération des modules e-learning: {e}")
             return []
-        print(f"🔍 SERVICE: {len(result)} modules retournés")
-        for m in result:
-            print(f"  - Module {m.id}: {m.titre} (statut: {m.statut}, actif: {m.actif}, difficulte: {m.difficulte})")
-        
-        return result
     
     @staticmethod
-    def add_ressource_to_module(session: Session, module_id: int, ressource_id: int, ordre: int = 0, obligatoire: bool = True) -> bool:
-        """Ajouter une ressource à un module"""
+    def add_ressource_to_module(session: Session, module_id: int, ressource_id: int, ordre: int = 0, obligatoire: bool = True, schema_name: str = 'acd') -> bool:
+        """Ajouter une ressource à un module - SQL direct"""
         try:
-            module_ressource = ModuleRessource(
+            logging.info(f"🔍 [add_ressource_to_module] Ajout ressource {ressource_id} au module {module_id} (schéma: {schema_name})")
+            
+            insert_query = text(f"""
+                INSERT INTO {schema_name}.module_ressource
+                (module_id, ressource_id, ordre, obligatoire)
+                VALUES (:module_id, :ressource_id, :ordre, :obligatoire)
+                ON CONFLICT (module_id, ressource_id) DO UPDATE
+                SET ordre = EXCLUDED.ordre, obligatoire = EXCLUDED.obligatoire
+            """)
+            
+            logging.info(f"🔍 [add_ressource_to_module] Requête: {insert_query}")
+            logging.info(f"🔍 [add_ressource_to_module] Paramètres: module_id={module_id}, ressource_id={ressource_id}, ordre={ordre}, obligatoire={obligatoire}")
+            
+            result = session.exec(insert_query.bindparams(
                 module_id=module_id,
                 ressource_id=ressource_id,
                 ordre=ordre,
                 obligatoire=obligatoire
-            )
-            session.add(module_ressource)
+            ))
             session.commit()
+            
+            logging.info(f"✅ [add_ressource_to_module] Association créée avec succès")
             return True
-        except Exception:
+        except Exception as e:
+            logging.error(f"❌ [add_ressource_to_module] Erreur lors de l'ajout de la ressource au module: {e}", exc_info=True)
             session.rollback()
             return False
     
     @staticmethod
-    def remove_ressource_from_module(session: Session, module_id: int, ressource_id: int) -> bool:
-        """Retirer une ressource d'un module"""
+    def remove_ressource_from_module(session: Session, module_id: int, ressource_id: int, schema_name: str = 'acd') -> bool:
+        """Retirer une ressource d'un module - SQL direct"""
         try:
-            module_ressource = session.exec(
-                select(ModuleRessource).where(
-                    and_(
-                        ModuleRessource.module_id == module_id,
-                        ModuleRessource.ressource_id == ressource_id
-                    )
-                )
-            ).first()
+            delete_query = text(f"""
+                DELETE FROM {schema_name}.module_ressource
+                WHERE module_id = :module_id AND ressource_id = :ressource_id
+            """)
             
-            if module_ressource:
-                session.delete(module_ressource)
-                session.commit()
-                return True
-            return False
-        except Exception:
+            result = session.exec(delete_query.bindparams(
+                module_id=module_id,
+                ressource_id=ressource_id
+            ))
+            session.commit()
+            
+            return result.rowcount > 0
+        except Exception as e:
+            logging.error(f"Erreur lors de la suppression de la ressource du module: {e}")
             session.rollback()
             return False
     
@@ -420,23 +600,40 @@ class ElearningService:
         )
     
     @staticmethod
-    def get_statistiques_programme(session: Session, programme_id: int) -> StatistiquesElearningProgramme:
-        """Obtenir les statistiques e-learning d'un programme"""
-        print(f"🔍 DEBUG SERVICE: Début calcul stats pour programme {programme_id}")
+    def get_statistiques_programme(session: Session, programme_id: int, schema_name: str = 'acd') -> StatistiquesElearningProgramme:
+        """Obtenir les statistiques e-learning d'un programme - SQL direct"""
+        # Récupérer le programme - SQL direct
+        programme_query = text("SELECT * FROM public.programme WHERE id = :programme_id")
+        programme_result = session.exec(programme_query.bindparams(programme_id=programme_id)).first()
+        
+        if not programme_result:
+            logging.warning(f"Programme {programme_id} non trouvé")
+            return StatistiquesElearningProgramme(
+                programme_id=programme_id,
+                programme_nom="Programme inconnu",
+                candidats_inscrits=0,
+                candidats_actifs=0,
+                modules_completes=0,
+                ressources_consultees=0,
+                taux_completion_moyen=0.0,
+                temps_moyen_formation=0.0
+            )
+        
+        programme = type('Programme', (), dict(programme_result._mapping))()
         
         # Vérifier l'existence des tables essentielles
-        required_tables = ["inscription", "progression_elearning", "module_elearning", "ressource_elearning"]
+        required_tables = ["progression_elearning", "module_elearning", "ressource_elearning"]
         missing_tables = []
         
         for table in required_tables:
-            if not table_exists_anywhere(table, session):
+            if not table_exists_anywhere(table, session, schema_name):
                 missing_tables.append(table)
         
         if missing_tables:
-            print(f"⚠️ [WARNING] Tables manquantes pour les statistiques e-learning: {missing_tables}")
+            logging.warning(f"Tables manquantes pour les statistiques e-learning: {missing_tables}")
             return StatistiquesElearningProgramme(
                 programme_id=programme_id,
-                programme_nom="Programme inconnu",
+                programme_nom=programme.nom,
                 candidats_inscrits=0,
                 candidats_actifs=0,
                 modules_completes=0,
@@ -445,119 +642,104 @@ class ElearningService:
                 temps_moyen_formation=0.0
             )
         
-        try:
-            programme = session.get(Programme, programme_id)
-            if not programme:
-                print(f"❌ DEBUG SERVICE: Programme {programme_id} non trouvé")
-                raise ValueError("Programme non trouvé")
-            
-            print(f"✅ DEBUG SERVICE: Programme trouvé: {programme.nom}")
-            
-            # Candidats inscrits au programme
-            candidats_inscrits = session.exec(
-                select(func.count(Inscription.id)).where(
-                    Inscription.programme_id == programme_id
-                )
-            ).first() or 0
-        except Exception as e:
-            print(f"⚠️ [WARNING] Erreur lors du calcul des statistiques e-learning: {e}")
-            return StatistiquesElearningProgramme(
-                programme_id=programme_id,
-                programme_nom="Programme inconnu",
-                candidats_inscrits=0,
-                candidats_actifs=0,
-                modules_completes=0,
-                ressources_consultees=0,
-                taux_completion_moyen=0.0,
-                temps_moyen_formation=0.0
-            )
+        # Candidats inscrits (validés) - SQL direct
+        candidats_inscrits_query = text(f"""
+            SELECT COUNT(*) FROM {schema_name}.candidat
+            WHERE statut = 'VALIDE'
+        """)
+        candidats_inscrits_result = session.exec(candidats_inscrits_query).first()
+        candidats_inscrits = candidats_inscrits_result[0] if candidats_inscrits_result else 0
         
-        print(f"🔍 DEBUG SERVICE: {candidats_inscrits} candidats inscrits")
+        # Candidats actifs (ayant une progression) - SQL direct
+        candidats_actifs_query = text(f"""
+            SELECT COUNT(DISTINCT p.candidat_id)
+            FROM {schema_name}.progression_elearning p
+            INNER JOIN {schema_name}.candidat c ON p.candidat_id = c.id
+            WHERE c.statut = 'VALIDE'
+        """)
+        candidats_actifs_result = session.exec(candidats_actifs_query).first()
+        candidats_actifs = candidats_actifs_result[0] if candidats_actifs_result else 0
         
-        # Candidats actifs (ayant une progression)
-        candidats_actifs = session.exec(
-            select(func.count(func.distinct(ProgressionElearning.inscription_id))).where(
-                ProgressionElearning.inscription_id.in_(
-                    select(Inscription.id).where(Inscription.programme_id == programme_id)
-                )
-            )
-        ).first() or 0
+        # Temps moyen - SQL direct
+        temps_moyen_query = text(f"""
+            SELECT COALESCE(AVG(temps_total), 0) as temps_moyen
+            FROM (
+                SELECT p.candidat_id, SUM(p.temps_consacre_minutes) as temps_total
+                FROM {schema_name}.progression_elearning p
+                INNER JOIN {schema_name}.candidat c ON p.candidat_id = c.id
+                WHERE c.statut = 'VALIDE'
+                GROUP BY p.candidat_id
+            ) as temps_par_candidat
+        """)
+        temps_moyen_result = session.exec(temps_moyen_query).first()
+        temps_moyen = float(temps_moyen_result[0]) if temps_moyen_result and temps_moyen_result[0] else 0.0
         
-        print(f"🔍 DEBUG SERVICE: {candidats_actifs} candidats actifs")
+        # Modules total - SQL direct
+        modules_total_query = text(f"""
+            SELECT COUNT(*) FROM {schema_name}.module_elearning
+            WHERE programme_id = :programme_id
+        """)
+        modules_total_result = session.exec(modules_total_query.bindparams(programme_id=programme_id)).first()
+        modules_total = modules_total_result[0] if modules_total_result else 1
         
-        # Temps moyen - Correction de la requête SQL imbriquée
-        # D'abord calculer le temps total par candidat, puis la moyenne
-        temps_par_candidat = session.exec(
-            select(
-                ProgressionElearning.inscription_id,
-                func.sum(ProgressionElearning.temps_consacre_minutes).label('temps_total')
-            ).where(
-                ProgressionElearning.inscription_id.in_(
-                    select(Inscription.id).where(Inscription.programme_id == programme_id)
-                )
-            ).group_by(ProgressionElearning.inscription_id)
-        ).all()
-        
-        # Calculer la moyenne des temps totaux
-        if temps_par_candidat:
-            temps_moyen = sum(t[1] for t in temps_par_candidat) / len(temps_par_candidat)
-        else:
-            temps_moyen = 0
-        
-        print(f"🔍 DEBUG SERVICE: Temps moyen: {temps_moyen} minutes")
-        
-        # Taux de completion
-        modules_total = session.exec(
-            select(func.count(ModuleElearning.id)).where(
-                ModuleElearning.programme_id == programme_id
-            )
-        ).first() or 1
-        
-        print(f"🔍 DEBUG SERVICE: {modules_total} modules total")
-        
-        modules_termines = session.exec(
-            select(func.count(func.distinct(ProgressionElearning.module_id))).where(
-                and_(
-                    ProgressionElearning.statut == "termine",
-                    ProgressionElearning.inscription_id.in_(
-                        select(Inscription.id).where(Inscription.programme_id == programme_id)
-                    )
-                )
-            )
-        ).first() or 0
-        
-        print(f"🔍 DEBUG SERVICE: {modules_termines} modules terminés")
+        # Modules terminés - SQL direct
+        modules_termines_query = text(f"""
+            SELECT COUNT(DISTINCT p.module_id)
+            FROM {schema_name}.progression_elearning p
+            INNER JOIN {schema_name}.candidat c ON p.candidat_id = c.id
+            WHERE p.statut = 'termine' AND c.statut = 'VALIDE'
+        """)
+        modules_termines_result = session.exec(modules_termines_query).first()
+        modules_termines = modules_termines_result[0] if modules_termines_result else 0
         
         taux_completion = (modules_termines / modules_total) * 100 if modules_total > 0 else 0
         
-        print(f"🔍 DEBUG SERVICE: Taux completion: {taux_completion}%")
+        # Modules populaires - SQL direct
+        modules_populaires_query = text(f"""
+            SELECT m.titre, COUNT(p.id) as participations
+            FROM {schema_name}.module_elearning m
+            LEFT JOIN {schema_name}.progression_elearning p ON m.id = p.module_id
+            WHERE m.programme_id = :programme_id
+            GROUP BY m.id, m.titre
+            ORDER BY participations DESC
+            LIMIT 5
+        """)
+        modules_populaires_results = session.exec(modules_populaires_query.bindparams(programme_id=programme_id)).all()
+        modules_populaires = []
+        for row in modules_populaires_results:
+            if hasattr(row, '_mapping'):
+                modules_populaires.append({
+                    "titre": dict(row._mapping).get('titre', ''),
+                    "participations": dict(row._mapping).get('participations', 0)
+                })
+            else:
+                modules_populaires.append({
+                    "titre": row[0] if len(row) > 0 else '',
+                    "participations": row[1] if len(row) > 1 else 0
+                })
         
-        # Modules populaires
-        modules_populaires = session.exec(
-            select(
-                ModuleElearning.titre,
-                func.count(ProgressionElearning.id).label('participations')
-            ).join(ProgressionElearning).where(
-                ModuleElearning.programme_id == programme_id
-            ).group_by(ModuleElearning.id).order_by(
-                func.count(ProgressionElearning.id).desc()
-            ).limit(5)
-        ).all()
+        # Nombre de ressources consultées
+        ressources_consultees_query = text(f"""
+            SELECT COUNT(DISTINCT p.ressource_id)
+            FROM {schema_name}.progression_elearning p
+            INNER JOIN {schema_name}.candidat c ON p.candidat_id = c.id
+            WHERE c.statut = 'VALIDE'
+        """)
+        ressources_consultees_result = session.exec(ressources_consultees_query).first()
+        ressources_consultees = ressources_consultees_result[0] if ressources_consultees_result else 0
         
-        print(f"🔍 DEBUG SERVICE: {len(modules_populaires)} modules populaires trouvés")
+        # Nombre de modules complétés
+        modules_completes = modules_termines
         
-        result = StatistiquesElearningProgramme(
+        return StatistiquesElearningProgramme(
             programme_id=programme_id,
             programme_nom=programme.nom,
             candidats_inscrits=candidats_inscrits,
             candidats_actifs=candidats_actifs,
-            temps_moyen_minutes=float(temps_moyen) if temps_moyen else 0,
+            temps_moyen_minutes=temps_moyen,
             taux_completion=taux_completion,
-            modules_populaires=[{"titre": m[0], "participations": m[1]} for m in modules_populaires]
+            modules_populaires=modules_populaires
         )
-        
-        print(f"✅ DEBUG SERVICE: Statistiques créées avec succès")
-        return result
     
     @staticmethod
     def generate_certificat(session: Session, inscription_id: int, module_id: Optional[int] = None) -> CertificatElearning:
@@ -674,11 +856,11 @@ class ElearningService:
         # Compter le temps par candidat
         candidats_temps = session.exec(
             select(
-                Inscription,
+                Candidat,
                 func.sum(ProgressionElearning.temps_consacre_minutes).label('temps_total')
             )
             .join(ProgressionElearning)
-            .group_by(Inscription.id)
+            .group_by(Candidat.id)
             .order_by(func.sum(ProgressionElearning.temps_consacre_minutes).desc())
             .limit(limit)
         ).all()

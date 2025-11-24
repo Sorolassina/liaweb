@@ -520,6 +520,224 @@ class EmailUtils:
         return EmailUtils.envoyer_mail(to_email, objet, corps_html, corps_texte)
     
     @staticmethod
+    def send_video_invitation(
+        to_email: str,
+        candidat_nom: str,
+        candidat_prenom: str,
+        rdv_id: int,
+        rdv_date: str,
+        candidat_id: Optional[int] = None,
+        programme_nom: str = "ACD",
+        conseiller_nom: str = "Conseiller non assigné"
+    ) -> bool:
+        """Envoie un email d'invitation pour un rendez-vous vidéo Jitsi"""
+        logger.info(f"📧 Envoi invitation vidéo - RDV {rdv_id} à {to_email}")
+        
+        try:
+            # Générer un token sécurisé pour le candidat
+            import secrets
+            import hashlib
+            
+            # Créer un token basé sur l'ID du candidat et du RDV
+            if candidat_id:
+                token_data = f"candidat_{rdv_id}_{candidat_id}"
+            else:
+                token_data = f"candidat_{rdv_id}"
+            
+            # Générer un token sécurisé
+            token = hashlib.sha256(f"{token_data}_{secrets.token_urlsafe(16)}".encode()).hexdigest()[:32]
+            
+            # Générer le lien d'invitation Jitsi
+            base_url_clean = settings.get_base_url_for_email()
+            invitation_link = f"{base_url_clean}/video-rdv/{rdv_id}/lien-candidat/{token}"
+            
+            # Encoder le logo en base64 pour l'email
+            logo_base64 = MediaUtils.encode_logo_base64()
+            
+            # Fabriquer l'objet
+            objet = f"🎥 Invitation à votre rendez-vous vidéo - {programme_nom}"
+            
+            # Fabriquer le corps HTML
+            corps_html = f"""
+            <!DOCTYPE html>
+            <html>
+            <head>
+                <meta charset="UTF-8">
+                <meta name="viewport" content="width=device-width, initial-scale=1.0">
+                <title>Invitation Rendez-vous Vidéo</title>
+                <style>
+                    body {{
+                        font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+                        background-color: #f8f9fa;
+                        margin: 0;
+                        padding: 0;
+                        line-height: 1.6;
+                    }}
+                    .container {{
+                        max-width: 600px;
+                        margin: 0 auto;
+                        background-color: #ffffff;
+                        border-radius: 10px;
+                        overflow: hidden;
+                        box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+                    }}
+                    .header {{
+                        background: linear-gradient(135deg, {settings.THEME_PRIMARY} 0%, {settings.THEME_SECONDARY} 100%);
+                        color: {settings.THEME_WHITE};
+                        padding: 30px;
+                        text-align: center;
+                    }}
+                    .header img {{
+                        height: 60px;
+                        margin-bottom: 15px;
+                    }}
+                    .header h1 {{
+                        margin: 0;
+                        font-size: 24px;
+                        font-weight: 600;
+                    }}
+                    .content {{
+                        padding: 30px;
+                        color: #333;
+                    }}
+                    .info-box {{
+                        background-color: #f8f9fa;
+                        border-left: 4px solid {settings.THEME_PRIMARY};
+                        padding: 15px;
+                        margin: 20px 0;
+                        border-radius: 5px;
+                    }}
+                    .info-box h3 {{
+                        margin-top: 0;
+                        color: {settings.THEME_PRIMARY};
+                    }}
+                    .btn-container {{
+                        text-align: center;
+                        margin: 30px 0;
+                    }}
+                    .btn {{
+                        display: inline-block;
+                        background-color: {settings.THEME_PRIMARY};
+                        color: {settings.THEME_WHITE};
+                        padding: 15px 30px;
+                        text-decoration: none;
+                        border-radius: 5px;
+                        font-weight: bold;
+                        font-size: 16px;
+                    }}
+                    .btn:hover {{
+                        background-color: {settings.THEME_SECONDARY};
+                    }}
+                    .instructions {{
+                        background-color: #e7f3ff;
+                        border-left: 4px solid #2196F3;
+                        padding: 15px;
+                        margin: 20px 0;
+                        border-radius: 5px;
+                    }}
+                    .instructions ul {{
+                        margin: 10px 0;
+                        padding-left: 20px;
+                    }}
+                    .instructions li {{
+                        margin: 8px 0;
+                    }}
+                    .footer {{
+                        text-align: center;
+                        padding: 20px;
+                        color: #666;
+                        font-size: 12px;
+                        background-color: #f8f9fa;
+                    }}
+                    .link-direct {{
+                        word-break: break-all;
+                        color: {settings.THEME_PRIMARY};
+                    }}
+                </style>
+            </head>
+            <body>
+                <div class="container">
+                    <div class="header">
+                        <h1>🎥 Invitation Rendez-vous Vidéo</h1>
+                        <p style="margin: 10px 0 0 0; opacity: 0.9;">Rejoignez votre session de coaching en ligne</p>
+                    </div>
+                    
+                    <div class="content">
+                        <p>Bonjour <strong>{candidat_prenom} {candidat_nom}</strong>,</p>
+                        
+                        <p>Vous êtes invité(e) à participer à votre rendez-vous vidéo de coaching via <strong>Visioconférence Jitsi</strong>.</p>
+                        
+                        <div class="info-box">
+                            <h3>📋 Détails du rendez-vous</h3>
+                            <p><strong>Programme :</strong> {programme_nom}</p>
+                            <p><strong>Date :</strong> {rdv_date}</p>
+                            <p><strong>Conseiller :</strong> {conseiller_nom}</p>
+                        </div>
+                        
+                        <p>Pour rejoindre votre rendez-vous vidéo, cliquez simplement sur le bouton ci-dessous :</p>
+                        
+                        <div class="btn-container">
+                            <a href="{invitation_link}" class="btn">🎬 Rejoindre la Visioconférence</a>
+                        </div>
+                        
+                        <div class="instructions">
+                            <h3>💡 Instructions</h3>
+                            <ul>
+                                <li>Cliquez sur le bouton "Rejoindre la Visioconférence" ci-dessus</li>
+                                <li>Autorisez l'accès à votre caméra et microphone lorsque demandé</li>
+                                <li>La visioconférence fonctionne directement dans votre navigateur</li>
+                                <li>Assurez-vous d'avoir une connexion internet stable</li>
+                                <li>Testez votre équipement audio/vidéo avant le rendez-vous</li>
+                                <li>Rejoignez quelques minutes avant l'heure prévue</li>
+                            </ul>
+                        </div>
+                        
+                        <p style="margin-top: 30px;"><strong>Lien direct :</strong><br>
+                        <a href="{invitation_link}" class="link-direct">{invitation_link}</a></p>
+                    </div>
+                    
+                    <div class="footer">
+                        <p>Cet email a été envoyé automatiquement par le système LIA Coaching.</p>
+                        <p>Si vous avez des questions, n'hésitez pas à contacter votre conseiller.</p>
+                    </div>
+                </div>
+            </body>
+            </html>
+            """
+            
+            # Fabriquer le corps texte
+            corps_texte = f"""
+            Bonjour {candidat_prenom} {candidat_nom},
+            
+            Vous êtes invité(e) à participer à votre rendez-vous vidéo de coaching.
+            
+            Détails du rendez-vous :
+            - Programme : {programme_nom}
+            - Date : {rdv_date}
+            - Conseiller : {conseiller_nom}
+            
+            Pour rejoindre votre rendez-vous vidéo, cliquez sur ce lien :
+            {invitation_link}
+            
+            Instructions :
+            - Cliquez sur le lien ci-dessus pour rejoindre la visioconférence
+            - Autorisez l'accès à votre caméra et microphone
+            - Assurez-vous que votre micro et votre caméra fonctionnent
+            - Rejoignez quelques minutes avant l'heure prévue
+            - En cas de problème technique, contactez votre conseiller
+            
+            Cet email a été envoyé automatiquement par le système LIA Coaching.
+            Si vous avez des questions, n'hésitez pas à contacter votre conseiller.
+            """
+            
+            # Appeler la méthode générique
+            return EmailUtils.envoyer_mail(to_email, objet, corps_html, corps_texte)
+            
+        except Exception as e:
+            logger.error(f"❌ Erreur lors de l'envoi de l'email d'invitation vidéo: {e}")
+            return False
+    
+    @staticmethod
     def send_welcome_email(email: str, nom: str, programme: str) -> bool:
         """Envoie un email de bienvenue"""
         objet = f"Bienvenue dans le programme {programme}"

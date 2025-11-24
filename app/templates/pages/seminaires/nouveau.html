@@ -1,90 +1,116 @@
-{% extends "base.html" %}
+{% extends "layouts/base.html" %}
 
-{% block title %}Nouveau Séminaire{% endblock %}
+{% block title %}{% if is_edit %}Modifier le Séminaire{% else %}Nouveau Séminaire{% endif %}{% endblock %}
 
 {% block content %}
-<div class="container-fluid p-4">
-    <div class="row mb-4">
+{% set programme_param = request.query_params.get('programme') or (schema_name.upper() if schema_name and schema_name != 'public' else '') %}
+<div class="container-fluid p-4 page-content-wrapper">
+    <div class="row mb-3">
         <div class="col-12">
             <nav aria-label="breadcrumb">
                 <ol class="breadcrumb">
-                    <li class="breadcrumb-item"><a href="{{ url_for('liste_seminaires') }}">Séminaires</a></li>
-                    <li class="breadcrumb-item active">Nouveau Séminaire</li>
+                    <li class="breadcrumb-item"><a href="{{ url_for('liste_seminaires') }}{% if programme_param %}?programme={{ programme_param }}{% endif %}">Séminaires</a></li>
+                    <li class="breadcrumb-item active">{% if is_edit %}Modifier le Séminaire{% else %}Nouveau Séminaire{% endif %}</li>
                 </ol>
             </nav>
-            <h1 class="mb-0">
-                <i class="fas fa-plus me-2"></i>Nouveau Séminaire
-            </h1>
+           
         </div>
     </div>
 
     <div class="row">
-        <div class="col-lg-8">
-            <div class="card">
-                <div class="card-header">
-                    <h5 class="mb-0">Informations Générales</h5>
+        <div class="col-lg-12">
+            <div class="card modal-style-card">
+                <div class="card-header modal-style-header">
+                    <h5 class="mb-0 modal-style-title">
+                        <i class="fas fa-calendar-alt me-2"></i>Informations Générales
+                    </h5>
                 </div>
-                <div class="card-body">
-                    <form method="POST" action="/seminaires/nouveau">
+                <div class="card-body modal-style-body">
+                    <form id="seminaire-form" method="POST" action="{% if is_edit %}{{ url_for('modifier_seminaire', seminaire_id=seminaire.id) }}{% else %}{{ url_for('creer_seminaire') }}{% endif %}{% if programme_param %}?programme={{ programme_param }}{% endif %}">
                         <div class="row">
                             <div class="col-md-6">
                                 <div class="mb-3">
                                     <label for="titre" class="form-label">Titre du Séminaire *</label>
-                                    <input type="text" class="form-control" id="titre" name="titre" required>
+                                    <input type="text" class="form-control form-control-sm" id="titre" name="titre" value="{% if is_edit %}{{ seminaire.titre }}{% endif %}" required>
                                 </div>
                             </div>
                             <div class="col-md-6">
                                 <div class="mb-3">
                                     <label for="programme_id" class="form-label">Programme *</label>
-                                    <select class="form-select" id="programme_id" name="programme_id" required>
-                                        <option value="">Sélectionner un programme</option>
-                                        {% for programme in programmes %}
-                                            <option value="{{ programme.id }}">{{ programme.code }} - {{ programme.nom }}</option>
-                                        {% endfor %}
-                                    </select>
+                                    {% if selected_programme %}
+                                        {# Champ caché pour envoyer la valeur (car disabled n'envoie pas la valeur) #}
+                                        <input type="hidden" name="programme_id" value="{{ selected_programme.id }}">
+                                        <input type="text" class="form-control form-control-sm" id="programme_id_display" 
+                                               value="{{ selected_programme.code }} - {{ selected_programme.nom }}" 
+                                               disabled readonly
+                                               aria-label="Programme (déterminé automatiquement)"
+                                               style="background-color: #e9ecef; cursor: not-allowed;">
+                                        <small class="form-text text-muted">Le programme est déterminé automatiquement selon le contexte</small>
+                                    {% else %}
+                                        {# Fallback si aucun programme n'est trouvé #}
+                                        <select class="form-select form-select-sm" id="programme_id" name="programme_id" required>
+                                            <option value="">Sélectionner un programme</option>
+                                            {% for programme in programmes %}
+                                                <option value="{{ programme.id }}" {% if is_edit and seminaire.programme_id == programme.id %}selected{% endif %}>{{ programme.code }} - {{ programme.nom }}</option>
+                                            {% endfor %}
+                                        </select>
+                                    {% endif %}
                                 </div>
                             </div>
                         </div>
 
                         <div class="mb-3">
                             <label for="description" class="form-label">Description</label>
-                            <textarea class="form-control" id="description" name="description" rows="3" 
-                                      placeholder="Décrivez le contenu et les objectifs du séminaire..."></textarea>
+                            <textarea class="form-control form-control-sm" id="description" name="description" rows="3" 
+                                      placeholder="Décrivez le contenu et les objectifs du séminaire...">{% if is_edit %}{{ seminaire.description or '' }}{% endif %}</textarea>
                         </div>
 
                         <div class="row">
                             <div class="col-md-6">
                                 <div class="mb-3">
                                     <label for="date_debut" class="form-label">Date de Début *</label>
-                                    <input type="date" class="form-control" id="date_debut" name="date_debut" required>
+                                    <input type="date" class="form-control form-control-sm" id="date_debut" name="date_debut" value="{% if is_edit %}{{ seminaire.date_debut.strftime('%Y-%m-%d') }}{% endif %}" required>
                                 </div>
                             </div>
                             <div class="col-md-6">
                                 <div class="mb-3">
                                     <label for="date_fin" class="form-label">Date de Fin *</label>
-                                    <input type="date" class="form-control" id="date_fin" name="date_fin" required>
+                                    <input type="date" class="form-control form-control-sm" id="date_fin" name="date_fin" value="{% if is_edit %}{{ seminaire.date_fin.strftime('%Y-%m-%d') }}{% endif %}" required>
                                 </div>
                             </div>
                         </div>
 
                         <div class="mb-3">
                             <label for="lieu" class="form-label">Lieu</label>
-                            <input type="text" class="form-control" id="lieu" name="lieu" 
+                            <input type="text" class="form-control form-control-sm" id="lieu" name="lieu" 
+                                   value="{% if is_edit %}{{ seminaire.lieu or '' }}{% endif %}"
                                    placeholder="Ex: Salle de conférence, Centre de formation...">
                         </div>
 
                         <div class="mb-3">
                             <label for="adresse_complete" class="form-label">Adresse Complète</label>
-                            <textarea class="form-control" id="adresse_complete" name="adresse_complete" rows="2" 
-                                      placeholder="Adresse complète du lieu..."></textarea>
+                            <textarea class="form-control form-control-sm" id="adresse_complete" name="adresse_complete" rows="2" 
+                                      placeholder="Adresse complète du lieu...">{% if is_edit %}{{ seminaire.adresse_complete or '' }}{% endif %}</textarea>
                         </div>
 
                         <div class="row">
                             <div class="col-md-6">
                                 <div class="mb-3">
                                     <label for="capacite_max" class="form-label">Capacité Maximale</label>
-                                    <input type="number" class="form-control" id="capacite_max" name="capacite_max" 
-                                           min="1" placeholder="Nombre maximum de participants">
+                                    <input type="number" class="form-control form-control-sm" id="capacite_max" name="capacite_max" 
+                                           min="1" value="{% if is_edit and seminaire.capacite_max %}{{ seminaire.capacite_max }}{% endif %}"
+                                           placeholder="Nombre maximum de participants">
+                                </div>
+                            </div>
+                            <div class="col-md-6">
+                                <div class="mb-3">
+                                    <label for="organisateur" class="form-label">Organisateur *</label>
+                                    <input type="text" class="form-control form-control-sm" id="organisateur" name="organisateur" 
+                                           value="{% if is_edit %}{{ seminaire.organisateur }}{% else %}{{ current_user.nom_complet }}{% endif %}"
+                                           required
+                                           placeholder="Nom de l'organisateur"
+                                           maxlength="255">
+                                    <small class="form-text text-muted">Entrez le nom de l'organisateur</small>
                                 </div>
                             </div>
                         </div>
@@ -92,7 +118,7 @@
                         <div class="row">
                             <div class="col-md-6">
                                 <div class="form-check">
-                                    <input class="form-check-input" type="checkbox" id="invitation_auto" name="invitation_auto" value="true">
+                                    <input class="form-check-input" type="checkbox" id="invitation_auto" name="invitation_auto" value="true" {% if is_edit and seminaire.invitation_auto %}checked{% endif %}>
                                     <label class="form-check-label" for="invitation_auto">
                                         Invitation automatique à tous les candidats du programme
                                     </label>
@@ -100,7 +126,7 @@
                             </div>
                             <div class="col-md-6">
                                 <div class="form-check">
-                                    <input class="form-check-input" type="checkbox" id="invitation_promos" name="invitation_promos" value="true">
+                                    <input class="form-check-input" type="checkbox" id="invitation_promos" name="invitation_promos" value="true" {% if is_edit and seminaire.invitation_promos %}checked{% endif %}>
                                     <label class="form-check-label" for="invitation_promos">
                                         Invitation par promotions
                                     </label>
@@ -108,48 +134,17 @@
                             </div>
                         </div>
 
-                        <div class="d-flex justify-content-between mt-4">
-                            <a href="{{ url_for('liste_seminaires') }}" class="btn btn-secondary">
-                                <i class="fas fa-arrow-left me-2"></i>Annuler
-                            </a>
-                            <button type="submit" class="btn btn-primary">
-                                <i class="fas fa-save me-2"></i>Créer le Séminaire
-                            </button>
-                        </div>
                     </form>
                 </div>
-            </div>
-        </div>
-
-        <div class="col-lg-4">
-            <div class="card">
-                <div class="card-header">
-                    <h5 class="mb-0">Conseils</h5>
-                </div>
-                <div class="card-body">
-                    <div class="alert alert-info">
-                        <h6><i class="fas fa-lightbulb me-2"></i>Conseils pour créer un séminaire</h6>
-                        <ul class="mb-0">
-                            <li>Choisissez un titre clair et descriptif</li>
-                            <li>Définissez des dates réalistes</li>
-                            <li>Précisez le lieu pour faciliter l'organisation</li>
-                            <li>Activez les invitations automatiques si nécessaire</li>
-                        </ul>
+                <div class="card-footer modal-style-footer">
+                    <div class="d-flex justify-content-between w-100">
+                        <a href="{{ url_for('liste_seminaires') }}{% if programme_param %}?programme={{ programme_param }}{% endif %}" class="btn btn-secondary">
+                            <i class="fas fa-arrow-left me-2"></i>Annuler
+                        </a>
+                        <button type="submit" form="seminaire-form" id="submit-seminaire-btn" class="btn btn-primary">
+                            <i class="fas fa-save me-2"></i>{% if is_edit %}Modifier le Séminaire{% else %}Créer le Séminaire{% endif %}
+                        </button>
                     </div>
-                </div>
-            </div>
-
-            <div class="card mt-3">
-                <div class="card-header">
-                    <h5 class="mb-0">Prochaines Étapes</h5>
-                </div>
-                <div class="card-body">
-                    <ol class="mb-0">
-                        <li>Créer les sessions (matin/soir)</li>
-                        <li>Envoyer les invitations</li>
-                        <li>Configurer les livrables</li>
-                        <li>Organiser l'émargement</li>
-                    </ol>
                 </div>
             </div>
         </div>
@@ -173,46 +168,240 @@ document.addEventListener('DOMContentLoaded', function() {
         }
     });
     
-    // Validation côté client
-    const form = document.querySelector('form');
-    form.addEventListener('submit', function(e) {
-        const titre = document.getElementById('titre').value.trim();
-        const programme = document.getElementById('programme_id').value;
-        const dateDebut = document.getElementById('date_debut').value;
-        const dateFin = document.getElementById('date_fin').value;
-        
-        if (!titre || !programme || !dateDebut || !dateFin) {
-            e.preventDefault();
-            alert('Veuillez remplir tous les champs obligatoires.');
-            return;
-        }
-        
-        if (dateFin < dateDebut) {
-            e.preventDefault();
-            alert('La date de fin doit être postérieure à la date de début.');
-            return;
+    // Validation côté client et gestion de l'overlay
+    const form = document.getElementById('seminaire-form');
+    const submitBtn = document.getElementById('submit-seminaire-btn');
+    
+    if (form && submitBtn) {
+        form.addEventListener('submit', function(e) {
+            const titre = document.getElementById('titre').value.trim();
+            const programme = document.getElementById('programme_id').value;
+            const dateDebut = document.getElementById('date_debut').value;
+            const dateFin = document.getElementById('date_fin').value;
+            
+            if (!titre || !programme || !dateDebut || !dateFin) {
+                e.preventDefault();
+                alert('Veuillez remplir tous les champs obligatoires.');
+                return;
+            }
+            
+            if (dateFin < dateDebut) {
+                e.preventDefault();
+                alert('La date de fin doit être postérieure à la date de début.');
+                return;
+            }
+            
+            // Afficher l'overlay global
+            if (typeof showGlobalLoading === 'function') {
+                const actionText = form.action.includes('modifier') ? 'Modification' : 'Création';
+                showGlobalLoading(
+                    `${actionText} du séminaire`,
+                    'Traitement en cours, veuillez patienter...'
+                );
+            }
+            
+            // Désactiver le bouton et afficher un spinner
+            submitBtn.disabled = true;
+            const originalHtml = submitBtn.innerHTML;
+            submitBtn.innerHTML = '<i class="fas fa-spinner fa-spin me-2"></i>Traitement...';
+            
+            // Timeout de sécurité pour masquer l'overlay après 10 secondes
+            setTimeout(function() {
+                if (typeof hideGlobalLoading === 'function') {
+                    hideGlobalLoading();
+                }
+                submitBtn.disabled = false;
+                submitBtn.innerHTML = originalHtml;
+            }, 10000);
+        });
+    }
+    
+    // Ajouter l'overlay global aux liens de navigation
+    const navLinks = document.querySelectorAll('a[href*="/seminaires/"]');
+    navLinks.forEach(function(link) {
+        const href = link.getAttribute('href');
+        // Ignorer les liens externes
+        if (href && !href.startsWith('http') && !href.startsWith('#')) {
+            link.addEventListener('click', function(e) {
+                // Ne pas intercepter si Ctrl/Cmd est pressé (nouvel onglet)
+                if (e.ctrlKey || e.metaKey) return;
+                
+                // Afficher l'overlay global
+                if (typeof showGlobalLoading === 'function') {
+                    showGlobalLoading('Chargement', 'Veuillez patienter...');
+                }
+            });
         }
     });
 });
 </script>
 
 <style>
-.card {
-    box-shadow: 0 0.125rem 0.25rem rgba(0, 0, 0, 0.075);
-    border: 1px solid rgba(0, 0, 0, 0.125);
+/* Limiter la hauteur de la page pour éviter le scroll */
+.page-content-wrapper {
+    height: calc(100vh - 120px);
+    max-height: calc(100vh - 120px);
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
 }
 
+.page-content-wrapper .row:first-child {
+    flex-shrink: 0;
+}
+
+.page-content-wrapper .row:last-child {
+    flex: 1;
+    min-height: 0;
+    overflow: hidden;
+    display: flex;
+    height: 100%;
+}
+
+.page-content-wrapper .row:last-child .col-lg-12 {
+    display: flex;
+    flex-direction: column;
+    min-height: 0;
+    max-height: 100%;
+    height: 95%;
+    margin: 1rem 0;
+    padding: 0 1rem;
+    overflow: hidden;
+}
+
+/* Style modal pour la card */
+/* Style modal pour la card */
+.modal-style-card {
+    box-shadow: 0 10px 40px rgba(0, 0, 0, 0.2);
+    border-radius: 5px;
+    border: none;
+    display: flex;
+    flex-direction: column;
+    max-width: 1000px;
+    margin: 0 auto;
+    width: 100%;
+    height: 100%;
+    min-height: 0;
+}
+
+.modal-style-card > .card-header {
+    flex: 0 0 auto;
+}
+
+.modal-style-card > .card-body {
+    flex: 1 1 auto;
+    min-height: 0;
+}
+
+.modal-style-card > .card-footer {
+    flex: 0 0 auto;
+}
+
+.modal-style-header {
+    padding: 1.5rem;
+    border: 2px solid var(--primary-color);
+    background: var(--secondary-color);
+    flex-shrink: 0;
+    z-index: 10;
+    border-radius: 5px 5px 0 0;
+    border-bottom: 2px solid var(--primary-color);
+}
+
+.modal-style-title {
+    margin: 0;
+    color: var(--white-color);
+    font-size: 1.3rem;
+    font-weight: 700;
+}
+
+.modal-style-body {
+    padding: 1.5rem;
+    margin: 0;
+    flex: 1;
+    overflow-y: auto;
+    overflow-x: hidden;
+    min-height: 0;
+    border-left: 1px solid var(--primary-color);
+    border-right: 1px solid var(--primary-color);
+}
+
+.modal-style-footer {
+    padding: 1rem 1.5rem;
+    border: 2px solid var(--primary-color);
+    background: var(--gray-50);
+    display: flex !important;
+    gap: 1rem;
+    justify-content: flex-end;
+    flex-shrink: 0;
+    flex-grow: 0;
+    z-index: 10;
+    border-radius: 0 0 5px 5px;
+    border-top: 2px solid var(--primary-color);
+    visibility: visible !important;
+    opacity: 1 !important;
+    height: auto !important;
+    min-height: 60px;
+}
+
+/* Scroll personnalisé dans le body */
+.modal-style-body::-webkit-scrollbar {
+    width: 8px;
+}
+
+.modal-style-body::-webkit-scrollbar-track {
+    background: var(--gray-100);
+    border-radius: 4px;
+}
+
+.modal-style-body::-webkit-scrollbar-thumb {
+    background: var(--gray-400);
+    border-radius: 4px;
+}
+
+.modal-style-body::-webkit-scrollbar-thumb:hover {
+    background: var(--gray-500);
+}
+
+/* Styles des formulaires */
 .form-label {
     font-weight: 600;
     color: #495057;
+    font-size: 0.875rem;
+    margin-bottom: 0.4rem;
 }
 
-.alert ul {
-    padding-left: 1.2rem;
+.form-control-sm, .form-select-sm {
+    height: 32px;
+    padding: 0.375rem 0.5rem;
+    font-size: 0.875rem;
+    line-height: 1.4;
+    border: 1px solid var(--gray-300);
+    border-radius: 4px;
 }
 
-.alert li {
-    margin-bottom: 0.25rem;
+.form-control-sm:focus, .form-select-sm:focus {
+    border-color: var(--primary-color);
+    box-shadow: 0 0 0 0.2rem rgba(var(--primary-color-rgb), 0.25);
+}
+
+.form-control-sm[type="date"] {
+    padding: 0.375rem 0.5rem;
+}
+
+.form-control-sm[type="number"] {
+    padding: 0.375rem 0.5rem;
+}
+
+textarea.form-control-sm {
+    height: auto;
+    padding: 0.375rem 0.5rem;
+    line-height: 1.4;
+    min-height: 80px;
+}
+
+.form-check-label {
+    font-size: 0.875rem;
+    color: #495057;
 }
 
 .breadcrumb {
@@ -222,6 +411,39 @@ document.addEventListener('DOMContentLoaded', function() {
 
 .breadcrumb-item + .breadcrumb-item::before {
     content: ">";
+}
+
+.mb-3 {
+    margin-bottom: 0.75rem !important;
+}
+
+/* Responsive */
+@media (max-width: 768px) {
+    .page-content-wrapper {
+        height: calc(100vh - 150px);
+        max-height: calc(100vh - 150px);
+    }
+    
+    .modal-style-header {
+        padding: 1rem;
+    }
+    
+    .modal-style-title {
+        font-size: 1.1rem;
+    }
+    
+    .modal-style-body {
+        padding: 1rem;
+    }
+    
+    .modal-style-footer {
+        padding: 1rem;
+        flex-direction: column-reverse;
+    }
+    
+    .modal-style-footer .btn {
+        width: 100%;
+    }
 }
 </style>
 {% endblock %}

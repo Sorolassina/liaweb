@@ -29,7 +29,7 @@ from ..templates import templates
 
 from ..models.base import (
     User, TypeUtilisateur,
-    Programme, EtapePipeline, Preinscription, Inscription, Jury, ProgrammeUtilisateur, MembreJury, Promotion, Partenaire, Groupe, DecisionJuryCandidat
+    Programme, EtapePipeline, Preinscription, Jury, ProgrammeUtilisateur, MembreJury, Promotion, Partenaire, Groupe, DecisionJuryCandidat
 )
 from ..models.enums import UserRole as UserRoleEnum
 from ..models.admin import AppSetting
@@ -416,10 +416,11 @@ def admin_programme_delete(
     if not prog:
         raise HTTPException(status_code=404, detail="Programme introuvable")
     
-    # Vérifier s'il y a des inscriptions liées
-    inscriptions_count = session.exec(select(func.count(Inscription.id)).where(Inscription.programme_id == prog_id)).first()
-    if inscriptions_count > 0:
-        raise HTTPException(status_code=400, detail=f"Impossible de supprimer le programme {prog.code} : {inscriptions_count} inscription(s) liée(s)")
+    # NOTE: Le modèle Inscription a été supprimé. Les candidats validés sont identifiés par leur statut dans la table Candidat.
+    # Vérification des inscriptions supprimée car le modèle n'existe plus.
+    # inscriptions_count = session.exec(select(func.count(Inscription.id)).where(Inscription.programme_id == prog_id)).first()
+    # if inscriptions_count > 0:
+    #     raise HTTPException(status_code=400, detail=f"Impossible de supprimer le programme {prog.code} : {inscriptions_count} inscription(s) liée(s)")
     
     # Supprimer les étapes du pipeline
     try:
@@ -1004,10 +1005,26 @@ def admin_settings(
 
     def get_value(key: str, default: str = "") -> str:
         try:
+            # S'assurer que le schéma public est utilisé pour app_setting
+            from sqlalchemy import text
+            # Rollback d'abord pour s'assurer que la transaction est propre
+            try:
+                session.rollback()
+            except:
+                pass
+            
+            # Configurer le search_path pour le schéma public
+            session.exec(text("SET search_path TO public, public"))
+            
             setting = session.exec(select(AppSetting).where(AppSetting.key == key)).first()
             return setting.value if setting else default
         except Exception as exc:
             logger.warning("Erreur lors de la récupération du paramètre %s: %s", key, exc)
+            # Rollback en cas d'erreur pour éviter que la transaction reste en état d'échec
+            try:
+                session.rollback()
+            except:
+                pass
             return default
 
     context = {
@@ -1017,6 +1034,8 @@ def admin_settings(
         "SMTP_HOST": get_value("SMTP_HOST", getattr(settings, "SMTP_HOST", "")),
         "SMTP_PORT": get_value("SMTP_PORT", str(getattr(settings, "SMTP_PORT", ""))),
         "SMTP_USER": get_value("SMTP_USER", getattr(settings, "SMTP_USER", "")),
+        "SMTP_PASSWORD": get_value("SMTP_PASSWORD", getattr(settings, "SMTP_PASSWORD", "")),
+        "MAIL_FROM": get_value("MAIL_FROM", getattr(settings, "MAIL_FROM", "")),
         "SMTP_TLS": get_value("SMTP_TLS", str(getattr(settings, "SMTP_TLS", True))),
     }
 
@@ -1039,6 +1058,8 @@ def admin_settings_save(
     SMTP_HOST: Optional[str] = Form(None),
     SMTP_PORT: Optional[str] = Form(None),
     SMTP_USER: Optional[str] = Form(None),
+    SMTP_PASSWORD: Optional[str] = Form(None),
+    MAIL_FROM: Optional[str] = Form(None),
     SMTP_TLS: Optional[str] = Form(None),
     request: Request = None,
     session: Session = Depends(get_shared_session),
@@ -1051,13 +1072,30 @@ def admin_settings_save(
         if value is None:
             return
         try:
+            # S'assurer que le schéma public est utilisé pour app_setting
+            from sqlalchemy import text
+            # Rollback d'abord pour s'assurer que la transaction est propre
+            try:
+                session.rollback()
+            except:
+                pass
+            
+            # Configurer le search_path pour le schéma public
+            session.exec(text("SET search_path TO public, public"))
+            
             setting = session.exec(select(AppSetting).where(AppSetting.key == key)).first()
             if setting is None:
                 session.add(AppSetting(key=key, value=value))
             else:
                 setting.value = value
+                setting.updated_at = datetime.now(timezone.utc)
         except Exception as exc:
             logger.warning("Erreur lors de la mise à jour du paramètre %s: %s", key, exc)
+            # Rollback en cas d'erreur pour éviter que la transaction reste en état d'échec
+            try:
+                session.rollback()
+            except:
+                pass
 
     upsert("THEME_PRIMARY", THEME_PRIMARY)
     upsert("THEME_SECONDARY", THEME_SECONDARY)
@@ -1065,6 +1103,10 @@ def admin_settings_save(
     upsert("SMTP_HOST", SMTP_HOST)
     upsert("SMTP_PORT", SMTP_PORT)
     upsert("SMTP_USER", SMTP_USER)
+    # Ne mettre à jour le mot de passe que s'il est fourni (pour éviter de le vider si le champ est vide)
+    if SMTP_PASSWORD is not None and SMTP_PASSWORD.strip():
+        upsert("SMTP_PASSWORD", SMTP_PASSWORD)
+    upsert("MAIL_FROM", MAIL_FROM)
     upsert("SMTP_TLS", SMTP_TLS)
 
     log_activity(
@@ -1081,6 +1123,8 @@ def admin_settings_save(
                 "SMTP_HOST",
                 "SMTP_PORT",
                 "SMTP_USER",
+                "SMTP_PASSWORD",
+                "MAIL_FROM",
                 "SMTP_TLS",
             ]
         },
@@ -1286,17 +1330,7 @@ def admin_users_delete(
             status_code=303
         )
     
-    # Vérifier si l'utilisateur est conseiller ou référent dans des inscriptions
-    from ..models.inscription import Inscription
-    inscriptions_conseiller = session.exec(select(Inscription).where(Inscription.conseiller_id == u.id)).all()
-    inscriptions_referent = session.exec(select(Inscription).where(Inscription.referent_id == u.id)).all()
-    if inscriptions_conseiller or inscriptions_referent:
-        print(f"❌ [DEBUG] Utilisateur référencé dans des inscriptions")
-        timestamp = int(datetime.now(timezone.utc).timestamp())
-        return RedirectResponse(
-            url=f"/admin/users?error=1&message=Impossible de supprimer cet utilisateur car il est référencé dans des inscriptions (conseiller ou référent). Veuillez d'abord réassigner ces inscriptions.&t={timestamp}", 
-            status_code=303
-        )
+    
     
     # Vérifier si l'utilisateur a déposé des documents
     from ..models.base import Document
@@ -1532,220 +1566,6 @@ def admin_partenaires_delete(
     timestamp = int(datetime.now(timezone.utc).timestamp())
     return RedirectResponse(url=f"{request.url_for('admin_partenaires')}?success=1&action=delete&t={timestamp}", status_code=303)
 
-# ===== PROMOTIONS =====
-@router.get("/promotions", response_class=HTMLResponse, name="admin_promotions")
-def admin_promotions(request: Request, session: Session = Depends(get_shared_session), current_user: User = Depends(get_current_user), q: Optional[str] = Query(None)):
-    admin_required(current_user)
-    request.state.admin_title = "Gestion des promotions"
-    configure_schema(session, request)
-    stmt = select(Promotion)
-    if q:
-        like = f"%{q}%"
-        stmt = stmt.where((Promotion.libelle.ilike(like)))
-    promotions = session.exec(stmt.order_by(Promotion.libelle)).all()
-    
-    # Charger les relations programme pour chaque promotion
-    for promo in promotions:
-        promo.programme = session.get(Programme, promo.programme_id)
-    
-    # Récupérer tous les programmes pour les dropdowns
-    programmes = session.exec(select(Programme).order_by(Programme.code)).all()
-    
-    return templates.TemplateResponse("admin/promotions.html", {
-        "request": request, 
-        "settings": settings, 
-        "utilisateur": current_user, 
-        "promotions": promotions, 
-        "programmes": programmes,
-        "q": q or ""
-    })
-
-@router.post("/promotions/add")
-def admin_promotions_add(
-    programme_id: int = Form(...),
-    libelle: str = Form(...), 
-    capacite: Optional[str] = Form(None),
-    date_debut: Optional[str] = Form(None),
-    date_fin: Optional[str] = Form(None),
-    actif: Literal["on", "off", ""] = Form("on"),
-    request: Request = None, 
-    session: Session = Depends(get_shared_session), 
-    current_user: User = Depends(get_current_user)
-):
-    admin_required(current_user)
-    configure_schema(session, request)
-    
-    # Vérifier que le programme existe
-    programme = session.get(Programme, programme_id)
-    if not programme:
-        raise HTTPException(status_code=400, detail="Programme introuvable")
-    
-    # Vérifier si une promotion avec ce libellé existe déjà pour ce programme
-    existing = session.exec(select(Promotion).where(
-        Promotion.programme_id == programme_id,
-        Promotion.libelle == libelle.strip()
-    )).first()
-    if existing:
-        raise HTTPException(status_code=400, detail="Une promotion avec ce libellé existe déjà pour ce programme")
-    
-    promotion = Promotion(
-        programme_id=programme_id,
-        libelle=libelle.strip(),
-        capacite=int(capacite) if capacite and capacite.strip().isdigit() else None,
-        date_debut=datetime.fromisoformat(date_debut).date() if date_debut else None,
-        date_fin=datetime.fromisoformat(date_fin).date() if date_fin else None,
-        actif=(actif != "off")
-    )
-    session.add(promotion)
-    log_activity(session, user=current_user, action="PROMOTION_CREATE", entity="Promotion", entity_id=promotion.id,
-                 activity_data={"libelle": promotion.libelle, "programme_id": programme_id}, request=request)
-    session.commit()
-    
-    timestamp = int(datetime.now(timezone.utc).timestamp())
-    return RedirectResponse(url=f"{request.url_for('admin_promotions')}?success=1&action=add&t={timestamp}", status_code=303)
-
-@router.post("/promotions/{promotion_id}/update")
-def admin_promotions_update(
-    promotion_id: int,
-    programme_id: int = Form(...),
-    libelle: str = Form(...),
-    capacite: Optional[str] = Form(None),
-    date_debut: Optional[str] = Form(None),
-    date_fin: Optional[str] = Form(None),
-    actif: Literal["on", "off", ""] = Form("on"),
-    request: Request = None,
-    session: Session = Depends(get_shared_session),
-    current_user: User = Depends(get_current_user)
-):
-    admin_required(current_user)
-    configure_schema(session, request)
-    promotion = session.get(Promotion, promotion_id)
-    if not promotion:
-        raise HTTPException(status_code=404, detail="Promotion introuvable")
-    
-    # Vérifier que le programme existe
-    programme = session.get(Programme, programme_id)
-    if not programme:
-        raise HTTPException(status_code=400, detail="Programme introuvable")
-    
-    # Vérifier si une autre promotion avec ce libellé existe déjà pour ce programme
-    existing = session.exec(select(Promotion).where(
-        Promotion.programme_id == programme_id,
-        Promotion.libelle == libelle.strip(),
-        Promotion.id != promotion_id
-    )).first()
-    if existing:
-        raise HTTPException(status_code=400, detail="Une autre promotion avec ce libellé existe déjà pour ce programme")
-    
-    # Sauvegarder les anciennes valeurs pour le log
-    old_values = {
-        "programme_id": promotion.programme_id,
-        "libelle": promotion.libelle,
-        "capacite": promotion.capacite,
-        "date_debut": promotion.date_debut,
-        "date_fin": promotion.date_fin,
-        "actif": promotion.actif
-    }
-    
-    # Mettre à jour les champs
-    promotion.programme_id = programme_id
-    promotion.libelle = libelle.strip()
-    promotion.capacite = int(capacite) if capacite and capacite.strip().isdigit() else None
-    promotion.date_debut = datetime.fromisoformat(date_debut).date() if date_debut else None
-    promotion.date_fin = datetime.fromisoformat(date_fin).date() if date_fin else None
-    promotion.actif = (actif != "off")
-    
-    session.add(promotion)
-    log_activity(session, user=current_user, action="PROMOTION_UPDATE", entity="Promotion", entity_id=promotion.id,
-                 activity_data={"old": old_values, "new": {
-                     "programme_id": promotion.programme_id,
-                     "libelle": promotion.libelle,
-                     "capacite": promotion.capacite,
-                     "date_debut": promotion.date_debut,
-                     "date_fin": promotion.date_fin,
-                     "actif": promotion.actif
-                 }}, request=request)
-    session.commit()
-    
-    timestamp = int(datetime.now(timezone.utc).timestamp())
-    return RedirectResponse(url=f"{request.url_for('admin_promotions')}?success=1&action=update&t={timestamp}", status_code=303)
-
-@router.post("/promotions/{promotion_id}/toggle")
-def admin_promotions_toggle(promotion_id: int, request: Request, session: Session = Depends(get_shared_session), current_user: User = Depends(get_current_user)):
-    admin_required(current_user)
-    configure_schema(session, request)
-    promotion = session.get(Promotion, promotion_id)
-    if not promotion:
-        raise HTTPException(status_code=404, detail="Promotion introuvable")
-    
-    promotion.actif = not bool(promotion.actif)
-    log_activity(session, user=current_user, action="PROMOTION_TOGGLE", entity="Promotion", entity_id=promotion.id,
-                activity_data={"libelle": promotion.libelle, "actif": promotion.actif}, request=request)
-    session.commit()
-    
-    timestamp = int(datetime.now(timezone.utc).timestamp())
-    return RedirectResponse(url=f"{request.url_for('admin_promotions')}?success=1&action=toggle&t={timestamp}", status_code=303)
-
-@router.post("/promotions/{promotion_id}/delete")
-def admin_promotions_delete(
-    promotion_id: int,
-    request: Request = None,
-    session: Session = Depends(get_shared_session),
-    current_user: User = Depends(get_current_user)
-):
-    admin_required(current_user)
-    configure_schema(session, request)
-    promotion = session.get(Promotion, promotion_id)
-    if not promotion:
-        raise HTTPException(status_code=404, detail="Promotion introuvable")
-    
-    # Vérifier si la promotion est utilisée dans des inscriptions - Version sécurisée
-    try:
-        inscriptions_count = session.exec(
-            select(func.count(Inscription.id)).where(Inscription.promotion_id == promotion_id)
-        ).first()
-    except Exception as e:
-        logger.warning(f"Erreur lors de la vérification des inscriptions: {e}")
-        inscriptions_count = 0
-    if inscriptions_count > 0:
-        timestamp = int(datetime.now(timezone.utc).timestamp())
-        return RedirectResponse(
-            url=f"/admin/promotions?error=1&message=Impossible de supprimer la promotion '{promotion.libelle}' car elle est utilisée dans {inscriptions_count} inscription(s). Veuillez d'abord réassigner ces inscriptions.&t={timestamp}", 
-            status_code=303
-        )
-    
-    # Vérifier si la promotion est utilisée dans des jurys - Version sécurisée
-    try:
-        jurys_count = session.exec(
-            select(func.count(Jury.id)).where(Jury.promotion_id == promotion_id)
-        ).first()
-    except Exception as e:
-        logger.warning(f"Erreur lors de la vérification des jurys: {e}")
-        jurys_count = 0
-    if jurys_count > 0:
-        timestamp = int(datetime.now(timezone.utc).timestamp())
-        return RedirectResponse(
-            url=f"/admin/promotions?error=1&message=Impossible de supprimer la promotion '{promotion.libelle}' car elle est utilisée dans {jurys_count} jury(s). Veuillez d'abord réassigner ces jurys.&t={timestamp}", 
-            status_code=303
-        )
-    
-    # Sauvegarder les informations pour le log avant suppression
-    promotion_libelle = promotion.libelle
-    promotion_programme_id = promotion.programme_id
-    
-    try:
-        session.delete(promotion)
-        session.commit()
-        
-        log_activity(session, user=current_user, action="PROMOTION_DELETE", entity="Promotion", entity_id=promotion_id,
-                     activity_data={"deleted_promotion_libelle": promotion_libelle, "deleted_promotion_programme_id": promotion_programme_id}, request=request)
-        
-    except Exception as e:
-        session.rollback()
-        raise HTTPException(status_code=500, detail="Erreur lors de la suppression de la promotion")
-    
-    timestamp = int(datetime.now(timezone.utc).timestamp())
-    return RedirectResponse(url=f"{request.url_for('admin_promotions')}?success=1&action=delete&t={timestamp}", status_code=303)
 
 # ===== GROUPES =====
 @router.get("/groupes", response_class=HTMLResponse, name="admin_groupes")

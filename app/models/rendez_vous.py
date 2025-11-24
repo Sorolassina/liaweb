@@ -8,7 +8,7 @@ class RendezVous(SQLModel, table=True):
     __tablename__ = "rendez_vous"
     
     id: Optional[int] = Field(default=None, primary_key=True)
-    inscription_id: int = Field(foreign_key="inscription.id")
+    candidat_id: int = Field(foreign_key="candidat.id")
     conseiller_id: Optional[int] = Field(foreign_key="user.id")
     type_rdv: TypeRDV = TypeRDV.ENTRETIEN
     statut: StatutRDV = StatutRDV.PLANIFIE
@@ -19,7 +19,7 @@ class RendezVous(SQLModel, table=True):
     meet_link: Optional[str] = None  # Lien Google Meet unique
 
     # Relations
-    inscription: "Inscription" = Relationship()
+    candidat: "Candidat" = Relationship()
     conseiller: Optional["User"] = Relationship()
     emargements: List["EmargementRDV"] = Relationship(back_populates="rdv")
 

@@ -9,6 +9,7 @@ from pydantic import Field
 import os
 from fastapi import Request
 
+
 # Constante globale (pas dans la classe)
 BASE_DIR = Path(__file__).resolve().parent.parent
 
@@ -48,6 +49,46 @@ class Settings(BaseSettings):
     # === Services externes ===
     PAPPERS_API_KEY: Optional[str] = None
     REDIS_URL: Optional[str] = "redis://localhost:6379/0"
+    
+    # === Visioconférence ===
+    VIDEO_CONFERENCE_TYPE: str = "jitsi"  # Options: "jitsi", "webrtc_custom", "galene", "nextcloud"
+    JITSI_DOMAIN: str = "meet.jit.si"  # Domaine Jitsi (public ou auto-hébergé)
+    JITSI_DOMAIN_DEBUG: Optional[str] = None  # IP ou domaine pour le mode debug (si différent)
+    JITSI_APP_ID: Optional[str] = None  # ID d'application Jitsi (si auth activée)
+    JITSI_APP_SECRET: Optional[str] = None  # Secret Jitsi (si auth activée)
+    WEBRTC_SIGNALING_URL: Optional[str] = None  # URL du serveur de signalisation WebRTC
+    WEBRTC_TURN_SERVER: Optional[str] = None  # Serveur TURN pour WebRTC
+    WEBRTC_STUN_SERVER: Optional[str] = None  # Serveur STUN pour WebRTC
+    
+    @property
+    def JITSI_DOMAIN_ACTIVE(self) -> str:
+        """
+        Retourne le domaine Jitsi à utiliser selon l'environnement.
+        - En DEBUG : utilise JITSI_DOMAIN_DEBUG si défini, sinon JITSI_DOMAIN (serveur public)
+        - En PRODUCTION : utilise JITSI_DOMAIN (domaine Cloudflare ou serveur public)
+        """
+        if self.DEBUG and self.JITSI_DOMAIN_DEBUG:
+            return self.JITSI_DOMAIN_DEBUG
+        # Par défaut, utiliser le serveur public Jitsi si aucun domaine spécifique n'est configuré
+        return self.JITSI_DOMAIN or "meet.jit.si"
+    
+    @property
+    def JITSI_URL_ACTIVE(self) -> str:
+        """
+        Retourne l'URL complète Jitsi (avec protocole) selon l'environnement.
+        Utilise la même logique que get_media_url pour la cohérence.
+        """
+        domain = self.JITSI_DOMAIN_ACTIVE
+        # Utiliser la même logique que get_media_url pour déterminer le protocole
+        environnement = os.environ.get('ENVIRONNEMENT', 'development').lower()
+        
+        if environnement == 'production':
+            return f"https://{domain}"
+        else:
+            # En développement, utiliser http pour localhost/IP (comme get_media_url)
+            if domain.startswith('localhost') or (domain.replace('.', '').isdigit() and len(domain.split('.')) == 4):
+                return f"http://{domain}"
+            return f"https://{domain}"
     
     # === Services QPV et SIRET ===
     QPV_API_TIMEOUT: int = 30  # Timeout pour l'API géolocalisation

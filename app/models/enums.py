@@ -199,6 +199,7 @@ class TypeInvitationEvent(str, Enum):
 
 class StatutInvitationEvent(str, Enum):
     EN_ATTENTE = "en_attente"
+    ENVOYEE = "envoyee"
     ACCEPTEE = "acceptee"
     REFUSEE = "refusee"
 

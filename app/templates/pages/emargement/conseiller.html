@@ -1,4 +1,4 @@
-{% extends "base.html" %}
+{% extends "layouts/base.html" %}
 
 {% block title %}Émargement - RDV #{{ rdv.id }}{% endblock %}
 
@@ -30,7 +30,7 @@
                             <h5><i class="fas fa-calendar-alt me-2" style="color: var(--primary-color);"></i>Détails du rendez-vous</h5>
                             <div class="bg-light p-3 rounded">
                                 <p><strong>Date :</strong> {{ rdv.debut | format_datetime if rdv.debut else 'Non définie' }}</p>
-                                <p><strong>Type :</strong> {{ rdv.type }}</p>
+                                <p><strong>Type :</strong> {{ rdv.type_rdv.value if rdv.type_rdv else 'Non défini' }}</p>
                                 <p><strong>Lieu :</strong> {{ rdv.lieu or 'Non défini' }}</p>
                                 <p><strong>Statut :</strong> 
                                     <span class="badge bg-warning">{{ rdv.statut.value }}</span>
@@ -141,7 +141,8 @@
                     <div class="row mt-4">
                         <div class="col-12">
                             <div class="d-flex justify-content-between">
-                                <a href="{{ url_for('rendez_vous_list') }}" class="btn btn-outline-secondary submenu-item">
+                                {% set programme_param = request.query_params.get('programme') or (schema_name.upper() if schema_name and schema_name != 'public' else '') %}
+                                <a href="{{ url_for('rendez_vous_home') }}{% if programme_param %}?programme={{ programme_param }}{% endif %}" class="btn btn-outline-secondary submenu-item">
                                     <i class="fas fa-arrow-left me-2"></i>Retour à la liste
                                 </a>
                                 
@@ -258,13 +259,21 @@ function saveSignature() {
     
     const signatureData = canvas.toDataURL('image/png');
     
-    fetch(`/emargement/{{ rdv.id }}/signer`, {
+    // Récupérer le paramètre programme depuis l'URL
+    const urlParams = new URLSearchParams(window.location.search);
+    const programme = urlParams.get('programme') || '';
+    
+    let apiUrl = `/rendez_vous/emargement/{{ rdv.id }}/signer`;
+    if (programme) {
+        apiUrl += `?programme=${encodeURIComponent(programme)}`;
+    }
+    
+    fetch(apiUrl, {
         method: 'POST',
         headers: {
             'Content-Type': 'application/json',
         },
         body: JSON.stringify({
-            type: 'conseiller',
             signature: signatureData
         })
     })
@@ -285,7 +294,16 @@ function saveSignature() {
 
 function envoyerLienCandidat() {
     if (confirm('Êtes-vous sûr de vouloir envoyer le lien d\'émargement au candidat ?')) {
-        fetch(`/emargement/{{ rdv.id }}/envoyer-lien-candidat`, {
+        // Récupérer le paramètre programme depuis l'URL
+        const urlParams = new URLSearchParams(window.location.search);
+        const programme = urlParams.get('programme') || '';
+        
+        let apiUrl = `/rendez_vous/emargement/{{ rdv.id }}/envoyer-lien-candidat`;
+        if (programme) {
+            apiUrl += `?programme=${encodeURIComponent(programme)}`;
+        }
+        
+        fetch(apiUrl, {
             method: 'POST',
             headers: {
                 'Content-Type': 'application/json',

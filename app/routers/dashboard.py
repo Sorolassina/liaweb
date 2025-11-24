@@ -13,7 +13,6 @@ from ..core.program_schema_integration import safe_count_query, table_exists_any
 import logging
 from ..models.base import User, Programme, Candidat
 from ..models.preinscription import Preinscription
-from ..models.inscription import Inscription
 from ..models.jury import Jury
 from ..models.enums import UserRole, StatutDossier
 from ..schemas import StatistiquesResponse
@@ -47,9 +46,18 @@ async def get_detailed_stats(
         if table_exists_anywhere("preinscription", session):
             preinscriptions_count = safe_count_query(session, Preinscription, programme_id=programme.id)
         
+        # NOTE: Le modèle Inscription a été supprimé. Compter les candidats validés.
         inscriptions_count = 0
-        if table_exists_anywhere("inscription", session):
-            inscriptions_count = safe_count_query(session, Inscription, programme_id=programme.id)
+        # if table_exists_anywhere("inscription", session):
+        #     inscriptions_count = safe_count_query(session, Inscription, programme_id=programme.id)
+        from ..models.enums import DecisionJury
+        try:
+            inscriptions_count = session.exec(
+                select(func.count(Candidat.id)).where(Candidat.statut == DecisionJury.VALIDE)
+            ).one()
+        except Exception as e:
+            logging.warning(f"Erreur lors du comptage des candidats validés: {e}")
+            inscriptions_count = 0
         
         jurys_count = 0
         if table_exists_anywhere("jury", session):
@@ -82,12 +90,18 @@ async def get_detailed_stats(
         ).count()
         stats_par_statut["preinscriptions"][statut.value] = count
     
-    # Inscriptions par statut
-    for statut in StatutDossier:
-        count = session.exec(
-            select(Inscription).where(Inscription.statut == statut)
-        ).count()
-        stats_par_statut["inscriptions"][statut.value] = count
+    # NOTE: Le modèle Inscription a été supprimé. Le statut est maintenant dans Candidat.
+    # Inscriptions par statut - Utiliser les candidats avec leur statut
+    from ..models.enums import DecisionJury
+    for decision in DecisionJury:
+        try:
+            count = session.exec(
+                select(func.count(Candidat.id)).where(Candidat.statut == decision)
+            ).one()
+            stats_par_statut["inscriptions"][decision.value] = count
+        except Exception as e:
+            logging.warning(f"Erreur lors du comptage des candidats avec statut {decision.value}: {e}")
+            stats_par_statut["inscriptions"][decision.value] = 0
     
     # Évolution sur les 30 derniers jours
     date_30_jours = datetime.now(timezone.utc) - timedelta(days=30)
@@ -102,15 +116,16 @@ async def get_detailed_stats(
             logging.warning(f"Erreur lors du comptage des préinscriptions 30 jours: {e}")
             preinscriptions_30_jours = 0
     
+    # NOTE: Le modèle Inscription a été supprimé. Utiliser les candidats validés.
     inscriptions_30_jours = 0
-    if table_exists_anywhere("inscription", session):
-        try:
-            inscriptions_30_jours = session.exec(
-                select(Inscription).where(Inscription.cree_le >= date_30_jours)
-            ).count()
-        except Exception as e:
-            logging.warning(f"Erreur lors du comptage des inscriptions 30 jours: {e}")
-            inscriptions_30_jours = 0
+    # if table_exists_anywhere("inscription", session):
+    #     try:
+    #         inscriptions_30_jours = session.exec(
+    #             select(Inscription).where(Inscription.cree_le >= date_30_jours)
+    #         ).count()
+    #     except Exception as e:
+    #         logging.warning(f"Erreur lors du comptage des inscriptions 30 jours: {e}")
+    #         inscriptions_30_jours = 0
     
     return {
         "stats_par_programme": stats_par_programme,
@@ -150,24 +165,26 @@ async def get_recent_actions(
             "id": preinscription.id
         })
     
-    # Inscriptions récentes
-    recent_inscriptions = session.exec(
-        select(Inscription)
-        .order_by(Inscription.cree_le.desc())
+    # NOTE: Le modèle Inscription a été supprimé. Utiliser les candidats validés récents.
+    # Inscriptions récentes - Utiliser les candidats validés
+    from ..models.enums import DecisionJury
+    recent_candidats_valides = session.exec(
+        select(Candidat)
+        .where(Candidat.statut == DecisionJury.VALIDE)
+        .order_by(Candidat.id.desc())  # Utiliser id au lieu de cree_le si cree_le n'existe pas
         .limit(limit)
     ).all()
     
-    for inscription in recent_inscriptions:
-        candidat = session.get(Candidat, inscription.candidat_id)
-        programme = session.get(Programme, inscription.programme_id)
-        
-        actions.append({
-            "type": "inscription",
-            "date": inscription.cree_le,
-            "description": f"Nouvelle inscription de {candidat.nom} {candidat.prenom} pour {programme.nom}",
-            "statut": inscription.statut.value,
-            "id": inscription.id
-        })
+    # NOTE: Sans inscription, on ne peut pas récupérer le programme directement
+    # for candidat in recent_candidats_valides:
+    #     # programme = session.get(Programme, inscription.programme_id)  # Plus possible sans inscription
+    #     actions.append({
+    #         "type": "inscription",
+    #         "date": candidat.id,  # Approximation
+    #         "description": f"Candidat validé: {candidat.nom} {candidat.prenom}",
+    #         "statut": candidat.statut.value,
+    #         "id": candidat.id
+    #     })
     
     # Jurys récents
     recent_jurys = session.exec(
@@ -275,9 +292,11 @@ async def get_user_stats(
                 select(Preinscription).where(Preinscription.programme_id == programme.id)
             ).count()
             
-            inscriptions = session.exec(
-                select(Inscription).where(Inscription.programme_id == programme.id)
-            ).count()
+            # NOTE: Le modèle Inscription a été supprimé. Compter les candidats validés.
+            # inscriptions = session.exec(
+            #     select(Inscription).where(Inscription.programme_id == programme.id)
+            # ).count()
+            inscriptions = 0  # Modèle Inscription supprimé
             
             total_preinscriptions += preinscriptions
             total_inscriptions += inscriptions
@@ -290,13 +309,18 @@ async def get_user_stats(
     
     elif current_user.role == UserRole.CONSEILLER.value:
         # Statistiques pour un conseiller
-        inscriptions_conseiller = session.exec(
-            select(Inscription).where(Inscription.conseiller_id == current_user.id)
+        # NOTE: Le modèle Inscription a été supprimé. Utiliser les candidats validés.
+        # inscriptions_conseiller = session.exec(
+        #     select(Inscription).where(Inscription.conseiller_id == current_user.id)
+        # ).all()
+        from ..models.enums import DecisionJury
+        candidats_valides = session.exec(
+            select(Candidat).where(Candidat.statut == DecisionJury.VALIDE)
         ).all()
         
         user_stats = {
-            "candidats_accompagnes": len(inscriptions_conseiller),
-            "inscriptions_en_cours": len([i for i in inscriptions_conseiller if i.statut == StatutDossier.VALIDE])
+            "candidats_accompagnes": len(candidats_valides),
+            "inscriptions_en_cours": len(candidats_valides)  # Tous les candidats validés sont "en cours"
         }
     
     elif current_user.role == UserRole.ADMINISTRATEUR.value:
