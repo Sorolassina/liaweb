@@ -29,6 +29,7 @@ class Event(SQLModel, table=True):
     # Timestamps
     cree_le: datetime = Field(default_factory=lambda: datetime.now())
     modifie_le: Optional[datetime] = Field(default=None)
+    partenaire_bpi: Optional[str] = None  # Filtrage par partenaire BPI
     
     # Relations avec les invitations et présences d'événements
     invitations: List["InvitationEvent"] = Relationship(back_populates="event")

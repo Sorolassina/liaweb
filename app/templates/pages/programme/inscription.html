@@ -994,6 +994,34 @@ Inscriptions {{ programme.code }}
                         <label class="form-label">Secteur d'activité</label>
                         <input type="text" class="form-control" name="secteur_activite" value="{{ cand.secteur_activite or '' }}">
                       </div>
+                      <div class="col-md-6">
+                        <label class="form-label">Situation socio-professionnelle</label>
+                        {% set current_situation = cand.situation_socio or (selected.situation_socio if selected else '') or '' %}
+                        {% if not current_situation or current_situation == '' or current_situation == 'nc' %}
+                          {% set current_situation = 'Non communiqué' %}
+                        {% endif %}
+                        {% set situations_liste = ['Salarié', 'Indépendant', 'Travailleur indépendant', 'Auto-entrepreneur', 'Artisan', 'Commerçant', "Chef d'entreprise", "Demandeur d'emploi", 'Chômeur', 'Retraité', 'Étudiant', 'Sans activité professionnelle', 'Inactif', 'Non communiqué'] %}
+                        {% set is_autre = current_situation and current_situation not in situations_liste %}
+                        <select class="form-select" name="situation_socio" id="situation_socio_select">
+                          <option value="Non communiqué" {% if current_situation == 'Non communiqué' or not current_situation or current_situation == '' %}selected{% endif %}>Non communiqué</option>
+                          <option value="Salarié" {% if current_situation == 'Salarié' %}selected{% endif %}>Salarié</option>
+                          <option value="Indépendant" {% if current_situation == 'Indépendant' %}selected{% endif %}>Indépendant</option>
+                          <option value="Travailleur indépendant" {% if current_situation == 'Travailleur indépendant' %}selected{% endif %}>Travailleur indépendant</option>
+                          <option value="Auto-entrepreneur" {% if current_situation == 'Auto-entrepreneur' %}selected{% endif %}>Auto-entrepreneur</option>
+                          <option value="Artisan" {% if current_situation == 'Artisan' %}selected{% endif %}>Artisan</option>
+                          <option value="Commerçant" {% if current_situation == 'Commerçant' %}selected{% endif %}>Commerçant</option>
+                          <option value="Chef d'entreprise" {% if current_situation == "Chef d'entreprise" %}selected{% endif %}>Chef d'entreprise</option>
+                          <option value="Demandeur d'emploi" {% if current_situation == "Demandeur d'emploi" %}selected{% endif %}>Demandeur d'emploi</option>
+                          <option value="Chômeur" {% if current_situation == 'Chômeur' %}selected{% endif %}>Chômeur</option>
+                          <option value="Retraité" {% if current_situation == 'Retraité' %}selected{% endif %}>Retraité</option>
+                          <option value="Étudiant" {% if current_situation == 'Étudiant' %}selected{% endif %}>Étudiant</option>
+                          <option value="Sans activité professionnelle" {% if current_situation == 'Sans activité professionnelle' %}selected{% endif %}>Sans activité professionnelle</option>
+                          <option value="Inactif" {% if current_situation == 'Inactif' %}selected{% endif %}>Inactif</option>
+                          <option value="Autre" {% if is_autre %}selected{% endif %}>Autre (préciser ci-dessous)</option>
+                        </select>
+                        <small class="form-text text-muted">Situation professionnelle du candidat à l'entrée du programme</small>
+                        <input type="text" class="form-control mt-2" name="situation_socio_autre" id="situation_socio_autre" value="{% if is_autre %}{{ current_situation }}{% endif %}" placeholder="Préciser la situation si 'Autre'" style="display: {% if is_autre %}block{% else %}none{% endif %};">
+                      </div>
                     </div>
                   </div>
                 </div>
@@ -1021,7 +1049,25 @@ Inscriptions {{ programme.code }}
                       </div>
                       <div class="col-12">
                         <label class="form-label">Raison sociale</label>
-                        <input type="text" class="form-control" name="raison_sociale" value="{{ ent.raison_sociale or '' }}">
+                        {% set current_raison_sociale = ent.raison_sociale or '' %}
+                        {% set raisons_sociales_liste = ['SARL', 'SAS', 'EURL', 'SASU', 'SA', 'SNC', 'SCI', 'Auto-entrepreneur', 'Micro-entreprise', 'EIRL', 'Entreprise individuelle'] %}
+                        {% set is_autre_raison = current_raison_sociale and current_raison_sociale not in raisons_sociales_liste %}
+                        <select class="form-select" name="raison_sociale" id="raison_sociale_select">
+                          <option value="">— Sélectionner une raison sociale —</option>
+                          <option value="SARL" {% if current_raison_sociale == 'SARL' %}selected{% endif %}>SARL (Société à Responsabilité Limitée)</option>
+                          <option value="SAS" {% if current_raison_sociale == 'SAS' %}selected{% endif %}>SAS (Société par Actions Simplifiée)</option>
+                          <option value="EURL" {% if current_raison_sociale == 'EURL' %}selected{% endif %}>EURL (Entreprise Unipersonnelle à Responsabilité Limitée)</option>
+                          <option value="SASU" {% if current_raison_sociale == 'SASU' %}selected{% endif %}>SASU (Société par Actions Simplifiée Unipersonnelle)</option>
+                          <option value="SA" {% if current_raison_sociale == 'SA' %}selected{% endif %}>SA (Société Anonyme)</option>
+                          <option value="SNC" {% if current_raison_sociale == 'SNC' %}selected{% endif %}>SNC (Société en Nom Collectif)</option>
+                          <option value="SCI" {% if current_raison_sociale == 'SCI' %}selected{% endif %}>SCI (Société Civile Immobilière)</option>
+                          <option value="Auto-entrepreneur" {% if current_raison_sociale == 'Auto-entrepreneur' %}selected{% endif %}>Auto-entrepreneur</option>
+                          <option value="Micro-entreprise" {% if current_raison_sociale == 'Micro-entreprise' %}selected{% endif %}>Micro-entreprise</option>
+                          <option value="EIRL" {% if current_raison_sociale == 'EIRL' %}selected{% endif %}>EIRL (Entrepreneur Individuel à Responsabilité Limitée)</option>
+                          <option value="Entreprise individuelle" {% if current_raison_sociale == 'Entreprise individuelle' %}selected{% endif %}>Entreprise individuelle</option>
+                          <option value="Autre" {% if is_autre_raison %}selected{% endif %}>Autre (préciser ci-dessous)</option>
+                        </select>
+                        <input type="text" class="form-control mt-2" name="raison_sociale_autre" id="raison_sociale_autre" value="{% if is_autre_raison %}{{ current_raison_sociale }}{% endif %}" placeholder="Préciser la raison sociale si 'Autre'" style="display: none;">
                       </div>
                       <div class="col-md-6">
                         <label class="form-label">Code NAF</label>
@@ -1341,7 +1387,7 @@ Inscriptions {{ programme.code }}
               </h2>
               <div id="collapseDecision" class="accordion-collapse collapse" aria-labelledby="headingDecision" data-bs-parent="#juryAccordion">
                 <div class="accordion-body p-2">
-                  <form method="post" action="/inscriptions/jury/decision" class="needs-validation" novalidate>
+                  <form method="post" action="/inscriptions/jury/decision" class="needs-validation" id="juryDecisionForm">
                     <input type="hidden" name="candidat_id" value="{{ cand.id }}">
                     <input type="hidden" name="programme" value="{{ programme.code }}">
                     
@@ -1590,11 +1636,21 @@ Inscriptions {{ programme.code }}
 <script>
   // Fonction pour retourner à la liste des candidats
   function returnToList() {
-    // Retirer le paramètre pre_id de l'URL pour revenir à la liste
-    const url = new URL(window.location.href);
-    url.searchParams.delete('pre_id');
-    url.searchParams.delete('t'); // Retirer aussi le timestamp
-    window.location.href = url.toString();
+    // Afficher l'overlay global
+    if (typeof showGlobalLoading === 'function') {
+      showGlobalLoading('Chargement de la liste...', 'Veuillez patienter');
+    }
+    
+    // Utiliser requestAnimationFrame pour s'assurer que l'overlay est rendu avant la navigation
+    requestAnimationFrame(() => {
+      requestAnimationFrame(() => {
+        // Retirer le paramètre pre_id de l'URL pour revenir à la liste
+        const url = new URL(window.location.href);
+        url.searchParams.delete('pre_id');
+        url.searchParams.delete('t'); // Retirer aussi le timestamp
+        window.location.href = url.toString();
+      });
+    });
   }
   
   // Forcer l'affichage correct au chargement de la page
@@ -1753,23 +1809,44 @@ Inscriptions {{ programme.code }}
   // Fonction pour supprimer une décision
   function deleteDecision(decisionId) {
     if (confirm('Êtes-vous sûr de vouloir supprimer cette décision ? Cette action est irréversible.')) {
-      // Créer un formulaire de suppression
-      const form = document.createElement('form');
-      form.method = 'POST';
-      form.action = `/inscriptions/jury/decision/${decisionId}/delete`;
-      
-      // Ajouter un token CSRF si nécessaire
-      const csrfToken = document.querySelector('meta[name="csrf-token"]');
-      if (csrfToken) {
-        const input = document.createElement('input');
-        input.type = 'hidden';
-        input.name = 'csrf_token';
-        input.value = csrfToken.getAttribute('content');
-        form.appendChild(input);
+      // Afficher l'overlay global immédiatement
+      if (typeof showGlobalLoading === 'function') {
+        showGlobalLoading('Suppression en cours...', 'Veuillez patienter');
       }
       
-      document.body.appendChild(form);
-      form.submit();
+      // Utiliser requestAnimationFrame pour s'assurer que l'overlay est rendu avant la soumission
+      requestAnimationFrame(() => {
+        requestAnimationFrame(() => {
+          // Créer un formulaire de suppression
+          const form = document.createElement('form');
+          form.method = 'POST';
+          form.action = `/inscriptions/jury/decision/${decisionId}/delete`;
+          
+          // Récupérer le programme depuis l'URL ou un champ caché
+          const urlParams = new URLSearchParams(window.location.search);
+          const programme = urlParams.get('programme') || '{{ programme.code if programme else "ACD" }}';
+          
+          // Ajouter le paramètre programme
+          const programmeInput = document.createElement('input');
+          programmeInput.type = 'hidden';
+          programmeInput.name = 'programme';
+          programmeInput.value = programme;
+          form.appendChild(programmeInput);
+          
+          // Ajouter un token CSRF si nécessaire
+          const csrfToken = document.querySelector('meta[name="csrf-token"]');
+          if (csrfToken) {
+            const input = document.createElement('input');
+            input.type = 'hidden';
+            input.name = 'csrf_token';
+            input.value = csrfToken.getAttribute('content');
+            form.appendChild(input);
+          }
+          
+          document.body.appendChild(form);
+          form.submit();
+        });
+      });
     }
   }
 
@@ -1780,6 +1857,11 @@ Inscriptions {{ programme.code }}
     const originalContent = qpvButton.innerHTML;
     
     try {
+      // Afficher l'overlay global
+      if (typeof showGlobalLoading === 'function') {
+        showGlobalLoading('Vérification QPV en cours...', 'Analyse des adresses et géolocalisation');
+      }
+      
       // Afficher le spinner et désactiver le bouton
       qpvButton.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Vérification...';
       qpvButton.disabled = true;
@@ -1816,11 +1898,32 @@ Inscriptions {{ programme.code }}
       const result = await response.json();
       console.log('Résultat QPV:', result); // Debug
       
+      // Masquer l'overlay
+      if (typeof hideGlobalLoading === 'function') {
+        hideGlobalLoading();
+      }
+      
+      // Afficher un toast de succès
+      if (typeof showSuccess === 'function') {
+        const statutQPV = result.statut_qpv_final || 'Vérifié';
+        showSuccess(`Vérification QPV terminée. Statut: ${statutQPV}`, 'Vérification QPV');
+      }
+      
       // Mettre à jour le contenu du modal avec les résultats
       showQPVResult(result);
       
     } catch (error) {
       console.error('Erreur lors de la vérification QPV:', error);
+      
+      // Masquer l'overlay
+      if (typeof hideGlobalLoading === 'function') {
+        hideGlobalLoading();
+      }
+      
+      // Afficher un toast d'erreur
+      if (typeof showError === 'function') {
+        showError(`Erreur lors de la vérification QPV: ${error.message}`, 'Erreur QPV');
+      }
       
       // Afficher l'erreur dans le modal
       const modal = document.getElementById('qpvResultModal');
@@ -1872,6 +1975,11 @@ Inscriptions {{ programme.code }}
     const originalContent = siretButton.innerHTML;
     
     try {
+      // Afficher l'overlay global
+      if (typeof showGlobalLoading === 'function') {
+        showGlobalLoading('Recherche SIRET en cours...', 'Récupération des informations de l\'entreprise');
+      }
+      
       // Afficher le spinner et désactiver le bouton
       siretButton.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Recherche...';
       siretButton.disabled = true;
@@ -1901,9 +2009,35 @@ Inscriptions {{ programme.code }}
       });
       
       const result = await response.json();
+      
+      // Masquer l'overlay
+      if (typeof hideGlobalLoading === 'function') {
+        hideGlobalLoading();
+      }
+      
+      // Afficher un toast de succès
+      if (typeof showSuccess === 'function') {
+        const entrepriseTrouvee = result.entreprise_mise_a_jour || (result.resultat && result.resultat.entreprise_data);
+        const message = entrepriseTrouvee 
+          ? 'Informations SIRET récupérées et entreprise mise à jour avec succès'
+          : 'Vérification SIRET terminée';
+        showSuccess(message, 'Vérification SIRET');
+      }
+      
       showSIRETResult(result, candidatId);
     } catch (error) {
       console.error('Erreur lors de la vérification SIRET:', error);
+      
+      // Masquer l'overlay
+      if (typeof hideGlobalLoading === 'function') {
+        hideGlobalLoading();
+      }
+      
+      // Afficher un toast d'erreur
+      if (typeof showError === 'function') {
+        showError(`Erreur lors de la vérification SIRET: ${error.message || 'Erreur inconnue'}`, 'Erreur SIRET');
+      }
+      
       const modal = document.getElementById('siretResultModal');
       const modalBody = modal.querySelector('.modal-body');
       modalBody.innerHTML = `
@@ -2123,6 +2257,11 @@ Inscriptions {{ programme.code }}
         try {
             console.log(`📥 [SIRET DOC] Téléchargement: ${nomFichier} (${typeDocument})`);
             
+            // Afficher l'overlay global
+            if (typeof showGlobalLoading === 'function') {
+                showGlobalLoading('Téléchargement en cours...', `Téléchargement de "${nomFichier}"`);
+            }
+            
             // Afficher un spinner sur le bouton
             const button = event.target.closest('button');
             const originalContent = button.innerHTML;
@@ -2143,6 +2282,11 @@ Inscriptions {{ programme.code }}
             });
             
             const result = await response.json();
+            
+            // Masquer l'overlay
+            if (typeof hideGlobalLoading === 'function') {
+                hideGlobalLoading();
+            }
             
             if (result.success) {
                 console.log(`✅ [SIRET DOC] Document téléchargé: ${result.filename}`);
@@ -2175,6 +2319,12 @@ Inscriptions {{ programme.code }}
             
         } catch (error) {
             console.error('❌ [SIRET DOC] Erreur:', error);
+            
+            // Masquer l'overlay
+            if (typeof hideGlobalLoading === 'function') {
+                hideGlobalLoading();
+            }
+            
             showAlert('danger', 'Erreur lors du téléchargement du document');
             
             // Restaurer le bouton
@@ -2580,10 +2730,125 @@ Inscriptions {{ programme.code }}
     }
   }
 
+  // Gérer l'affichage du champ "Autre" pour situation_socio
+  document.addEventListener('DOMContentLoaded', function() {
+    const situationSelect = document.getElementById('situation_socio_select');
+    const situationAutreInput = document.getElementById('situation_socio_autre');
+    
+    if (situationSelect && situationAutreInput) {
+      // Afficher/masquer le champ "Autre" selon la sélection
+      function toggleAutreField() {
+        if (situationSelect.value === 'Autre') {
+          situationAutreInput.style.display = 'block';
+          situationAutreInput.required = true;
+        } else {
+          situationAutreInput.style.display = 'none';
+          situationAutreInput.required = false;
+          // Ne pas vider la valeur si on change d'option, au cas où l'utilisateur reviendrait sur "Autre"
+        }
+      }
+      
+      // Vérifier l'état initial
+      toggleAutreField();
+      
+      // Écouter les changements
+      situationSelect.addEventListener('change', toggleAutreField);
+    }
+    
+    // Gérer l'affichage du champ "Autre" pour raison_sociale
+    const raisonSocialeSelect = document.getElementById('raison_sociale_select');
+    const raisonSocialeAutreInput = document.getElementById('raison_sociale_autre');
+    
+    if (raisonSocialeSelect && raisonSocialeAutreInput) {
+      // Afficher/masquer le champ "Autre" selon la sélection
+      function toggleRaisonSocialeAutreField() {
+        if (raisonSocialeSelect.value === 'Autre') {
+          raisonSocialeAutreInput.style.display = 'block';
+          raisonSocialeAutreInput.required = true;
+        } else {
+          raisonSocialeAutreInput.style.display = 'none';
+          raisonSocialeAutreInput.required = false;
+          // Ne pas vider la valeur si on change d'option, au cas où l'utilisateur reviendrait sur "Autre"
+        }
+      }
+      
+      // Vérifier l'état initial - s'assurer que le champ est masqué si "Autre" n'est pas sélectionné
+      if (raisonSocialeSelect.value !== 'Autre') {
+        raisonSocialeAutreInput.style.display = 'none';
+      } else {
+        raisonSocialeAutreInput.style.display = 'block';
+        raisonSocialeAutreInput.required = true;
+      }
+      
+      // Écouter les changements
+      raisonSocialeSelect.addEventListener('change', toggleRaisonSocialeAutreField);
+    }
+  });
+
   // Fonction pour sauvegarder avec overlay global
   function saveForm() {
     const form = document.querySelector('#tab-infos form');
     if (!form) return;
+    
+    // Gérer le champ "Autre" pour situation_socio avant la soumission
+    const situationSelect = document.getElementById('situation_socio_select');
+    const situationAutreInput = document.getElementById('situation_socio_autre');
+    
+    if (situationSelect && situationAutreInput) {
+      // Si aucune valeur n'est sélectionnée, utiliser "Non communiqué" par défaut
+      if (!situationSelect.value || situationSelect.value === '') {
+        situationSelect.value = 'Non communiqué';
+      }
+      
+      if (situationSelect.value === 'Autre') {
+        if (!situationAutreInput.value.trim()) {
+          alert('Veuillez préciser la situation socio-professionnelle dans le champ "Autre"');
+          situationAutreInput.focus();
+          return;
+        }
+        // Remplacer la valeur du select par la valeur saisie dans "Autre"
+        // On va créer un champ caché avec la valeur saisie et désactiver le select
+        const hiddenInput = document.createElement('input');
+        hiddenInput.type = 'hidden';
+        hiddenInput.name = 'situation_socio';
+        hiddenInput.value = situationAutreInput.value.trim();
+        form.appendChild(hiddenInput);
+        // Désactiver le select pour éviter qu'il soit envoyé avec la valeur "Autre"
+        situationSelect.disabled = true;
+        // Supprimer le name du champ "autre" pour éviter qu'il soit envoyé
+        situationAutreInput.removeAttribute('name');
+      } else {
+        // Si une autre option est sélectionnée, s'assurer que le champ "autre" n'est pas envoyé
+        situationAutreInput.removeAttribute('name');
+      }
+    }
+    
+    // Gérer le champ "Autre" pour raison_sociale avant la soumission
+    const raisonSocialeSelect = document.getElementById('raison_sociale_select');
+    const raisonSocialeAutreInput = document.getElementById('raison_sociale_autre');
+    
+    if (raisonSocialeSelect && raisonSocialeAutreInput) {
+      if (raisonSocialeSelect.value === 'Autre') {
+        if (!raisonSocialeAutreInput.value.trim()) {
+          alert('Veuillez préciser la raison sociale dans le champ "Autre"');
+          raisonSocialeAutreInput.focus();
+          return;
+        }
+        // Remplacer la valeur du select par la valeur saisie dans "Autre"
+        const hiddenInput = document.createElement('input');
+        hiddenInput.type = 'hidden';
+        hiddenInput.name = 'raison_sociale';
+        hiddenInput.value = raisonSocialeAutreInput.value.trim();
+        form.appendChild(hiddenInput);
+        // Désactiver le select pour éviter qu'il soit envoyé avec la valeur "Autre"
+        raisonSocialeSelect.disabled = true;
+        // Supprimer le name du champ "autre" pour éviter qu'il soit envoyé
+        raisonSocialeAutreInput.removeAttribute('name');
+      } else {
+        // Si une autre option est sélectionnée, s'assurer que le champ "autre" n'est pas envoyé
+        raisonSocialeAutreInput.removeAttribute('name');
+      }
+    }
     
     // Afficher l'overlay global immédiatement
     if (typeof showGlobalLoading === 'function') {
@@ -2600,14 +2865,49 @@ Inscriptions {{ programme.code }}
   }
   
   function saveJuryDecisionForm() {
-    const form = document.querySelector('form[action="/inscriptions/jury/decision"]');
-    if (!form) return;
-    
-    // Valider le formulaire
-    if (!form.checkValidity()) {
-      form.reportValidity();
+    console.log('[DEBUG] saveJuryDecisionForm appelée');
+    // Essayer plusieurs sélecteurs pour trouver le formulaire
+    let form = document.getElementById('juryDecisionForm');
+    if (!form) {
+      form = document.querySelector('form[action="/inscriptions/jury/decision"]');
+    }
+    if (!form) {
+      console.error('[DEBUG] Formulaire non trouvé');
+      alert('Erreur: Formulaire non trouvé. Veuillez recharger la page.');
       return;
     }
+    
+    console.log('[DEBUG] Formulaire trouvé:', form);
+    
+    // Vérifier les champs requis manuellement
+    const juryId = form.querySelector('select[name="jury_id"]');
+    const decision = form.querySelector('select[name="decision"]');
+    
+    if (!juryId || !juryId.value) {
+      alert('Veuillez sélectionner une session jury');
+      if (juryId) {
+        juryId.focus();
+        juryId.classList.add('is-invalid');
+      }
+      return;
+    }
+    
+    if (!decision || !decision.value) {
+      alert('Veuillez sélectionner une décision');
+      if (decision) {
+        decision.focus();
+        decision.classList.add('is-invalid');
+      }
+      return;
+    }
+    
+    console.log('[DEBUG] Validation OK, soumission du formulaire');
+    console.log('[DEBUG] Données du formulaire:', {
+      candidat_id: form.querySelector('input[name="candidat_id"]')?.value,
+      programme: form.querySelector('input[name="programme"]')?.value,
+      jury_id: juryId.value,
+      decision: decision.value
+    });
     
     // Afficher l'overlay global immédiatement
     if (typeof showGlobalLoading === 'function') {
@@ -2617,8 +2917,17 @@ Inscriptions {{ programme.code }}
     // Utiliser requestAnimationFrame pour s'assurer que l'overlay est rendu avant la soumission
     requestAnimationFrame(() => {
       requestAnimationFrame(() => {
-        // Soumettre le formulaire après que l'overlay soit affiché
-        form.submit();
+        try {
+          console.log('[DEBUG] Soumission du formulaire');
+          // Soumettre le formulaire après que l'overlay soit affiché
+          form.submit();
+        } catch (error) {
+          console.error('[DEBUG] Erreur lors de la soumission:', error);
+          if (typeof hideGlobalLoading === 'function') {
+            hideGlobalLoading();
+          }
+          alert('Erreur lors de l\'enregistrement: ' + error.message);
+        }
       });
     });
   }
@@ -2658,6 +2967,71 @@ Inscriptions {{ programme.code }}
     const urlParams = new URLSearchParams(window.location.search);
     const saveSuccess = urlParams.get('save_success');
     const eligRecalcSuccess = urlParams.get('elig_recalc_success');
+    const juryDecisionSuccess = urlParams.get('jury_decision_success');
+    const juryDecisionDeleted = urlParams.get('jury_decision_deleted');
+    const etapeAdvanceSuccess = urlParams.get('etape_advance_success');
+    
+    // Gestion des messages de décision de jury
+    if (juryDecisionSuccess !== null) {
+      const message = urlParams.get('message');
+      const errorType = urlParams.get('error_type');
+      
+      // Masquer l'overlay global si présent
+      if (typeof hideGlobalLoading === 'function') {
+        hideGlobalLoading();
+      }
+      
+      // Afficher le toast approprié
+      setTimeout(() => {
+        if (juryDecisionSuccess === 'true') {
+          if (message && typeof showSuccess === 'function') {
+            showSuccess(decodeURIComponent(message), 'Décision enregistrée');
+          } else if (typeof showSuccess === 'function') {
+            showSuccess('La décision de jury a été enregistrée avec succès', 'Décision enregistrée');
+          }
+        } else {
+          if (message && typeof showError === 'function') {
+            showError(decodeURIComponent(message), errorType || 'Erreur');
+          } else if (typeof showError === 'function') {
+            showError('Une erreur est survenue lors de l\'enregistrement de la décision', 'Erreur');
+          }
+        }
+        
+        // Attendre que les toasts disparaissent avant de nettoyer l'URL
+        waitForToastsToDisappear();
+      }, 500);
+    }
+    
+    // Gestion des messages de suppression de décision de jury
+    if (juryDecisionDeleted !== null) {
+      const message = urlParams.get('message');
+      const errorType = urlParams.get('error_type');
+      
+      // Masquer l'overlay global si présent
+      if (typeof hideGlobalLoading === 'function') {
+        hideGlobalLoading();
+      }
+      
+      // Afficher le toast approprié
+      setTimeout(() => {
+        if (juryDecisionDeleted === 'true') {
+          if (message && typeof showSuccess === 'function') {
+            showSuccess(decodeURIComponent(message), 'Décision supprimée');
+          } else if (typeof showSuccess === 'function') {
+            showSuccess('La décision de jury a été supprimée avec succès', 'Décision supprimée');
+          }
+        } else {
+          if (message && typeof showError === 'function') {
+            showError(decodeURIComponent(message), errorType || 'Erreur');
+          } else if (typeof showError === 'function') {
+            showError('Une erreur est survenue lors de la suppression de la décision', 'Erreur');
+          }
+        }
+        
+        // Attendre que les toasts disparaissent avant de nettoyer l'URL
+        waitForToastsToDisappear();
+      }, 500);
+    }
     
     // Gestion des messages de recalcul d'éligibilité
     if (eligRecalcSuccess !== null) {
@@ -2713,6 +3087,37 @@ Inscriptions {{ programme.code }}
             showError(decodeURIComponent(message), errorType || 'Erreur');
           } else if (typeof showError === 'function') {
             showError('Une erreur est survenue lors de l\'enregistrement', 'Erreur');
+          }
+        }
+        
+        // Attendre que les toasts disparaissent avant de nettoyer l'URL
+        waitForToastsToDisappear();
+      }, 500);
+    }
+    
+    // Gestion des messages de mise à jour d'étape
+    if (etapeAdvanceSuccess !== null) {
+      const message = urlParams.get('message');
+      const errorType = urlParams.get('error_type');
+      
+      // Masquer l'overlay global si présent
+      if (typeof hideGlobalLoading === 'function') {
+        hideGlobalLoading();
+      }
+      
+      // Afficher le toast approprié
+      setTimeout(() => {
+        if (etapeAdvanceSuccess === 'true') {
+          if (message && typeof showSuccess === 'function') {
+            showSuccess(decodeURIComponent(message), 'Étape mise à jour');
+          } else if (typeof showSuccess === 'function') {
+            showSuccess('L\'étape a été mise à jour avec succès', 'Étape mise à jour');
+          }
+        } else {
+          if (message && typeof showError === 'function') {
+            showError(decodeURIComponent(message), errorType || 'Erreur');
+          } else if (typeof showError === 'function') {
+            showError('Une erreur est survenue lors de la mise à jour de l\'étape', 'Erreur');
           }
         }
         
@@ -2795,7 +3200,7 @@ Inscriptions {{ programme.code }}
       recalcForm.addEventListener('submit', function(e) {
         // Afficher l'overlay global
         if (typeof showGlobalLoading === 'function') {
-          showGlobalLoading();
+          showGlobalLoading('Recalcul de l\'éligibilité en cours...', 'Veuillez patienter');
         }
         // Le formulaire sera soumis normalement
       });

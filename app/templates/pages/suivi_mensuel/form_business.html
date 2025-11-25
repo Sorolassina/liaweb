@@ -1,250 +1,516 @@
-{% extends "base.html" %}
+{% extends "layouts/base.html" %}
+{% set programme_param = programme_code or (request.query_params.get('programme') or '') %}
 
 {% block title %}
     {% if edit_mode %}Modifier le suivi mensuel{% else %}Nouveau suivi mensuel{% endif %}
 {% endblock %}
 
+{% block head_extra %}
+<style>
+/* Limiter la hauteur de la page pour éviter le scroll */
+.page-content-wrapper {
+    height: calc(100vh - 120px);
+    max-height: calc(100vh - 120px);
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+}
+
+.page-content-wrapper .row:first-child {
+    flex-shrink: 0;
+}
+
+.page-content-wrapper .row:last-child {
+    flex: 1;
+    min-height: 0;
+    overflow: hidden;
+    display: flex;
+    height: 100%;
+}
+
+.page-content-wrapper .row:last-child .col-lg-12 {
+    display: flex;
+    flex-direction: column;
+    min-height: 0;
+    max-height: 100%;
+    height: 95%;
+    margin: 1rem 0;
+    padding: 0 1rem;
+    overflow: hidden;
+}
+
+/* Style modal pour la card */
+.modal-style-card {
+    box-shadow: 0 10px 40px rgba(0, 0, 0, 0.2);
+    border-radius: 5px;
+    border: none;
+    display: flex;
+    flex-direction: column;
+    max-width: 1000px;
+    margin: 0 auto;
+    width: 100%;
+    height: 100%;
+    min-height: 0;
+}
+
+.modal-style-card > .card-header {
+    flex: 0 0 auto;
+}
+
+.modal-style-card > .card-body {
+    flex: 1 1 auto;
+    min-height: 0;
+}
+
+.modal-style-card > .card-footer {
+    flex: 0 0 auto;
+}
+
+.modal-style-header {
+    padding: 1.5rem;
+    border: 2px solid var(--primary-color);
+    background: var(--secondary-color);
+    flex-shrink: 0;
+    z-index: 10;
+    border-radius: 5px 5px 0 0;
+    border-bottom: 2px solid var(--primary-color);
+}
+
+.modal-style-title {
+    margin: 0;
+    color: var(--white-color);
+    font-size: 1.3rem;
+    font-weight: 700;
+}
+
+.modal-style-body {
+    padding: 1.5rem;
+    margin: 0;
+    flex: 1;
+    overflow-y: auto;
+    overflow-x: hidden;
+    min-height: 0;
+    border-left: 1px solid var(--primary-color);
+    border-right: 1px solid var(--primary-color);
+}
+
+.modal-style-footer {
+    padding: 1rem 1.5rem;
+    border: 2px solid var(--primary-color);
+    background: var(--gray-50);
+    display: flex !important;
+    gap: 1rem;
+    justify-content: flex-end;
+    flex-shrink: 0;
+    flex-grow: 0;
+    z-index: 10;
+    border-radius: 0 0 5px 5px;
+    border-top: 2px solid var(--primary-color);
+    visibility: visible !important;
+    opacity: 1 !important;
+    height: auto !important;
+    min-height: 60px;
+}
+
+.modal-style-body::-webkit-scrollbar {
+    width: 8px;
+}
+
+.modal-style-body::-webkit-scrollbar-track {
+    background: var(--gray-100);
+    border-radius: 4px;
+}
+
+.modal-style-body::-webkit-scrollbar-thumb {
+    background: var(--gray-400);
+    border-radius: 4px;
+}
+
+.modal-style-body::-webkit-scrollbar-thumb:hover {
+    background: var(--gray-500);
+}
+
+/* Styles des formulaires */
+.form-label {
+    font-weight: 600;
+    color: #495057;
+    font-size: 0.875rem;
+    margin-bottom: 0.4rem;
+}
+
+.form-control-sm, .form-select-sm {
+    height: 32px;
+    padding: 0.375rem 0.5rem;
+    font-size: 0.875rem;
+    line-height: 1.4;
+    border: 1px solid var(--gray-300);
+    border-radius: 4px;
+}
+
+.form-control-sm:focus, .form-select-sm:focus {
+    border-color: var(--primary-color);
+    box-shadow: 0 0 0 0.2rem rgba(var(--primary-color-rgb), 0.25);
+}
+
+.form-control-sm:disabled, .form-select-sm:disabled {
+    background-color: #e9ecef;
+    opacity: 0.6;
+    cursor: not-allowed;
+}
+
+.form-control-sm[type="date"], .form-control-sm[type="month"] {
+    padding: 0.375rem 0.5rem;
+}
+
+.form-control-sm[type="number"] {
+    padding: 0.375rem 0.5rem;
+}
+
+textarea.form-control-sm {
+    height: auto;
+    padding: 0.375rem 0.5rem;
+    line-height: 1.4;
+    min-height: 80px;
+}
+
+.mb-3 {
+    margin-bottom: 0.75rem !important;
+}
+
+.form-text {
+    font-size: 0.75rem;
+    color: #6c757d;
+    margin-top: 0.25rem;
+}
+
+/* Sections du formulaire */
+.form-section {
+    margin-bottom: 2rem;
+    padding-bottom: 1.5rem;
+    border-bottom: 1px solid #e9ecef;
+}
+
+.form-section:last-of-type {
+    border-bottom: none;
+    margin-bottom: 0;
+}
+
+.section-title {
+    font-size: 1.1rem;
+    font-weight: 700;
+    color: var(--primary-color);
+    margin-bottom: 1rem;
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+}
+
+.section-title i {
+    font-size: 1rem;
+}
+
+@media (max-width: 768px) {
+    .page-content-wrapper {
+        height: calc(100vh - 150px);
+        max-height: calc(100vh - 150px);
+    }
+    
+    .modal-style-header {
+        padding: 1rem;
+    }
+    
+    .modal-style-title {
+        font-size: 1.1rem;
+    }
+    
+    .modal-style-body {
+        padding: 1rem;
+    }
+    
+    .modal-style-footer {
+        padding: 1rem;
+        flex-direction: column-reverse;
+    }
+    
+    .modal-style-footer .btn {
+        width: 100%;
+    }
+}
+</style>
+{% endblock %}
+
 {% block content %}
-<div class="container-fluid">
+<div class="container-fluid p-4 page-content-wrapper">
     <div class="row">
-        <div class="col-12">
-            <div class="card">
-                <div class="card-header">
-                    <h3 class="card-title">
-                        <i class="fas fa-chart-line me-2"></i>
+        <div class="col-lg-12">
+            <div class="card modal-style-card">
+                <div class="card-header modal-style-header">
+                    <h5 class="mb-0 modal-style-title">
+                        <i class="fas fa-{% if edit_mode %}edit{% else %}plus-circle{% endif %} me-2"></i>
                         {% if edit_mode %}Modifier le suivi mensuel{% else %}Nouveau suivi mensuel{% endif %}
-                    </h3>
-                    <div class="card-tools">
-                        <a href="{{ url_for('suivis_par_inscription', inscription_id=inscription_id) }}" class="btn btn-secondary">
-                            <i class="fas fa-arrow-left me-1"></i>Retour aux suivis
-                        </a>
-                    </div>
+                    </h5>
                 </div>
-                
-                <div class="card-body">
+                <div class="card-body modal-style-body">
                     {% if error_message %}
                         <div class="alert alert-danger">
                             <i class="fas fa-exclamation-triangle me-2"></i>{{ error_message }}
                         </div>
                     {% endif %}
 
-                    <form method="post" action="{% if edit_mode %}{{ url_for('modifier_suivi_mensuel', suivi_id=suivi.id) }}{% else %}{{ url_for('creer_suivi_mensuel') }}{% endif %}">
-                        <!-- Note explicative -->
-                        <div class="alert alert-info mb-4">
-                            <i class="fas fa-info-circle me-2"></i>
-                            <strong>Instructions :</strong> Les champs marqués avec <span class="text-muted">(entier)</span> attendent des nombres entiers (ex: 0, 1, 5). 
-                            Les champs marqués avec <span class="text-muted">(décimal)</span> acceptent les montants avec décimales (ex: 0.00, 1500.50). 
-                            Les champs vides seront traités comme 0.
-                        </div>
-                        
-                        <div class="row">
-                            <!-- Informations générales -->
-                            <div class="col-md-6">
-                                <div class="card">
-                                    <div class="card-header">
-                                        <h5 class="card-title">
-                                            <i class="fas fa-info-circle me-2"></i>Informations générales
-                                        </h5>
+                    <form id="suivi-form" method="post" action="{% if edit_mode %}{{ url_for('modifier_suivi_mensuel', suivi_id=suivi.id) }}{{ '?programme=' ~ programme_param if programme_param else '' }}{% else %}{{ url_for('creer_suivi_mensuel') }}{{ '?programme=' ~ programme_param if programme_param else '' }}{% endif %}">
+                        {% if programme_param %}
+                        <input type="hidden" name="programme" value="{{ programme_param }}">
+                        {% endif %}
+
+                        <!-- Section: Informations générales -->
+                        <div class="form-section">
+                            <h6 class="section-title">
+                                <i class="fas fa-info-circle"></i>
+                                Informations générales
+                            </h6>
+                            
+                            <div class="mb-3">
+                                <label for="inscription_id" class="form-label">Candidat *</label>
+                                <select class="form-select form-select-sm" id="inscription_id" name="inscription_id" required>
+                                    <option value="">Sélectionner un candidat</option>
+                                    {% for inscription in inscriptions %}
+                                    <option value="{{ inscription.id }}" 
+                                        {% if initial_data.inscription_id == inscription.id %}selected{% endif %}>
+                                        {{ inscription.nom_complet }} - {{ inscription.programme_nom }}
+                                    </option>
+                                    {% endfor %}
+                                </select>
+                            </div>
+
+                            <div class="row">
+                                <div class="col-md-6">
+                                    <div class="mb-3">
+                                        <label for="mois" class="form-label">Mois *</label>
+                                        <input type="month" class="form-control form-control-sm" id="mois" name="mois" 
+                                               value="{{ initial_data.mois }}" required>
                                     </div>
-                                    <div class="card-body">
-                                        <div class="mb-3">
-                                            <label for="inscription_id" class="form-label">Candidat *</label>
-                                            <select class="form-select" id="inscription_id" name="inscription_id" required>
-                                                <option value="">Sélectionner un candidat</option>
-                                                {% for inscription in inscriptions %}
-                                                <option value="{{ inscription.id }}" 
-                                                    {% if initial_data.inscription_id == inscription.id %}selected{% endif %}>
-                                                    {{ inscription.nom_complet }} - {{ inscription.programme_nom }}
-                                                </option>
-                                                {% endfor %}
-                                            </select>
-                                        </div>
-
-                                        <div class="mb-3">
-                                            <label for="mois" class="form-label">Mois *</label>
-                                            <input type="month" class="form-control" id="mois" name="mois" 
-                                                   value="{{ initial_data.mois }}" required>
-                                        </div>
-
-                                        <div class="mb-3">
-                                            <label for="score_objectifs" class="form-label">Score global (0-100)</label>
-                                            <input type="number" class="form-control" id="score_objectifs" name="score_objectifs" 
-                                                   min="0" max="100" step="0.1" value="{{ initial_data.score_objectifs or '' }}">
-                                        </div>
-
-                                        <div class="mb-3">
-                                            <label for="commentaire" class="form-label">Commentaires</label>
-                                            <textarea class="form-control" id="commentaire" name="commentaire" rows="3">{{ initial_data.commentaire or '' }}</textarea>
-                                        </div>
+                                </div>
+                                <div class="col-md-6">
+                                    <div class="mb-3">
+                                        <label for="score_objectifs" class="form-label">Score global (0-100)</label>
+                                        <input type="number" class="form-control form-control-sm" id="score_objectifs" name="score_objectifs" 
+                                               min="0" max="100" step="0.1" value="{{ initial_data.score_objectifs or '' }}">
                                     </div>
                                 </div>
                             </div>
 
-                            <!-- Métriques business -->
-                            <div class="col-md-6">
-                                <div class="card">
-                                    <div class="card-header">
-                                        <h5 class="card-title">
-                                            <i class="fas fa-chart-bar me-2"></i>Métriques business
-                                        </h5>
+                            <div class="mb-3">
+                                <label for="commentaire" class="form-label">Commentaires</label>
+                                <textarea class="form-control form-control-sm" id="commentaire" name="commentaire" rows="3">{{ initial_data.commentaire or '' }}</textarea>
+                            </div>
+                        </div>
+
+                        <!-- Section: Métriques business -->
+                        <div class="form-section">
+                            <h6 class="section-title">
+                                <i class="fas fa-chart-bar"></i>
+                                Métriques business
+                            </h6>
+                            
+                            <div class="mb-3">
+                                <label for="chiffre_affaires_actuel" class="form-label">Chiffre d'affaires actuel (€) <span class="text-muted">(décimal)</span></label>
+                                <input type="number" class="form-control form-control-sm" id="chiffre_affaires_actuel" name="chiffre_affaires_actuel" 
+                                       min="0" step="0.01" placeholder="0.00" value="{{ initial_data.chiffre_affaires_actuel or '' }}">
+                            </div>
+
+                            <div class="row">
+                                <div class="col-md-6">
+                                    <div class="mb-3">
+                                        <label for="nb_stagiaires" class="form-label">Nombre de stagiaires <span class="text-muted">(entier)</span></label>
+                                        <input type="number" class="form-control form-control-sm" id="nb_stagiaires" name="nb_stagiaires" 
+                                               min="0" step="1" placeholder="0" value="{{ initial_data.nb_stagiaires or 0 }}">
                                     </div>
-                                    <div class="card-body">
-                                        <div class="mb-3">
-                                            <label for="chiffre_affaires_actuel" class="form-label">Chiffre d'affaires actuel (€) <span class="text-muted">(décimal)</span></label>
-                                            <input type="number" class="form-control" id="chiffre_affaires_actuel" name="chiffre_affaires_actuel" 
-                                                   min="0" step="0.01" placeholder="0.00" value="{{ initial_data.chiffre_affaires_actuel or '' }}">
-                                        </div>
+                                </div>
+                                <div class="col-md-6">
+                                    <div class="mb-3">
+                                        <label for="nb_alternants" class="form-label">Nombre d'alternants <span class="text-muted">(entier)</span></label>
+                                        <input type="number" class="form-control form-control-sm" id="nb_alternants" name="nb_alternants" 
+                                               min="0" step="1" placeholder="0" value="{{ initial_data.nb_alternants or 0 }}">
+                                    </div>
+                                </div>
+                            </div>
 
-                                        <div class="row">
-                                            <div class="col-md-6">
-                                                <div class="mb-3">
-                                                    <label for="nb_stagiaires" class="form-label">Nombre de stagiaires <span class="text-muted">(entier)</span></label>
-                                                    <input type="number" class="form-control" id="nb_stagiaires" name="nb_stagiaires" 
-                                                           min="0" step="1" placeholder="0" value="{{ initial_data.nb_stagiaires or 0 }}">
-                                                </div>
-                                            </div>
-                                            <div class="col-md-6">
-                                                <div class="mb-3">
-                                                    <label for="nb_alternants" class="form-label">Nombre d'alternants <span class="text-muted">(entier)</span></label>
-                                                    <input type="number" class="form-control" id="nb_alternants" name="nb_alternants" 
-                                                           min="0" step="1" placeholder="0" value="{{ initial_data.nb_alternants or 0 }}">
-                                                </div>
-                                            </div>
-                                        </div>
-
-                                        <div class="row">
-                                            <div class="col-md-6">
-                                                <div class="mb-3">
-                                                    <label for="nb_cdd" class="form-label">Nombre de CDD <span class="text-muted">(entier)</span></label>
-                                                    <input type="number" class="form-control" id="nb_cdd" name="nb_cdd" 
-                                                           min="0" step="1" placeholder="0" value="{{ initial_data.nb_cdd or 0 }}">
-                                                </div>
-                                            </div>
-                                            <div class="col-md-6">
-                                                <div class="mb-3">
-                                                    <label for="nb_cdi" class="form-label">Nombre de CDI <span class="text-muted">(entier)</span></label>
-                                                    <input type="number" class="form-control" id="nb_cdi" name="nb_cdi" 
-                                                           min="0" step="1" placeholder="0" value="{{ initial_data.nb_cdi or 0 }}">
-                                                </div>
-                                            </div>
-                                        </div>
+                            <div class="row">
+                                <div class="col-md-6">
+                                    <div class="mb-3">
+                                        <label for="nb_cdd" class="form-label">Nombre de CDD <span class="text-muted">(entier)</span></label>
+                                        <input type="number" class="form-control form-control-sm" id="nb_cdd" name="nb_cdd" 
+                                               min="0" step="1" placeholder="0" value="{{ initial_data.nb_cdd or 0 }}">
+                                    </div>
+                                </div>
+                                <div class="col-md-6">
+                                    <div class="mb-3">
+                                        <label for="nb_cdi" class="form-label">Nombre de CDI <span class="text-muted">(entier)</span></label>
+                                        <input type="number" class="form-control form-control-sm" id="nb_cdi" name="nb_cdi" 
+                                               min="0" step="1" placeholder="0" value="{{ initial_data.nb_cdi or 0 }}">
                                     </div>
                                 </div>
                             </div>
                         </div>
 
-                        <div class="row mt-3">
-                            <!-- Financements -->
-                            <div class="col-md-6">
-                                <div class="card">
-                                    <div class="card-header">
-                                        <h5 class="card-title">
-                                            <i class="fas fa-euro-sign me-2"></i>Financements
-                                        </h5>
-                                    </div>
-                                    <div class="card-body">
-                                        <div class="mb-3">
-                                            <label for="montant_subventions_obtenues" class="form-label">Montant des subventions obtenues (€) <span class="text-muted">(décimal)</span></label>
-                                            <input type="number" class="form-control" id="montant_subventions_obtenues" name="montant_subventions_obtenues" 
-                                                   min="0" step="0.01" placeholder="0.00" value="{{ initial_data.montant_subventions_obtenues or '' }}">
-                                        </div>
-
-                                        <div class="mb-3">
-                                            <label for="organismes_financeurs" class="form-label">Organismes financeurs</label>
-                                            <textarea class="form-control" id="organismes_financeurs" name="organismes_financeurs" rows="2">{{ initial_data.organismes_financeurs or '' }}</textarea>
-                                        </div>
-
-                                        <div class="mb-3">
-                                            <label for="montant_equity_effectue" class="form-label">Montant levée de fonds equity réalisée (€) <span class="text-muted">(décimal)</span></label>
-                                            <input type="number" class="form-control" id="montant_equity_effectue" name="montant_equity_effectue" 
-                                                   min="0" step="0.01" placeholder="0.00" value="{{ initial_data.montant_equity_effectue or '' }}">
-                                        </div>
-
-                                        <div class="mb-3">
-                                            <label for="montant_equity_encours" class="form-label">Montant levée de fonds equity en cours (€) <span class="text-muted">(décimal)</span></label>
-                                            <input type="number" class="form-control" id="montant_equity_encours" name="montant_equity_encours" 
-                                                   min="0" step="0.01" placeholder="0.00" value="{{ initial_data.montant_equity_encours or '' }}">
-                                        </div>
-                                    </div>
-                                </div>
+                        <!-- Section: Financements -->
+                        <div class="form-section">
+                            <h6 class="section-title">
+                                <i class="fas fa-euro-sign"></i>
+                                Financements
+                            </h6>
+                            
+                            <div class="mb-3">
+                                <label for="montant_subventions_obtenues" class="form-label">Montant des subventions obtenues (€) <span class="text-muted">(décimal)</span></label>
+                                <input type="number" class="form-control form-control-sm" id="montant_subventions_obtenues" name="montant_subventions_obtenues" 
+                                       min="0" step="0.01" placeholder="0.00" value="{{ initial_data.montant_subventions_obtenues or '' }}">
                             </div>
 
-                            <!-- Dettes et informations entreprise -->
-                            <div class="col-md-6">
-                                <div class="card">
-                                    <div class="card-header">
-                                        <h5 class="card-title">
-                                            <i class="fas fa-building me-2"></i>Dettes & Entreprise
-                                        </h5>
+                            <div class="mb-3">
+                                <label for="organismes_financeurs" class="form-label">Organismes financeurs</label>
+                                <textarea class="form-control form-control-sm" id="organismes_financeurs" name="organismes_financeurs" rows="2">{{ initial_data.organismes_financeurs or '' }}</textarea>
+                            </div>
+
+                            <div class="row">
+                                <div class="col-md-6">
+                                    <div class="mb-3">
+                                        <label for="montant_equity_effectue" class="form-label">Montant levée de fonds equity réalisée (€) <span class="text-muted">(décimal)</span></label>
+                                        <input type="number" class="form-control form-control-sm" id="montant_equity_effectue" name="montant_equity_effectue" 
+                                               min="0" step="0.01" placeholder="0.00" value="{{ initial_data.montant_equity_effectue or '' }}">
                                     </div>
-                                    <div class="card-body">
-                                        <div class="mb-3">
-                                            <label for="montant_dettes_effectuees" class="form-label">Montant des dettes payées (€) <span class="text-muted">(décimal)</span></label>
-                                            <input type="number" class="form-control" id="montant_dettes_effectuees" name="montant_dettes_effectuees" 
-                                                   min="0" step="0.01" placeholder="0.00" value="{{ initial_data.montant_dettes_effectuees or '' }}">
-                                        </div>
-
-                                        <div class="mb-3">
-                                            <label for="montant_dettes_encours" class="form-label">Montant des dettes en cours (€) <span class="text-muted">(décimal)</span></label>
-                                            <input type="number" class="form-control" id="montant_dettes_encours" name="montant_dettes_encours" 
-                                                   min="0" step="0.01" placeholder="0.00" value="{{ initial_data.montant_dettes_encours or '' }}">
-                                        </div>
-
-                                        <div class="mb-3">
-                                            <label for="montant_dettes_envisagees" class="form-label">Montant des dettes prévues (€) <span class="text-muted">(décimal)</span></label>
-                                            <input type="number" class="form-control" id="montant_dettes_envisagees" name="montant_dettes_envisagees" 
-                                                   min="0" step="0.01" placeholder="0.00" value="{{ initial_data.montant_dettes_envisagees or '' }}">
-                                        </div>
-
-                                        <div class="mb-3">
-                                            <label for="statut_juridique" class="form-label">Statut juridique</label>
-                                            <select class="form-select" id="statut_juridique" name="statut_juridique">
-                                                <option value="">Sélectionner</option>
-                                                <option value="SAS" {% if initial_data.statut_juridique == 'SAS' %}selected{% endif %}>SAS</option>
-                                                <option value="SARL" {% if initial_data.statut_juridique == 'SARL' %}selected{% endif %}>SARL</option>
-                                                <option value="EURL" {% if initial_data.statut_juridique == 'EURL' %}selected{% endif %}>EURL</option>
-                                                <option value="SASU" {% if initial_data.statut_juridique == 'SASU' %}selected{% endif %}>SASU</option>
-                                                <option value="Auto-entrepreneur" {% if initial_data.statut_juridique == 'Auto-entrepreneur' %}selected{% endif %}>Auto-entrepreneur</option>
-                                                <option value="Autre" {% if initial_data.statut_juridique == 'Autre' %}selected{% endif %}>Autre</option>
-                                            </select>
-                                        </div>
-
-                                        <div class="mb-3">
-                                            <label for="adresse_entreprise" class="form-label">Adresse entreprise</label>
-                                            <textarea class="form-control" id="adresse_entreprise" name="adresse_entreprise" rows="2">{{ initial_data.adresse_entreprise or '' }}</textarea>
-                                        </div>
-
-                                        <div class="mb-3">
-                                            <label for="situation_socioprofessionnelle" class="form-label">Situation socioprofessionnelle</label>
-                                            <select class="form-select" id="situation_socioprofessionnelle" name="situation_socioprofessionnelle">
-                                                <option value="">Sélectionner</option>
-                                                <option value="Dirigeant d'entreprise" {% if initial_data.situation_socioprofessionnelle == 'Dirigeant d\'entreprise' %}selected{% endif %}>Dirigeant d'entreprise</option>
-                                                <option value="Salarié" {% if initial_data.situation_socioprofessionnelle == 'Salarié' %}selected{% endif %}>Salarié</option>
-                                                <option value="Demandeur d'emploi" {% if initial_data.situation_socioprofessionnelle == 'Demandeur d\'emploi' %}selected{% endif %}>Demandeur d'emploi</option>
-                                                <option value="Étudiant" {% if initial_data.situation_socioprofessionnelle == 'Étudiant' %}selected{% endif %}>Étudiant</option>
-                                                <option value="Retraité" {% if initial_data.situation_socioprofessionnelle == 'Retraité' %}selected{% endif %}>Retraité</option>
-                                                <option value="Autre" {% if initial_data.situation_socioprofessionnelle == 'Autre' %}selected{% endif %}>Autre</option>
-                                            </select>
-                                        </div>
+                                </div>
+                                <div class="col-md-6">
+                                    <div class="mb-3">
+                                        <label for="montant_equity_encours" class="form-label">Montant levée de fonds equity en cours (€) <span class="text-muted">(décimal)</span></label>
+                                        <input type="number" class="form-control form-control-sm" id="montant_equity_encours" name="montant_equity_encours" 
+                                               min="0" step="0.01" placeholder="0.00" value="{{ initial_data.montant_equity_encours or '' }}">
                                     </div>
                                 </div>
                             </div>
                         </div>
 
-                        <div class="row mt-3">
-                            <div class="col-12">
-                                <div class="d-flex justify-content-between">
-                                    <a href="{{ url_for('suivis_par_inscription', inscription_id=inscription_id) }}" class="btn btn-secondary">
-                                        <i class="fas fa-times me-1"></i>Annuler
-                                    </a>
-                                    <button type="submit" class="btn btn-primary">
-                                        <i class="fas fa-save me-1"></i>
-                                        {% if edit_mode %}Mettre à jour{% else %}Créer le suivi{% endif %}
-                                    </button>
+                        <!-- Section: Dettes et informations entreprise -->
+                        <div class="form-section">
+                            <h6 class="section-title">
+                                <i class="fas fa-building"></i>
+                                Dettes & Entreprise
+                            </h6>
+                            
+                            <div class="row">
+                                <div class="col-md-4">
+                                    <div class="mb-3">
+                                        <label for="montant_dettes_effectuees" class="form-label">Montant des dettes payées (€) <span class="text-muted">(décimal)</span></label>
+                                        <input type="number" class="form-control form-control-sm" id="montant_dettes_effectuees" name="montant_dettes_effectuees" 
+                                               min="0" step="0.01" placeholder="0.00" value="{{ initial_data.montant_dettes_effectuees or '' }}">
+                                    </div>
+                                </div>
+                                <div class="col-md-4">
+                                    <div class="mb-3">
+                                        <label for="montant_dettes_encours" class="form-label">Montant des dettes en cours (€) <span class="text-muted">(décimal)</span></label>
+                                        <input type="number" class="form-control form-control-sm" id="montant_dettes_encours" name="montant_dettes_encours" 
+                                               min="0" step="0.01" placeholder="0.00" value="{{ initial_data.montant_dettes_encours or '' }}">
+                                    </div>
+                                </div>
+                                <div class="col-md-4">
+                                    <div class="mb-3">
+                                        <label for="montant_dettes_envisagees" class="form-label">Montant des dettes prévues (€) <span class="text-muted">(décimal)</span></label>
+                                        <input type="number" class="form-control form-control-sm" id="montant_dettes_envisagees" name="montant_dettes_envisagees" 
+                                               min="0" step="0.01" placeholder="0.00" value="{{ initial_data.montant_dettes_envisagees or '' }}">
+                                    </div>
+                                </div>
+                            </div>
+
+                            <div class="row">
+                                <div class="col-md-6">
+                                    <div class="mb-3">
+                                        <label for="statut_juridique" class="form-label">Statut juridique</label>
+                                        <select class="form-select form-select-sm" id="statut_juridique" name="statut_juridique">
+                                            <option value="">Sélectionner</option>
+                                            <option value="SAS" {% if initial_data.statut_juridique == 'SAS' %}selected{% endif %}>SAS</option>
+                                            <option value="SARL" {% if initial_data.statut_juridique == 'SARL' %}selected{% endif %}>SARL</option>
+                                            <option value="EURL" {% if initial_data.statut_juridique == 'EURL' %}selected{% endif %}>EURL</option>
+                                            <option value="SASU" {% if initial_data.statut_juridique == 'SASU' %}selected{% endif %}>SASU</option>
+                                            <option value="Auto-entrepreneur" {% if initial_data.statut_juridique == 'Auto-entrepreneur' %}selected{% endif %}>Auto-entrepreneur</option>
+                                            <option value="Autre" {% if initial_data.statut_juridique == 'Autre' %}selected{% endif %}>Autre</option>
+                                        </select>
+                                    </div>
+                                </div>
+                                <div class="col-md-6">
+                                    <div class="mb-3">
+                                        <label for="situation_socioprofessionnelle" class="form-label">Situation socioprofessionnelle</label>
+                                        {% set current_situation_suivi = initial_data.situation_socioprofessionnelle or '' %}
+                                        {% if not current_situation_suivi or current_situation_suivi == '' or current_situation_suivi == 'nc' %}
+                                          {% set current_situation_suivi = 'Non communiqué' %}
+                                        {% endif %}
+                                        {% set situations_liste_suivi = ['Salarié', 'Indépendant', 'Travailleur indépendant', 'Auto-entrepreneur', 'Artisan', 'Commerçant', "Chef d'entreprise", "Demandeur d'emploi", 'Chômeur', 'Retraité', 'Étudiant', 'Sans activité professionnelle', 'Inactif', 'Non communiqué'] %}
+                                        {% set is_autre_suivi = current_situation_suivi and current_situation_suivi not in situations_liste_suivi %}
+                                        <select class="form-select form-select-sm" id="situation_socioprofessionnelle" name="situation_socioprofessionnelle">
+                                            <option value="Non communiqué" {% if current_situation_suivi == 'Non communiqué' or not current_situation_suivi or current_situation_suivi == '' %}selected{% endif %}>Non communiqué</option>
+                                            <option value="Salarié" {% if current_situation_suivi == 'Salarié' %}selected{% endif %}>Salarié</option>
+                                            <option value="Indépendant" {% if current_situation_suivi == 'Indépendant' %}selected{% endif %}>Indépendant</option>
+                                            <option value="Travailleur indépendant" {% if current_situation_suivi == 'Travailleur indépendant' %}selected{% endif %}>Travailleur indépendant</option>
+                                            <option value="Auto-entrepreneur" {% if current_situation_suivi == 'Auto-entrepreneur' %}selected{% endif %}>Auto-entrepreneur</option>
+                                            <option value="Artisan" {% if current_situation_suivi == 'Artisan' %}selected{% endif %}>Artisan</option>
+                                            <option value="Commerçant" {% if current_situation_suivi == 'Commerçant' %}selected{% endif %}>Commerçant</option>
+                                            <option value="Chef d'entreprise" {% if current_situation_suivi == "Chef d'entreprise" %}selected{% endif %}>Chef d'entreprise</option>
+                                            <option value="Demandeur d'emploi" {% if current_situation_suivi == "Demandeur d'emploi" %}selected{% endif %}>Demandeur d'emploi</option>
+                                            <option value="Chômeur" {% if current_situation_suivi == 'Chômeur' %}selected{% endif %}>Chômeur</option>
+                                            <option value="Retraité" {% if current_situation_suivi == 'Retraité' %}selected{% endif %}>Retraité</option>
+                                            <option value="Étudiant" {% if current_situation_suivi == 'Étudiant' %}selected{% endif %}>Étudiant</option>
+                                            <option value="Sans activité professionnelle" {% if current_situation_suivi == 'Sans activité professionnelle' %}selected{% endif %}>Sans activité professionnelle</option>
+                                            <option value="Inactif" {% if current_situation_suivi == 'Inactif' %}selected{% endif %}>Inactif</option>
+                                            <option value="Autre" {% if is_autre_suivi %}selected{% endif %}>Autre (préciser ci-dessous)</option>
+                                        </select>
+                                        <input type="text" class="form-control form-control-sm mt-2" name="situation_socioprofessionnelle_autre" id="situation_socioprofessionnelle_autre" value="{% if is_autre_suivi %}{{ current_situation_suivi }}{% endif %}" placeholder="Préciser la situation si 'Autre'" style="display: {% if is_autre_suivi %}block{% else %}none{% endif %};">
+                                    </div>
+                                </div>
+                            </div>
+
+                            <div class="mb-3">
+                                <label for="adresse_entreprise" class="form-label">Adresse entreprise</label>
+                                <textarea class="form-control form-control-sm" id="adresse_entreprise" name="adresse_entreprise" rows="2">{{ initial_data.adresse_entreprise or '' }}</textarea>
+                            </div>
+                        </div>
+
+                        <!-- Section: Statut dans le programme -->
+                        <div class="form-section">
+                            <h6 class="section-title">
+                                <i class="fas fa-info-circle"></i>
+                                Statut dans le programme
+                            </h6>
+                            
+                            <div class="row">
+                                <div class="col-md-6">
+                                    <div class="mb-3">
+                                        <label for="statut_programme" class="form-label">Statut dans le programme</label>
+                                        <select class="form-select form-select-sm" id="statut_programme" name="statut_programme" onchange="toggleRaisonAbandon()">
+                                            <option value="">Sélectionner</option>
+                                            <option value="dans_programme" {% if initial_data.statut_programme == 'dans_programme' %}selected{% endif %}>Dans le programme</option>
+                                            <option value="abandonne" {% if initial_data.statut_programme == 'abandonne' %}selected{% endif %}>Abandonné</option>
+                                            <option value="termine" {% if initial_data.statut_programme == 'termine' %}selected{% endif %}>Terminé</option>
+                                        </select>
+                                    </div>
+                                </div>
+                                <div class="col-md-6">
+                                    <div class="mb-3" id="raison_abandon_group" style="display: {% if initial_data.statut_programme == 'abandonne' %}block{% else %}none{% endif %};">
+                                        <label for="raison_abandon" class="form-label">Raison de l'abandon</label>
+                                        <textarea class="form-control form-control-sm" id="raison_abandon" name="raison_abandon" rows="2" placeholder="Décrivez la raison de l'abandon...">{{ initial_data.raison_abandon or '' }}</textarea>
+                                    </div>
                                 </div>
                             </div>
                         </div>
                     </form>
+                </div>
+                <div class="card-footer modal-style-footer">
+                    <div class="d-flex justify-content-between w-100">
+                        <a href="{{ url_for('suivis_par_inscription', inscription_id=inscription_id) }}{{ '?programme=' ~ programme_param if programme_param else '' }}" class="btn btn-secondary">
+                            <i class="fas fa-arrow-left me-2"></i>Annuler
+                        </a>
+                        <button type="submit" form="suivi-form" class="btn btn-primary">
+                            <i class="fas fa-save me-2"></i>
+                            {% if edit_mode %}Mettre à jour{% else %}Créer le suivi{% endif %}
+                        </button>
+                    </div>
                 </div>
             </div>
         </div>
@@ -264,10 +530,103 @@ function updateTotalEmployes() {
     console.log('Total employés:', total);
 }
 
+// Afficher/masquer le champ raison_abandon selon le statut
+function toggleRaisonAbandon() {
+    const statutProgramme = document.getElementById('statut_programme');
+    const raisonAbandonGroup = document.getElementById('raison_abandon_group');
+    const raisonAbandon = document.getElementById('raison_abandon');
+    
+    if (statutProgramme && raisonAbandonGroup && raisonAbandon) {
+        if (statutProgramme.value === 'abandonne') {
+            raisonAbandonGroup.style.display = 'block';
+            raisonAbandon.required = true;
+        } else {
+            raisonAbandonGroup.style.display = 'none';
+            raisonAbandon.required = false;
+            raisonAbandon.value = '';
+        }
+    }
+}
+
+// Gérer l'affichage du champ "Autre" pour situation_socioprofessionnelle
+function toggleSituationAutre() {
+    const situationSelect = document.getElementById('situation_socioprofessionnelle');
+    const situationAutreInput = document.getElementById('situation_socioprofessionnelle_autre');
+    
+    if (situationSelect && situationAutreInput) {
+        if (situationSelect.value === 'Autre') {
+            situationAutreInput.style.display = 'block';
+            situationAutreInput.required = true;
+        } else {
+            situationAutreInput.style.display = 'none';
+            situationAutreInput.required = false;
+        }
+    }
+}
+
 // Ajouter les event listeners
-document.getElementById('nb_stagiaires').addEventListener('input', updateTotalEmployes);
-document.getElementById('nb_alternants').addEventListener('input', updateTotalEmployes);
-document.getElementById('nb_cdd').addEventListener('input', updateTotalEmployes);
-document.getElementById('nb_cdi').addEventListener('input', updateTotalEmployes);
+document.addEventListener('DOMContentLoaded', function() {
+    const stagiairesInput = document.getElementById('nb_stagiaires');
+    const alternantsInput = document.getElementById('nb_alternants');
+    const cddInput = document.getElementById('nb_cdd');
+    const cdiInput = document.getElementById('nb_cdi');
+    
+    if (stagiairesInput) stagiairesInput.addEventListener('input', updateTotalEmployes);
+    if (alternantsInput) alternantsInput.addEventListener('input', updateTotalEmployes);
+    if (cddInput) cddInput.addEventListener('input', updateTotalEmployes);
+    if (cdiInput) cdiInput.addEventListener('input', updateTotalEmployes);
+    
+    // Initialiser l'affichage du champ raison_abandon
+    toggleRaisonAbandon();
+    const statutProgramme = document.getElementById('statut_programme');
+    if (statutProgramme) {
+        statutProgramme.addEventListener('change', toggleRaisonAbandon);
+    }
+    
+    // Gérer le champ "Autre" pour situation_socioprofessionnelle
+    toggleSituationAutre();
+    const situationSelect = document.getElementById('situation_socioprofessionnelle');
+    if (situationSelect) {
+        situationSelect.addEventListener('change', toggleSituationAutre);
+    }
+    
+    // Gérer la soumission du formulaire pour le champ "Autre"
+    const suiviForm = document.getElementById('suivi-form');
+    if (suiviForm) {
+        suiviForm.addEventListener('submit', function(e) {
+            const situationSelect = document.getElementById('situation_socioprofessionnelle');
+            const situationAutreInput = document.getElementById('situation_socioprofessionnelle_autre');
+            
+            if (situationSelect && situationAutreInput) {
+                // Si aucune valeur n'est sélectionnée, utiliser "Non communiqué" par défaut
+                if (!situationSelect.value || situationSelect.value === '') {
+                    situationSelect.value = 'Non communiqué';
+                }
+                
+                if (situationSelect.value === 'Autre') {
+                    if (!situationAutreInput.value.trim()) {
+                        e.preventDefault();
+                        alert('Veuillez préciser la situation socio-professionnelle dans le champ "Autre"');
+                        situationAutreInput.focus();
+                        return false;
+                    }
+                    // Créer un champ caché avec la valeur saisie
+                    const hiddenInput = document.createElement('input');
+                    hiddenInput.type = 'hidden';
+                    hiddenInput.name = 'situation_socioprofessionnelle';
+                    hiddenInput.value = situationAutreInput.value.trim();
+                    suiviForm.appendChild(hiddenInput);
+                    // Désactiver le select pour éviter qu'il soit envoyé avec la valeur "Autre"
+                    situationSelect.disabled = true;
+                    // Supprimer le name du champ "autre" pour éviter qu'il soit envoyé
+                    situationAutreInput.removeAttribute('name');
+                } else {
+                    // Si une autre option est sélectionnée, s'assurer que le champ "autre" n'est pas envoyé
+                    situationAutreInput.removeAttribute('name');
+                }
+            }
+        });
+    }
+});
 </script>
 {% endblock %}

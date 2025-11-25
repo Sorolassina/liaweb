@@ -1,0 +1,1656 @@
+{% extends "layouts/base.html" %}
+{% from "components/page_header.html" import page_header %}
+
+{% block title %}Espace Candidat{% endblock %}
+
+{% block content %}
+<style>
+/* Styles pour rendre la page plus compacte */
+.compact-page {
+    font-size: 0.85rem;
+}
+
+.compact-page .card-header {
+    padding: 0.5rem 0.75rem;
+    font-size: 0.9rem;
+}
+
+.compact-page .card-body {
+    padding: 0.75rem;
+}
+
+/* Styles pour les KPIs dans le page_header */
+.page-header-right-content .candidat-kpis {
+    display: flex;
+    gap: 1rem;
+    align-items: center;
+    flex-wrap: wrap;
+    flex-direction: row;
+}
+
+.page-header-right-content .info-box-sm {
+    display: flex;
+    align-items: center;
+    padding: 0.4rem;
+    background: rgba(255, 255, 255, 0.15);
+    border-radius: 0.375rem;
+    margin-bottom: 0;
+}
+
+.page-header-right-content .info-box-sm .info-box-icon {
+    width: 2.5rem;
+    height: 2.5rem;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border-radius: 50%;
+    margin-right: 0.5rem;
+    font-size: 0.9rem;
+}
+
+.page-header-right-content .info-box-sm .info-box-content {
+    flex: 1;
+    padding-left: 0;
+}
+
+.page-header-right-content .info-box-sm .info-box-text {
+    display: block;
+    font-size: 0.7rem;
+    font-weight: 500;
+    color: rgba(255, 255, 255, 0.9);
+    margin-bottom: 0.25rem;
+}
+
+.page-header-right-content .info-box-sm .info-box-number {
+    display: block;
+    font-size: 0.9rem;
+    font-weight: 600;
+    color: white;
+}
+
+/* Onglets */
+.tabs-nav {
+    display: flex;
+    background: #2a2a2a;
+    border-bottom: 2px solid var(--primary-color);
+    overflow-x: auto;
+    border-radius: 8px 8px 0 0;
+}
+
+.tab-button {
+    flex: 1;
+    min-width: 150px;
+    padding: 0.75rem 1rem;
+    background: transparent;
+    border: none;
+    border-bottom: 3px solid transparent;
+    cursor: pointer;
+    font-size: 0.85rem;
+    font-weight: 500;
+    color: #adb5bd;
+    transition: all 0.3s ease;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 0.5rem;
+}
+
+.tab-button:hover {
+    background: rgba(255, 255, 255, 0.05);
+    color: var(--primary-color);
+}
+
+.tab-button.active {
+    background: rgba(255, 255, 255, 0.1);
+    color: var(--primary-color);
+    border-bottom-color: var(--primary-color);
+}
+
+.tab-button i {
+    font-size: 1rem;
+}
+
+.tab-content {
+    display: none;
+    animation: fadeIn 0.3s ease;
+}
+
+.tab-content.active {
+    display: block;
+}
+
+@keyframes fadeIn {
+    from {
+        opacity: 0;
+        transform: translateY(10px);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+/* Styles pour les tableaux */
+.data-table {
+    width: 100%;
+    margin-bottom: 0;
+}
+
+.data-table thead th {
+    background-color: #f8f9fa;
+    color: #212529;
+    font-weight: 600;
+    font-size: 0.8rem;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    padding: 0.75rem;
+    border-bottom: 2px solid var(--primary-color);
+}
+
+.data-table tbody td {
+    padding: 0.75rem;
+    vertical-align: middle;
+    border-bottom: 1px solid #dee2e6;
+    font-size: 0.85rem;
+    color: #212529;
+}
+
+.data-table tbody tr:hover {
+    background-color: #f8f9fa;
+}
+
+.data-table .actions-col {
+    white-space: nowrap;
+    width: 1%;
+}
+
+/* Styles pour les boutons d'action */
+.data-table .btn-outline-success {
+    color: #28a745;
+    border-color: #28a745;
+}
+
+.data-table .btn-outline-success:hover {
+    color: #fff;
+    background-color: #28a745;
+    border-color: #28a745;
+}
+
+.data-table .btn-outline-primary {
+    color: #007bff;
+    border-color: #007bff;
+}
+
+.data-table .btn-outline-primary:hover {
+    color: #fff;
+    background-color: #007bff;
+    border-color: #007bff;
+}
+
+.data-table .btn-outline-warning {
+    color: #ffc107;
+    border-color: #ffc107;
+}
+
+.data-table .btn-outline-warning:hover {
+    color: #212529;
+    background-color: #ffc107;
+    border-color: #ffc107;
+}
+
+/* Styles pour les boutons désactivés */
+.data-table .btn:disabled,
+.data-table .btn.disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+    pointer-events: none;
+}
+
+/* Boutons d'action compacts (icônes uniquement) */
+.data-table .actions-col .btn {
+    width: 32px;
+    height: 32px;
+    padding: 0;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    border-radius: 0.25rem;
+}
+
+.data-table .actions-col .btn i {
+    font-size: 0.875rem;
+}
+
+/* Suppression du flex-wrap pour garder les boutons en ligne */
+.data-table .actions-col .d-flex {
+    flex-wrap: nowrap;
+}
+
+.badge {
+    padding: 0.25rem 0.5rem;
+    font-size: 0.75rem;
+    font-weight: 500;
+    border-radius: 0.25rem;
+}
+
+.badge-success {
+    background-color: #d4edda;
+    color: #155724;
+}
+
+.badge-warning {
+    background-color: #fff3cd;
+    color: #856404;
+}
+
+.badge-info {
+    background-color: #d1ecf1;
+    color: #0c5460;
+}
+
+.badge-secondary {
+    background-color: #e2e3e5;
+    color: #383d41;
+}
+
+.empty-state {
+    text-align: center;
+    padding: 3rem 1rem;
+    color: #6c757d;
+}
+
+.empty-state i {
+    font-size: 3rem;
+    margin-bottom: 1rem;
+    opacity: 0.3;
+    color: var(--primary-color);
+}
+
+.empty-state h3 {
+    margin-bottom: 0.5rem;
+    color: #495057;
+    font-size: 1.1rem;
+}
+
+.empty-state p {
+    font-size: 0.9rem;
+    margin: 0;
+}
+
+.progression-bar {
+    width: 100%;
+    height: 8px;
+    background: #e9ecef;
+    border-radius: 4px;
+    overflow: hidden;
+    margin-top: 0.5rem;
+}
+
+.progression-fill {
+    height: 100%;
+    background: linear-gradient(90deg, var(--primary-color), #667eea);
+    transition: width 0.3s ease;
+}
+
+/* Styles pour les KPIs (comme dans page_header) */
+.rdv-kpis {
+    display: flex;
+    gap: 1rem;
+    align-items: center;
+    flex-wrap: wrap;
+}
+
+.info-box-sm {
+    display: flex;
+    align-items: center;
+    padding: 0.5rem;
+    background: #f8f9fa;
+    border-radius: 0.375rem;
+    margin-bottom: 0;
+}
+
+.info-box-sm .info-box-icon {
+    width: 40px;
+    height: 40px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border-radius: 50%;
+    margin-right: 0.75rem;
+    font-size: 1rem;
+}
+
+.info-box-sm .info-box-content {
+    flex: 1;
+}
+
+.info-box-sm .info-box-text {
+    display: block;
+    font-size: 0.75rem;
+    color: #6c757d;
+    margin-bottom: 0.25rem;
+}
+
+.info-box-sm .info-box-number {
+    display: block;
+    font-size: 1.25rem;
+    font-weight: 600;
+    color: #495057;
+}
+
+.bg-info {
+    background: rgba(23, 162, 184, 0.2) !important;
+    color: #17a2b8 !important;
+}
+
+.bg-warning {
+    background: rgba(255, 193, 7, 0.2) !important;
+    color: #ffc107 !important;
+}
+
+.bg-success {
+    background: rgba(40, 167, 69, 0.2) !important;
+    color: #28a745 !important;
+}
+
+.bg-danger {
+    background: rgba(220, 53, 69, 0.2) !important;
+    color: #dc3545 !important;
+}
+</style>
+
+{% if error_message %}
+<div class="container-fluid compact-page px-0">
+    <div class="card">
+        <div class="card-body">
+            <div class="alert alert-info" role="alert">
+                <i class="fas fa-info-circle me-2"></i>
+                {{ error_message }}
+            </div>
+            {% if is_admin and candidats_list %}
+            <div class="mt-3">
+                <label for="select_candidat" class="form-label">
+                    <i class="fas fa-user me-2"></i>Sélectionner un candidat :
+                </label>
+                <select id="select_candidat" class="form-select" onchange="window.location.href='/pages/espace-candidat?candidat_id=' + this.value + '&programme={{ schema_name }}'">
+                    <option value="">-- Choisir un candidat --</option>
+                    {% for cand in candidats_list %}
+                    <option value="{{ cand.id }}">
+                        {{ cand.prenom }} {{ cand.nom }} ({{ cand.email }})
+                    </option>
+                    {% endfor %}
+                </select>
+                <div class="form-text mt-2">
+                    <i class="fas fa-info-circle me-1"></i>
+                    {{ candidats_list|length }} candidat(s) disponible(s) dans le programme {{ schema_name|upper }}
+                </div>
+            </div>
+            {% endif %}
+        </div>
+    </div>
+</div>
+{% elif candidat %}
+{% set candidat_nom = candidat.prenom ~ ' ' ~ candidat.nom %}
+{% set kpis_html %}
+<div class="candidat-kpis">
+    <div class="info-box-sm">
+        <div class="info-box-icon" style="background: rgba(255, 211, 0, 0.2);">
+            <i class="fas fa-calendar-alt" style="color: var(--primary-color);"></i>
+        </div>
+        <div class="info-box-content">
+            <div class="info-box-text">Rendez-vous</div>
+            <div class="info-box-number">{{ rendez_vous|length }}</div>
+        </div>
+    </div>
+    <div class="info-box-sm">
+        <div class="info-box-icon" style="background: rgba(255, 211, 0, 0.2);">
+            <i class="fas fa-chalkboard-teacher" style="color: var(--primary-color);"></i>
+        </div>
+        <div class="info-box-content">
+            <div class="info-box-text">Séminaires</div>
+            <div class="info-box-number">{{ seminaires|length }}</div>
+        </div>
+    </div>
+    <div class="info-box-sm">
+        <div class="info-box-icon" style="background: rgba(255, 211, 0, 0.2);">
+            <i class="fas fa-calendar-check" style="color: var(--primary-color);"></i>
+        </div>
+        <div class="info-box-content">
+            <div class="info-box-text">Événements</div>
+            <div class="info-box-number">{{ events|length }}</div>
+        </div>
+    </div>
+    <div class="info-box-sm">
+        <div class="info-box-icon" style="background: rgba(255, 211, 0, 0.2);">
+            <i class="fas fa-users-cog" style="color: var(--primary-color);"></i>
+        </div>
+        <div class="info-box-content">
+            <div class="info-box-text">Codev</div>
+            <div class="info-box-number">{{ codev_data|length }}</div>
+        </div>
+    </div>
+    <div class="info-box-sm">
+        <div class="info-box-icon" style="background: rgba(255, 211, 0, 0.2);">
+            <i class="fas fa-laptop" style="color: var(--primary-color);"></i>
+        </div>
+        <div class="info-box-content">
+            <div class="info-box-text">E-learning</div>
+            <div class="info-box-number">{{ elearning_data|length }}</div>
+        </div>
+    </div>
+</div>
+{% endset %}
+
+{% set alertes_html %}
+{% if rdv_alertes and rdv_alertes > 0 %}
+<div class="rdv-alerte-notification" style="position: relative; margin-left: 1rem;">
+    <i class="fas fa-bell" style="font-size: 1.5rem; color: #ffc107; cursor: pointer;" 
+       data-bs-toggle="tooltip" data-bs-placement="bottom" 
+       title="{{ rdv_alertes }} rendez-vous terminé(s) non signé(s) à émarger">
+    </i>
+    <span class="badge bg-danger" style="position: absolute; top: -8px; right: -8px; border-radius: 50%; min-width: 20px; height: 20px; display: flex; align-items: center; justify-content: center; font-size: 0.7rem; padding: 0 4px;">
+        {{ rdv_alertes }}
+    </span>
+</div>
+{% endif %}
+{% if sem_alertes and sem_alertes > 0 %}
+<div class="sem-alerte-notification" style="position: relative; margin-left: 1rem;">
+    <i class="fas fa-bell" style="font-size: 1.5rem; color: #17a2b8; cursor: pointer;" 
+       data-bs-toggle="tooltip" data-bs-placement="bottom" 
+       title="{{ sem_alertes }} séminaire(s) récent(s) terminé(s)">
+    </i>
+    <span class="badge bg-danger" style="position: absolute; top: -8px; right: -8px; border-radius: 50%; min-width: 20px; height: 20px; display: flex; align-items: center; justify-content: center; font-size: 0.7rem; padding: 0 4px;">
+        {{ sem_alertes }}
+    </span>
+</div>
+{% endif %}
+{% if event_alertes and event_alertes > 0 %}
+<div class="event-alerte-notification" style="position: relative; margin-left: 1rem;">
+    <i class="fas fa-bell" style="font-size: 1.5rem; color: #6f42c1; cursor: pointer;" 
+       data-bs-toggle="tooltip" data-bs-placement="bottom" 
+       title="{{ event_alertes }} événement(s) récent(s) terminé(s)">
+    </i>
+    <span class="badge bg-danger" style="position: absolute; top: -8px; right: -8px; border-radius: 50%; min-width: 20px; height: 20px; display: flex; align-items: center; justify-content: center; font-size: 0.7rem; padding: 0 4px;">
+        {{ event_alertes }}
+    </span>
+</div>
+{% endif %}
+{% if codev_alertes and codev_alertes > 0 %}
+<div class="codev-alerte-notification" style="position: relative; margin-left: 1rem;">
+    <i class="fas fa-bell" style="font-size: 1.5rem; color: #fd7e14; cursor: pointer;" 
+       data-bs-toggle="tooltip" data-bs-placement="bottom" 
+       title="{{ codev_alertes }} groupe(s) de codéveloppement actif(s)">
+    </i>
+    <span class="badge bg-danger" style="position: absolute; top: -8px; right: -8px; border-radius: 50%; min-width: 20px; height: 20px; display: flex; align-items: center; justify-content: center; font-size: 0.7rem; padding: 0 4px;">
+        {{ codev_alertes }}
+    </span>
+</div>
+{% endif %}
+{% if elearning_alertes and elearning_alertes > 0 %}
+<div class="elearning-alerte-notification" style="position: relative; margin-left: 1rem;">
+    <i class="fas fa-bell" style="font-size: 1.5rem; color: #20c997; cursor: pointer;" 
+       data-bs-toggle="tooltip" data-bs-placement="bottom" 
+       title="{{ elearning_alertes }} ressource(s) e-learning en cours">
+    </i>
+    <span class="badge bg-danger" style="position: absolute; top: -8px; right: -8px; border-radius: 50%; min-width: 20px; height: 20px; display: flex; align-items: center; justify-content: center; font-size: 0.7rem; padding: 0 4px;">
+        {{ elearning_alertes }}
+    </span>
+</div>
+{% endif %}
+{% endset %}
+
+{{ page_header(
+    title='<i class="fas fa-user-circle me-2"></i> Espace Candidat',
+    breadcrumbs=[{"label": "Espace Candidat", "url": ""}],
+    right_content=kpis_html ~ alertes_html
+) }}
+
+<div class="container-fluid compact-page px-0">
+    <div class="row g-3">
+        <div class="col-12">
+            <div class="card">
+                <div class="tabs-nav">
+                    <button class="tab-button active" onclick="showTab('rendez-vous')">
+                        <i class="fas fa-calendar-alt"></i>
+                        <span>Rendez-vous</span>
+                    </button>
+                    <button class="tab-button" onclick="showTab('seminaires')">
+                        <i class="fas fa-chalkboard-teacher"></i>
+                        <span>Séminaires</span>
+                    </button>
+                    <button class="tab-button" onclick="showTab('events')">
+                        <i class="fas fa-calendar-check"></i>
+                        <span>Événements</span>
+                    </button>
+                    <button class="tab-button" onclick="showTab('codev')">
+                        <i class="fas fa-users-cog"></i>
+                        <span>Codev</span>
+                    </button>
+                    <button class="tab-button" onclick="showTab('elearning')">
+                        <i class="fas fa-laptop"></i>
+                        <span>E-learning</span>
+                    </button>
+                </div>
+
+                <!-- Onglet Rendez-vous -->
+                <div id="tab-rendez-vous" class="tab-content active">
+                    <div class="card-body">
+                        <h5 class="mb-3">
+                            <i class="fas fa-calendar-alt me-2 text-primary"></i>
+                            Mes Rendez-vous
+                        </h5>
+                        
+                        <!-- KPIs des RDV -->
+                        {% if rdv_stats %}
+                        <div class="rdv-kpis mb-4" style="display: flex; gap: 1rem; align-items: center; flex-wrap: wrap;">
+                            <div class="info-box-sm">
+                                <span class="info-box-icon bg-info">
+                                    <i class="fas fa-calendar-check"></i>
+                                </span>
+                                <div class="info-box-content">
+                                    <span class="info-box-text">Total</span>
+                                    <span class="info-box-number">{{ rdv_stats.total }}</span>
+                                </div>
+                            </div>
+                            <div class="info-box-sm">
+                                <span class="info-box-icon bg-warning">
+                                    <i class="fas fa-clock"></i>
+                                </span>
+                                <div class="info-box-content">
+                                    <span class="info-box-text">Planifiés</span>
+                                    <span class="info-box-number">{{ rdv_stats.planifies }}</span>
+                                </div>
+                            </div>
+                            <div class="info-box-sm">
+                                <span class="info-box-icon bg-success">
+                                    <i class="fas fa-check-circle"></i>
+                                </span>
+                                <div class="info-box-content">
+                                    <span class="info-box-text">Terminés</span>
+                                    <span class="info-box-number">{{ rdv_stats.termines }}</span>
+                                </div>
+                            </div>
+                            <div class="info-box-sm">
+                                <span class="info-box-icon bg-danger">
+                                    <i class="fas fa-times-circle"></i>
+                                </span>
+                                <div class="info-box-content">
+                                    <span class="info-box-text">Annulés</span>
+                                    <span class="info-box-number">{{ rdv_stats.annules }}</span>
+                                </div>
+                            </div>
+                            <div class="info-box-sm">
+                                <span class="info-box-icon" style="background: rgba(23, 162, 184, 0.2); color: #17a2b8;">
+                                    <i class="fas fa-signature"></i>
+                                </span>
+                                <div class="info-box-content">
+                                    <span class="info-box-text">Émargés</span>
+                                    <span class="info-box-number">{{ rdv_stats.emarges }}</span>
+                                </div>
+                            </div>
+                        </div>
+                        {% endif %}
+                        
+                        {% if rendez_vous %}
+                        <div class="table-responsive">
+                            <table class="data-table table-striped">
+                                <thead>
+                                    <tr>
+                                        <th>Date/Heure</th>
+                                        <th>Type</th>
+                                        <th>Lieu</th>
+                                        <th>Conseiller</th>
+                                        <th>Statut</th>
+                                        <th>Présence</th>
+                                        <th class="actions-col">Actions</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    {% for rdv in rendez_vous %}
+                                    <tr>
+                                        <td>
+                                            <div>
+                                                <i class="fas fa-calendar-alt text-primary me-1"></i>
+                                                <strong>{{ rdv.debut|format_date }}</strong>
+                                            </div>
+                                            <div>
+                                                <i class="fas fa-clock text-muted me-1"></i>
+                                                <small class="text-muted">{{ rdv.debut|format_time }}{% if rdv.fin %} - {{ rdv.fin|format_time }}{% endif %}</small>
+                                            </div>
+                                        </td>
+                                        <td>{{ rdv.type_rdv or 'Rendez-vous' }}</td>
+                                        <td>
+                                            {% if rdv.lieu %}
+                                            <i class="fas fa-map-marker-alt text-muted me-1"></i>
+                                            {{ rdv.lieu }}
+                                            {% else %}
+                                            <span class="text-muted">-</span>
+                                            {% endif %}
+                                        </td>
+                                        <td>
+                                            {% if rdv.conseiller_nom %}
+                                            <i class="fas fa-user-tie text-muted me-1"></i>
+                                            {{ rdv.conseiller_nom }}
+                                            {% if rdv.note_conseiller %}
+                                            <br><small class="text-warning">
+                                                {% for i in range(1, 6) %}
+                                                    {% if i <= rdv.note_conseiller %}
+                                                        <i class="fas fa-star"></i>
+                                                    {% else %}
+                                                        <i class="far fa-star"></i>
+                                                    {% endif %}
+                                                {% endfor %}
+                                            </small>
+                                            {% endif %}
+                                            {% else %}
+                                            <span class="text-muted">-</span>
+                                            {% endif %}
+                                        </td>
+                                        <td>
+                                            <span class="badge badge-{{ 'success' if rdv.statut == 'termine' else 'warning' if rdv.statut == 'planifie' else 'secondary' }}">
+                                                {{ rdv.statut|title if rdv.statut else 'Non défini' }}
+                                            </span>
+                                        </td>
+                                        <td>
+                                            {% if rdv.est_emarge %}
+                                            <span class="badge badge-success">
+                                                <i class="fas fa-check-circle me-1"></i>Émargé
+                                            </span>
+                                            {% if rdv.date_signature_candidat %}
+                                            <br><small class="text-muted">{{ rdv.date_signature_candidat|format_date }}</small>
+                                            {% endif %}
+                                            {% else %}
+                                            <span class="badge badge-secondary">
+                                                <i class="fas fa-times-circle me-1"></i>Non émargé
+                                            </span>
+                                            {% endif %}
+                                        </td>
+                                        <td class="actions-col">
+                                            <div class="d-flex gap-1 align-items-center">
+                                                {% if rdv.meet_link %}
+                                                <a href="{{ rdv.meet_link }}" target="_blank" class="btn btn-outline-success btn-sm" 
+                                                   data-bs-toggle="tooltip" data-bs-placement="top" title="Participer à la visioconférence">
+                                                    <i class="fas fa-video"></i>
+                                                </a>
+                                                {% else %}
+                                                <button type="button" class="btn btn-outline-success btn-sm" disabled
+                                                   data-bs-toggle="tooltip" data-bs-placement="top" title="Aucun lien de visioconférence disponible">
+                                                    <i class="fas fa-video"></i>
+                                                </button>
+                                                {% endif %}
+                                                
+                                                {% if rdv.statut == 'termine' and not rdv.est_emarge %}
+                                                <button type="button" class="btn btn-outline-primary btn-sm" 
+                                                        onclick="openEmargementModal({{ rdv.id }})" 
+                                                        data-bs-toggle="tooltip" data-bs-placement="top" title="Émarger le rendez-vous">
+                                                    <i class="fas fa-signature"></i>
+                                                </button>
+                                                {% else %}
+                                                <button type="button" class="btn btn-outline-primary btn-sm" disabled
+                                                        data-bs-toggle="tooltip" data-bs-placement="top" title="{% if rdv.statut != 'termine' %}Rendez-vous non terminé{% else %}Déjà émargé{% endif %}">
+                                                    <i class="fas fa-signature"></i>
+                                                </button>
+                                                {% endif %}
+                                                
+                                                {% if rdv.statut == 'termine' and not rdv.note_conseiller %}
+                                                <button type="button" class="btn btn-outline-warning btn-sm" 
+                                                        onclick="openAvisModal({{ rdv.id }}, {{ (rdv.conseiller_nom or '')|tojson }})" 
+                                                        data-bs-toggle="tooltip" data-bs-placement="top" title="Donner mon avis sur le conseiller">
+                                                    <i class="fas fa-star"></i>
+                                                </button>
+                                                {% else %}
+                                                <button type="button" class="btn btn-outline-warning btn-sm" disabled
+                                                        data-bs-toggle="tooltip" data-bs-placement="top" title="{% if rdv.statut != 'termine' %}Rendez-vous non terminé{% else %}Avis déjà donné{% endif %}">
+                                                    <i class="fas fa-star"></i>
+                                                </button>
+                                                {% endif %}
+                                            </div>
+                                        </td>
+                                    </tr>
+                                    {% if rdv.notes %}
+                                    <tr>
+                                        <td colspan="7" class="text-muted" style="font-size: 0.8rem; padding-left: 2rem;">
+                                            <i class="fas fa-sticky-note me-1"></i>
+                                            {{ rdv.notes }}
+                                        </td>
+                                    </tr>
+                                    {% endif %}
+                                    {% if rdv.avis_candidat %}
+                                    <tr>
+                                        <td colspan="7" class="bg-light" style="font-size: 0.8rem; padding-left: 2rem;">
+                                            <i class="fas fa-comment me-1 text-info"></i>
+                                            <strong>Mon avis :</strong> {{ rdv.avis_candidat }}
+                                        </td>
+                                    </tr>
+                                    {% endif %}
+                                    {% endfor %}
+                                </tbody>
+                            </table>
+                        </div>
+                        {% else %}
+                        <div class="empty-state">
+                            <i class="fas fa-calendar-times"></i>
+                            <h3>Aucun rendez-vous</h3>
+                            <p>Vous n'avez pas encore de rendez-vous planifié.</p>
+                        </div>
+                        {% endif %}
+                    </div>
+                </div>
+
+                <!-- Onglet Séminaires -->
+                <div id="tab-seminaires" class="tab-content">
+                    <div class="card-body">
+                        <h5 class="mb-3">
+                            <i class="fas fa-chalkboard-teacher me-2 text-primary"></i>
+                            Mes Séminaires
+                        </h5>
+                        
+                        <!-- KPIs des Séminaires -->
+                        {% if sem_stats %}
+                        <div class="rdv-kpis mb-4" style="display: flex; gap: 1rem; align-items: center; flex-wrap: wrap;">
+                            <div class="info-box-sm">
+                                <span class="info-box-icon bg-info">
+                                    <i class="fas fa-chalkboard-teacher"></i>
+                                </span>
+                                <div class="info-box-content">
+                                    <span class="info-box-text">Total</span>
+                                    <span class="info-box-number">{{ sem_stats.total }}</span>
+                                </div>
+                            </div>
+                            <div class="info-box-sm">
+                                <span class="info-box-icon bg-warning">
+                                    <i class="fas fa-clock"></i>
+                                </span>
+                                <div class="info-box-content">
+                                    <span class="info-box-text">Planifiés</span>
+                                    <span class="info-box-number">{{ sem_stats.planifies }}</span>
+                                </div>
+                            </div>
+                            <div class="info-box-sm">
+                                <span class="info-box-icon bg-success">
+                                    <i class="fas fa-check-circle"></i>
+                                </span>
+                                <div class="info-box-content">
+                                    <span class="info-box-text">Terminés</span>
+                                    <span class="info-box-number">{{ sem_stats.termines }}</span>
+                                </div>
+                            </div>
+                            <div class="info-box-sm">
+                                <span class="info-box-icon bg-danger">
+                                    <i class="fas fa-times-circle"></i>
+                                </span>
+                                <div class="info-box-content">
+                                    <span class="info-box-text">Annulés</span>
+                                    <span class="info-box-number">{{ sem_stats.annules }}</span>
+                                </div>
+                            </div>
+                        </div>
+                        {% endif %}
+                        
+                        {% if seminaires %}
+                        <div class="table-responsive">
+                            <table class="data-table table-striped">
+                                <thead>
+                                    <tr>
+                                        <th>Titre</th>
+                                        <th>Dates</th>
+                                        <th>Lieu</th>
+                                        <th>Programme</th>
+                                        <th>Statut</th>
+                                        <th class="actions-col">Actions</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    {% for sem in seminaires %}
+                                    <tr>
+                                        <td>
+                                            <strong>{{ sem.titre or 'Séminaire' }}</strong>
+                                            {% if sem.description %}
+                                            <br><small class="text-muted">{{ sem.description[:100] }}{% if sem.description|length > 100 %}...{% endif %}</small>
+                                            {% endif %}
+                                        </td>
+                                        <td>
+                                            {% if sem.date_debut %}
+                                            <i class="fas fa-calendar text-muted me-1"></i>
+                                            Du {{ sem.date_debut|format_date }}
+                                            {% if sem.date_fin %}
+                                            <br>au {{ sem.date_fin|format_date }}
+                                            {% endif %}
+                                            {% else %}
+                                            <span class="text-muted">-</span>
+                                            {% endif %}
+                                        </td>
+                                        <td>
+                                            {% if sem.lieu %}
+                                            <i class="fas fa-map-marker-alt text-muted me-1"></i>
+                                            {{ sem.lieu }}
+                                            {% else %}
+                                            <span class="text-muted">-</span>
+                                            {% endif %}
+                                        </td>
+                                        <td>
+                                            {% if sem.programme_nom %}
+                                            <i class="fas fa-graduation-cap text-muted me-1"></i>
+                                            {{ sem.programme_nom }}
+                                            {% else %}
+                                            <span class="text-muted">-</span>
+                                            {% endif %}
+                                        </td>
+                                        <td>
+                                            <span class="badge badge-{{ 'success' if sem.statut == 'termine' else 'warning' if sem.statut == 'planifie' else 'info' }}">
+                                                {{ sem.statut|title if sem.statut else 'Non défini' }}
+                                            </span>
+                                            {% if sem.invitation_statut %}
+                                            <br><small class="text-muted">Invitation: {{ sem.invitation_statut|title }}</small>
+                                            {% endif %}
+                                        </td>
+                                        <td class="actions-col">
+                                            <div class="d-flex gap-1 align-items-center">
+                                                {% if sem.meet_link and (sem.statut == 'planifie' or sem.statut == 'termine') %}
+                                                <a href="{{ sem.meet_link }}" target="_blank" class="btn btn-outline-success btn-sm" 
+                                                   data-bs-toggle="tooltip" data-bs-placement="top" title="Participer à la visioconférence">
+                                                    <i class="fas fa-video"></i>
+                                                </a>
+                                                {% else %}
+                                                <button type="button" class="btn btn-outline-success btn-sm" disabled
+                                                   data-bs-toggle="tooltip" data-bs-placement="top" title="Aucun lien de visioconférence disponible">
+                                                    <i class="fas fa-video"></i>
+                                                </button>
+                                                {% endif %}
+                                                
+                                                <button type="button" class="btn btn-outline-info btn-sm" 
+                                                        onclick="showSeminaireDetails({{ sem.id }}, {{ (sem.titre or 'Séminaire')|tojson }})"
+                                                        data-bs-toggle="tooltip" data-bs-placement="top" title="Voir les détails">
+                                                    <i class="fas fa-eye"></i>
+                                                </button>
+                                            </div>
+                                        </td>
+                                    </tr>
+                                    {% endfor %}
+                                </tbody>
+                            </table>
+                        </div>
+                        {% else %}
+                        <div class="empty-state">
+                            <i class="fas fa-chalkboard-teacher"></i>
+                            <h3>Aucun séminaire</h3>
+                            <p>Vous n'êtes pas encore inscrit à un séminaire.</p>
+                        </div>
+                        {% endif %}
+                    </div>
+                </div>
+
+                <!-- Onglet Événements -->
+                <div id="tab-events" class="tab-content">
+                    <div class="card-body">
+                        <h5 class="mb-3">
+                            <i class="fas fa-calendar-check me-2 text-primary"></i>
+                            Mes Événements
+                        </h5>
+                        
+                        <!-- KPIs des Événements -->
+                        {% if event_stats %}
+                        <div class="rdv-kpis mb-4" style="display: flex; gap: 1rem; align-items: center; flex-wrap: wrap;">
+                            <div class="info-box-sm">
+                                <span class="info-box-icon bg-info">
+                                    <i class="fas fa-calendar-check"></i>
+                                </span>
+                                <div class="info-box-content">
+                                    <span class="info-box-text">Total</span>
+                                    <span class="info-box-number">{{ event_stats.total }}</span>
+                                </div>
+                            </div>
+                            <div class="info-box-sm">
+                                <span class="info-box-icon bg-warning">
+                                    <i class="fas fa-clock"></i>
+                                </span>
+                                <div class="info-box-content">
+                                    <span class="info-box-text">Planifiés</span>
+                                    <span class="info-box-number">{{ event_stats.planifies }}</span>
+                                </div>
+                            </div>
+                            <div class="info-box-sm">
+                                <span class="info-box-icon bg-success">
+                                    <i class="fas fa-check-circle"></i>
+                                </span>
+                                <div class="info-box-content">
+                                    <span class="info-box-text">Terminés</span>
+                                    <span class="info-box-number">{{ event_stats.termines }}</span>
+                                </div>
+                            </div>
+                            <div class="info-box-sm">
+                                <span class="info-box-icon bg-danger">
+                                    <i class="fas fa-times-circle"></i>
+                                </span>
+                                <div class="info-box-content">
+                                    <span class="info-box-text">Annulés</span>
+                                    <span class="info-box-number">{{ event_stats.annules }}</span>
+                                </div>
+                            </div>
+                        </div>
+                        {% endif %}
+                        
+                        {% if events %}
+                        <div class="table-responsive">
+                            <table class="data-table table-striped">
+                                <thead>
+                                    <tr>
+                                        <th>Titre</th>
+                                        <th>Date/Heure</th>
+                                        <th>Lieu</th>
+                                        <th>Programme</th>
+                                        <th>Statut</th>
+                                        <th class="actions-col">Actions</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    {% for event in events %}
+                                    <tr>
+                                        <td>
+                                            <strong>{{ event.titre or 'Événement' }}</strong>
+                                            {% if event.description %}
+                                            <br><small class="text-muted">{{ event.description[:100] }}{% if event.description|length > 100 %}...{% endif %}</small>
+                                            {% endif %}
+                                        </td>
+                                        <td>
+                                            {% if event.date_debut %}
+                                            <i class="fas fa-calendar text-muted me-1"></i>
+                                            {{ event.date_debut|format_date }}
+                                            {% if event.heure_debut %}
+                                            <br><i class="fas fa-clock text-muted me-1"></i>
+                                            {{ event.heure_debut }}
+                                            {% endif %}
+                                            {% else %}
+                                            <span class="text-muted">-</span>
+                                            {% endif %}
+                                        </td>
+                                        <td>
+                                            {% if event.lieu %}
+                                            <i class="fas fa-map-marker-alt text-muted me-1"></i>
+                                            {{ event.lieu }}
+                                            {% else %}
+                                            <span class="text-muted">-</span>
+                                            {% endif %}
+                                        </td>
+                                        <td>
+                                            {% if event.programme_nom %}
+                                            <i class="fas fa-graduation-cap text-muted me-1"></i>
+                                            {{ event.programme_nom }}
+                                            {% else %}
+                                            <span class="text-muted">-</span>
+                                            {% endif %}
+                                        </td>
+                                        <td>
+                                            <span class="badge badge-{{ 'success' if event.statut == 'termine' else 'warning' if event.statut == 'planifie' else 'info' }}">
+                                                {{ event.statut|title if event.statut else 'Non défini' }}
+                                            </span>
+                                            {% if event.invitation_statut %}
+                                            <br><small class="text-muted">Invitation: {{ event.invitation_statut|title }}</small>
+                                            {% endif %}
+                                        </td>
+                                        <td class="actions-col">
+                                            <div class="d-flex gap-1 align-items-center">
+                                                {% if event.meet_link and (event.statut == 'planifie' or event.statut == 'termine') %}
+                                                <a href="{{ event.meet_link }}" target="_blank" class="btn btn-outline-success btn-sm" 
+                                                   data-bs-toggle="tooltip" data-bs-placement="top" title="Participer à la visioconférence">
+                                                    <i class="fas fa-video"></i>
+                                                </a>
+                                                {% else %}
+                                                <button type="button" class="btn btn-outline-success btn-sm" disabled
+                                                   data-bs-toggle="tooltip" data-bs-placement="top" title="Aucun lien de visioconférence disponible">
+                                                    <i class="fas fa-video"></i>
+                                                </button>
+                                                {% endif %}
+                                                
+                                                <button type="button" class="btn btn-outline-info btn-sm" 
+                                                        onclick="showEventDetails({{ event.id }}, {{ (event.titre or 'Événement')|tojson }})"
+                                                        data-bs-toggle="tooltip" data-bs-placement="top" title="Voir les détails">
+                                                    <i class="fas fa-eye"></i>
+                                                </button>
+                                            </div>
+                                        </td>
+                                    </tr>
+                                    {% endfor %}
+                                </tbody>
+                            </table>
+                        </div>
+                        {% else %}
+                        <div class="empty-state">
+                            <i class="fas fa-calendar-check"></i>
+                            <h3>Aucun événement</h3>
+                            <p>Vous n'êtes pas encore inscrit à un événement.</p>
+                        </div>
+                        {% endif %}
+                    </div>
+                </div>
+
+                <!-- Onglet Codev -->
+                <div id="tab-codev" class="tab-content">
+                    <div class="card-body">
+                        <h5 class="mb-3">
+                            <i class="fas fa-users-cog me-2 text-primary"></i>
+                            Mes Groupes de Codéveloppement
+                        </h5>
+                        
+                        <!-- KPIs des Codev -->
+                        {% if codev_stats %}
+                        <div class="rdv-kpis mb-4" style="display: flex; gap: 1rem; align-items: center; flex-wrap: wrap;">
+                            <div class="info-box-sm">
+                                <span class="info-box-icon bg-info">
+                                    <i class="fas fa-users-cog"></i>
+                                </span>
+                                <div class="info-box-content">
+                                    <span class="info-box-text">Total</span>
+                                    <span class="info-box-number">{{ codev_stats.total }}</span>
+                                </div>
+                            </div>
+                            <div class="info-box-sm">
+                                <span class="info-box-icon bg-warning">
+                                    <i class="fas fa-sync-alt"></i>
+                                </span>
+                                <div class="info-box-content">
+                                    <span class="info-box-text">Actifs</span>
+                                    <span class="info-box-number">{{ codev_stats.actifs }}</span>
+                                </div>
+                            </div>
+                            <div class="info-box-sm">
+                                <span class="info-box-icon bg-success">
+                                    <i class="fas fa-check-circle"></i>
+                                </span>
+                                <div class="info-box-content">
+                                    <span class="info-box-text">Terminés</span>
+                                    <span class="info-box-number">{{ codev_stats.termines }}</span>
+                                </div>
+                            </div>
+                        </div>
+                        {% endif %}
+                        
+                        {% if codev_data %}
+                        <div class="table-responsive">
+                            <table class="data-table table-striped">
+                                <thead>
+                                    <tr>
+                                        <th>Groupe</th>
+                                        <th>Cycle</th>
+                                        <th>Nombre de séances</th>
+                                        <th>Statut</th>
+                                        <th class="actions-col">Actions</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    {% for codev in codev_data %}
+                                    <tr>
+                                        <td>
+                                            <strong>{{ codev.groupe_nom or 'Groupe' }}</strong>
+                                            {% if codev.groupe_description %}
+                                            <br><small class="text-muted">{{ codev.groupe_description[:100] }}{% if codev.groupe_description|length > 100 %}...{% endif %}</small>
+                                            {% endif %}
+                                        </td>
+                                        <td>
+                                            {% if codev.cycle_nom %}
+                                            <i class="fas fa-sync-alt text-muted me-1"></i>
+                                            {{ codev.cycle_nom }}
+                                            {% if codev.cycle_statut %}
+                                            <br><small class="text-muted">Statut: {{ codev.cycle_statut|title }}</small>
+                                            {% endif %}
+                                            {% else %}
+                                            <span class="text-muted">-</span>
+                                            {% endif %}
+                                        </td>
+                                        <td>
+                                            <i class="fas fa-calendar-alt text-muted me-1"></i>
+                                            {{ codev.nombre_seances or 0 }} séance(s)
+                                        </td>
+                                        <td>
+                                            <span class="badge badge-{{ 'success' if codev.cycle_statut == 'termine' else 'warning' if codev.cycle_statut in ['actif', 'en_cours'] else 'info' }}">
+                                                {{ codev.statut_membre|title if codev.statut_membre else 'Membre' }}
+                                            </span>
+                                        </td>
+                                        <td class="actions-col">
+                                            <div class="d-flex gap-1 align-items-center">
+                                                <button type="button" class="btn btn-outline-info btn-sm" 
+                                                        onclick="showCodevDetails({{ codev.groupe_id }}, {{ (codev.groupe_nom or 'Groupe')|tojson }})"
+                                                        data-bs-toggle="tooltip" data-bs-placement="top" title="Voir les détails">
+                                                    <i class="fas fa-eye"></i>
+                                                </button>
+                                                
+                                                {% if codev.cycle_statut in ['actif', 'en_cours'] %}
+                                                <button type="button" class="btn btn-outline-primary btn-sm" 
+                                                        onclick="alert('Fonctionnalité à venir: Voir les séances du groupe')"
+                                                        data-bs-toggle="tooltip" data-bs-placement="top" title="Voir les séances">
+                                                    <i class="fas fa-calendar-alt"></i>
+                                                </button>
+                                                {% else %}
+                                                <button type="button" class="btn btn-outline-primary btn-sm" disabled
+                                                        data-bs-toggle="tooltip" data-bs-placement="top" title="Cycle terminé">
+                                                    <i class="fas fa-calendar-alt"></i>
+                                                </button>
+                                                {% endif %}
+                                            </div>
+                                        </td>
+                                    </tr>
+                                    {% endfor %}
+                                </tbody>
+                            </table>
+                        </div>
+                        {% else %}
+                        <div class="empty-state">
+                            <i class="fas fa-users-cog"></i>
+                            <h3>Aucun groupe de codéveloppement</h3>
+                            <p>Vous n'êtes pas encore membre d'un groupe de codéveloppement.</p>
+                        </div>
+                        {% endif %}
+                    </div>
+                </div>
+
+                <!-- Onglet E-learning -->
+                <div id="tab-elearning" class="tab-content">
+                    <div class="card-body">
+                        <h5 class="mb-3">
+                            <i class="fas fa-laptop me-2 text-primary"></i>
+                            Mes Ressources E-learning
+                        </h5>
+                        
+                        <!-- KPIs de l'E-learning -->
+                        {% if elearning_stats %}
+                        <div class="rdv-kpis mb-4" style="display: flex; gap: 1rem; align-items: center; flex-wrap: wrap;">
+                            <div class="info-box-sm">
+                                <span class="info-box-icon bg-info">
+                                    <i class="fas fa-laptop"></i>
+                                </span>
+                                <div class="info-box-content">
+                                    <span class="info-box-text">Total</span>
+                                    <span class="info-box-number">{{ elearning_stats.total }}</span>
+                                </div>
+                            </div>
+                            <div class="info-box-sm">
+                                <span class="info-box-icon bg-warning">
+                                    <i class="fas fa-play-circle"></i>
+                                </span>
+                                <div class="info-box-content">
+                                    <span class="info-box-text">En cours</span>
+                                    <span class="info-box-number">{{ elearning_stats.en_cours }}</span>
+                                </div>
+                            </div>
+                            <div class="info-box-sm">
+                                <span class="info-box-icon bg-success">
+                                    <i class="fas fa-check-circle"></i>
+                                </span>
+                                <div class="info-box-content">
+                                    <span class="info-box-text">Terminés</span>
+                                    <span class="info-box-number">{{ elearning_stats.termines }}</span>
+                                </div>
+                            </div>
+                            <div class="info-box-sm">
+                                <span class="info-box-icon bg-secondary">
+                                    <i class="fas fa-circle"></i>
+                                </span>
+                                <div class="info-box-content">
+                                    <span class="info-box-text">Non commencés</span>
+                                    <span class="info-box-number">{{ elearning_stats.non_commences }}</span>
+                                </div>
+                            </div>
+                        </div>
+                        {% endif %}
+                        
+                        {% if elearning_data %}
+                        <div class="table-responsive">
+                            <table class="data-table table-striped">
+                                <thead>
+                                    <tr>
+                                        <th>Ressource</th>
+                                        <th>Module</th>
+                                        <th>Type</th>
+                                        <th>Progression</th>
+                                        <th>Statut</th>
+                                        <th class="actions-col">Actions</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    {% for elearn in elearning_data %}
+                                    <tr>
+                                        <td>
+                                            <strong>{{ elearn.ressource_titre or 'Ressource' }}</strong>
+                                        </td>
+                                        <td>
+                                            {% if elearn.module_nom %}
+                                            <i class="fas fa-book text-muted me-1"></i>
+                                            {{ elearn.module_nom }}
+                                            {% else %}
+                                            <span class="text-muted">-</span>
+                                            {% endif %}
+                                        </td>
+                                        <td>
+                                            {% if elearn.type_ressource %}
+                                            <i class="fas fa-file-alt text-muted me-1"></i>
+                                            {{ elearn.type_ressource|title }}
+                                            {% else %}
+                                            <span class="text-muted">-</span>
+                                            {% endif %}
+                                        </td>
+                                        <td>
+                                            {% if elearn.progression_pourcentage is not none %}
+                                            <div>
+                                                <span>{{ elearn.progression_pourcentage }}%</span>
+                                                <div class="progression-bar">
+                                                    <div class="progression-fill" style="width: {{ elearn.progression_pourcentage }}%"></div>
+                                                </div>
+                                            </div>
+                                            {% else %}
+                                            <span class="text-muted">-</span>
+                                            {% endif %}
+                                        </td>
+                                        <td>
+                                            <span class="badge badge-{{ 'success' if elearn.statut == 'termine' else 'warning' if elearn.statut == 'en_cours' else 'info' }}">
+                                                {{ elearn.statut|title if elearn.statut else 'Non défini' }}
+                                            </span>
+                                            {% if elearn.duree_minutes %}
+                                            <br><small class="text-muted"><i class="fas fa-clock me-1"></i>{{ elearn.duree_minutes }} min</small>
+                                            {% endif %}
+                                        </td>
+                                        <td class="actions-col">
+                                            <div class="d-flex gap-1 align-items-center">
+                                                {% if elearn.url_ressource %}
+                                                <a href="{{ elearn.url_ressource }}" target="_blank" class="btn btn-outline-success btn-sm" 
+                                                   data-bs-toggle="tooltip" data-bs-placement="top" title="Accéder à la ressource">
+                                                    <i class="fas fa-external-link-alt"></i>
+                                                </a>
+                                                {% else %}
+                                                <button type="button" class="btn btn-outline-success btn-sm" disabled
+                                                   data-bs-toggle="tooltip" data-bs-placement="top" title="Aucune URL disponible">
+                                                    <i class="fas fa-external-link-alt"></i>
+                                                </button>
+                                                {% endif %}
+                                                
+                                                <button type="button" class="btn btn-outline-info btn-sm" 
+                                                        onclick="showElearningDetails({{ elearn.id }}, {{ (elearn.ressource_titre or 'Ressource')|tojson }})"
+                                                        data-bs-toggle="tooltip" data-bs-placement="top" title="Voir les détails">
+                                                    <i class="fas fa-eye"></i>
+                                                </button>
+                                            </div>
+                                        </td>
+                                    </tr>
+                                    {% endfor %}
+                                </tbody>
+                            </table>
+                        </div>
+                        {% else %}
+                        <div class="empty-state">
+                            <i class="fas fa-laptop"></i>
+                            <h3>Aucune ressource e-learning</h3>
+                            <p>Vous n'avez pas encore accès à des ressources e-learning.</p>
+                        </div>
+                        {% endif %}
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Modal d'émargement -->
+<div class="modal fade" id="emargementModal" tabindex="-1" aria-labelledby="emargementModalLabel" aria-hidden="true">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="emargementModalLabel">
+                    <i class="fas fa-signature me-2"></i>Émarger le rendez-vous
+                </h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body">
+                <p>Veuillez signer dans le champ ci-dessous :</p>
+                <canvas id="signatureCanvas" class="signature-canvas" width="500" height="200" style="width: 100%; border: 2px solid #ddd; border-radius: 4px; cursor: crosshair;"></canvas>
+                <div class="mt-2">
+                    <button type="button" class="btn btn-sm btn-secondary" onclick="clearSignature()">
+                        <i class="fas fa-eraser me-1"></i>Effacer
+                    </button>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Annuler</button>
+                <button type="button" class="btn btn-primary" onclick="submitEmargement()">
+                    <i class="fas fa-check me-1"></i>Valider l'émargement
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Modal d'avis -->
+<div class="modal fade" id="avisModal" tabindex="-1" aria-labelledby="avisModalLabel" aria-hidden="true">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="avisModalLabel">
+                    <i class="fas fa-star me-2"></i>Donner mon avis
+                </h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <form id="avisForm">
+                <div class="modal-body">
+                    <p id="conseillerNomAvis" class="mb-3"></p>
+                        <div class="mb-3">
+                            <label class="form-label">Note (1 à 5 étoiles) :</label>
+                            <div class="star-rating">
+                                <i class="far fa-star star-rating-star" data-rating="1" style="font-size: 2rem; color: #ffc107; cursor: pointer; margin-right: 5px;" onmouseover="hoverStar(1)" onmouseout="resetStars()" onclick="selectStar(1)"></i>
+                                <i class="far fa-star star-rating-star" data-rating="2" style="font-size: 2rem; color: #ffc107; cursor: pointer; margin-right: 5px;" onmouseover="hoverStar(2)" onmouseout="resetStars()" onclick="selectStar(2)"></i>
+                                <i class="far fa-star star-rating-star" data-rating="3" style="font-size: 2rem; color: #ffc107; cursor: pointer; margin-right: 5px;" onmouseover="hoverStar(3)" onmouseout="resetStars()" onclick="selectStar(3)"></i>
+                                <i class="far fa-star star-rating-star" data-rating="4" style="font-size: 2rem; color: #ffc107; cursor: pointer; margin-right: 5px;" onmouseover="hoverStar(4)" onmouseout="resetStars()" onclick="selectStar(4)"></i>
+                                <i class="far fa-star star-rating-star" data-rating="5" style="font-size: 2rem; color: #ffc107; cursor: pointer; margin-right: 5px;" onmouseover="hoverStar(5)" onmouseout="resetStars()" onclick="selectStar(5)"></i>
+                            </div>
+                            <input type="hidden" id="noteInput" name="note" value="0" required>
+                        </div>
+                    <div class="mb-3">
+                        <label for="avisText" class="form-label">Votre avis (optionnel) :</label>
+                        <textarea class="form-control" id="avisText" name="avis" rows="4" placeholder="Partagez votre expérience..."></textarea>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Annuler</button>
+                    <button type="submit" class="btn btn-primary">
+                        <i class="fas fa-check me-1"></i>Envoyer mon avis
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+<style>
+.signature-canvas {
+    background: white;
+    border: 2px solid #ddd;
+    border-radius: 4px;
+    cursor: crosshair;
+    touch-action: none;
+}
+
+.star-rating {
+    display: flex;
+    gap: 5px;
+}
+
+.star-rating-star:hover {
+    color: #ffc107 !important;
+}
+
+.star-rating-star.active {
+    color: #ffc107 !important;
+}
+</style>
+
+<script>
+let currentRdvId = null;
+let signatureCanvas = null;
+let signatureCtx = null;
+let isDrawing = false;
+let currentRating = 0;
+
+// Initialisation du canvas de signature et des tooltips
+document.addEventListener('DOMContentLoaded', function() {
+    // Initialiser tous les tooltips Bootstrap
+    var tooltipTriggerList = [].slice.call(document.querySelectorAll('[data-bs-toggle="tooltip"]'));
+    var tooltipList = tooltipTriggerList.map(function (tooltipTriggerEl) {
+        return new bootstrap.Tooltip(tooltipTriggerEl);
+    });
+    
+    // Ajouter un clic sur la cloche pour scroller vers les RDV
+    var bellIcon = document.querySelector('.rdv-alerte-notification .fa-bell');
+    if (bellIcon) {
+        bellIcon.addEventListener('click', function() {
+            // Scroller vers l'onglet rendez-vous
+            showTab('rendez-vous');
+            document.getElementById('tab-rendez-vous').scrollIntoView({ behavior: 'smooth', block: 'start' });
+        });
+    }
+    
+    // Ajouter un clic sur la cloche pour scroller vers les séminaires
+    var semBellIcon = document.querySelector('.sem-alerte-notification .fa-bell');
+    if (semBellIcon) {
+        semBellIcon.addEventListener('click', function() {
+            // Scroller vers l'onglet séminaires
+            showTab('seminaires');
+            document.getElementById('tab-seminaires').scrollIntoView({ behavior: 'smooth', block: 'start' });
+        });
+    }
+    
+    // Ajouter un clic sur la cloche pour scroller vers les événements
+    var eventBellIcon = document.querySelector('.event-alerte-notification .fa-bell');
+    if (eventBellIcon) {
+        eventBellIcon.addEventListener('click', function() {
+            // Scroller vers l'onglet événements
+            showTab('events');
+            document.getElementById('tab-events').scrollIntoView({ behavior: 'smooth', block: 'start' });
+        });
+    }
+    
+    // Ajouter un clic sur la cloche pour scroller vers les codev
+    var codevBellIcon = document.querySelector('.codev-alerte-notification .fa-bell');
+    if (codevBellIcon) {
+        codevBellIcon.addEventListener('click', function() {
+            // Scroller vers l'onglet codev
+            showTab('codev');
+            document.getElementById('tab-codev').scrollIntoView({ behavior: 'smooth', block: 'start' });
+        });
+    }
+    
+    // Ajouter un clic sur la cloche pour scroller vers l'e-learning
+    var elearningBellIcon = document.querySelector('.elearning-alerte-notification .fa-bell');
+    if (elearningBellIcon) {
+        elearningBellIcon.addEventListener('click', function() {
+            // Scroller vers l'onglet e-learning
+            showTab('elearning');
+            document.getElementById('tab-elearning').scrollIntoView({ behavior: 'smooth', block: 'start' });
+        });
+    }
+    
+    signatureCanvas = document.getElementById('signatureCanvas');
+    if (signatureCanvas) {
+        signatureCtx = signatureCanvas.getContext('2d');
+        signatureCtx.strokeStyle = '#000';
+        signatureCtx.lineWidth = 2;
+        signatureCtx.lineCap = 'round';
+        signatureCtx.lineJoin = 'round';
+        
+        // Gestion du dessin
+        signatureCanvas.addEventListener('mousedown', startDrawing);
+        signatureCanvas.addEventListener('mousemove', draw);
+        signatureCanvas.addEventListener('mouseup', stopDrawing);
+        signatureCanvas.addEventListener('mouseout', stopDrawing);
+        
+        // Support tactile
+        signatureCanvas.addEventListener('touchstart', handleTouch);
+        signatureCanvas.addEventListener('touchmove', handleTouch);
+        signatureCanvas.addEventListener('touchend', stopDrawing);
+    }
+});
+
+function startDrawing(e) {
+    isDrawing = true;
+    const rect = signatureCanvas.getBoundingClientRect();
+    const x = (e.clientX || e.touches[0].clientX) - rect.left;
+    const y = (e.clientY || e.touches[0].clientY) - rect.top;
+    signatureCtx.beginPath();
+    signatureCtx.moveTo(x, y);
+}
+
+function draw(e) {
+    if (!isDrawing) return;
+    e.preventDefault();
+    const rect = signatureCanvas.getBoundingClientRect();
+    const x = (e.clientX || e.touches[0].clientX) - rect.left;
+    const y = (e.clientY || e.touches[0].clientY) - rect.top;
+    signatureCtx.lineTo(x, y);
+    signatureCtx.stroke();
+}
+
+function stopDrawing() {
+    isDrawing = false;
+}
+
+function handleTouch(e) {
+    e.preventDefault();
+    const touch = e.touches[0];
+    const mouseEvent = new MouseEvent(e.type === 'touchstart' ? 'mousedown' : 
+                                      e.type === 'touchmove' ? 'mousemove' : 'mouseup', {
+        clientX: touch.clientX,
+        clientY: touch.clientY
+    });
+    signatureCanvas.dispatchEvent(mouseEvent);
+}
+
+function clearSignature() {
+    signatureCtx.clearRect(0, 0, signatureCanvas.width, signatureCanvas.height);
+}
+
+function openEmargementModal(rdvId) {
+    currentRdvId = rdvId;
+    clearSignature();
+    const modal = new bootstrap.Modal(document.getElementById('emargementModal'));
+    modal.show();
+}
+
+function submitEmargement() {
+    if (!currentRdvId) return;
+    
+    const signatureData = signatureCanvas.toDataURL('image/png');
+    if (!signatureData || signatureData === signatureCanvas.toDataURL()) {
+        alert('Veuillez signer avant de valider');
+        return;
+    }
+    
+    const formData = new FormData();
+    formData.append('signature', signatureData);
+    
+    const schemaName = '{{ schema_name }}';
+    fetch(`/pages/espace-candidat/rdv/${currentRdvId}/emarger?programme=${schemaName}`, {
+        method: 'POST',
+        body: formData
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.status === 'success') {
+            alert('Émargement enregistré avec succès !');
+            location.reload();
+        } else {
+            alert('Erreur : ' + (data.message || 'Impossible d\'enregistrer l\'émargement'));
+        }
+    })
+    .catch(error => {
+        console.error('Erreur:', error);
+        alert('Erreur lors de l\'enregistrement de l\'émargement');
+    });
+}
+
+function openAvisModal(rdvId, conseillerNom) {
+    currentRdvId = rdvId;
+    currentRating = 0;
+    document.getElementById('conseillerNomAvis').textContent = `Votre avis sur ${conseillerNom || 'le conseiller'} :`;
+    document.getElementById('noteInput').value = '0';
+    document.getElementById('avisText').value = '';
+    resetStars();
+    const modal = new bootstrap.Modal(document.getElementById('avisModal'));
+    modal.show();
+}
+
+function hoverStar(rating) {
+    const stars = document.querySelectorAll('.star-rating-star');
+    stars.forEach((star, index) => {
+        if (index < rating) {
+            star.classList.add('fas', 'active');
+            star.classList.remove('far');
+        } else {
+            star.classList.add('far');
+            star.classList.remove('fas', 'active');
+        }
+    });
+}
+
+function resetStars() {
+    const stars = document.querySelectorAll('.star-rating-star');
+    stars.forEach((star, index) => {
+        if (index < currentRating) {
+            star.classList.add('fas', 'active');
+            star.classList.remove('far');
+        } else {
+            star.classList.add('far');
+            star.classList.remove('fas', 'active');
+        }
+    });
+}
+
+function selectStar(rating) {
+    currentRating = rating;
+    document.getElementById('noteInput').value = rating;
+    resetStars();
+}
+
+// Gestion du formulaire d'avis
+document.getElementById('avisForm')?.addEventListener('submit', function(e) {
+    e.preventDefault();
+    
+    if (currentRating === 0) {
+        alert('Veuillez sélectionner une note');
+        return;
+    }
+    
+    const formData = new FormData();
+    formData.append('note', currentRating);
+    formData.append('avis', document.getElementById('avisText').value);
+    
+    const schemaName = '{{ schema_name }}';
+    fetch(`/pages/espace-candidat/rdv/${currentRdvId}/avis?programme=${schemaName}`, {
+        method: 'POST',
+        body: formData
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.status === 'success') {
+            alert('Avis enregistré avec succès !');
+            bootstrap.Modal.getInstance(document.getElementById('avisModal')).hide();
+            location.reload();
+        } else {
+            alert('Erreur : ' + (data.message || 'Impossible d\'enregistrer l\'avis'));
+        }
+    })
+    .catch(error => {
+        console.error('Erreur:', error);
+        alert('Erreur lors de l\'enregistrement de l\'avis');
+    });
+});
+
+function showTab(tabName) {
+    // Masquer tous les onglets
+    const tabs = document.querySelectorAll('.tab-content');
+    tabs.forEach(tab => tab.classList.remove('active'));
+    
+    // Désactiver tous les boutons
+    const buttons = document.querySelectorAll('.tab-button');
+    buttons.forEach(btn => btn.classList.remove('active'));
+    
+    // Afficher l'onglet sélectionné
+    document.getElementById(`tab-${tabName}`).classList.add('active');
+    
+    // Activer le bouton correspondant
+    event.target.closest('.tab-button').classList.add('active');
+}
+
+function showSeminaireDetails(semId, titre) {
+    alert('Détails du séminaire: ' + titre + '\n\nID: ' + semId + '\n\nFonctionnalité à venir...');
+}
+
+function showEventDetails(eventId, titre) {
+    alert('Détails de l\'événement: ' + titre + '\n\nID: ' + eventId + '\n\nFonctionnalité à venir...');
+}
+
+function showCodevDetails(groupeId, nom) {
+    alert('Détails du groupe de codéveloppement: ' + nom + '\n\nID: ' + groupeId + '\n\nFonctionnalité à venir...');
+}
+
+function showElearningDetails(ressourceId, titre) {
+    alert('Détails de la ressource e-learning: ' + titre + '\n\nID: ' + ressourceId + '\n\nFonctionnalité à venir...');
+}
+</script>
+{% endif %}
+{% endblock %}

@@ -242,6 +242,51 @@
 
 <script>
 document.addEventListener('DOMContentLoaded', function() {
+  // Gestion des messages toast depuis les query params
+  const urlParams = new URLSearchParams(window.location.search);
+  const successFlag = urlParams.get('success');
+  const errorFlag = urlParams.get('error');
+  const action = urlParams.get('action');
+  const message = urlParams.get('message');
+  
+  // Masquer l'overlay global si présent
+  if (typeof hideGlobalLoading === 'function') {
+    hideGlobalLoading();
+  }
+  
+  // Afficher les toasts
+  setTimeout(() => {
+    if (successFlag === '1') {
+      let successMessage = 'Opération réussie !';
+      if (action === 'add') {
+        successMessage = 'Promotion créée avec succès !';
+      } else if (action === 'update') {
+        successMessage = 'Promotion modifiée avec succès !';
+      } else if (action === 'toggle') {
+        successMessage = 'Statut de la promotion modifié avec succès !';
+      } else if (action === 'delete') {
+        successMessage = 'Promotion supprimée avec succès !';
+      }
+      
+      if (typeof showSuccess === 'function') {
+        showSuccess(successMessage, 'Succès');
+      }
+    }
+    
+    if (errorFlag === '1') {
+      const errorMessage = message ? decodeURIComponent(message) : 'Une erreur est survenue';
+      if (typeof showError === 'function') {
+        showError(errorMessage, 'Erreur');
+      }
+    }
+    
+    // Nettoyer l'URL après affichage des messages
+    if (successFlag || errorFlag) {
+      const cleanUrl = window.location.pathname + (urlParams.get('programme') ? '?programme=' + urlParams.get('programme') : '');
+      window.history.replaceState({}, document.title, cleanUrl);
+    }
+  }, 500);
+  
   document.querySelectorAll('[data-modal-target]').forEach(function(el) {
     el.addEventListener('click', function(event) {
       if (el.tagName === 'A') {

@@ -1,5 +1,5 @@
 """
-Application principale LIA Coaching
+Application principale TIEKA Coaching
 Point d'entrée de l'application FastAPI avec gestion complète du cycle de vie
 """
 from __future__ import annotations  # Permet l'utilisation de types forward references
@@ -83,7 +83,7 @@ DB_BOOTSTRAP_SENTINEL = (BASE_DIR / ".db_bootstrapped").resolve()
 # Instance principale de l'application FastAPI avec configuration complète
 app = FastAPI(
     title=settings.APP_NAME,  # Nom de l'application depuis la config
-    description="Application de gestion de coaching LIA",  # Description de l'API
+    description="Application de gestion de coaching TIEKA",  # Description de l'API
     version=settings.VERSION,  # Version de l'application
     docs_url="/docs" if settings.DEBUG else None,  # Documentation Swagger (dev seulement)
     redoc_url="/redoc" if settings.DEBUG else None,  # Documentation ReDoc (dev seulement)
@@ -141,7 +141,7 @@ if settings.DEBUG:
     if not theme_css.exists():
         # Créer un fichier CSS avec les variables de thème depuis la configuration
         theme_css.write_text(
-            f"""/* Thème LIA Coaching (dev) */
+            f"""/* Thème TIEKA Coaching (dev) */
 :root {{ 
     --primary-color: {settings.THEME_PRIMARY}; 
     --secondary-color: {settings.THEME_SECONDARY}; 
@@ -483,12 +483,12 @@ async def on_startup():
 @app.get("/")
 async def root_get(request: Request):
     """
-    Page d'accueil - affiche la page de connexion.
-    Cette route sert le template de login avec les informations de l'application.
+    Page d'accueil - affiche la page de couverture avec les boutons de sélection.
+    Cette route sert le template de landing avec les informations de l'application.
     """
     print("✅", TEMPLATES_DIR)  # Debug: afficher le chemin des templates
     return templates.TemplateResponse(
-        "auth/login.html",  # Template de connexion
+        "auth/landing.html",  # Template de couverture
         {
             "request": request, 
             "app_name": settings.APP_NAME, 
@@ -497,6 +497,41 @@ async def root_get(request: Request):
             "settings": settings
         }
     )
+
+@app.get("/login")
+async def login_get(request: Request):
+    """
+    Page de connexion - affiche le formulaire de login.
+    Cette route sert le template de login avec les informations de l'application.
+    """
+    # Récupérer le type d'utilisateur depuis les paramètres de requête
+    user_type = request.query_params.get("type", "")
+    
+    # Si un type est fourni, le stocker dans un cookie
+    response = templates.TemplateResponse(
+        "auth/login.html",  # Template de connexion
+        {
+            "request": request, 
+            "app_name": settings.APP_NAME, 
+            "version": settings.VERSION,
+            "author": settings.AUTHOR,
+            "settings": settings,
+            "user_type": user_type  # Passer le type d'utilisateur au template
+        }
+    )
+    
+    # Stocker le type d'utilisateur dans un cookie si fourni
+    if user_type:
+        response.set_cookie(
+            key="user_type",
+            value=user_type,
+            httponly=False,  # Accessible en JavaScript si nécessaire
+            max_age=30 * 24 * 60 * 60,  # 30 jours
+            secure=False,  # True en production avec HTTPS
+            samesite="lax"
+        )
+    
+    return response
 
 # === IMPORTS POUR LES ROUTES D'AUTHENTIFICATION ===
 from fastapi.exceptions import HTTPException
@@ -566,6 +601,9 @@ async def login(
         # Cookie de session (expire à la fermeture du navigateur)
         max_age = settings.ACCESS_TOKEN_EXPIRE_MINUTES * 60
 
+    # Récupérer le type d'utilisateur depuis le cookie (s'il existe)
+    user_type = request.cookies.get("user_type", "")
+    
     # Créer la réponse de redirection avec le cookie d'authentification
     response = RedirectResponse(url="/accueil", status_code=302)
     response.set_cookie(
@@ -576,6 +614,17 @@ async def login(
         secure=False,  # True en production avec HTTPS
         samesite="lax"  # Protection CSRF
     )
+    
+    # Conserver le type d'utilisateur dans le cookie après connexion
+    if user_type:
+        response.set_cookie(
+            key="user_type",
+            value=user_type,
+            httponly=False,  # Accessible en JavaScript si nécessaire
+            max_age=30 * 24 * 60 * 60,  # 30 jours
+            secure=False,  # True en production avec HTTPS
+            samesite="lax"
+        )
     
     return response
 

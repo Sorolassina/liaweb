@@ -24,6 +24,7 @@ class Preinscription(SQLModel, table=True):
     date_naissance: Optional[date] = None
     email: Optional[str] = None
     telephone: Optional[str] = None
+    situation_socio: Optional[str] = None
     
     # Adresse personnelle (décomposée)
     numero_personnel: Optional[str] = None
@@ -43,6 +44,7 @@ class Preinscription(SQLModel, table=True):
     chiffre_affaires: Optional[str] = None
     niveau_etudes: Optional[str] = None
     secteur_activite: Optional[str] = None
+    partenaire_bpi: Optional[str] = None  # Filtrage par partenaire BPI
     
     # Relations
     programme: "Programme" = Relationship(back_populates="preinscriptions")

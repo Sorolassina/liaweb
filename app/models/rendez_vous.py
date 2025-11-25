@@ -17,6 +17,7 @@ class RendezVous(SQLModel, table=True):
     lieu: Optional[str] = None
     notes: Optional[str] = None
     meet_link: Optional[str] = None  # Lien Google Meet unique
+    partenaire_bpi: Optional[str] = None  # Filtrage par partenaire BPI
 
     # Relations
     candidat: "Candidat" = Relationship()

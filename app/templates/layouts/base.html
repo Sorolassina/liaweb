@@ -82,6 +82,7 @@
   {% if utilisateur %}
   <!-- ===== SIDEBAR ===== -->
   <nav id="sidebar" class="sidebar hide-scrollbars">
+    {% set user_type = get_user_type_from_cookie(request) if get_user_type_from_cookie is defined else request.cookies.get("user_type", "") %}
     <!-- Étendu -->
     <div class="profile">
       <button class="icon-button" title="Réduire / Étendre" onclick="toggleSidebar()">
@@ -90,7 +91,12 @@
       <img  class="avatar" src="{{ get_user_photo_url(utilisateur) }}" alt="Logo" style="width:40px; height:40px;">
       <div class="username">{{ utilisateur.nom_complet }}</div>
       <div class="user-function">{{ utilisateur.role | title }}</div>
-      <div style="font-size:16px; color:var(--primary-color); font-weight:700;">LIA</div>
+      {% if user_type %}
+      <div class="user-type-badge" style="margin-top: 5px; padding: 2px 8px; background: #ffc425; color: #000; border-radius: 12px; font-size: 10px; font-weight: bold; text-transform: uppercase;">
+        {{ user_type }}
+      </div>
+      {% endif %}
+      <div style="font-size:16px; color:var(--primary-color); font-weight:700;">TIEKA</div>
     </div>
 
     <!-- Réduit : top burger + avatar (optionnel) -->
@@ -101,11 +107,24 @@
 
     <!-- Menu étendu -->
     <div class="menu">
+      {% if can_see_menu_item(utilisateur, 'accueil') %}
       <a href="{{ url_for('accueil') }}?programme=public" class="submenu-item {% if '/accueil' in request.url.path %}active{% endif %}">
         <div class="icon"><i class="fas fa-home"></i></div><div>ACCUEIL</div>
       </a>
+      {% endif %}
+      {% if can_see_menu_item(utilisateur, 'candidat') %}
+      <a href="/pages/espace-candidat" class="submenu-item {% if '/espace-candidat' in request.url.path %}active{% endif %}">
+        <div class="icon"><i class="fas fa-user"></i></div><div>CANDIDAT</div>
+      </a>
+      {% endif %}
+      {% if can_see_menu_item(utilisateur, 'bpi') %}
+      <a href="/pages/espace-bpi" class="submenu-item {% if '/espace-bpi' in request.url.path %}active{% endif %}">
+        <div class="icon"><i class="fas fa-chart-bar"></i></div><div>BPI</div>
+      </a>
+      {% endif %}
       
       <!-- Programmes dynamiques -->
+      {% if can_see_menu_item(utilisateur, 'programmes') %}
       {% for programme in get_programmes() %}
       <div id="acc-{{ programme.code|lower }}" class="accordion-menu">
         <div class="accordion-header" onclick="toggleAccordion('acc-{{ programme.code|lower }}')">
@@ -126,57 +145,96 @@
           <div class="accordion-arrow"><i class="fas fa-chevron-down"></i></div>
         </div>
         <div class="accordion-content" >
+          {% if can_see_programme_menu_item(utilisateur, 'dashboard') %}
           <a href="{{ url_for('programme_dashboard') }}?programme={{ programme.code }}" class="submenu-item {% if request.url.path == '/{{ programme.code }}/dashboard' %}active{% endif %}"
           style="margin:5px 5px 5px 5px;">
             <div class="icon"><i class="fas fa-tachometer-alt"></i></div><div>Tableau de bord</div>
           </a>
+          {% endif %}
+          
+          {% if can_see_programme_menu_item(utilisateur, 'preinscriptions') %}
           <a href="{{ url_for('preinscriptions_form') }}?programme={{ programme.code }}" class="submenu-item {% if '/{{ programme.code }}/preinscriptions' in request.url.path %}active{% endif %}"
           style="margin:5px 5px 5px 5px;">
             <div class="icon"><i class="fas fa-building"></i></div><div>Préinscriptions</div>
           </a>
+          {% endif %}
+          {% if can_see_programme_menu_item(utilisateur, 'inscriptions') %}
           <a href="{{ url_for('form_inscriptions_display') }}?programme={{ programme.code }}" class="submenu-item {% if '/{{ programme.code }}/inscriptions' in request.url.path %}active{% endif %}"
           style="margin:5px 5px 5px 5px;">
             <div class="icon"><i class="fas fa-project-diagram"></i></div><div>Inscriptions</div>
           </a>
+          {% endif %}
+          
+          {% if can_see_programme_menu_item(utilisateur, 'rendez-vous') %}
           <a href="{{ url_for('rendez_vous_home') }}?programme={{ programme.code }}" class="submenu-item {% if '/rendez-vous' in request.url.path %}active{% endif %}"
           style="margin:5px 5px 5px 5px;">
             <div class="icon"><i class="fas fa-calendar-alt"></i></div><div>Rendez-vous</div>
           </a>
+          {% endif %}
+          {% if can_see_programme_menu_item(utilisateur, 'seminaires') %}
           <a href="{{ url_for('liste_seminaires') }}?programme={{ programme.code }}" class="submenu-item {% if '/seminaires' in request.url.path %}active{% endif %}"
           style="margin:5px 5px 5px 5px;">
             <div class="icon"><i class="fas fa-chalkboard-teacher"></i></div><div>Séminaires</div>
           </a>
+          {% endif %}
+          {% if can_see_programme_menu_item(utilisateur, 'events') %}
           <a href="{{ url_for('liste_events') }}?programme={{ programme.code }}" class="submenu-item {% if '/events' in request.url.path %}active{% endif %}"
           style="margin:5px 5px 5px 5px;">
             <div class="icon"><i class="fas fa-calendar-check"></i></div><div>Événements</div>
           </a>
+          {% endif %}
+          
+          {% if can_see_programme_menu_item(utilisateur, 'codev') %}
           <a href="{{url_for('codev_dashboard')}}?programme={{ programme.code }}" class="submenu-item {% if '/codev' in request.url.path %}active{% endif %}"
           style="margin:5px 5px 5px 5px;">
             <div class="icon"><i class="fas fa-users-cog"></i></div><div>Codev</div>
           </a>
+          {% endif %}
+          
+          {% if can_see_programme_menu_item(utilisateur, 'elearning') %}
           <a href="{{url_for('elearning_dashboard')}}?programme={{ programme.code }}" class="submenu-item {% if '/elearning' in request.url.path %}active{% endif %}"
           style="margin:5px 5px 5px 5px;">
             <div class="icon"><i class="fas fa-laptop"></i></div><div>E-learning</div>
           </a>
+          {% endif %}
+          
+          {% if can_see_programme_menu_item(utilisateur, 'suivi-mensuel') %}
           <a href="{{url_for('liste_candidats_valides')}}?programme={{ programme.code }}" class="submenu-item {% if '/suivi-mensuel' in request.url.path %}active{% endif %}"
           style="margin:5px 5px 5px 5px;">
             <div class="icon"><i class="fas fa-chart-line"></i></div><div>Suivi mensuel</div>
           </a>
+          {% endif %}
         </div>
       </div>
       {% endfor %}
+      {% endif %}
       
+      {% if can_see_menu_item(utilisateur, 'admin') %}
       <a href="{{ url_for('admin_root') }}?programme=public" class="submenu-item {% if '/admin' in request.url.path %}active{% endif %}">
         <div class="icon"><i class="fas fa-cogs"></i></div><div>ADMINISTRATION</div>
       </a>
+      {% endif %}
     </div>
 
     <!-- Menu réduit : icônes -->
     <div class="menu-icons">
+      {% if can_see_menu_item(utilisateur, 'accueil') %}
       <a href="{{ url_for('accueil') }}?programme=public" class="icon-button" title="Accueil">
         <i class="fas fa-home"></i>
       </a>
+      {% endif %}
+      {% if can_see_menu_item(utilisateur, 'candidat') %}
+      <a href="/pages/espace-candidat" class="icon-button {% if '/espace-candidat' in request.url.path %}active{% endif %}" title="Candidat">
+        <i class="fas fa-user"></i>
+      </a>
+      {% endif %}
+      {% if can_see_menu_item(utilisateur, 'bpi') %}
+      <a href="/pages/espace-bpi" class="icon-button {% if '/espace-bpi' in request.url.path %}active{% endif %}" title="BPI">
+        <i class="fas fa-chart-bar"></i>
+      </a>
+      {% endif %}
       <!-- Programmes dynamiques -->
+      {% if can_see_menu_item(utilisateur, 'programmes') %}
       {% for programme in get_programmes() %}
       <button class="icon-button" onclick="toggleProgrammeMenu(event, this, '{{ programme.code }}')" title="{{ programme.code }}">
         {% if programme.code == 'ACD' %}
@@ -192,9 +250,12 @@
         {% endif %}
       </button>
       {% endfor %}
+      {% endif %}
+      {% if can_see_menu_item(utilisateur, 'admin') %}
       <a href="{{ url_for('admin_root') }}?programme=public" class="icon-button" title="Administration">
         <i class="fas fa-cogs"></i>
       </a>
+      {% endif %}
     </div>
 
     <!-- Footer compact (UNIQUEMENT en réduit) -->
@@ -219,7 +280,7 @@
         </ul>
       </div>
       <div style="margin-top: 10px; font-size: 10px;">
-        <div>© 2025 MycreoAcademy</div>
+        <div>© 2025 Skpartner.consulting</div>
         <div>Tous droits réservés.</div>
       </div>
     </div>
@@ -254,7 +315,8 @@
       ('/dashboard', 'Tableau de bord'),
       ('/messages', 'Gestion messages'),
       ('/documents', 'Gestion documents'),
-      ('/pipelines', 'Gestion pipelines')
+      ('/pipelines', 'Gestion pipelines'),
+      ('/accueil', 'Bienvenue à l\'accueil')
     ] %}
     {% set section_title = namespace(value=None) %}
     {% for item in section_map %}
@@ -655,19 +717,127 @@
            showError('Une erreur s\'est produite. Veuillez réessayer.');
        });
 
+       // ============================================
+       // ANIMATIONS DE TRANSITION DE PAGE
+       // ============================================
+       
+       // Type d'animation (peut être changé : 'fade', 'slide-right', 'scale')
+       const PAGE_TRANSITION_TYPE = 'fade';
+       
+       // Fonction pour obtenir la classe d'animation selon le type
+       function getTransitionClasses(type) {
+           const types = {
+               'fade': {
+                   exit: 'page-exit',
+                   enter: 'page-enter'
+               },
+               'slide-right': {
+                   exit: 'page-exit-slide-right',
+                   enter: 'page-enter-slide-right'
+               },
+               'scale': {
+                   exit: 'page-exit-scale',
+                   enter: 'page-enter-scale'
+               }
+           };
+           return types[type] || types['fade'];
+       }
+       
+       // Fonction pour déclencher l'animation de sortie
+       function triggerPageExit(href, transitionType = PAGE_TRANSITION_TYPE) {
+           const classes = getTransitionClasses(transitionType);
+           
+           // Ajouter la classe d'animation de sortie
+           document.body.classList.add(classes.exit);
+           
+           // Naviguer après l'animation (300ms)
+           setTimeout(function() {
+               window.location.href = href;
+           }, 300);
+       }
+       
+       // Fonction pour déclencher l'animation d'entrée au chargement
+       function triggerPageEnter(transitionType = PAGE_TRANSITION_TYPE) {
+           const classes = getTransitionClasses(transitionType);
+           
+           // Retirer toutes les classes d'animation précédentes
+           document.body.classList.remove(
+               'page-exit', 'page-enter',
+               'page-exit-slide-right', 'page-enter-slide-right',
+               'page-exit-scale', 'page-enter-scale'
+           );
+           
+           // Ajouter la classe d'animation d'entrée
+           document.body.classList.add(classes.enter);
+           
+           // Retirer la classe après l'animation
+           setTimeout(function() {
+               document.body.classList.remove(classes.enter);
+           }, 400);
+       }
+       
+       // Intercepter les clics sur les liens pour déclencher les animations
+       document.addEventListener('click', function(e) {
+           // Trouver le lien cliqué (peut être un parent du cible)
+           const link = e.target.closest('a');
+           
+           // Vérifier si c'est un lien valide
+           if (!link) return;
+           
+           const href = link.getAttribute('href');
+           
+           // Ignorer les cas suivants :
+           // - Liens externes (commencent par http:// ou https://)
+           // - Liens ancres (#)
+           // - Liens vides ou javascript:
+           // - Liens avec target="_blank"
+           // - Liens avec download
+           // - Clics avec Ctrl/Cmd (nouvel onglet)
+           // - Liens de formulaire (submit)
+           if (!href || 
+               href.startsWith('http://') || 
+               href.startsWith('https://') ||
+               href.startsWith('#') ||
+               href.startsWith('javascript:') ||
+               href === '' ||
+               link.target === '_blank' ||
+               link.hasAttribute('download') ||
+               link.closest('form') ||
+               e.ctrlKey || 
+               e.metaKey) {
+               return;
+           }
+           
+           // Empêcher la navigation par défaut
+           e.preventDefault();
+           
+           // Afficher l'overlay de chargement
+           if (typeof showGlobalLoading === 'function') {
+               showGlobalLoading('Chargement', 'Veuillez patienter...');
+           }
+           
+           // Déclencher l'animation de sortie
+           triggerPageExit(href);
+       });
+       
        // Intercepter les clics sur les liens pour afficher l'overlay
        document.addEventListener('DOMContentLoaded', function() {
            // Masquer l'overlay au chargement de la page
            hideGlobalLoading();
-
+           
+           // Déclencher l'animation d'entrée au chargement
+           triggerPageEnter();
+           
            // Masquer l'overlay si la page ne change pas (ex: erreur)
            window.addEventListener('pageshow', function() {
                hideGlobalLoading();
+               triggerPageEnter();
            });
 
            // Masquer l'overlay si l'utilisateur revient en arrière
            window.addEventListener('popstate', function() {
                hideGlobalLoading();
+               triggerPageEnter();
            });
        });
 

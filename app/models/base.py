@@ -28,6 +28,8 @@ class User(SQLModel, table=True):
     photo_profil: Optional[str] = None  # Chemin vers la photo de profil
     programme_id: Optional[int] = Field(default=None, foreign_key="programme.id")
     cree_le: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
+    position:str = Field(default="Candidat", index=True)
+    partenaire_bpi: Optional[str] = None
     
     # Relations
     programmes_utilisateurs: List["ProgrammeUtilisateur"] = Relationship(back_populates="utilisateur")
@@ -158,6 +160,8 @@ class Candidat(SQLModel, table=True):
     
     # Statut du candidat (décision du jury)
     statut: DecisionJury = Field(default=DecisionJury.EN_ATTENTE)
+    situation_socio: Optional[str] = None
+    partenaire_bpi: Optional[str] = None  # Filtrage par partenaire BPI
     
     # Relations
     entreprise: Optional["Entreprise"] = Relationship(back_populates="candidat")
@@ -209,6 +213,7 @@ class Entreprise(SQLModel, table=True):
     # Géocodage (nouveaux champs)
     lat: Optional[float] = Field(default=None, index=True)
     lng: Optional[float] = Field(default=None, index=True)
+    partenaire_bpi: Optional[str] = None  # Filtrage par partenaire BPI
     
     # Relations
     candidat: "Candidat" = Relationship(back_populates="entreprise")
@@ -353,6 +358,10 @@ class SuiviMensuel(SQLModel, table=True):
     # Situation socioprofessionnelle
     situation_socioprofessionnelle: Optional[str] = None # statut du candidat
     
+    # Statut dans le programme
+    statut_programme: Optional[str] = None  # "dans_programme", "abandonne", "termine"
+    raison_abandon: Optional[str] = None    # Raison de l'abandon si statut_programme = "abandonne"
+    
     # Métriques générales (conservées pour compatibilité)
     score_objectifs: Optional[float] = None             # 0..100 (score global)
     commentaire: Optional[str] = None                    # commentaires libres
@@ -360,6 +369,7 @@ class SuiviMensuel(SQLModel, table=True):
     # Métadonnées
     cree_le: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
     modifie_le: Optional[datetime] = None
+    partenaire_bpi: Optional[str] = None  # Filtrage par partenaire BPI
 
     candidat: "Candidat" = Relationship()
 

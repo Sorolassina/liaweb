@@ -1,4 +1,5 @@
 from sqlmodel import Session, select, func
+from sqlalchemy import text
 from typing import List, Optional, Dict, Any
 from datetime import date, datetime, timezone
 from ..models.base import SuiviMensuel, Candidat, Programme
@@ -15,113 +16,170 @@ class SuiviMensuelService:
         return db.get(SuiviMensuel, suivi_id)
 
     def get_suivis_mensuels(
-        self, db: Session, filters: SuiviMensuelFilter, skip: int = 0, limit: int = 100
+        self, db: Session, filters: SuiviMensuelFilter, skip: int = 0, limit: int = 100, schema_name: str = 'acd'
     ) -> List[SuiviMensuelWithCandidat]:
-        """Récupérer les suivis mensuels avec filtres"""
+        """Récupérer les suivis mensuels avec filtres - Utilise SQL direct pour gérer les schémas"""
         
-        # Vérifier l'existence des tables essentielles
-        required_tables = ["suivi_mensuel", "inscription", "candidat", "programme"]
-        missing_tables = []
+        # Construire la requête SQL de base
+        base_query = f"""
+            SELECT 
+                sm.*,
+                c.prenom,
+                c.nom,
+                COALESCE(p.nom, 'N/A') AS programme_nom
+            FROM {schema_name}.suivi_mensuel sm
+            INNER JOIN {schema_name}.candidat c ON c.id = sm.candidat_id
+            LEFT JOIN {schema_name}.preinscription pr ON pr.candidat_id = c.id
+            LEFT JOIN public.programme p ON p.id = pr.programme_id
+        """
         
-        for table in required_tables:
-            if not table_exists_anywhere(table, db):
-                missing_tables.append(table)
+        where_conditions = []
+        params = {}
         
-        if missing_tables:
-            print(f"⚠️ [WARNING] Tables manquantes pour les suivis mensuels: {missing_tables}")
-            return []
-        
-        try:
-            query = select(
-                SuiviMensuel,
-                Candidat.prenom,
-                Candidat.nom,
-                Programme.nom.label("programme_nom")
-            ).join(Candidat, Candidat.id == SuiviMensuel.candidat_id)\
-            .join(Programme, Programme.id == Candidat.id)  # NOTE: Cette jointure doit être corrigée selon votre modèle
-        except Exception as e:
-            print(f"⚠️ [WARNING] Erreur lors de la construction de la requête suivis mensuels: {e}")
-            return []
-
-        # NOTE: Le modèle Inscription a été supprimé. Utiliser directement candidat_id.
-        if filters.programme_id:
-            # query = query.where(Inscription.programme_id == filters.programme_id)  # Plus possible sans inscription
-            pass
+        # Appliquer les filtres
         if filters.candidat_id:
-            query = query.where(SuiviMensuel.candidat_id == filters.candidat_id)
+            where_conditions.append("sm.candidat_id = :candidat_id")
+            params["candidat_id"] = filters.candidat_id
+        
         if filters.mois_debut:
-            query = query.where(SuiviMensuel.mois >= filters.mois_debut)
+            where_conditions.append("sm.mois >= :mois_debut")
+            params["mois_debut"] = filters.mois_debut
+        
         if filters.mois_fin:
-            query = query.where(SuiviMensuel.mois <= filters.mois_fin)
+            where_conditions.append("sm.mois <= :mois_fin")
+            params["mois_fin"] = filters.mois_fin
+        
         if filters.score_min is not None:
-            query = query.where(SuiviMensuel.score_objectifs >= filters.score_min)
+            where_conditions.append("sm.score_objectifs >= :score_min")
+            params["score_min"] = filters.score_min
+        
         if filters.score_max is not None:
-            query = query.where(SuiviMensuel.score_objectifs <= filters.score_max)
+            where_conditions.append("sm.score_objectifs <= :score_max")
+            params["score_max"] = filters.score_max
+        
         if filters.has_commentaire is not None:
             if filters.has_commentaire:
-                query = query.where(SuiviMensuel.commentaire.is_not(None))
+                where_conditions.append("sm.commentaire IS NOT NULL")
             else:
-                query = query.where(SuiviMensuel.commentaire.is_(None))
+                where_conditions.append("sm.commentaire IS NULL")
+        
         if filters.search_candidat:
-            search_pattern = f"%{filters.search_candidat}%"
-            query = query.where(
-                (Candidat.prenom.ilike(search_pattern)) |
-                (Candidat.nom.ilike(search_pattern))
-            )
-
-        query = query.order_by(SuiviMensuel.mois.desc(), SuiviMensuel.cree_le.desc())
+            where_conditions.append("(LOWER(c.prenom) LIKE :search_pattern OR LOWER(c.nom) LIKE :search_pattern)")
+            params["search_pattern"] = f"%{filters.search_candidat.lower()}%"
+        
+        # Ajouter les conditions WHERE
+        if where_conditions:
+            base_query += " WHERE " + " AND ".join(where_conditions)
+        
+        # Ajouter ORDER BY et LIMIT
+        base_query += " ORDER BY sm.mois DESC, sm.cree_le DESC"
+        base_query += f" LIMIT {limit} OFFSET {skip}"
         
         try:
-            results = db.exec(query.offset(skip).limit(limit)).all()
+            query = text(base_query)
+            results = db.exec(query.bindparams(**params)).all()
+            
+            suivis_list = []
+            for row in results:
+                row_dict = dict(row._mapping) if hasattr(row, '_mapping') else dict(row)
+                
+                # Créer un objet SuiviMensuel factice
+                suivi = type('SuiviMensuel', (), {
+                    'id': row_dict.get('id'),
+                    'candidat_id': row_dict.get('candidat_id'),
+                    'mois': row_dict.get('mois'),
+                    'chiffre_affaires_actuel': row_dict.get('chiffre_affaires_actuel'),
+                    'nb_stagiaires': row_dict.get('nb_stagiaires'),
+                    'nb_alternants': row_dict.get('nb_alternants'),
+                    'nb_cdd': row_dict.get('nb_cdd'),
+                    'nb_cdi': row_dict.get('nb_cdi'),
+                    'montant_subventions_obtenues': row_dict.get('montant_subventions_obtenues'),
+                    'organismes_financeurs': row_dict.get('organismes_financeurs'),
+                    'montant_dettes_effectuees': row_dict.get('montant_dettes_effectuees'),
+                    'montant_dettes_encours': row_dict.get('montant_dettes_encours'),
+                    'montant_dettes_envisagees': row_dict.get('montant_dettes_envisagees'),
+                    'montant_equity_effectue': row_dict.get('montant_equity_effectue'),
+                    'montant_equity_encours': row_dict.get('montant_equity_encours'),
+                    'statut_juridique': row_dict.get('statut_juridique'),
+                    'adresse_entreprise': row_dict.get('adresse_entreprise'),
+                    'situation_socioprofessionnelle': row_dict.get('situation_socioprofessionnelle'),
+                    'score_objectifs': row_dict.get('score_objectifs'),
+                    'commentaire': row_dict.get('commentaire'),
+                    'cree_le': row_dict.get('cree_le'),
+                    'modifie_le': row_dict.get('modifie_le')
+                })()
+                
+                suivis_list.append(
+                    SuiviMensuelWithCandidat(
+                        id=suivi.id,
+                        inscription_id=suivi.candidat_id,  # NOTE: inscription_id dans le schéma correspond à candidat_id dans le modèle
+                        mois=suivi.mois,
+                        chiffre_affaires_actuel=suivi.chiffre_affaires_actuel,
+                        nb_stagiaires=suivi.nb_stagiaires,
+                        nb_alternants=suivi.nb_alternants,
+                        nb_cdd=suivi.nb_cdd,
+                        nb_cdi=suivi.nb_cdi,
+                        montant_subventions_obtenues=suivi.montant_subventions_obtenues,
+                        organismes_financeurs=suivi.organismes_financeurs,
+                        montant_dettes_effectuees=suivi.montant_dettes_effectuees,
+                        montant_dettes_encours=suivi.montant_dettes_encours,
+                        montant_dettes_envisagees=suivi.montant_dettes_envisagees,
+                        montant_equity_effectue=suivi.montant_equity_effectue,
+                        montant_equity_encours=suivi.montant_equity_encours,
+                        statut_juridique=suivi.statut_juridique,
+                        adresse_entreprise=suivi.adresse_entreprise,
+                        situation_socioprofessionnelle=suivi.situation_socioprofessionnelle,
+                        score_objectifs=suivi.score_objectifs,
+                        commentaire=suivi.commentaire,
+                        cree_le=suivi.cree_le,
+                        modifie_le=suivi.modifie_le,
+                        candidat_nom_complet=f"{row_dict.get('prenom', '')} {row_dict.get('nom', '')}",
+                        programme_nom=row_dict.get('programme_nom', 'N/A')
+                    )
+                )
+            
+            return suivis_list
         except Exception as e:
-            print(f"⚠️ [WARNING] Erreur lors de l'exécution de la requête suivis mensuels: {e}")
+            print(f"❌ ERREUR lors de la récupération des suivis mensuels: {e}")
+            import traceback
+            traceback.print_exc()
             return []
-        
-        return [
-            SuiviMensuelWithCandidat(
-                id=s.id,
-                inscription_id=s.inscription_id,
-                mois=s.mois,
-                chiffre_affaires_actuel=s.chiffre_affaires_actuel,
-                nb_stagiaires=s.nb_stagiaires,
-                nb_alternants=s.nb_alternants,
-                nb_cdd=s.nb_cdd,
-                nb_cdi=s.nb_cdi,
-                montant_subventions_obtenues=s.montant_subventions_obtenues,
-                organismes_financeurs=s.organismes_financeurs,
-                montant_dettes_effectuees=s.montant_dettes_effectuees,
-                montant_dettes_encours=s.montant_dettes_encours,
-                montant_dettes_envisagees=s.montant_dettes_envisagees,
-                montant_equity_effectue=s.montant_equity_effectue,
-                montant_equity_encours=s.montant_equity_encours,
-                statut_juridique=s.statut_juridique,
-                adresse_entreprise=s.adresse_entreprise,
-                situation_socioprofessionnelle=s.situation_socioprofessionnelle,
-                score_objectifs=s.score_objectifs,
-                commentaire=s.commentaire,
-                cree_le=s.cree_le,
-                modifie_le=s.modifie_le,
-                candidat_nom_complet=f"{prenom} {nom}",
-                programme_nom=programme_nom
-            ) for s, prenom, nom, programme_nom in results
-        ]
 
     def create_suivi_mensuel(self, db: Session, suivi_create: SuiviMensuelCreate) -> SuiviMensuel:
         """Créer un nouveau suivi mensuel"""
-        # Check for existing suivi for the same inscription and month
-        existing_suivi = db.exec(
-            select(SuiviMensuel)
-            .where(SuiviMensuel.inscription_id == suivi_create.inscription_id)
-            .where(SuiviMensuel.mois == suivi_create.mois)
-        ).first()
-        if existing_suivi:
-            raise ValueError("Un suivi existe déjà pour cette inscription et ce mois.")
+        try:
+            # NOTE: inscription_id dans le schéma correspond à candidat_id dans le modèle
+            candidat_id = suivi_create.inscription_id
+            
+            # Check for existing suivi for the same candidat and month
+            existing_suivi = db.exec(
+                select(SuiviMensuel)
+                .where(SuiviMensuel.candidat_id == candidat_id)
+                .where(SuiviMensuel.mois == suivi_create.mois)
+            ).first()
+            if existing_suivi:
+                raise ValueError("Un suivi existe déjà pour ce candidat et ce mois.")
 
-        suivi = SuiviMensuel(**suivi_create.dict())
-        db.add(suivi)
-        db.commit()
-        db.refresh(suivi)
-        return suivi
+            # Convertir inscription_id en candidat_id pour le modèle
+            # Utiliser model_dump() pour Pydantic v2, ou dict() pour v1
+            try:
+                suivi_dict = suivi_create.model_dump() if hasattr(suivi_create, 'model_dump') else suivi_create.dict()
+            except AttributeError:
+                suivi_dict = suivi_create.dict()
+            suivi_dict['candidat_id'] = suivi_dict.pop('inscription_id')
+            
+            suivi = SuiviMensuel(**suivi_dict)
+            db.add(suivi)
+            db.commit()
+            db.refresh(suivi)
+            return suivi
+        except Exception as e:
+            db.rollback()
+            print(f"❌ ERREUR lors de la création du suivi mensuel: {e}")
+            print(f"   Type d'erreur: {type(e).__name__}")
+            import traceback
+            traceback.print_exc()
+            raise
 
     def update_suivi_mensuel(self, db: Session, suivi_id: int, suivi_update: SuiviMensuelUpdate) -> Optional[SuiviMensuel]:
         """Mettre à jour un suivi mensuel"""
@@ -129,19 +187,31 @@ class SuiviMensuelService:
         if not suivi:
             return None
         
-        # Check for existing suivi for the same inscription and month if month or inscription_id is updated
-        if suivi_update.mois and suivi_update.mois != suivi.mois or \
-           suivi_update.inscription_id and suivi_update.inscription_id != suivi.inscription_id:
+        # NOTE: inscription_id dans le schéma correspond à candidat_id dans le modèle
+        # Check for existing suivi for the same candidat and month if month or inscription_id is updated
+        new_candidat_id = suivi_update.inscription_id if suivi_update.inscription_id else suivi.candidat_id
+        new_mois = suivi_update.mois if suivi_update.mois else suivi.mois
+        
+        if (suivi_update.mois and suivi_update.mois != suivi.mois) or \
+           (suivi_update.inscription_id and suivi_update.inscription_id != suivi.candidat_id):
             existing_suivi = db.exec(
                 select(SuiviMensuel)
-                .where(SuiviMensuel.inscription_id == (suivi_update.inscription_id or suivi.inscription_id))
-                .where(SuiviMensuel.mois == (suivi_update.mois or suivi.mois))
+                .where(SuiviMensuel.candidat_id == new_candidat_id)
+                .where(SuiviMensuel.mois == new_mois)
                 .where(SuiviMensuel.id != suivi_id)
             ).first()
             if existing_suivi:
-                raise ValueError("Un autre suivi existe déjà pour cette inscription et ce mois.")
+                raise ValueError("Un autre suivi existe déjà pour ce candidat et ce mois.")
 
-        update_data = suivi_update.dict(exclude_unset=True)
+        # Utiliser model_dump() pour Pydantic v2, ou dict() pour v1
+        try:
+            update_data = suivi_update.model_dump(exclude_unset=True) if hasattr(suivi_update, 'model_dump') else suivi_update.dict(exclude_unset=True)
+        except AttributeError:
+            update_data = suivi_update.dict(exclude_unset=True)
+        # Convertir inscription_id en candidat_id si présent
+        if 'inscription_id' in update_data:
+            update_data['candidat_id'] = update_data.pop('inscription_id')
+        
         for key, value in update_data.items():
             setattr(suivi, key, value)
         
@@ -162,37 +232,89 @@ class SuiviMensuelService:
         db.commit()
         return True
 
-    def get_suivi_mensuel_stats(self, db: Session, filters: SuiviMensuelFilter) -> SuiviMensuelStats:
-        """Calculer les statistiques des suivis mensuels"""
-        # NOTE: Le modèle Inscription a été supprimé. Utiliser directement candidat_id.
-        query = select(SuiviMensuel).join(Candidat)  # .join(Programme)  # NOTE: Cette jointure doit être corrigée
-
-        # NOTE: Sans inscription, on ne peut plus filtrer par programme_id directement
-        # if filters.programme_id:
-        #     query = query.where(Inscription.programme_id == filters.programme_id)
+    def get_suivi_mensuel_stats(self, db: Session, filters: SuiviMensuelFilter, schema_name: str = 'acd') -> SuiviMensuelStats:
+        """Calculer les statistiques des suivis mensuels - Utilise SQL direct pour gérer les schémas"""
+        
+        # Construire la requête SQL de base
+        base_query = f"""
+            SELECT 
+                sm.*,
+                c.prenom,
+                c.nom
+            FROM {schema_name}.suivi_mensuel sm
+            INNER JOIN {schema_name}.candidat c ON c.id = sm.candidat_id
+        """
+        
+        where_conditions = []
+        params = {}
+        
+        # Appliquer les filtres
         if filters.candidat_id:
-            query = query.where(SuiviMensuel.candidat_id == filters.candidat_id)
+            where_conditions.append("sm.candidat_id = :candidat_id")
+            params["candidat_id"] = filters.candidat_id
+        
         if filters.mois_debut:
-            query = query.where(SuiviMensuel.mois >= filters.mois_debut)
+            where_conditions.append("sm.mois >= :mois_debut")
+            params["mois_debut"] = filters.mois_debut
+        
         if filters.mois_fin:
-            query = query.where(SuiviMensuel.mois <= filters.mois_fin)
+            where_conditions.append("sm.mois <= :mois_fin")
+            params["mois_fin"] = filters.mois_fin
+        
         if filters.score_min is not None:
-            query = query.where(SuiviMensuel.score_objectifs >= filters.score_min)
+            where_conditions.append("sm.score_objectifs >= :score_min")
+            params["score_min"] = filters.score_min
+        
         if filters.score_max is not None:
-            query = query.where(SuiviMensuel.score_objectifs <= filters.score_max)
+            where_conditions.append("sm.score_objectifs <= :score_max")
+            params["score_max"] = filters.score_max
+        
         if filters.has_commentaire is not None:
             if filters.has_commentaire:
-                query = query.where(SuiviMensuel.commentaire.is_not(None))
+                where_conditions.append("sm.commentaire IS NOT NULL")
             else:
-                query = query.where(SuiviMensuel.commentaire.is_(None))
+                where_conditions.append("sm.commentaire IS NULL")
+        
         if filters.search_candidat:
-            search_pattern = f"%{filters.search_candidat}%"
-            query = query.where(
-                (Candidat.prenom.ilike(search_pattern)) |
-                (Candidat.nom.ilike(search_pattern))
-            )
-
-        suivis = db.exec(query).all()
+            where_conditions.append("(LOWER(c.prenom) LIKE :search_pattern OR LOWER(c.nom) LIKE :search_pattern)")
+            params["search_pattern"] = f"%{filters.search_candidat.lower()}%"
+        
+        # Ajouter les conditions WHERE
+        if where_conditions:
+            base_query += " WHERE " + " AND ".join(where_conditions)
+        
+        try:
+            query = text(base_query)
+            results = db.exec(query.bindparams(**params)).all()
+            
+            # Convertir les résultats en objets SuiviMensuel factices
+            suivis = []
+            for row in results:
+                row_dict = dict(row._mapping) if hasattr(row, '_mapping') else dict(row)
+                suivi = type('SuiviMensuel', (), {
+                    'id': row_dict.get('id'),
+                    'candidat_id': row_dict.get('candidat_id'),
+                    'mois': row_dict.get('mois'),
+                    'chiffre_affaires_actuel': row_dict.get('chiffre_affaires_actuel'),
+                    'nb_stagiaires': row_dict.get('nb_stagiaires'),
+                    'nb_alternants': row_dict.get('nb_alternants'),
+                    'nb_cdd': row_dict.get('nb_cdd'),
+                    'nb_cdi': row_dict.get('nb_cdi'),
+                    'montant_subventions_obtenues': row_dict.get('montant_subventions_obtenues'),
+                    'montant_dettes_effectuees': row_dict.get('montant_dettes_effectuees'),
+                    'montant_dettes_encours': row_dict.get('montant_dettes_encours'),
+                    'montant_dettes_envisagees': row_dict.get('montant_dettes_envisagees'),
+                    'montant_equity_effectue': row_dict.get('montant_equity_effectue'),
+                    'montant_equity_encours': row_dict.get('montant_equity_encours'),
+                    'score_objectifs': row_dict.get('score_objectifs'),
+                    'commentaire': row_dict.get('commentaire')
+                })()
+                suivis.append(suivi)
+        except Exception as e:
+            print(f"❌ ERREUR lors du calcul des statistiques: {e}")
+            import traceback
+            traceback.print_exc()
+            suivis = []
 
         # Calculer les statistiques business
         total_suivis = len(suivis)
@@ -260,16 +382,34 @@ class SuiviMensuelService:
             montant_equity_total=round(montant_equity_total, 2)
         )
 
-    def get_inscriptions_for_form(self, db: Session) -> List[dict]:
+    def get_inscriptions_for_form(self, db: Session, schema_name: str = 'acd') -> List[dict]:
         """Récupérer les candidats validés pour le formulaire - NOTE: Le modèle Inscription a été supprimé"""
         from ..models.enums import DecisionJury
-        candidats = db.exec(
-            select(Candidat.id, Candidat.prenom, Candidat.nom)
-            .where(Candidat.statut == DecisionJury.VALIDE)
-            .join(Programme)
-            .order_by(Programme.nom, Candidat.nom, Candidat.prenom)
-        ).all()
-        return [
-            {"id": i_id, "nom_complet": f"{c_prenom} {c_nom}", "programme_nom": p_nom}
-            for i_id, c_prenom, c_nom, p_nom in inscriptions
-        ]
+        
+        # Utiliser une requête SQL directe pour joindre candidat (schéma programme) avec programme (schéma public)
+        query = text(f"""
+            SELECT 
+                c.id,
+                c.prenom,
+                c.nom,
+                p.nom AS programme_nom
+            FROM {schema_name}.candidat c
+            INNER JOIN {schema_name}.preinscription pr ON pr.candidat_id = c.id
+            INNER JOIN public.programme p ON p.id = pr.programme_id
+            WHERE c.statut = :statut_valide
+            ORDER BY p.nom, c.nom, c.prenom
+        """)
+        
+        results = db.exec(query.bindparams(statut_valide=DecisionJury.VALIDE.value)).all()
+        
+        inscriptions_list = []
+        for row in results:
+            # Accéder aux colonnes via _mapping ou directement par nom
+            row_dict = dict(row._mapping) if hasattr(row, '_mapping') else dict(row)
+            inscriptions_list.append({
+                "id": row_dict.get('id'),
+                "nom_complet": f"{row_dict.get('prenom', '')} {row_dict.get('nom', '')}",
+                "programme_nom": row_dict.get('programme_nom', '')
+            })
+        
+        return inscriptions_list

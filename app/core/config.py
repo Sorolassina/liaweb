@@ -1,5 +1,5 @@
 """
-Configuration de l'application LIA Coaching (compatible Pydantic v2)
+Configuration de l'application TIEKA Coaching (compatible Pydantic v2)
 """
 from typing import List, Optional, ClassVar
 from pydantic import field_validator
@@ -114,7 +114,7 @@ class Settings(BaseSettings):
     MAIL_USERNAME: Optional[str] = None
     MAIL_PASSWORD: Optional[str] = None
     MAIL_FROM: str = "noreply@lia-coaching.com"
-    MAIL_FROM_NAME: str = "LIA Coaching"
+    MAIL_FROM_NAME: str = "TIEKA Coaching"
 
     MAIL_SERVER: Optional[str] = "smtp.gmail.com"
     MAIL_PORT: Optional[int] = 587
@@ -196,7 +196,7 @@ class Settings(BaseSettings):
 
     # Constante non issue de l'env (pas un champ)
     VERSION: ClassVar[str] = "1.0.0"
-    APP_NAME: ClassVar[str] = "LIA Coaching"
+    APP_NAME: ClassVar[str] = "TIEKA Coaching"
     AUTHOR: ClassVar[str] = "Soro Wangboho Lassina"
     
     # === INFORMATIONS ENTREPRISE ===

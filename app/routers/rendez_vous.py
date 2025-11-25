@@ -27,7 +27,7 @@ from ..services.rendez_vous_service import RendezVousService
 from ..templates import templates
 
 # Configuration vidéo
-APP_NAME = os.getenv("APP_NAME", "LIA Coaching • Visioconférence")
+APP_NAME = os.getenv("APP_NAME", "TIEKA Coaching • Visioconférence")
 GOOGLE_MEET_DOMAIN = os.getenv("GOOGLE_MEET_DOMAIN", "meet.google.com")
 DEFAULT_ROLE = os.getenv("DEFAULT_ROLE", "client")
 DEFAULT_DISPLAY_NAME = os.getenv("DEFAULT_DISPLAY_NAME", "Invité")
@@ -164,6 +164,10 @@ def rendez_vous_home(
             if candidat_nom_filter:
                 where_conditions.append("(LOWER(c.nom) LIKE :candidat_nom OR LOWER(c.prenom) LIKE :candidat_nom)")
                 params["candidat_nom"] = f"%{candidat_nom_filter.lower()}%"
+            
+            # Ajouter le filtre partenaire_bpi si nécessaire
+            from ..core.partenaire_bpi_filter import add_partenaire_bpi_filter
+            add_partenaire_bpi_filter(current_user, where_conditions, params, "c.")
             
             # Ajouter les conditions WHERE si nécessaire
             if where_conditions:
@@ -571,6 +575,13 @@ def rendez_vous_api_candidats_valides(
         programme_code = programme_obj.code if programme_obj else schema_name.upper()
         
         # Récupérer les candidats validés dans ce schéma via requête SQL directe
+        where_conditions = ["c.statut = :statut"]
+        params = {"statut": DecisionJury.VALIDE.value}
+        
+        # Ajouter le filtre partenaire_bpi si nécessaire
+        from ..core.partenaire_bpi_filter import add_partenaire_bpi_filter
+        add_partenaire_bpi_filter(current_user, where_conditions, params, "c.")
+        
         candidats_query = text(f"""
             SELECT 
                 c.id as candidat_id,
@@ -580,11 +591,11 @@ def rendez_vous_api_candidats_valides(
                 e.raison_sociale as entreprise_nom
             FROM {schema_name}.candidat c
             LEFT JOIN {schema_name}.entreprise e ON c.id = e.candidat_id
-            WHERE c.statut = :statut
+            WHERE {' AND '.join(where_conditions)}
             ORDER BY c.nom, c.prenom
         """)
         
-        candidats_results = session.exec(candidats_query.bindparams(statut=DecisionJury.VALIDE.value)).all()
+        candidats_results = session.exec(candidats_query.bindparams(**params)).all()
         
         candidats = []
         for result in candidats_results:

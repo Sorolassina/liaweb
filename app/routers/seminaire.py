@@ -2328,7 +2328,8 @@ async def get_livrable(
 async def emargement_direct(
     seminaire_id: int, session_id: int, request: Request,
     db: Session = Depends(get_shared_session),
-    schema_routing_service: SchemaRoutingService = Depends(get_schema_routing_service)
+    schema_routing_service: SchemaRoutingService = Depends(get_schema_routing_service),
+    current_user: Optional[User] = Depends(get_current_user)
 ):
     """Page publique d'émargement direct"""
     try:
@@ -2396,16 +2397,28 @@ async def emargement_direct(
         presences = seminaire_service.get_presences_for_direct_emargement(seminaire_id, session_id, db, schema_name)
         
         # Récupérer toutes les invitations avec les détails des candidats via requête SQL directe
-        invitations_query = text(f"""
+        invitations_query_str = f"""
             SELECT i.id, i.seminaire_id, i.type_invitation, i.candidat_id, i.promotion_id,
                    i.statut, i.email_envoye, i.date_envoi, i.date_reponse, i.token_invitation, i.cree_le,
                    c.nom as candidat_nom, c.prenom as candidat_prenom, c.email as candidat_email, c.photo_profil as candidat_photo_profil
             FROM {schema_name}.invitation_seminaire i
             LEFT JOIN {schema_name}.candidat c ON i.candidat_id = c.id
             WHERE i.seminaire_id = :seminaire_id AND i.candidat_id IS NOT NULL
-            ORDER BY c.nom, c.prenom
-        """)
-        invitations_results = db.exec(invitations_query.bindparams(seminaire_id=seminaire_id)).all()
+        """
+        where_conditions_inv = []
+        params_inv = {"seminaire_id": seminaire_id}
+        
+        # Ajouter le filtre partenaire_bpi si nécessaire
+        from ..core.partenaire_bpi_filter import add_partenaire_bpi_filter
+        add_partenaire_bpi_filter(current_user, where_conditions_inv, params_inv, "c.")
+        
+        if where_conditions_inv:
+            invitations_query_str = invitations_query_str.replace("WHERE i.seminaire_id = :seminaire_id", 
+                                                                 "WHERE i.seminaire_id = :seminaire_id AND " + " AND ".join(where_conditions_inv))
+        
+        invitations_query_str += " ORDER BY c.nom, c.prenom"
+        invitations_query = text(invitations_query_str)
+        invitations_results = db.exec(invitations_query.bindparams(**params_inv)).all()
         
         # Convertir les résultats en objets simples
         invitations = []

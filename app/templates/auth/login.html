@@ -13,6 +13,11 @@
     <link rel="stylesheet" href="/static/css/theme.css">
     <link rel="stylesheet" href="/static/css/components.css">
     
+    <!-- Google Fonts pour le slogan -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600&family=Playfair+Display:wght@400;500;600&display=swap" rel="stylesheet">
+    
     <style>
         /* ========================================
            STYLES SPÉCIFIQUES À LA PAGE DE LOGIN
@@ -115,6 +120,38 @@
         .login-header {
             text-align: center;
             margin-bottom: 16px;
+            position: relative;
+        }
+
+        .back-button {
+            position: absolute;
+            top: 0;
+            left: 0;
+            background: rgba(255, 255, 255, 0.2);
+            border: 2px solid rgba(255, 255, 255, 0.5);
+            border-radius: 50%;
+            width: 40px;
+            height: 40px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            color: var(--white-color);
+            font-size: 18px;
+            text-decoration: none;
+            -webkit-backdrop-filter: blur(10px);
+            backdrop-filter: blur(10px);
+        }
+
+        .back-button:hover {
+            background: rgba(255, 255, 255, 0.3);
+            border-color: rgba(255, 255, 255, 0.8);
+            transform: scale(1.1);
+        }
+
+        .back-button:active {
+            transform: scale(0.95);
         }
 
         .logo-container {
@@ -149,13 +186,21 @@
         }
 
         .login-subtitle {
-            font-size: 14px;
-            color: var(--gray-800);
+            font-family: 'Poppins', 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            font-size: 18px;
+            font-weight: 300;
+            font-style: italic;
+            color: var(--white-color);
+            text-shadow: 0 2px 8px rgba(0, 0, 0, 0.5), 0 0 20px rgba(255, 255, 255, 0.1);
+            margin-top: 8px;
+            letter-spacing: 1px;
+            line-height: 1.6;
         }
 
         /* Formulaire */
         .login-form-container {
             background: rgba(0, 0, 0, 0.1);
+            -webkit-backdrop-filter: blur(10px);
             backdrop-filter: blur(10px);
             border-radius: 15px;
             padding: 32px;
@@ -398,6 +443,7 @@
             color: white;
             font-family: 'Segoe UI Light', 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
             text-shadow: 0 0 20px rgba(0, 0, 0, 0.8), 0 2px 10px rgba(0, 0, 0, 0.5);
+            -webkit-user-select: none;
             user-select: none;
             pointer-events: none;
         }
@@ -489,10 +535,12 @@
 <body>
     <!-- Carrousel d'images en arrière-plan -->
     <div class="background-carousel" id="backgroundCarousel">
-        <div class="bg-image active" style="background-image: url('/static/images/backgroundlogin/alexander-slattery-LI748t0BK8w-unsplash.jpg');" data-index="0"></div>
-        <div class="bg-image" style="background-image: url('/static/images/backgroundlogin/BGlogin.jpg');" data-index="1"></div>
-        <div class="bg-image" style="background-image: url('/static/images/backgroundlogin/christian-joudrey-u_nsiSvPEak-unsplash.jpg');" data-index="2"></div>
-        <div class="bg-image" style="background-image: url('/static/images/backgroundlogin/jonatan-pie-3l3RwQdHRHg-unsplash.jpg');" data-index="3"></div>
+        <div class="bg-image active" style="background-image: url('/static/images/backgroundlogin/BGECtedAzurmobilisdansleprogrammeEntrepreneuriatQuartiers2030png_6787bf6156e1a2.15278416.png');" data-index="0"></div>
+        <div class="bg-image" style="background-image: url('/static/images/backgroundlogin/BIG-BPI.webp');" data-index="1"></div>
+        <div class="bg-image" style="background-image: url('/static/images/backgroundlogin/Big-image previsualisation.jpg');" data-index="2"></div>
+        <div class="bg-image" style="background-image: url('/static/images/backgroundlogin/EQ2030 - AAP_0.jpg');" data-index="3"></div>
+        <div class="bg-image" style="background-image: url('/static/images/backgroundlogin/89d71dc1f6b7b475795d78fa1033c3fe.webp');" data-index="4"></div>
+        <div class="bg-image" style="background-image: url('/static/images/backgroundlogin/2240834.avif');" data-index="5"></div>
     </div>
 
     <!-- Horloge style écran de veille Microsoft -->
@@ -504,25 +552,28 @@
     <div class="login-container">
         <div class="login-wrapper">
             <div class="login-content">
-                <!-- Logo et Titre -->
-                <div class="login-header">
-                    <div class="logo-container">
-                        {% if company_logo('exists') %}
-                            <img src="{{ company_logo('url') }}" alt="Logo LIA" class="logo-image">
-                        {% else %}
-                            <img src="{{ static_versioning('/static/images/logo.png') }}" alt="Logo LIA" class="logo-image">
-                        {% endif %}
-                    </div>
-                    <h2 class="login-title">
-                        Bienvenue sur {{app_name}}
-                    </h2>
-                    <p class="login-subtitle">
-                        Connectez-vous à votre compte
-                    </p>
-                </div>
-
                 <!-- Formulaire de Connexion -->
                 <div class="login-form-container">
+                    <!-- Logo et Titre -->
+                    <div class="login-header">
+                        <a href="/" class="back-button" title="Retour à l'accueil">
+                            <i class="fas fa-arrow-left"></i>
+                        </a>
+                        <div class="logo-container">
+                            {% if company_logo('exists') %}
+                                <img src="{{ company_logo('url') }}" alt="Logo TIEKA" class="logo-image">
+                            {% else %}
+                                <img src="{{ static_versioning('/static/images/logo.png') }}" alt="Logo TIEKA" class="logo-image">
+                            {% endif %}
+                        </div>
+                        <h2 class="login-title">
+                           {{app_name}}
+                        </h2>
+                        <p class="login-subtitle">
+                            Vous aidez à mieux collaborer.
+                        </p>
+                    </div>
+                    
                     <form method="POST" action="{{ url_for('login') }}" id="login-form" class="login-form">
                         <!-- Messages d'erreur/succès -->
                         {% if error %}
@@ -568,7 +619,7 @@
                             <div class="password-container">
                                 <input type="password" id="password" name="password" required class="form-input"
                                     placeholder="Votre mot de passe">
-                                <button type="button" id="toggle-password" class="toggle-password">
+                                <button type="button" id="toggle-password" class="toggle-password" title="Afficher/Masquer le mot de passe" aria-label="Afficher/Masquer le mot de passe">
                                     <svg id="eye-icon" class="eye-icon" fill="none" stroke="currentColor"
                                         viewBox="0 0 24 24">
                                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
@@ -768,6 +819,36 @@
 
             // Changer l'image toutes les X secondes
             setInterval(changeBackground, intervalTime);
+        })();
+
+        // ========================================
+        // DÉTECTION D'INACTIVITÉ - REDIRECTION APRÈS 5 MINUTES
+        // ========================================
+        (function() {
+            const INACTIVITY_TIMEOUT = 5 * 60 * 1000; // 5 minutes en millisecondes
+            let inactivityTimer;
+
+            function resetInactivityTimer() {
+                // Réinitialiser le timer
+                clearTimeout(inactivityTimer);
+                
+                // Programmer la redirection après 5 minutes d'inactivité
+                inactivityTimer = setTimeout(function() {
+                    // Rediriger vers la landing page
+                    window.location.href = '/';
+                }, INACTIVITY_TIMEOUT);
+            }
+
+            // Événements qui indiquent une activité utilisateur
+            const activityEvents = ['mousedown', 'mousemove', 'keypress', 'scroll', 'touchstart', 'click'];
+            
+            // Ajouter les écouteurs d'événements
+            activityEvents.forEach(function(eventName) {
+                document.addEventListener(eventName, resetInactivityTimer, true);
+            });
+
+            // Démarrer le timer au chargement de la page
+            resetInactivityTimer();
         })();
     </script>
 </body>

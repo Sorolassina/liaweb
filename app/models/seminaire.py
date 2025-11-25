@@ -37,6 +37,7 @@ class Seminaire(SQLModel, table=True):
     # Métadonnées
     cree_le: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
     modifie_le: Optional[datetime] = None
+    partenaire_bpi: Optional[str] = None  # Filtrage par partenaire BPI
     
     # Relations
     programme: "Programme" = Relationship(back_populates="seminaires")

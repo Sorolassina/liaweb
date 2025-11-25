@@ -1,7 +1,9 @@
-{% extends "base.html" %}
+{% extends "layouts/base.html" %}
 {% from "components/page_header.html" import page_header %}
 
 {% block title %}Candidats Validés - Suivi Mensuel{% endblock %}
+
+{% set programme_param = programme_code or (request.query_params.get('programme') or '') %}
 
 {% block content %}
 <style>
@@ -91,7 +93,7 @@
             <div class="card">
                 <div class="card-header card-header-compact">
                     <h3 class="card-title">
-                        <i class="fas fa-users me-2"></i>Candidats Validés - Suivi Mensuel
+                        <i class="fas fa-users me-2"></i>Candidats Inscrits - Suivi Mensuel
                     </h3>
                 </div>
                 
@@ -106,20 +108,11 @@
                                     </h5>
                                 </div>
                                 <div class="card-body">
-                                    <form method="get" class="row g-3">
-                                        <div class="col-md-4">
-                                            <label for="programme_id" class="form-label">Programme</label>
-                                            <select class="form-select" id="programme_id" name="programme_id">
-                                                <option value="">Tous les programmes</option>
-                                                {% for programme in programmes %}
-                                                <option value="{{ programme.id }}" 
-                                                    {% if programme_id == programme.id %}selected{% endif %}>
-                                                    {{ programme.nom }}
-                                                </option>
-                                                {% endfor %}
-                                            </select>
-                                        </div>
-                                        <div class="col-md-4">
+                                    <form method="get" class="row g-3" action="{{ url_for('liste_candidats_valides') }}">
+                                        {% if programme_param %}
+                                        <input type="hidden" name="programme" value="{{ programme_param }}">
+                                        {% endif %}
+                                        <div class="col-md-8">
                                             <label for="search_candidat" class="form-label">Rechercher un candidat</label>
                                             <input type="text" class="form-control" id="search_candidat" name="search_candidat" 
                                                    placeholder="Nom ou prénom..." value="{{ search_candidat or '' }}">
@@ -128,7 +121,7 @@
                                             <button type="submit" class="btn btn-primary me-2">
                                                 <i class="fas fa-search me-1"></i>Filtrer
                                             </button>
-                                            <a href="{{ url_for('liste_candidats_valides') }}" class="btn btn-secondary">
+                                            <a href="{{ url_for('liste_candidats_valides') }}{{ '?programme=' ~ programme_param if programme_param else '' }}" class="btn btn-secondary">
                                                 <i class="fas fa-times me-1"></i>Effacer
                                             </a>
                                         </div>
@@ -144,7 +137,7 @@
                             <div class="card">
                                 <div class="card-header">
                                     <h5 class="card-title">
-                                        <i class="fas fa-list me-2"></i>Liste des candidats validés
+                                        <i class="fas fa-list me-2"></i>Liste des candidats inscrits
                                     </h5>
                                 </div>
                                 <div class="card-body">
@@ -185,11 +178,11 @@
                                                         </td>
                                                         <td>
                                                             <div class="btn-group" role="group">
-                                                                <a href="{{ url_for('creer_suivi_mensuel_form') }}?inscription_id={{ candidat.id }}" 
+                                                                <a href="{{ url_for('creer_suivi_mensuel_form') }}?inscription_id={{ candidat.id }}{{ '&programme=' ~ programme_param if programme_param else '' }}" 
                                                                    class="btn btn-primary btn-sm">
                                                                     <i class="fas fa-plus me-1"></i>Nouveau suivi
                                                                 </a>
-                                                                <a href="{{ url_for('suivis_par_inscription', inscription_id=candidat.id) }}" 
+                                                                <a href="{{ url_for('suivis_par_inscription', inscription_id=candidat.id) }}{{ '?programme=' ~ programme_param if programme_param else '' }}" 
                                                                    class="btn btn-info btn-sm">
                                                                     <i class="fas fa-eye me-1"></i>Voir suivis
                                                                 </a>
@@ -230,7 +223,7 @@
                                             {% endif %}
                                             
                                             {% if programme_id or search_candidat %}
-                                                <a href="{{ url_for('liste_candidats_valides') }}" class="btn btn-primary">
+                                                <a href="{{ url_for('liste_candidats_valides') }}{{ '?programme=' ~ programme_param if programme_param else '' }}" class="btn btn-primary">
                                                     <i class="fas fa-refresh me-1"></i>Voir tous les candidats
                                                 </a>
                                             {% endif %}

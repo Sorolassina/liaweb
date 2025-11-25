@@ -48,6 +48,83 @@ body {
     font-family: var(--font-family);
     color: var(--text-color);
     background-color: var(--background-color);
+    /* Animation de transition de page */
+    transition: opacity 0.3s ease-in-out, transform 0.3s ease-in-out;
+    opacity: 1;
+    transform: translateY(0);
+}
+
+/* Animation de sortie de page */
+body.page-exit {
+    opacity: 0;
+    transform: translateY(-20px);
+    pointer-events: none;
+}
+
+/* Animation d'entrée de page */
+body.page-enter {
+    animation: pageEnter 0.4s ease-out forwards;
+}
+
+@keyframes pageEnter {
+    from {
+        opacity: 0;
+        transform: translateY(20px);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+/* Conteneur de contenu avec animation */
+#content {
+    transition: opacity 0.3s ease-in-out, transform 0.3s ease-in-out;
+}
+
+/* Animation alternative : fade + slide depuis la droite */
+body.page-exit-slide-right {
+    opacity: 0;
+    transform: translateX(-30px);
+    pointer-events: none;
+}
+
+body.page-enter-slide-right {
+    animation: pageEnterSlideRight 0.4s ease-out forwards;
+}
+
+@keyframes pageEnterSlideRight {
+    from {
+        opacity: 0;
+        transform: translateX(30px);
+    }
+    to {
+        opacity: 1;
+        transform: translateX(0);
+    }
+}
+
+/* Animation alternative : fade + scale */
+body.page-exit-scale {
+    opacity: 0;
+    transform: scale(0.95);
+    pointer-events: none;
+}
+
+body.page-enter-scale {
+    animation: pageEnterScale 0.4s ease-out forwards;
+}
+
+@keyframes pageEnterScale {
+    from {
+        opacity: 0;
+        transform: scale(0.98);
+    }
+    to {
+        opacity: 1;
+        transform: scale(1);
+    }
+}
     display: flex;
     flex-direction: column;
     min-height: 100vh;

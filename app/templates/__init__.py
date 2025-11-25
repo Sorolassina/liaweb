@@ -178,7 +178,7 @@ def format_email(email, max_length=25):
 def get_current_programme_title(request):
     """Extrait le titre du programme depuis l'URL, les paramètres ou retourne le titre par défaut"""
     if not request:
-        return "LIA-Gestion coaching"
+        return "TIEKA-Gestion coaching"
     
     # PRIORITÉ 1: Depuis request.state (middleware)
     if hasattr(request, 'state') and hasattr(request.state, 'program_schema') and request.state.program_schema:
@@ -189,8 +189,121 @@ def get_current_programme_title(request):
     if programme_param:
         return programme_param.upper()
     else:   
-        return "LIA-Gestion coaching"
+        return "TIEKA-Gestion coaching"
 
+
+def get_user_type_from_cookie(request):
+    """Récupère le type d'utilisateur depuis les cookies (bpi, partenaire, candidat)"""
+    if not request:
+        return ""
+    return request.cookies.get("user_type", "")
+
+def can_see_menu_item(user, menu_name: str) -> bool:
+    """
+    Détermine si un utilisateur peut voir un élément de menu spécifique
+    basé sur sa position et son rôle.
+    
+    Args:
+        user: L'utilisateur connecté (doit avoir position et role)
+        menu_name: Le nom du menu ('candidat', 'bpi', 'programmes', 'admin', etc.)
+    
+    Returns:
+        bool: True si l'utilisateur peut voir le menu, False sinon
+    """
+    if not user:
+        return False
+    
+    position = getattr(user, 'position', 'Candidat').lower()
+    role = getattr(user, 'role', '').lower()
+    
+    # SuperAdmin (administrateur) : accès complet à tous les menus
+    if role == 'administrateur':
+        return True
+    
+    # Directeur : droit à tous les menus (mais pas accès complet comme SuperAdmin)
+    if role in ['directeur_general', 'directeur_technique']:
+        return True
+    
+    # Filtrage par position
+    if position == 'bpi':
+        # BPI : accès uniquement à l'espace BPI (pas d'accueil, pas de programmes, pas d'admin)
+        return menu_name == 'bpi'
+    
+    elif position == 'candidat':
+        # Candidat : accès uniquement à l'espace Candidat (pas d'accueil, pas de programmes, pas d'admin)
+        return menu_name == 'candidat'
+    
+    elif position == 'partenaire':
+        # Partenaire : masquer BPI et Candidat
+        if menu_name in ['bpi', 'candidat']:
+            return False
+        # Les partenaires voient les programmes selon leur rôle
+        return menu_name in ['programmes', 'accueil']
+    
+    # Pour les autres positions ou par défaut, vérifier selon le rôle
+    # Conseiller, Coordinateur, Responsable_programme : droit au menu de son programme
+    if role in ['conseiller', 'coordinateur', 'responsable_programme']:
+        return menu_name in ['programmes', 'accueil']
+    
+    # Coach : droit au menu rdv de son programme
+    if role in ['coach_externe', 'accompagnateur']:
+        return menu_name in ['programmes', 'accueil']  # Les RDV sont dans les programmes
+    
+    # Responsable Communication : droit au menu seminaire, event de tous les programmes
+    if role in ['responsable_communication', 'assistant_communication']:
+        return menu_name in ['programmes', 'accueil']
+    
+    # Par défaut, ne rien afficher
+    return False
+
+def can_see_programme_menu_item(user, menu_item: str) -> bool:
+    """
+    Détermine si un utilisateur peut voir un élément de menu spécifique dans un programme
+    basé sur son rôle.
+    
+    Args:
+        user: L'utilisateur connecté
+        menu_item: L'élément de menu ('dashboard', 'preinscriptions', 'inscriptions', 
+                  'rendez-vous', 'seminaires', 'events', 'codev', 'elearning', 'suivi-mensuel')
+    
+    Returns:
+        bool: True si l'utilisateur peut voir l'élément, False sinon
+    """
+    if not user:
+        return False
+    
+    position = getattr(user, 'position', 'Candidat').lower()
+    role = getattr(user, 'role', '').lower()
+    
+    # SuperAdmin (administrateur) : accès complet à tous les menus de programme
+    if role == 'administrateur':
+        return True
+    
+    # Directeur : droit à tous les menus de programme
+    if role in ['directeur_general', 'directeur_technique']:
+        return True
+    
+    # Si position est BPI, ne pas voir les menus de programme (uniquement l'espace BPI)
+    if position == 'bpi':
+        return False
+    
+    # Si position est Partenaire, voir certains éléments
+    if position == 'partenaire':
+        return menu_item in ['dashboard', 'rendez-vous', 'seminaires', 'events', 'codev', 'elearning']
+    
+    # Conseiller, Coordinateur, Responsable_programme : accès à tous les menus de leur programme
+    if role in ['conseiller', 'coordinateur', 'responsable_programme']:
+        return True
+    
+    # Coach : accès uniquement aux RDV
+    if role in ['coach_externe', 'accompagnateur']:
+        return menu_item == 'rendez-vous'
+    
+    # Responsable Communication : accès aux séminaires et événements de tous les programmes
+    if role in ['responsable_communication', 'assistant_communication']:
+        return menu_item in ['seminaires', 'events']
+    
+    return False
 
 def get_current_programme_from_session(request):
     """Récupère le code du programme actuel depuis request.state (middleware)"""
@@ -610,6 +723,7 @@ templates.env.globals.update(
     format_email=format_email,
     get_current_programme_title=get_current_programme_title,
     get_current_programme_from_session=get_current_programme_from_session,
+    get_user_type_from_cookie=get_user_type_from_cookie,  # Type d'utilisateur (bpi, partenaire, candidat)
     get_programmes=get_active_programmes,  # ← Fonction pour éviter les conflits
     get_user_photo_url=get_user_photo_url,
     static_versioning=static_versioning,  # Fonction de versionnement des fichiers statiques
@@ -619,6 +733,9 @@ templates.env.globals.update(
     # Alias pour compatibilité avec l'ancien code
     get_company_logo_url=lambda: company_logo('url'),
     company_logo_exists=lambda: company_logo('exists'),
+    # === FONCTIONS DE VISIBILITÉ DES MENUS ===
+    can_see_menu_item=can_see_menu_item,  # Vérifie si un utilisateur peut voir un menu principal
+    can_see_programme_menu_item=can_see_programme_menu_item,  # Vérifie si un utilisateur peut voir un menu de programme
    
 )
 

@@ -37,6 +37,10 @@ class SuiviMensuelBase(BaseModel):
     # Situation socioprofessionnelle
     situation_socioprofessionnelle: Optional[str] = Field(None, description="Situation socioprofessionnelle du candidat")
     
+    # Statut dans le programme
+    statut_programme: Optional[str] = Field(None, description="Statut dans le programme: dans_programme, abandonne, termine")
+    raison_abandon: Optional[str] = Field(None, description="Raison de l'abandon si statut_programme = abandonne")
+    
     # Métriques générales
     score_objectifs: Optional[float] = Field(None, ge=0, le=100, description="Score global des objectifs (0-100)")
     commentaire: Optional[str] = Field(None, max_length=2000, description="Commentaires libres")
@@ -99,6 +103,10 @@ class SuiviMensuelUpdate(BaseModel):
     
     # Situation socioprofessionnelle
     situation_socioprofessionnelle: Optional[str] = None
+    
+    # Statut dans le programme
+    statut_programme: Optional[str] = None
+    raison_abandon: Optional[str] = None
     
     # Métriques générales
     score_objectifs: Optional[float] = Field(None, ge=0, le=100)

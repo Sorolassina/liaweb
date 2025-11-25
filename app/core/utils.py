@@ -446,7 +446,7 @@ class EmailUtils:
         </head>
         <body>
             <div class="header">
-                <img src="https://cdn.jaimelesstartups.fr/wp-content/uploads/2022/12/logo-my-creo-academy-1500x928.png" alt="LIA Coaching">
+                <img src="https://cdn.jaimelesstartups.fr/wp-content/uploads/2022/12/logo-my-creo-academy-1500x928.png" alt="TIEKA Coaching">
                 <h2>Invitation Rendez-vous Vidéo</h2>
             </div>
             
@@ -466,15 +466,15 @@ class EmailUtils:
                 <p>Pour rejoindre votre rendez-vous vidéo, cliquez simplement sur le bouton ci-dessous :</p>
                 
                 <div style="text-align: center;">
-                    <a href="{invitation_link}" class="btn">🎬 Rejoindre LIA Coaching</a>
+                    <a href="{invitation_link}" class="btn">🎬 Rejoindre TIEKA Coaching</a>
                 </div>
                 
                 <div class="info-box">
                     <h3>💡 Instructions</h3>
                     <ul>
-                        <li>Cliquez sur le bouton "Rejoindre LIA Coaching" ci-dessus</li>
+                        <li>Cliquez sur le bouton "Rejoindre TIEKA Coaching" ci-dessus</li>
                         <li>Autorisez l'accès à votre caméra et microphone</li>
-                        <li>Vous pouvez utiliser LIA Coaching depuis votre navigateur</li>
+                        <li>Vous pouvez utiliser TIEKA Coaching depuis votre navigateur</li>
                         <li>Assurez-vous d'avoir une connexion internet stable</li>
                         <li>Testez votre équipement avant le rendez-vous</li>
                     </ul>
@@ -484,7 +484,7 @@ class EmailUtils:
             </div>
             
             <div class="footer">
-                <p>Cet email a été envoyé automatiquement par le système LIA Coaching.</p>
+                <p>Cet email a été envoyé automatiquement par le système TIEKA Coaching.</p>
                 <p>Si vous avez des questions, n'hésitez pas à contacter votre conseiller.</p>
             </div>
         </body>
@@ -512,7 +512,7 @@ class EmailUtils:
         - Rejoignez quelques minutes avant l'heure prévue
         - En cas de problème technique, contactez votre conseiller
         
-        Cet email a été envoyé automatiquement par le système LIA Coaching.
+        Cet email a été envoyé automatiquement par le système TIEKA Coaching.
         Si vous avez des questions, n'hésitez pas à contacter votre conseiller.
         """
         
@@ -697,7 +697,7 @@ class EmailUtils:
                     </div>
                     
                     <div class="footer">
-                        <p>Cet email a été envoyé automatiquement par le système LIA Coaching.</p>
+                        <p>Cet email a été envoyé automatiquement par le système TIEKA Coaching.</p>
                         <p>Si vous avez des questions, n'hésitez pas à contacter votre conseiller.</p>
                     </div>
                 </div>
@@ -726,7 +726,7 @@ class EmailUtils:
             - Rejoignez quelques minutes avant l'heure prévue
             - En cas de problème technique, contactez votre conseiller
             
-            Cet email a été envoyé automatiquement par le système LIA Coaching.
+            Cet email a été envoyé automatiquement par le système TIEKA Coaching.
             Si vous avez des questions, n'hésitez pas à contacter votre conseiller.
             """
             
@@ -810,7 +810,7 @@ class EmailUtils:
                     
                     <!-- En-tête -->
                     <div style="background: linear-gradient(135deg, {settings.THEME_PRIMARY} 0%, {settings.THEME_SECONDARY} 100%); color: {settings.THEME_WHITE}; padding: 30px; text-align: center;">
-                        <img src="{settings.get_static_url('images/logo.png')}" alt="LIA Coaching" style="height: 60px; margin-bottom: 15px;">
+                        <img src="{settings.get_static_url('images/logo.png')}" alt="TIEKA Coaching" style="height: 60px; margin-bottom: 15px;">
                         <h1 style="margin: 0; font-size: 24px; font-weight: 600;">✍️ Émargement Requis</h1>
                         <p style="margin: 10px 0 0 0; font-size: 16px; opacity: 0.9;">Signature électronique pour votre rendez-vous</p>
                     </div>
@@ -858,7 +858,7 @@ class EmailUtils:
                     <!-- Pied de page -->
                     <div style="background-color: #f8f9fa; padding: 20px; text-align: center; border-top: 1px solid #dee2e6;">
                         <p style="margin: 0; font-size: 12px; color: #6c757d;">
-                            Cet email a été envoyé automatiquement par le système LIA Coaching.<br>
+                            Cet email a été envoyé automatiquement par le système TIEKA Coaching.<br>
                             Si vous avez des questions, contactez votre conseiller.
                         </p>
                     </div>
@@ -887,7 +887,7 @@ class EmailUtils:
             Ce lien est personnel et sécurisé. Ne le partagez pas avec d'autres personnes.
             
             Cordialement,
-            L'équipe LIA Coaching
+            L'équipe TIEKA Coaching
             """
             
             return EmailUtils.envoyer_mail(
